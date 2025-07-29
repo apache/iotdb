@@ -52,28 +52,15 @@ public class DeleteLogicalViewStatement extends Statement implements IConfigStat
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Check RBAC permissions first
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     List<PartialPath> checkedPaths = getPaths();
-    TSStatus rbacStatus =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternListPermission(
-                userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-            checkedPaths,
-            PrivilegeType.WRITE_SCHEMA);
-    // Check RBAC permission result
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-    // Add LBAC check for write operation
-    TSStatus lbacStatus =
-        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
-    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return lbacStatus;
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   public List<PartialPath> getPathPatternList() {

@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
@@ -41,7 +39,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
@@ -196,39 +193,14 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // First check if user is super user
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
+    // Use the enhanced LBAC-integrated permission check
+    return checkPermissionWithLbac(userName);
+  }
 
-    // Perform traditional RBAC permission check
-    List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
-    TSStatus rbacStatus =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternListPermission(
-                userName, checkedPaths, PrivilegeType.WRITE_DATA),
-            checkedPaths,
-            PrivilegeType.WRITE_DATA);
-
-    // If RBAC check fails, return immediately
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-
-    // Perform LBAC permission check
-    try {
-      // Use LbacIntegration for LBAC check with device paths
-      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
-      if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return lbacStatus;
-      }
-    } catch (Exception e) {
-      // Reject access when LBAC check fails with exception
-      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage("LBAC permission check failed: " + e.getMessage());
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Insert operations require WRITE_DATA privilege
+    return PrivilegeType.WRITE_DATA;
   }
 
   public abstract ISchemaValidation getSchemaValidation();

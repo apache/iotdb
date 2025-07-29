@@ -62,7 +62,6 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Check RBAC permissions first
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
@@ -85,26 +84,15 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
               sourcePathList,
               PrivilegeType.READ_SCHEMA);
     }
+
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA),
-              getTargetPathList(),
-              PrivilegeType.WRITE_SCHEMA);
+      return AuthorityChecker.getTSStatus(
+          AuthorityChecker.checkFullPathOrPatternListPermission(
+              userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA),
+          getTargetPathList(),
+          PrivilegeType.WRITE_SCHEMA);
     }
-    // Check RBAC permission result
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return status;
-    }
-    // Add LBAC check for write operation
-    TSStatus lbacStatus =
-        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(
-            this, userName, getTargetPathList());
-    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return lbacStatus;
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return status;
   }
 
   public ViewPaths getTargetPaths() {

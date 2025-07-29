@@ -19,14 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.node.MNodeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -36,7 +41,10 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -46,6 +54,8 @@ import java.util.stream.Collectors;
 import static java.util.Objects.requireNonNull;
 
 public class NodeManageMemoryMergeOperator implements ProcessOperator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(NodeManageMemoryMergeOperator.class);
+
   private final OperatorContext operatorContext;
   private final Set<TSchemaNode> data;
   private final Set<String> nameSet;
@@ -119,7 +129,40 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
               }
               return o1.getNodeType() - o2.getNodeType();
             });
-    sortSet.addAll(nodePaths);
+
+    // Filter nodes based on permissions
+    String userName = getCurrentUserName();
+    for (TSchemaNode node : nodePaths) {
+      String fullPath = node.getNodeName();
+      String databasePath = extractDatabasePathFromFullPath(fullPath);
+
+      if (databasePath != null) {
+        try {
+          PartialPath dbPartialPath = new PartialPath(databasePath);
+          List<PartialPath> paths = Collections.singletonList(dbPartialPath);
+          TSStatus permissionStatus =
+              AuthorityChecker.checkPermissionWithLbac(userName, paths, PrivilegeType.READ_SCHEMA);
+          if (permissionStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            sortSet.add(node);
+          } else {
+            LOGGER.debug(
+                "User {} denied access to child path {} in database {}: {}",
+                userName,
+                fullPath,
+                databasePath,
+                permissionStatus.getMessage());
+          }
+        } catch (Exception e) {
+          LOGGER.warn("Error checking permission for path {}: {}", fullPath, e.getMessage());
+          // In case of error, default to not adding the path to be safe
+        }
+      } else {
+        // If database path cannot be extracted, include it (or decide based on policy)
+        // For now, assuming it's allowed if no specific database path can be determined
+        sortSet.add(node);
+      }
+    }
+
     sortSet.forEach(
         node -> {
           tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
@@ -135,6 +178,33 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
           tsBlockBuilder.declarePosition();
         });
     return tsBlockBuilder.build();
+  }
+
+  /** Extract database path from full path */
+  private String extractDatabasePathFromFullPath(String fullPath) {
+    try {
+      String[] pathParts = fullPath.split("\\.");
+      if (pathParts.length >= 2) {
+        return pathParts[0] + "." + pathParts[1];
+      }
+      return null;
+    } catch (Exception e) {
+      LOGGER.warn("Error extracting database path from full path {}: {}", fullPath, e.getMessage());
+      return null;
+    }
+  }
+
+  /** Get current user name from session */
+  private String getCurrentUserName() {
+    try {
+      return operatorContext
+          .getDriverContext()
+          .getFragmentInstanceContext()
+          .getSessionInfo()
+          .getUserName();
+    } catch (Exception e) {
+      return "unknown";
+    }
   }
 
   @Override
@@ -154,7 +224,8 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    // todo calculate the result based on all the scan node; currently, this is shadowed by
+    // todo calculate the result based on all the scan node; currently, this is
+    // shadowed by
     // schemaQueryMergeNode
     return Math.max(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, child.calculateMaxPeekMemory());
   }

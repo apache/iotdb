@@ -22,11 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -50,25 +48,13 @@ public class ShowFunctionsStatement extends ShowStatement implements IConfigStat
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Check RBAC permissions first
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    TSStatus rbacStatus =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF),
-            PrivilegeType.USE_UDF);
-    // Check RBAC permission result
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-    // Add LBAC check for read operation
-    List<PartialPath> devicePaths = getPaths();
-    TSStatus lbacStatus =
-        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
-    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return lbacStatus;
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    // Use the enhanced LBAC-integrated permission check
+    return checkPermissionWithLbac(userName);
+  }
+
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Show functions operations require USE_UDF privilege
+    return PrivilegeType.USE_UDF;
   }
 }

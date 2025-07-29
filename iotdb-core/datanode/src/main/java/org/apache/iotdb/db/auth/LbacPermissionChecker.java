@@ -518,9 +518,13 @@ public class LbacPermissionChecker {
    * @return true if LBAC is enabled, false otherwise
    */
   public static boolean isLbacEnabled() {
-    // TODO: Implement configuration check
-    // This could check a system property, configuration file, or database setting
-    return true; // For now, assume LBAC is enabled
+    try {
+      // Get LBAC configuration from IoTDB descriptor
+      return org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance().getConfig().isEnableLbac();
+    } catch (Exception e) {
+      LOGGER.warn("Failed to get LBAC configuration, defaulting to enabled", e);
+      return true; // Default to enabled in case of error
+    }
   }
 
   /**

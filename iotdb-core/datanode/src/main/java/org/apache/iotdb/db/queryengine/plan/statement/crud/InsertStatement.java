@@ -62,7 +62,7 @@ public class InsertStatement extends Statement {
   }
 
   @Override
-  protected PrivilegeType determinePrivilegeType() {
+  public PrivilegeType determinePrivilegeType() {
     // Insert operations require WRITE_DATA privilege
     return PrivilegeType.WRITE_DATA;
   }

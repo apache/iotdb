@@ -45,10 +45,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private Integer dataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
 
-  // 新增：安全标签字段
   private SecurityLabel securityLabel = null;
 
-  // Deprecated
   private Integer schemaReplicationFactor = null;
   private Integer dataReplicationFactor = null;
 

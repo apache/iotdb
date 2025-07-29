@@ -20,17 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTreeUtils;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-import java.util.List;
 
 public class CountDevicesStatement extends CountStatement {
 
@@ -54,37 +47,14 @@ public class CountDevicesStatement extends CountStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Check RBAC permissions first
-    TSStatus rbacStatus;
-    if (hasTimeCondition()) {
-      try {
-        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-          this.authorityScope =
-              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                  AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA),
-                  AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA));
-        }
-      } catch (AuthException e) {
-        return new TSStatus(e.getCode().getStatusCode());
-      }
-      rbacStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      rbacStatus = super.checkPermissionBeforeProcess(userName);
-    }
+    // Use the enhanced LBAC-integrated permission check
+    return checkPermissionWithLbac(userName);
+  }
 
-    // Check RBAC permission result
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-
-    // Add LBAC check for read operation
-    List<PartialPath> devicePaths = getPaths();
-    TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
-    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return lbacStatus;
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Count devices operations require READ_SCHEMA privilege
+    return PrivilegeType.READ_SCHEMA;
   }
 
   @Override

@@ -104,9 +104,9 @@ public abstract class Statement extends StatementNode {
    *
    * @return The privilege type needed for this statement
    */
-  protected PrivilegeType determinePrivilegeType() {
+  public PrivilegeType determinePrivilegeType() {
     // Default implementation - subclasses should override
-    return PrivilegeType.READ_DATA;
+    return null;
   }
 
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(

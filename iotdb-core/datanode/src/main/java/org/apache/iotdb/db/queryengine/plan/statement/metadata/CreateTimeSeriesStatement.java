@@ -23,19 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.LbacIntegration;
-import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -72,56 +67,14 @@ public class CreateTimeSeriesStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // First check if user is super user
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
+    // Use the enhanced LBAC-integrated permission check
+    return checkPermissionWithLbac(userName);
+  }
 
-    // Perform traditional RBAC permission check
-    TSStatus rbacStatus =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternPermission(
-                userName, path, PrivilegeType.WRITE_SCHEMA),
-            PrivilegeType.WRITE_SCHEMA);
-
-    // If RBAC check fails, return immediately
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-
-    // Perform LBAC permission check for write operation using database paths
-    try {
-      // Extract database path from timeseries path for LBAC write policy check
-      List<String> databasePaths = new ArrayList<>();
-      if (path != null) {
-        // For CREATE TIMESERIES, need to get database path from measurement path
-        String devicePath = path.getDevicePath().getFullPath();
-        String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(devicePath);
-        if (databasePath != null) {
-          databasePaths.add(databasePath);
-        }
-      }
-
-      // Convert database paths to device paths for LbacIntegration
-      List<PartialPath> devicePathsForLbac = new ArrayList<>();
-      for (String databasePath : databasePaths) {
-        // Create a device path from database path for LBAC check
-        // This ensures LBAC checker uses database path to find labels
-        devicePathsForLbac.add(new PartialPath(databasePath));
-      }
-
-      // Use LbacIntegration for LBAC check with database paths
-      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePathsForLbac);
-      if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return lbacStatus;
-      }
-    } catch (Exception e) {
-      // Reject access when LBAC check fails with exception
-      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage("LBAC permission check failed: " + e.getMessage());
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Create time series operations require WRITE_SCHEMA privilege
+    return PrivilegeType.WRITE_SCHEMA;
   }
 
   public MeasurementPath getPath() {

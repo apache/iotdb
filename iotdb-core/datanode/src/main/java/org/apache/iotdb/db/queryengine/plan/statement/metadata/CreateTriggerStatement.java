@@ -124,25 +124,11 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Check RBAC permissions first
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    TSStatus rbacStatus =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER),
-            PrivilegeType.USE_TRIGGER);
-    // Check RBAC permission result
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-    // Add LBAC check for write operation
-    List<PartialPath> devicePaths = getPaths();
-    TSStatus lbacStatus =
-        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
-    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return lbacStatus;
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER),
+        PrivilegeType.USE_TRIGGER);
   }
 }

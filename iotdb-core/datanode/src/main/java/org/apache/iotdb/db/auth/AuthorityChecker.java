@@ -154,8 +154,11 @@ public class AuthorityChecker {
     // Convert to list for LBAC check
     List<PartialPath> pathList = new ArrayList<>(paths);
 
-    // Perform LBAC permission check
-    return checkPermissionWithLbac(userName, pathList, PrivilegeType.READ_DATA);
+    // Determine privilege type based on statement type
+    PrivilegeType privilegeType = statement.determinePrivilegeType();
+
+    // Perform LBAC permission check with correct privilege type
+    return checkPermissionWithLbac(userName, pathList, privilegeType);
   }
 
   public static TSStatus getGrantOptTSStatus(boolean hasGrantOpt, PrivilegeType privilegeType) {
@@ -458,13 +461,24 @@ public class AuthorityChecker {
       return getTSStatus(noPermissionIndexList, paths, privilegeType);
     }
 
-    // Step 2: If RBAC passes, perform LBAC check
+    // Step 2: Check if LBAC is enabled
+    if (!LbacPermissionChecker.isLbacEnabled()) {
+      // LBAC is disabled, only perform RBAC check (which already passed)
+      LOGGER.debug("LBAC is disabled, skipping LBAC check for user: {}", userName);
+      return SUCCEED;
+    }
+
+    // Step 3: If LBAC is enabled, perform LBAC check
     try {
       // Convert privilege type to LBAC operation type
       LbacOperationClassifier.OperationType lbacOperationType =
           convertPrivilegeTypeToLbacOperation(privilegeType);
+      LOGGER.warn("=== AUTHORITY CHECKER DEBUG ===");
+      LOGGER.warn("PrivilegeType: {}", privilegeType);
+      LOGGER.warn("Converted LBAC OperationType: {}", lbacOperationType);
       if (lbacOperationType == null) {
         // Not a LBAC-relevant operation, allow access
+        LOGGER.warn("Not a LBAC-relevant operation, allowing access");
         return SUCCEED;
       }
 

@@ -20,11 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
@@ -51,7 +48,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -223,45 +219,14 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    try {
-      // First check if user is super user
-      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        // Perform traditional RBAC permission check
-        this.authorityScope =
-            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA);
-      }
-    } catch (AuthException e) {
-      return new TSStatus(e.getCode().getStatusCode());
-    }
+    // Use the enhanced LBAC-integrated permission check
+    return checkPermissionWithLbac(userName);
+  }
 
-    // Perform LBAC permission check for read operation using database paths
-    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-      try {
-        // Get all database paths involved in the query for LBAC read policy check
-        List<PartialPath> queryPaths = getPaths();
-        List<String> databasePaths = new ArrayList<>();
-
-        for (PartialPath queryPath : queryPaths) {
-          String devicePath = queryPath.getDevicePath().getFullPath();
-          String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(devicePath);
-          if (databasePath != null && !databasePaths.contains(databasePath)) {
-            databasePaths.add(databasePath);
-          }
-        }
-
-        // Use LbacPermissionChecker for centralized LBAC check
-        TSStatus lbacStatus = LbacPermissionChecker.checkLbacPermissionForStatement(this, userName);
-        if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return lbacStatus;
-        }
-      } catch (Exception e) {
-        // Reject access when LBAC check fails with exception
-        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage("LBAC permission check failed: " + e.getMessage());
-      }
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Query operations require READ_DATA privilege
+    return PrivilegeType.READ_DATA;
   }
 
   public SelectComponent getSelectComponent() {

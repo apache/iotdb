@@ -22,16 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.read.common.TimeRange;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class DeleteDataStatement extends Statement {
@@ -52,49 +48,14 @@ public class DeleteDataStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // First check if user is super user
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
+    // Use the enhanced LBAC-integrated permission check
+    return checkPermissionWithLbac(userName);
+  }
 
-    // Perform traditional RBAC permission check
-    List<MeasurementPath> checkedPaths = getPaths();
-    TSStatus rbacStatus =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternListPermission(
-                userName, checkedPaths, PrivilegeType.WRITE_DATA),
-            checkedPaths,
-            PrivilegeType.WRITE_DATA);
-
-    // If RBAC check fails, return immediately
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-
-    // Perform LBAC permission check for write operation using database paths
-    try {
-      // Extract database paths from measurement paths for LBAC write policy check
-      List<String> databasePaths = new ArrayList<>();
-      for (MeasurementPath measurementPath : checkedPaths) {
-        String devicePath = measurementPath.getDevicePath().getFullPath();
-        String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(devicePath);
-        if (databasePath != null && !databasePaths.contains(databasePath)) {
-          databasePaths.add(databasePath);
-        }
-      }
-
-      // Use LbacPermissionChecker for centralized LBAC check
-      TSStatus lbacStatus = LbacPermissionChecker.checkLbacPermissionForStatement(this, userName);
-      if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return lbacStatus;
-      }
-    } catch (Exception e) {
-      // Reject access when LBAC check fails with exception
-      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage("LBAC permission check failed: " + e.getMessage());
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Delete operations require WRITE_DATA privilege
+    return PrivilegeType.WRITE_DATA;
   }
 
   public List<MeasurementPath> getPathList() {

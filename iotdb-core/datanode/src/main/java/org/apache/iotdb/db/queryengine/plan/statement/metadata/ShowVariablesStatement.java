@@ -34,19 +34,6 @@ public class ShowVariablesStatement extends ShowStatement implements IConfigStat
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Check RBAC permissions first
-    TSStatus rbacStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    // Check RBAC permission result
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-    // Add LBAC check for read operation
-    java.util.List<org.apache.iotdb.commons.path.PartialPath> devicePaths = getPaths();
-    TSStatus lbacStatus =
-        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
-    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return lbacStatus;
-    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

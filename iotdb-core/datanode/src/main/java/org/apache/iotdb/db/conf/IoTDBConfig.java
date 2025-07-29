@@ -94,7 +94,7 @@ public class IoTDBConfig {
   // e.g., a31+/$%#&[]{}3e4, "a.b", 'a.b'
   private static final String NODE_NAME_MATCHER = "([^\n\t]+)";
 
-  // e.g.,  .s1
+  // e.g., .s1
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + NODE_NAME_MATCHER;
 
   private static final String NODE_MATCHER =
@@ -678,14 +678,16 @@ public class IoTDBConfig {
   private int compactionMaxAlignedSeriesNumInOneBatch = 10;
 
   /*
-   * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
+   * How many thread will be set up to perform continuous queries. When <= 0, use
+   * max(1, CPU core number / 2).
    */
   private int continuousQueryThreadNum =
       Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
   /*
    * Minimum every interval to perform continuous query.
-   * The every interval of continuous query instances should not be lower than this limit.
+   * The every interval of continuous query instances should not be lower than
+   * this limit.
    */
   private long continuousQueryMinimumEveryInterval = 1000;
 
@@ -764,7 +766,8 @@ public class IoTDBConfig {
   private int tagAttributeFlushInterval = 1000;
 
   // In one insert (one device, one timestamp, multiple measurements),
-  // if enable partial insert, one measurement failure will not impact other measurements
+  // if enable partial insert, one measurement failure will not impact other
+  // measurements
   private boolean enablePartialInsert = true;
 
   private boolean enable13DataInsertAdapt = false;
@@ -1056,6 +1059,9 @@ public class IoTDBConfig {
   /** whether the local write api records audit logs * */
   private boolean enableAuditLogForNativeInsertApi = true;
 
+  /** whether to enable LBAC (Label-Based Access Control) */
+  private boolean enableLbac = false;
+
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -1088,7 +1094,8 @@ public class IoTDBConfig {
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber = 4096; // For table model
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
-      0L; // 0 means that the decision will be adaptive based on the number of sequences
+      0L; // 0 means that the decision will be adaptive based on the
+  // number of sequences
 
   private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
@@ -1425,7 +1432,8 @@ public class IoTDBConfig {
     SystemMetrics.getInstance().setDiskDirs(diskDirs);
   }
 
-  // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
+  // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same
+  // with IOTDB_HOME
   // In this way, we can keep consistent with v0.13.0~2.
   public static String addDataHomeDir(final String dir) {
     String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
@@ -1494,7 +1502,8 @@ public class IoTDBConfig {
   public void setTierDataDirs(String[][] tierDataDirs) {
     formulateDataDirs(tierDataDirs);
     this.tierDataDirs = tierDataDirs;
-    // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
+    // TODO(szywilliam): rewrite the logic here when ratis supports complete
+    // snapshot semantic
     setRatisDataRegionSnapshotDir(
         tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
   }
@@ -1702,7 +1711,8 @@ public class IoTDBConfig {
   public void checkMultiDirStrategyClassName() {
     confirmMultiDirStrategy();
     for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
-      // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
+      // If the multiDirStrategyClassName is one of cluster allowed strategy, the
+      // check is passed.
       if (multiDirStrategyClassName.equals(multiDirStrategy)
           || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
         return;
@@ -3757,6 +3767,14 @@ public class IoTDBConfig {
 
   public void setEnableAuditLogForNativeInsertApi(boolean enableAuditLogForNativeInsertApi) {
     this.enableAuditLogForNativeInsertApi = enableAuditLogForNativeInsertApi;
+  }
+
+  public boolean isEnableLbac() {
+    return enableLbac;
+  }
+
+  public void setEnableLbac(boolean enableLbac) {
+    this.enableLbac = enableLbac;
   }
 
   public void setModeMapSizeThreshold(int modeMapSizeThreshold) {

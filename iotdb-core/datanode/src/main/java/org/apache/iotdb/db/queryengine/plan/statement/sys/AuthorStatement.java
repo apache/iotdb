@@ -105,9 +105,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case LIST_ROLE:
         this.setType(StatementType.LIST_ROLE);
         break;
-      case DROP_USER_LABEL_POLICY:
-        this.setType(StatementType.MODIFY_PASSWORD); // 重用MODIFY_PASSWORD类型，因为也是修改用户属性
-        break;
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
@@ -220,7 +217,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
       case REVOKE_USER_ROLE:
       case UPDATE_USER:
-      case DROP_USER_LABEL_POLICY:
         queryType = QueryType.WRITE;
         break;
       case LIST_USER:
@@ -248,18 +244,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return AuthorityChecker.getTSStatus(
               false, "Cannot create user has same name with admin user");
         }
-
-        // Check if user is trying to set label policies during user creation
-        if ((readLabelPolicyExpression != null && !readLabelPolicyExpression.trim().isEmpty())
-            || (writeLabelPolicyExpression != null
-                && !writeLabelPolicyExpression.trim().isEmpty())) {
-          // Only root administrator can set label policies during user creation
-          if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-            return AuthorityChecker.getTSStatus(
-                false, "Only root administrator can set label policies during user creation");
-          }
-        }
-
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
@@ -420,5 +404,10 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
     }
     return null;
+
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Author statements are system-level operations, use MANAGE_USER as default
+    return PrivilegeType.MANAGE_USER;
   }
 }

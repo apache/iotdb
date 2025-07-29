@@ -98,7 +98,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   @Override
-  protected PrivilegeType determinePrivilegeType() {
+  public PrivilegeType determinePrivilegeType() {
     // Show database operations require READ_SCHEMA privilege
     return PrivilegeType.READ_SCHEMA;
   }

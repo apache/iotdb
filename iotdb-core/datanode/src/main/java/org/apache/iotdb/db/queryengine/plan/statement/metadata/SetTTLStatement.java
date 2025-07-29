@@ -22,13 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -77,27 +75,13 @@ public class SetTTLStatement extends Statement implements IConfigStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Check RBAC permissions first
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    List<PartialPath> checkedPaths = getPaths();
-    TSStatus rbacStatus =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternListPermission(
-                userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-            checkedPaths,
-            PrivilegeType.WRITE_SCHEMA);
-    // Check RBAC permission result
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-    // Add LBAC check for write operation
-    TSStatus lbacStatus =
-        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
-    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return lbacStatus;
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    // Use the enhanced LBAC-integrated permission check
+    return checkPermissionWithLbac(userName);
+  }
+
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Set TTL operations require WRITE_SCHEMA privilege
+    return PrivilegeType.WRITE_SCHEMA;
   }
 }
