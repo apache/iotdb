@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 
+import org.apache.tsfile.exception.TsFileRuntimeException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
@@ -112,7 +114,7 @@ public class DeviceMetadataIndexEntryCache {
                 sortedDevices,
                 ioSizeRecorder);
           } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new TsFileRuntimeException(e);
           }
         });
   }
@@ -148,7 +150,7 @@ public class DeviceMetadataIndexEntryCache {
           context.getMemoryReservationContext().reserveMemoryCumulatively(costOfOneFile);
           memoryReserved = true;
         }
-      } catch (Exception ignored) {
+      } catch (MemoryNotEnoughException ignored) {
         return false;
       }
       if (cachedFileNum.compareAndSet(currentNum, currentNum + 1)) {
