@@ -30,21 +30,28 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongConsumer;
 
 public class DeviceMetadataIndexEntryCache {
   private static final long MAX_CACHED_SIZE = 32 * 1024 * 1024;
   private final FragmentInstanceContext context;
   private TreeMap<IDeviceID, Integer> deviceIndexMap;
-  private final Map<String, long[]> deviceMetadataIndexNodeOffsetsCache = new HashMap<>();
+  private final Map<String, long[]> deviceMetadataIndexNodeOffsetsCache = new ConcurrentHashMap<>();
   private List<IDeviceID> sortedDevices;
   private int[] deviceIdxArr;
+  private final AtomicInteger cachedFileNum;
+  private LongConsumer ioSizeRecorder;
 
   public DeviceMetadataIndexEntryCache(FragmentInstanceContext context) {
     this.context = context;
+    this.cachedFileNum = new AtomicInteger(0);
+    this.ioSizeRecorder =
+        context.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
   }
 
   public void addDevices(AbstractDataSourceOperator operator, List<DeviceEntry> deviceEntries) {
@@ -66,7 +73,8 @@ public class DeviceMetadataIndexEntryCache {
   }
 
   public Pair<long[], Boolean> getCachedDeviceMetadataIndexNodeOffset(
-      int deviceIndex, String filePath) throws IOException {
+      IDeviceID device, int deviceIndex, String filePath, boolean ignoreNotExists)
+      throws IOException {
     // cache is disabled
     if (deviceIndex < 0) {
       return new Pair<>(null, true);
@@ -80,6 +88,9 @@ public class DeviceMetadataIndexEntryCache {
     long startOffset = resourceCache[2 * indexAfterSort];
     // the device does not exist in the file
     if (startOffset < 0) {
+      if (!ignoreNotExists) {
+        throw new IOException("Device {" + device + "} is not in tsFileMetaData of " + filePath);
+      }
       return new Pair<>(null, false);
     }
     long endOffset = resourceCache[2 * indexAfterSort + 1];
@@ -87,20 +98,23 @@ public class DeviceMetadataIndexEntryCache {
   }
 
   private long[] loadOffsetsToCache(String filePath) throws IOException {
-    long[] offsets = deviceMetadataIndexNodeOffsetsCache.get(filePath);
-    if (offsets != null) {
-      return offsets;
-    }
-    if (!reserveMemory()) {
-      return null;
-    }
     TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
     IDeviceID firstDevice = getSortedDevices().get(0);
-    offsets =
-        reader.getDeviceMetadataIndexNodeOffsets(
-            firstDevice.isTableModel() ? firstDevice.getTableName() : "", sortedDevices, null);
-    deviceMetadataIndexNodeOffsetsCache.put(filePath, offsets);
-    return offsets;
+    return deviceMetadataIndexNodeOffsetsCache.computeIfAbsent(
+        filePath,
+        k -> {
+          if (!reserveMemory()) {
+            return null;
+          }
+          try {
+            return reader.getDeviceMetadataIndexNodeOffsets(
+                firstDevice.isTableModel() ? firstDevice.getTableName() : null,
+                sortedDevices,
+                ioSizeRecorder);
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   private synchronized List<IDeviceID> getSortedDevices() {
@@ -123,14 +137,24 @@ public class DeviceMetadataIndexEntryCache {
 
   private boolean reserveMemory() {
     long costOfOneFile = RamUsageEstimator.sizeOfLongArray(sortedDevices.size());
-    if (costOfOneFile * (deviceMetadataIndexNodeOffsetsCache.size() + 1) > MAX_CACHED_SIZE) {
-      return false;
-    }
-    try {
-      context.getMemoryReservationContext().reserveMemoryCumulatively(costOfOneFile);
-      return true;
-    } catch (Exception ignored) {
-      return false;
+    int currentNum = cachedFileNum.get();
+    boolean memoryReserved = false;
+    while (true) {
+      if (costOfOneFile * (currentNum + 1) > MAX_CACHED_SIZE) {
+        return false;
+      }
+      try {
+        if (!memoryReserved) {
+          context.getMemoryReservationContext().reserveMemoryCumulatively(costOfOneFile);
+          memoryReserved = true;
+        }
+      } catch (Exception ignored) {
+        return false;
+      }
+      if (cachedFileNum.compareAndSet(currentNum, currentNum + 1)) {
+        return true;
+      }
+      currentNum = cachedFileNum.get();
     }
   }
 }

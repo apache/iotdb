@@ -151,12 +151,9 @@ public class TimeSeriesMetadataCache {
           pair =
               ((FragmentInstanceContext) queryContext)
                   .getMetadataIndexEntryCache()
-                  .getCachedDeviceMetadataIndexNodeOffset(deviceIndexInFI, filePath);
+                  .getCachedDeviceMetadataIndexNodeOffset(
+                      key.device, deviceIndexInFI, filePath, ignoreNotExists);
           if (!pair.right) {
-            if (!ignoreNotExists) {
-              throw new IOException(
-                  "Device {" + key.device + "} is not in tsFileMetaData of " + filePath);
-            }
             return null;
           }
         }
@@ -220,12 +217,9 @@ public class TimeSeriesMetadataCache {
               pair =
                   ((FragmentInstanceContext) queryContext)
                       .getMetadataIndexEntryCache()
-                      .getCachedDeviceMetadataIndexNodeOffset(deviceIndexInFI, filePath);
+                      .getCachedDeviceMetadataIndexNodeOffset(
+                          key.device, deviceIndexInFI, filePath, ignoreNotExists);
               if (!pair.right) {
-                if (!ignoreNotExists) {
-                  throw new IOException(
-                      "Device {" + key.device + "} is not in tsFileMetaData of " + filePath);
-                }
                 return null;
               }
             }
