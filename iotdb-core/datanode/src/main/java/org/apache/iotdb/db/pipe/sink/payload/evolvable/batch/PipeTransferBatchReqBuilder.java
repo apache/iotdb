@@ -25,6 +25,8 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
+import org.apache.iotdb.metrics.impl.DoNothingHistogram;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -67,6 +69,11 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   private final int requestMaxDelayInMs;
   private final long requestMaxBatchSizeInBytes;
+
+  private Histogram tabletBatchSizeHistogram = new DoNothingHistogram();
+  private Histogram tsFileBatchSizeHistogram = new DoNothingHistogram();
+  private Histogram tabletBatchTimeIntervalHistogram = new DoNothingHistogram();
+  private Histogram tsFileBatchTimeIntervalHistogram = new DoNothingHistogram();
 
   // If the leader cache is disabled (or unable to find the endpoint of event in the leader cache),
   // the event will be stored in the default batch.
@@ -113,8 +120,10 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
                 : CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
     this.defaultBatch =
         usingTsFileBatch
-            ? new PipeTabletEventTsFileBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes)
-            : new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
+            ? new PipeTabletEventTsFileBatch(
+                requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTsFileMetric)
+            : new PipeTabletEventPlainBatch(
+                requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTabletMetric);
   }
 
   /**
@@ -157,7 +166,9 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     endPointToBatch
         .computeIfAbsent(
             endPoint,
-            k -> new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes))
+            k ->
+                new PipeTabletEventPlainBatch(
+                    requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTabletMetric))
         .onEvent(event);
   }
 
@@ -207,5 +218,39 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   public synchronized void close() {
     defaultBatch.close();
     endPointToBatch.values().forEach(PipeTabletEventPlainBatch::close);
+  }
+
+  public void recordTabletMetric(long timeInterval, long bufferSize) {
+    this.tabletBatchTimeIntervalHistogram.update(timeInterval);
+    this.tabletBatchSizeHistogram.update(bufferSize);
+  }
+
+  public void recordTsFileMetric(long timeInterval, long bufferSize) {
+    this.tsFileBatchTimeIntervalHistogram.update(timeInterval);
+    this.tsFileBatchSizeHistogram.update(bufferSize);
+  }
+
+  public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
+    if (tabletBatchSizeHistogram != null) {
+      this.tabletBatchSizeHistogram = tabletBatchSizeHistogram;
+    }
+  }
+
+  public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
+    if (tsFileBatchSizeHistogram != null) {
+      this.tsFileBatchSizeHistogram = tsFileBatchSizeHistogram;
+    }
+  }
+
+  public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    if (tabletBatchTimeIntervalHistogram != null) {
+      this.tabletBatchTimeIntervalHistogram = tabletBatchTimeIntervalHistogram;
+    }
+  }
+
+  public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+    if (tsFileBatchTimeIntervalHistogram != null) {
+      this.tsFileBatchTimeIntervalHistogram = tsFileBatchTimeIntervalHistogram;
+    }
   }
 }
