@@ -20,6 +20,8 @@ import shutil
 from urllib.parse import urljoin, urlparse
 from huggingface_hub import snapshot_download
 
+import glob
+import json
 import yaml
 from requests import Session
 from requests.adapters import HTTPAdapter
@@ -311,7 +313,7 @@ def _register_huggingface_model_from_network(repo_id: str, model_storage_path: s
             local_dir_use_symlinks=False,
         )
         
-        return _process_huggingface_files(temp_dir, model_storage_path, config_storage_path)
+        return _process_huggingface_files(temp_dir, model_storage_path, config_storage_path, repo_id)
         
     except Exception as e:
         logger.error(f"Failed to download HuggingFace model {repo_id}: {e}")
@@ -320,10 +322,7 @@ def _register_huggingface_model_from_network(repo_id: str, model_storage_path: s
 def _register_huggingface_model_from_local(local_path: str, model_storage_path: str, config_storage_path: str):
     return _process_huggingface_files(local_path, model_storage_path, config_storage_path)
 
-def _process_huggingface_files(source_dir: str, model_storage_path: str, config_storage_path: str):
-    import glob
-    import json
-    
+def _process_huggingface_files(source_dir: str, model_storage_path: str, config_storage_path: str, repo_id: str):
     config_file = None
     for config_name in ["config.json", "model_config.json"]:
         config_path = os.path.join(source_dir, config_name)
@@ -338,44 +337,28 @@ def _process_huggingface_files(source_dir: str, model_storage_path: str, config_
     if not safetensors_files:
         raise InvalidUriError(f"No .safetensors files found in {source_dir}")
     
-    with open(config_file, "r", encoding="utf-8") as f:
-        hf_config = json.load(f)
-    
-    ainode_config = _convert_hf_config_to_ainode(hf_config, source_dir)
-    
-    with open(config_storage_path, "w", encoding="utf-8") as f:
-        yaml.dump(ainode_config, f)
-    
-    with open(model_storage_path, "w") as f:
-        f.write(f"# HuggingFace model from: {source_dir}\n")
-        f.write(f"# Model files: {[os.path.basename(f) for f in safetensors_files]}\n")
-        f.write(f"# Source directory: {source_dir}\n")
-    
-    configs, attributes = _parse_inference_config(ainode_config)
-    return configs, attributes
-
-def _convert_hf_config_to_ainode(hf_config: dict, source_dir: str) -> dict:
-    input_length = 96  
-    output_length = 96  
-    
-    if "max_position_embeddings" in hf_config:
-        input_length = min(hf_config["max_position_embeddings"], 512)
-    if "prediction_length" in hf_config:
-        output_length = hf_config["prediction_length"]
-    
-    ainode_config = {
+    simple_config = {
         "configs": {
-            "input_shape": [input_length, 1],
-            "output_shape": [output_length, 1],
+            "input_shape": [96, 1],    
+            "output_shape": [96, 1],   
             "input_type": ["float32"],
             "output_type": ["float32"]
         },
         "attributes": {
-            "model_type": "huggingface_transformers",
+            "model_type": "huggingface_model",  
             "source_dir": source_dir,
-            "hf_config": hf_config,
-            "predict_length": output_length
+            "repo_id": repo_id,
+            "files": [os.path.basename(f) for f in safetensors_files]
         }
     }
     
-    return ainode_config
+    with open(config_storage_path, "w", encoding="utf-8") as f:
+        yaml.dump(simple_config, f)
+    
+    with open(model_storage_path, "w") as f:
+        f.write("# HuggingFace model placeholder\n")
+        f.write(f"# Repository: {repo_id}\n")
+        f.write(f"# Source: {source_dir}\n")
+    
+    configs, attributes = _parse_inference_config(simple_config)
+    return configs, attributes

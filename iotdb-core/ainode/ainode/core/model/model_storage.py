@@ -48,9 +48,11 @@ from ainode.core.model.model_info import (
     BUILT_IN_MACHINE_LEARNING_MODEL_MAP,
     BuiltInModelType,
     ModelCategory,
+    ModelFileType,
     ModelInfo,
     ModelStates,
     get_built_in_model_type,
+    get_model_file_type,
 )
 from ainode.core.util.lock import ModelLockPool
 from ainode.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
@@ -336,18 +338,13 @@ class ModelStorage(object):
                     return model
                 
     def _is_huggingface_format(self, model_dir: str) -> bool:
-        config_path = os.path.join(model_dir, DEFAULT_CONFIG_FILE_NAME)
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    config_dict = yaml.safe_load(f)
-                model_type = config_dict.get("attributes", {}).get("model_type", "")
-                return model_type == "huggingface_transformers"
-            except:
-                return False
-        return False
+        """Use unified interface from model_info.py"""
+        return get_model_file_type(model_dir) == ModelFileType.SAFETENSORS
     
     def _load_huggingface_user_model(self, model_dir: str, inference_attrs: Dict[str, str]) -> Callable:
+        """
+        Load HuggingFace user model (simplified version - only load into memory).
+        """
         config_path = os.path.join(model_dir, DEFAULT_CONFIG_FILE_NAME)
         
         with open(config_path, "r", encoding="utf-8") as f:
@@ -356,18 +353,30 @@ class ModelStorage(object):
         source_dir = config_dict.get("attributes", {}).get("source_dir", model_dir)
         predict_length = int(inference_attrs.get("predict_length", 
                                                 config_dict.get("attributes", {}).get("predict_length", 96)))
+        repo_id = config_dict.get("attributes", {}).get("repo_id", "unknown")
         
         try:           
             config = AutoConfig.from_pretrained(source_dir, trust_remote_code=True)
             model = AutoModel.from_pretrained(source_dir, config=config, trust_remote_code=True)
             
             def inference(data):
-                return self._generic_transformers_inference(model, data, predict_length)
+                """
+                Simplified inference function - only load model into memory.
+                Currently does not guarantee inference functionality.
+                """
+                logger.info(f"HuggingFace model loaded into memory.")
+                logger.info(f"Model type: {type(model).__name__}")
+                logger.info(f"Repository: {repo_id}")
+                logger.info(f"Input data shape: {data.shape if hasattr(data, 'shape') else 'unknown'}")
+                logger.info(f"Expected output length: {predict_length}")
+                
+                return np.zeros(predict_length, dtype=np.float64)
             
             return inference
             
         except Exception as e:
-            logger.error(f"Failed to load HuggingFace model: {e}")
+            logger.error(f"Failed to load HuggingFace model from {source_dir}: {e}")
+            raise
 
     def _generic_transformers_inference(self, model, data, predict_length: int):
         try:
