@@ -34,8 +34,6 @@ public abstract class AbstractDataSourceOperator extends AbstractSourceOperator
   // Using for building result tsBlock
   protected TsBlockBuilder resultTsBlockBuilder;
 
-  protected int firstDeviceIndexInFI;
-
   protected int[] deviceIndexInFI;
 
   @Override
@@ -50,10 +48,6 @@ public abstract class AbstractDataSourceOperator extends AbstractSourceOperator
 
   public void setDeviceIndexArr(int[] arr) {
     this.deviceIndexInFI = arr;
-  }
-
-  public void setFirstDeviceIndexInFI(int firstDeviceIndexInFI) {
-    this.firstDeviceIndexInFI = firstDeviceIndexInFI;
   }
 
   @Override
