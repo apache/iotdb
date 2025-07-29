@@ -34,9 +34,8 @@ import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -65,7 +64,8 @@ public class MPPQueryContext {
   // When some DataNode cannot be connected, its endPoint will be put
   // in this list. And the following retry will avoid planning fragment
   // onto this node.
-  private final List<TEndPoint> endPointBlackList;
+  // When dispatch FI fails, this structure may be modified concurrently
+  private final Set<TEndPoint> endPointBlackList;
 
   private final TypeProvider typeProvider = new TypeProvider();
 
@@ -92,7 +92,7 @@ public class MPPQueryContext {
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
-    this.endPointBlackList = new LinkedList<>();
+    this.endPointBlackList = ConcurrentHashMap.newKeySet();
     this.memoryReservationManager =
         new NotThreadSafeMemoryReservationManager(queryId, this.getClass().getName());
   }
@@ -189,7 +189,7 @@ public class MPPQueryContext {
     this.endPointBlackList.add(endPoint);
   }
 
-  public List<TEndPoint> getEndPointBlackList() {
+  public Set<TEndPoint> getEndPointBlackList() {
     return endPointBlackList;
   }
 
