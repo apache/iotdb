@@ -960,7 +960,7 @@ public abstract class AbstractEnv implements BaseEnv {
                               + dataNodeEndpoint
                               + getParam(null, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
                           System.getProperty("User", "root"),
-                          System.getProperty("Password", "IoTDB@2017"))) {
+                          System.getProperty("Password", "IoTDB@2011"))) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
               } catch (final Exception e) {

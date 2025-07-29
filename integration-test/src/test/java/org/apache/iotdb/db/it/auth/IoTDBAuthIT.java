@@ -883,7 +883,7 @@ public class IoTDBAuthIT {
 
   @Test
   public void testExecuteBatchWithPrivilege() throws SQLException {
-    try (Connection adminCon = EnvFactory.getEnv().getConnection("root", "IoTDB@2017");
+    try (Connection adminCon = EnvFactory.getEnv().getConnection("root", "IoTDB@2011");
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser 'temppw123456'");
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");

@@ -154,7 +154,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "root");
-      connectorAttributes.put("connector.password", "IoTDB@2017");
+      connectorAttributes.put("connector.password", "IoTDB@2011");
       connectorAttributes.put("connector.compressor", compressionTypes);
 
       final TSStatus status =

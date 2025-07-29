@@ -77,7 +77,7 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
    *
    * @param password the password.
    * @return the current {@link TableSessionPoolBuilder} instance.
-   * @defaultValue "IoTDB@2017"
+   * @defaultValue "IoTDB@2011"
    */
   public TableSessionPoolBuilder password(String password) {
     this.pw = password;

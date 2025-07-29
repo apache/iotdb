@@ -278,7 +278,7 @@ public class SessionPoolExceptionTest {
   public void testEmptyNodeUrls() {
     try {
       ISessionPool failedSession =
-          new SessionPool(Collections.emptyList(), "root", "IoTDB@2017", 1);
+          new SessionPool(Collections.emptyList(), "root", "IoTDB@2011", 1);
       fail();
     } catch (IllegalArgumentException e) {
       assertEquals("nodeUrls shouldn't be empty.", e.getMessage());

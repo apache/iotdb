@@ -42,7 +42,7 @@ class IoTDBKeyStoreLoaderClient {
       Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
 
   private static final String CLIENT_ALIAS = "client-ai";
-  private static final char[] PASSWORD = "IoTDB@2017".toCharArray();
+  private static final char[] PASSWORD = "IoTDB@2011".toCharArray();
 
   private X509Certificate[] clientCertificateChain;
   private X509Certificate clientCertificate;
