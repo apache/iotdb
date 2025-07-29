@@ -165,6 +165,35 @@ public class IoTDBInsertQueryIT {
   }
 
   @Test
+  public void testInsertIntoSourceTable() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      // prepare vehicle1
+      statement.execute(String.format(createTableTemplate, 1));
+      statement.execute("INSERT INTO vehicle1 SELECT * FROM vehicle0");
+
+      // vehicle1 row count
+      ResultSet resultSet = statement.executeQuery("select count(*) from vehicle1");
+      if (!resultSet.next()) {
+        fail("Should get count value!");
+      }
+      long count = resultSet.getLong(1);
+
+      statement.execute(
+          "INSERT INTO vehicle1(time,deviceId,manufacturer,s0,s1,s2,s3,s4) SELECT time+1000,deviceId,manufacturer,s0,s1,s2,s3,s4 FROM vehicle1");
+      resultSet = statement.executeQuery("select count(*) from vehicle1");
+      if (!resultSet.next()) {
+        fail("Should get count value!");
+      }
+      long newCount = resultSet.getLong(1);
+      assertEquals(count * 2, newCount);
+
+      statement.execute(String.format(dropTableTemplate, 1));
+    }
+  }
+
+  @Test
   public void testTagCategory() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
