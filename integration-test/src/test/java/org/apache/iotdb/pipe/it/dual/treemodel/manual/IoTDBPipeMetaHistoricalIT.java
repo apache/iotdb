@@ -61,7 +61,9 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -71,11 +73,9 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(2)
+        .setDnConnectionTimeoutMs(600000)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment(3, 3);
