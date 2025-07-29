@@ -79,7 +79,7 @@ public class DeviceMetadataIndexEntryCache {
     if (deviceIndex < 0) {
       return new Pair<>(null, true);
     }
-    // not in cache
+    // not cached
     long[] resourceCache = loadOffsetsToCache(filePath);
     if (resourceCache == null) {
       return new Pair<>(null, true);

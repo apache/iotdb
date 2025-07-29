@@ -43,10 +43,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Assert;
@@ -56,13 +54,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 @RunWith(Parameterized.class)
 public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
@@ -118,42 +112,6 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     } else {
       return new ReadPointCompactionPerformer();
     }
-  }
-
-  @Test
-  public void test1() throws IOException {
-    TsFileResource resource =
-        new TsFileResource(
-            new File(
-                "/Users/shuww/IdeaProjects/iotdb-versions/iotdb-master/data/datanode/data/sequence/db1/1/2892/1753182984040-1-0-0.tsfile"));
-    resource.deserialize();
-    List<IDeviceID> sortedDevices =
-        resource.getDevices().stream()
-            .sorted(IDeviceID::compareTo)
-            .distinct()
-            .collect(Collectors.toList());
-    long start = System.currentTimeMillis();
-    AtomicLong atomicLong = new AtomicLong(0);
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
-      long[] offsets =
-          reader.getDeviceMetadataIndexNodeOffsets(
-              sortedDevices.get(0).getTableName(), sortedDevices, atomicLong::addAndGet);
-      for (int i = 0; i < sortedDevices.size(); i++) {
-        MetadataIndexNode metadataIndexNode =
-            reader.readMetadataIndexNode(offsets[2 * i], offsets[2 * i + 1], false);
-        reader.getAlignedChunkMetadataByMetadataIndexNode(
-            sortedDevices.get(i), metadataIndexNode, true);
-      }
-    }
-    System.out.println(System.currentTimeMillis() - start);
-    System.out.println(atomicLong.get());
-    start = System.currentTimeMillis();
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
-      for (IDeviceID device : sortedDevices) {
-        reader.getAlignedChunkMetadata(device, false);
-      }
-    }
-    System.out.println(System.currentTimeMillis() - start);
   }
 
   @Test
