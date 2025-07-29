@@ -80,10 +80,8 @@ public abstract class AbstractCompactionEstimator {
     globalFileInfoCacheEnabled =
         compactionMemorySize * maxRatioToAllocateFileInfoCache > fixedMemoryCost;
     if (globalFileInfoCacheEnabled) {
-      globalRoughInfoCacheForCompaction =
-          Collections.synchronizedMap(new LRUMap<>(globalCompactionFileInfoCacheSize));
-      globalFileInfoCacheForFailedCompaction =
-          Collections.synchronizedMap(new LRUMap<>(globalCompactionRoughFileInfoCacheSize));
+      globalRoughInfoCacheForCompaction = new LRUMap<>(globalCompactionFileInfoCacheSize);
+      globalFileInfoCacheForFailedCompaction = new LRUMap<>(globalCompactionRoughFileInfoCacheSize);
     } else {
       globalRoughInfoCacheForCompaction = Collections.emptyMap();
       globalFileInfoCacheForFailedCompaction = Collections.emptyMap();
@@ -266,10 +264,8 @@ public abstract class AbstractCompactionEstimator {
   public static void enableFileInfoCacheForTest(
       int globalCompactionFileInfoCacheSize, int globalCompactionRoughFileInfoCacheSize) {
     globalFileInfoCacheEnabled = true;
-    globalRoughInfoCacheForCompaction =
-        Collections.synchronizedMap(new LRUMap<>(globalCompactionFileInfoCacheSize));
-    globalFileInfoCacheForFailedCompaction =
-        Collections.synchronizedMap(new LRUMap<>(globalCompactionRoughFileInfoCacheSize));
+    globalRoughInfoCacheForCompaction = new LRUMap<>(globalCompactionFileInfoCacheSize);
+    globalFileInfoCacheForFailedCompaction = new LRUMap<>(globalCompactionRoughFileInfoCacheSize);
   }
 
   @TestOnly
