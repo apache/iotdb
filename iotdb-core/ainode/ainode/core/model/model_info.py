@@ -37,9 +37,6 @@ class BuiltInModelType(Enum):
     TIMER_XL = "Timer-XL"
     # sundial
     SUNDIAL = "Timer-Sundial"
-    # transformer models
-    TIMESFM = "TimesFM"
-    CHRONOS = "Chronos"
 
     @classmethod
     def values(cls) -> List[str]:
@@ -51,40 +48,56 @@ class BuiltInModelType(Enum):
         Check if the given model type corresponds to a built-in model.
         """
         return model_type in BuiltInModelType.values()
-
+    
+class ModelFileType(Enum):
+    SAFETENSORS = "safetensors"
+    PYTORCH = "pytorch"
+    UNKNOWN = "unknown"
 
 def get_built_in_model_type(model_type: str) -> BuiltInModelType:
     if not BuiltInModelType.is_built_in_model(model_type):
         raise ValueError(f"Invalid built-in model type: {model_type}")
     return BuiltInModelType(model_type)
 
+def get_model_file_type(model_path: str) -> ModelFileType:
+    """
+    Determine the file type of a model directory.
+    """
+    if _has_safetensors_format(model_path):
+        return ModelFileType.SAFETENSORS
+    elif _has_pytorch_format(model_path):
+        return ModelFileType.PYTORCH
+    else:
+        return ModelFileType.UNKNOWN
+    
 def get_model_loading_strategy(model_id_or_uri: str) -> str:
+    """
+    Determine the loading strategy for a model based on its URI/path.
+    """
     if "/" in model_id_or_uri and not model_id_or_uri.startswith(("http://", "https://", "file://")):
         return "network_huggingface"
     
     if os.path.exists(model_id_or_uri):
-        if _has_huggingface_format(model_id_or_uri):
+        file_type = get_model_file_type(model_id_or_uri)
+        if file_type == ModelFileType.SAFETENSORS:
             return "local_huggingface"
-        elif _has_pytorch_format(model_id_or_uri):
+        elif file_type == ModelFileType.PYTORCH:
             return "local_pytorch"
         else:
             return "local_unknown"
 
     return "network_huggingface"
 
-def _has_huggingface_format(path: str) -> bool:
-    
+def _has_safetensors_format(path: str) -> bool:
+    """Check if directory contains safetensors files."""
     safetensors_files = glob.glob(os.path.join(path, "*.safetensors"))
     json_files = glob.glob(os.path.join(path, "*.json"))
-    
     return len(safetensors_files) > 0 and len(json_files) > 0
 
-
 def _has_pytorch_format(path: str) -> bool:
-    
+    """Check if directory contains pytorch files."""
     pt_files = glob.glob(os.path.join(path, "*.pt"))
     yaml_files = glob.glob(os.path.join(path, "*.yaml")) + glob.glob(os.path.join(path, "*.yml"))
-    
     return len(pt_files) > 0 and len(yaml_files) > 0
 
 class ModelCategory(Enum):
