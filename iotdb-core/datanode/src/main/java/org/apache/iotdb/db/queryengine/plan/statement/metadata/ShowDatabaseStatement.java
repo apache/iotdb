@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
-import org.apache.iotdb.db.auth.LbacPermissionChecker;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -42,8 +43,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -88,221 +91,183 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
     this.showSecurityLabel = showSecurityLabel;
   }
 
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Use the enhanced LBAC-integrated permission check
+    return checkPermissionWithLbac(userName);
+  }
+
+  @Override
+  protected PrivilegeType determinePrivilegeType() {
+    // Show database operations require READ_SCHEMA privilege
+    return PrivilegeType.READ_SCHEMA;
+  }
+
   public void buildTSBlock(
       final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future) {
 
-    // Filter databases based on LBAC permissions using centralized checker
-    String currentUser = SessionManager.getInstance().getCurrSession().getUsername();
-    Map<String, TDatabaseInfo> filteredDatabaseMap =
-        LbacPermissionChecker.filterDatabaseInfoMapByLbac(databaseInfoMap, currentUser);
+    try {
+      LOGGER.debug("Building TSBlock for {} databases", databaseInfoMap.size());
 
-    final List<TSDataType> outputDataTypes;
-    if (showSecurityLabel) {
-      // When showing security labels, use only database name and security label
-      // columns
-      outputDataTypes =
-          ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
-              .map(ColumnHeader::getColumnType)
-              .collect(Collectors.toList());
-    } else {
-      // Normal database info display
-      outputDataTypes =
-          isDetailed
-              ? ColumnHeaderConstant.showDatabasesDetailColumnHeaders.stream()
-                  .map(ColumnHeader::getColumnType)
-                  .collect(Collectors.toList())
-              : ColumnHeaderConstant.showDatabasesColumnHeaders.stream()
-                  .map(ColumnHeader::getColumnType)
-                  .collect(Collectors.toList());
-    }
+      // Get current user for filtering
+      String currentUser = SessionManager.getInstance().getCurrSession().getUsername();
 
-    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final Map.Entry<String, TDatabaseInfo> entry :
-        filteredDatabaseMap.entrySet().stream()
-            .sorted(Map.Entry.comparingByKey())
-            .collect(Collectors.toList())) {
-      final String database = entry.getKey();
-      final TDatabaseInfo databaseInfo = entry.getValue();
+      // Filter databases based on RBAC and LBAC permissions
+      Map<String, TDatabaseInfo> filteredDatabaseMap =
+          filterDatabasesByPermissions(databaseInfoMap, currentUser);
 
-      builder.getTimeColumnBuilder().writeLong(0L);
+      LOGGER.debug("After permission filtering: {} databases", filteredDatabaseMap.size());
 
-      if (showSecurityLabel) {
-        // Output database name and security label
-        builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
-        Map<String, String> securityLabelMap = databaseInfo.getSecurityLabel();
-        String securityLabel = "";
-        if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
-          // Convert map to string representation with proper formatting
-          securityLabel =
-              securityLabelMap.entrySet().stream()
-                  .map(labelEntry -> labelEntry.getKey() + " = " + labelEntry.getValue())
-                  .collect(Collectors.joining(" , "));
-        }
-        builder
-            .getColumnBuilder(1)
-            .writeBinary(new Binary(securityLabel, TSFileConfig.STRING_CHARSET));
+      // Convert to TreeMap for ordered output
+      TreeMap<String, TDatabaseInfo> orderedDatabaseMap = new TreeMap<>(filteredDatabaseMap);
+
+      // Build column headers based on whether detailed info is requested
+      List<ColumnHeader> columnHeaders;
+      if (isDetailed) {
+        columnHeaders = ColumnHeaderConstant.showDatabasesDetailColumnHeaders;
       } else {
-        // Normal database info output
-        builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
-        builder.getColumnBuilder(1).writeInt(databaseInfo.getSchemaReplicationFactor());
-        builder.getColumnBuilder(2).writeInt(databaseInfo.getDataReplicationFactor());
-        builder.getColumnBuilder(3).writeLong(databaseInfo.getTimePartitionOrigin());
-        builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
-        if (isDetailed) {
-          builder.getColumnBuilder(5).writeInt(databaseInfo.getSchemaRegionNum());
-          builder.getColumnBuilder(6).writeInt(databaseInfo.getMinSchemaRegionNum());
-          builder.getColumnBuilder(7).writeInt(databaseInfo.getMaxSchemaRegionNum());
-          builder.getColumnBuilder(8).writeInt(databaseInfo.getDataRegionNum());
-          builder.getColumnBuilder(9).writeInt(databaseInfo.getMinDataRegionNum());
-          builder.getColumnBuilder(10).writeInt(databaseInfo.getMaxDataRegionNum());
+        columnHeaders = ColumnHeaderConstant.showDatabasesColumnHeaders;
+      }
+
+      List<TSDataType> outputDataTypes =
+          columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+
+      TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+
+      // Process filtered databases in order
+      for (Map.Entry<String, TDatabaseInfo> entry : orderedDatabaseMap.entrySet()) {
+        String databaseName = entry.getKey();
+        TDatabaseInfo databaseInfo = entry.getValue();
+
+        if (databaseName != null && !databaseName.trim().isEmpty()) {
+          builder.getTimeColumnBuilder().writeLong(0L);
+          builder
+              .getColumnBuilder(0)
+              .writeBinary(new Binary(databaseName, TSFileConfig.STRING_CHARSET));
+
+          if (isDetailed && databaseInfo != null) {
+            // Add detailed information - ensure we have the correct number of columns
+            int columnIndex = 1;
+            if (columnIndex < outputDataTypes.size()) {
+              builder
+                  .getColumnBuilder(columnIndex++)
+                  .writeBinary(
+                      new Binary(
+                          String.valueOf(databaseInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+            }
+            if (columnIndex < outputDataTypes.size()) {
+              builder
+                  .getColumnBuilder(columnIndex++)
+                  .writeBinary(
+                      new Binary(
+                          String.valueOf(databaseInfo.getSchemaReplicationFactor()),
+                          TSFileConfig.STRING_CHARSET));
+            }
+            if (columnIndex < outputDataTypes.size()) {
+              builder
+                  .getColumnBuilder(columnIndex++)
+                  .writeBinary(
+                      new Binary(
+                          String.valueOf(databaseInfo.getDataReplicationFactor()),
+                          TSFileConfig.STRING_CHARSET));
+            }
+            if (columnIndex < outputDataTypes.size()) {
+              builder
+                  .getColumnBuilder(columnIndex++)
+                  .writeBinary(
+                      new Binary(
+                          String.valueOf(databaseInfo.getTimePartitionInterval()),
+                          TSFileConfig.STRING_CHARSET));
+            }
+          } else if (!isDetailed && databaseInfo != null) {
+            // For non-detailed view, add basic database info
+            int columnIndex = 1;
+            if (columnIndex < outputDataTypes.size()) {
+              builder
+                  .getColumnBuilder(columnIndex++)
+                  .writeInt(databaseInfo.getSchemaReplicationFactor());
+            }
+            if (columnIndex < outputDataTypes.size()) {
+              builder
+                  .getColumnBuilder(columnIndex++)
+                  .writeInt(databaseInfo.getDataReplicationFactor());
+            }
+            if (columnIndex < outputDataTypes.size()) {
+              builder
+                  .getColumnBuilder(columnIndex++)
+                  .writeLong(databaseInfo.getTimePartitionOrigin());
+            }
+            if (columnIndex < outputDataTypes.size()) {
+              builder
+                  .getColumnBuilder(columnIndex++)
+                  .writeLong(databaseInfo.getTimePartitionInterval());
+            }
+          }
+
+          builder.declarePosition();
         }
       }
-      builder.declarePosition();
-    }
 
-    final DatasetHeader datasetHeader;
-    if (showSecurityLabel) {
-      datasetHeader = DatasetHeaderFactory.getShowDatabaseSecurityLabelHeader();
-    } else {
-      datasetHeader = DatasetHeaderFactory.getShowDatabaseHeader(isDetailed);
+      future.set(
+          new ConfigTaskResult(
+              TSStatusCode.SUCCESS_STATUS,
+              builder.build(),
+              DatasetHeaderFactory.getShowDatabaseHeader(isDetailed)));
+
+      LOGGER.info("Successfully created TSBlock with {} databases", builder.getPositionCount());
+
+    } catch (Exception e) {
+      LOGGER.error("Error in buildTSBlock", e);
+      future.setException(e);
     }
-    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 
-  /**
-   * Build TSBlock from security label map
-   *
-   * @param securityLabelMap
-   * @param future
-   */
   public void buildTSBlockFromSecurityLabel(
       Map<String, String> securityLabelMap, SettableFuture<ConfigTaskResult> future) {
+
     try {
-      // Add detailed logging for debugging
-      LOGGER.warn("=== SHOW DATABASES SECURITY LABEL BUILD START ===");
-      LOGGER.warn("buildTSBlockFromSecurityLabel called with map: {}", securityLabelMap);
-      LOGGER.warn("Map size: {}", securityLabelMap != null ? securityLabelMap.size() : 0);
-      LOGGER.warn("showSecurityLabel flag: {}", showSecurityLabel);
-      LOGGER.warn("pathPattern: {}", pathPattern);
+      LOGGER.debug(
+          "Building TSBlock from security labels for {} databases", securityLabelMap.size());
 
-      // Get current user for LBAC filtering
+      // Get current user for filtering
       String currentUser = SessionManager.getInstance().getCurrSession().getUsername();
-      LOGGER.warn("Current user for LBAC filtering: {}", currentUser);
 
-      // Determine current SQL dialect (table model vs tree model)
-      boolean isTableModel = false;
-      try {
-        org.apache.iotdb.db.protocol.session.IClientSession currentSession =
-            SessionManager.getInstance().getCurrSession();
-        if (currentSession != null) {
-          isTableModel =
-              currentSession.getSqlDialect()
-                  == org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect.TABLE;
-          LOGGER.warn(
-              "[DEBUG] buildTSBlockFromSecurityLabel: Current SQL dialect: {}, isTableModel: {}",
-              currentSession.getSqlDialect(),
-              isTableModel);
-        } else {
-          LOGGER.warn(
-              "[DEBUG] buildTSBlockFromSecurityLabel: No current session available, defaulting to tree model");
-          isTableModel = false;
-        }
-      } catch (Exception e) {
-        LOGGER.warn(
-            "[DEBUG] buildTSBlockFromSecurityLabel: Failed to get current session, defaulting to tree model: {}",
-            e.getMessage());
-        isTableModel = false;
-      }
-
-      // Apply LBAC filtering to security label map
+      // Filter security labels based on RBAC and LBAC permissions
       Map<String, String> filteredSecurityLabelMap =
-          LbacPermissionChecker.filterSecurityLabelMapByLbac(securityLabelMap, currentUser);
+          filterSecurityLabelsByPermissions(securityLabelMap, currentUser);
 
-      LOGGER.warn(
-          "Original security label map size: {}",
-          securityLabelMap != null ? securityLabelMap.size() : 0);
-      LOGGER.warn("Filtered security label map size: {}", filteredSecurityLabelMap.size());
-      LOGGER.warn(
-          "Filtered out {} databases due to LBAC restrictions",
-          (securityLabelMap != null ? securityLabelMap.size() : 0)
-              - filteredSecurityLabelMap.size());
-
-      // Apply model-specific filtering
-      Map<String, String> modelFilteredMap = new java.util.HashMap<>();
-      if (filteredSecurityLabelMap != null && !filteredSecurityLabelMap.isEmpty()) {
-        for (Map.Entry<String, String> entry : filteredSecurityLabelMap.entrySet()) {
-          String databaseName = entry.getKey();
-          String securityLabel = entry.getValue();
-
-          // Determine if this database matches the current model type
-          boolean isTableModelDatabase = !databaseName.startsWith("root.");
-          LOGGER.warn(
-              "Database: {}, isTableModelDatabase: {}, current isTableModel: {}",
-              databaseName,
-              isTableModelDatabase,
-              isTableModel);
-          if (isTableModel == isTableModelDatabase) {
-            modelFilteredMap.put(databaseName, securityLabel);
-            LOGGER.warn(
-                "Added database {} with label '{}' for {} model",
-                databaseName,
-                securityLabel,
-                isTableModel ? "table" : "tree");
-          } else {
-            LOGGER.warn(
-                "Filtered out database {} for {} model",
-                databaseName,
-                isTableModel ? "table" : "tree");
-          }
-        }
-      }
-
-      LOGGER.warn("[DEBUG] After model filtering, databases: {}", modelFilteredMap.keySet());
-      LOGGER.warn("Model type: {}", isTableModel ? "table" : "tree");
+      LOGGER.debug(
+          "After permission filtering: {} databases with security labels",
+          filteredSecurityLabelMap.size());
 
       List<TSDataType> outputDataTypes =
           ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
               .map(ColumnHeader::getColumnType)
               .collect(Collectors.toList());
-      LOGGER.debug("Output data types: {}", outputDataTypes);
+
       TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-      // Process all databases from the model-filtered security label map
-      // This will include all databases that match the current model type
-      if (modelFilteredMap != null && !modelFilteredMap.isEmpty()) {
-        LOGGER.info("Processing {} database security labels", modelFilteredMap.size());
+      // Convert to TreeMap for ordered output
+      TreeMap<String, String> orderedSecurityLabelMap = new TreeMap<>(filteredSecurityLabelMap);
 
-        for (Map.Entry<String, String> entry : modelFilteredMap.entrySet()) {
-          String databaseName = entry.getKey();
-          String securityLabel = entry.getValue();
+      // Process filtered security labels in order
+      for (Map.Entry<String, String> entry : orderedSecurityLabelMap.entrySet()) {
+        String databaseName = entry.getKey();
+        String securityLabel = entry.getValue();
 
-          LOGGER.debug(
-              "Processing database: '{}', security label: '{}'", databaseName, securityLabel);
-
-          // Skip null or empty database names
-          if (databaseName != null && !databaseName.trim().isEmpty()) {
-
-            builder.getTimeColumnBuilder().writeLong(0L);
-            builder
-                .getColumnBuilder(0)
-                .writeBinary(new Binary(databaseName, TSFileConfig.STRING_CHARSET));
-            builder
-                .getColumnBuilder(1)
-                .writeBinary(
-                    new Binary(
-                        (securityLabel == null) ? "" : securityLabel, TSFileConfig.STRING_CHARSET));
-            builder.declarePosition();
-            LOGGER.debug(
-                "Added database: '{}' with security label: '{}'", databaseName, securityLabel);
-          } else {
-            LOGGER.warn("Skipping database with null or empty name: '{}'", databaseName);
-          }
+        if (databaseName != null && !databaseName.trim().isEmpty()) {
+          builder.getTimeColumnBuilder().writeLong(0L);
+          builder
+              .getColumnBuilder(0)
+              .writeBinary(new Binary(databaseName, TSFileConfig.STRING_CHARSET));
+          builder
+              .getColumnBuilder(1)
+              .writeBinary(
+                  new Binary(
+                      (securityLabel == null) ? "" : securityLabel, TSFileConfig.STRING_CHARSET));
+          builder.declarePosition();
         }
-        LOGGER.info(
-            "Successfully processed {} databases with security labels", builder.getPositionCount());
-      } else {
-        LOGGER.warn("Security label map is null or empty, no databases to process");
       }
 
       future.set(
@@ -310,11 +275,129 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
               TSStatusCode.SUCCESS_STATUS,
               builder.build(),
               DatasetHeaderFactory.getShowDatabaseSecurityLabelHeader()));
-      LOGGER.info("Successfully created TSBlock with {} databases", builder.getPositionCount());
-      LOGGER.warn("=== SHOW DATABASES SECURITY LABEL BUILD END ===");
+
+      LOGGER.info(
+          "Successfully created TSBlock with {} databases with security labels",
+          builder.getPositionCount());
+
     } catch (Exception e) {
       LOGGER.error("Error in buildTSBlockFromSecurityLabel", e);
       future.setException(e);
+    }
+  }
+
+  /**
+   * Filter databases based on RBAC and LBAC permissions using AuthorityChecker methods
+   *
+   * @param databaseInfoMap Original database info map
+   * @param userName Current user name
+   * @return Filtered database info map
+   */
+  private Map<String, TDatabaseInfo> filterDatabasesByPermissions(
+      Map<String, TDatabaseInfo> databaseInfoMap, String userName) {
+
+    // Check if user is super user
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      LOGGER.debug("User {} is super user, bypassing permission filtering", userName);
+      return databaseInfoMap;
+    }
+
+    Map<String, TDatabaseInfo> filteredMap = new HashMap<>();
+
+    for (Map.Entry<String, TDatabaseInfo> entry : databaseInfoMap.entrySet()) {
+      String databaseName = entry.getKey();
+      TDatabaseInfo databaseInfo = entry.getValue();
+
+      // Check permissions for this database using AuthorityChecker methods
+      if (checkDatabasePermissions(userName, databaseName)) {
+        filteredMap.put(databaseName, databaseInfo);
+        LOGGER.debug("Database {} allowed by permissions", databaseName);
+      } else {
+        LOGGER.debug("Database {} denied by permissions", databaseName);
+      }
+    }
+
+    LOGGER.debug(
+        "Permission filtering complete: {} databases accessible out of {}",
+        filteredMap.size(),
+        databaseInfoMap.size());
+    return filteredMap;
+  }
+
+  /**
+   * Filter security labels based on RBAC and LBAC permissions using AuthorityChecker methods
+   *
+   * @param securityLabelMap Original security label map
+   * @param userName Current user name
+   * @return Filtered security label map
+   */
+  private Map<String, String> filterSecurityLabelsByPermissions(
+      Map<String, String> securityLabelMap, String userName) {
+
+    // Check if user is super user
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      LOGGER.debug("User {} is super user, bypassing permission filtering", userName);
+      return securityLabelMap;
+    }
+
+    Map<String, String> filteredMap = new HashMap<>();
+
+    for (Map.Entry<String, String> entry : securityLabelMap.entrySet()) {
+      String databaseName = entry.getKey();
+      String securityLabel = entry.getValue();
+
+      // Check permissions for this database using AuthorityChecker methods
+      if (checkDatabasePermissions(userName, databaseName)) {
+        filteredMap.put(databaseName, securityLabel);
+        LOGGER.debug("Database {} allowed by permissions", databaseName);
+      } else {
+        LOGGER.debug("Database {} denied by permissions", databaseName);
+      }
+    }
+
+    LOGGER.debug(
+        "Permission filtering complete: {} databases accessible out of {}",
+        filteredMap.size(),
+        securityLabelMap.size());
+    return filteredMap;
+  }
+
+  /**
+   * Check RBAC and LBAC permissions for a specific database using AuthorityChecker methods
+   *
+   * @param userName The username
+   * @param databaseName The database name
+   * @return true if user has permission, false otherwise
+   */
+  private boolean checkDatabasePermissions(String userName, String databaseName) {
+    try {
+      // Create a PartialPath for the database
+      PartialPath databasePath = new PartialPath(databaseName);
+      List<PartialPath> paths = Collections.singletonList(databasePath);
+
+      // Use AuthorityChecker's checkPermissionWithLbac method which handles both RBAC
+      // and LBAC
+      TSStatus permissionStatus =
+          AuthorityChecker.checkPermissionWithLbac(userName, paths, PrivilegeType.READ_SCHEMA);
+
+      boolean hasPermission =
+          (permissionStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+      if (hasPermission) {
+        LOGGER.debug("Permission check passed for user {} on database {}", userName, databaseName);
+      } else {
+        LOGGER.debug(
+            "Permission check failed for user {} on database {}: {}",
+            userName,
+            databaseName,
+            permissionStatus.getMessage());
+      }
+
+      return hasPermission;
+
+    } catch (Exception e) {
+      LOGGER.error("Error checking permissions for database: {}", databaseName, e);
+      return false;
     }
   }
 

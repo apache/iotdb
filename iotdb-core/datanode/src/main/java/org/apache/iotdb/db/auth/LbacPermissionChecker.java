@@ -666,6 +666,14 @@ public class LbacPermissionChecker {
       boolean hasReadPolicy = readPolicy != null && !readPolicy.trim().isEmpty();
       boolean hasWritePolicy = writePolicy != null && !writePolicy.trim().isEmpty();
       boolean hasAnyPolicy = hasReadPolicy || hasWritePolicy;
+
+      LOGGER.warn("=== LBAC DEBUG INFO ===");
+      LOGGER.warn("User: {}", userName);
+      LOGGER.warn("Read policy: '{}' (hasReadPolicy: {})", readPolicy, hasReadPolicy);
+      LOGGER.warn("Write policy: '{}' (hasWritePolicy: {})", writePolicy, hasWritePolicy);
+      LOGGER.warn("Has any policy: {}", hasAnyPolicy);
+      LOGGER.warn("Operation type: {}", operationType);
+      LOGGER.warn("Database paths: {}", dbPaths);
       // For each database path, apply security default policy
       for (String dbPath : dbPaths) {
         // Get security label for this database
@@ -876,7 +884,7 @@ public class LbacPermissionChecker {
    * policies + Has labels: Allow access (no LBAC triggered) 3. Has any policy + No labels: Check by
    * operation type 4. Has any policy + Has labels: Evaluate specific policy based on operation type
    */
-  private static boolean checkDatabaseLbacPermission(
+  public static boolean checkDatabaseLbacPermission(
       User user,
       String databaseName,
       TDatabaseInfo databaseInfo,
@@ -1169,14 +1177,25 @@ public class LbacPermissionChecker {
       return null;
     }
 
+    // 检查是否包含通配符，如果包含则不是具体的数据库路径
+    if (devicePath.contains("*") || devicePath.contains("**")) {
+      LOGGER.debug(
+          "Device path contains wildcards, cannot extract specific database path: {}", devicePath);
+      return null;
+    }
+
     // Split by dots and take the first two parts as database path
     String[] parts = devicePath.split("\\.");
     if (parts.length >= 2) {
-      return parts[0] + "." + parts[1];
+      String databasePath = parts[0] + "." + parts[1];
+      LOGGER.debug("Extracted database path: {} from device path: {}", databasePath, devicePath);
+      return databasePath;
     } else if (parts.length == 1) {
+      LOGGER.debug("Single part path, treating as database: {}", devicePath);
       return parts[0];
     }
 
+    LOGGER.debug("Could not extract database path from device path: {}", devicePath);
     return null;
   }
 
@@ -1263,5 +1282,52 @@ public class LbacPermissionChecker {
       LOGGER.warn("Error getting database info for path {}: {}", databasePath, e.getMessage());
       return null;
     }
+  }
+
+  // checkLabelMatch方法用于判断标签与策略是否匹配
+  private static boolean checkLabelMatch(String label, String policy) {
+    // 简单实现：如果policy为null或空，允许；否则要求label包含policy字符串
+    if (policy == null || policy.trim().isEmpty()) {
+      return true;
+    }
+    if (label == null) {
+      return false;
+    }
+    return label.contains(policy);
+  }
+
+  /**
+   * Check if a database path matches a pattern path.
+   *
+   * @param databasePath The database path to check
+   * @param patternPath The pattern path (e.g., "root.**")
+   * @return true if the database path matches the pattern
+   */
+  public static boolean isDatabasePathMatchPattern(String databasePath, String patternPath) {
+    if (databasePath == null || patternPath == null) {
+      return false;
+    }
+
+    LOGGER.debug("Checking if database path '{}' matches pattern '{}'", databasePath, patternPath);
+
+    // Handle special cases
+    if ("root.**".equals(patternPath)) {
+      // root.** should match all databases that start with "root."
+      boolean matches = databasePath.startsWith("root.");
+      LOGGER.debug("Pattern 'root.**' matches database '{}': {}", databasePath, matches);
+      return matches;
+    }
+
+    // Convert pattern to regex for other cases
+    String regex = patternPath.replace(".", "\\.").replace("*", ".*").replace("**", ".*");
+
+    boolean matches = databasePath.matches(regex);
+    LOGGER.debug(
+        "Pattern '{}' (regex: '{}') matches database '{}': {}",
+        patternPath,
+        regex,
+        databasePath,
+        matches);
+    return matches;
   }
 }

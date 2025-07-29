@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 
@@ -66,6 +68,45 @@ public abstract class Statement extends StatementNode {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.SUPER_USER.equals(userName),
         "Only the admin user can perform this operation");
+  }
+
+  /**
+   * Enhanced permission check with LBAC integration. This method performs RBAC check first, then
+   * LBAC check if RBAC passes.
+   *
+   * @param userName The username requesting access
+   * @return TSStatus indicating success or failure
+   */
+  public TSStatus checkPermissionWithLbac(final String userName) {
+    // First check if user is super user
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    // Get paths for this statement
+    List<? extends PartialPath> paths = getPaths();
+    if (paths == null || paths.isEmpty()) {
+      // No paths to check, allow access
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    // Determine privilege type based on statement type
+    PrivilegeType privilegeType = determinePrivilegeType();
+
+    // Use the enhanced AuthorityChecker method that integrates LBAC
+    return AuthorityChecker.checkPermissionWithLbac(
+        userName, (List<PartialPath>) paths, privilegeType);
+  }
+
+  /**
+   * Determine the privilege type needed for this statement. Subclasses can override this method to
+   * provide specific privilege types.
+   *
+   * @return The privilege type needed for this statement
+   */
+  protected PrivilegeType determinePrivilegeType() {
+    // Default implementation - subclasses should override
+    return PrivilegeType.READ_DATA;
   }
 
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
