@@ -71,7 +71,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
         && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
       regionReplicaSet = validator.apply(regionReplicaSet);
       if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
-        throw new ReplicaSetUnreachableException(fragment.getTargetRegionForTreeModel());
+        throw new ReplicaSetUnreachableException(replicaSetProvider.get());
       }
     }
     // Set ExecutorType and target host for the instance
