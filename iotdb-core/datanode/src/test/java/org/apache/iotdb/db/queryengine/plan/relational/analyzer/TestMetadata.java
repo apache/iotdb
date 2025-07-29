@@ -133,6 +133,7 @@ public class TestMetadata implements Metadata {
 
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
+  public static final String TABLE3 = "table3";
   private static final String S4 = "s4";
   private static final ColumnMetadata S4_CM = new ColumnMetadata(S4, TIMESTAMP);
 
@@ -142,7 +143,9 @@ public class TestMetadata implements Metadata {
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
-        && name.getObjectName().equalsIgnoreCase(TABLE1);
+        && (name.getObjectName().equalsIgnoreCase(TABLE1)
+            || name.getObjectName().equalsIgnoreCase(TABLE2)
+            || name.getObjectName().equalsIgnoreCase(TABLE3));
   }
 
   @Override
@@ -229,7 +232,7 @@ public class TestMetadata implements Metadata {
               ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
               ColumnSchema.builder(S4_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
 
-      return Optional.of(new TableSchema(TABLE2, columnSchemas));
+      return Optional.of(new TableSchema(name.getObjectName(), columnSchemas));
     }
   }
 

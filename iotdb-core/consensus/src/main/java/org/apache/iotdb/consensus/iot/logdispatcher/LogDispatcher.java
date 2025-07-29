@@ -322,22 +322,18 @@ public class LogDispatcher {
       }
       long requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : pendingEntries) {
-        synchronized (indexedConsensusRequest) {
-          long prevRef = indexedConsensusRequest.decRef();
-          if (prevRef == 1) {
-            requestSize += indexedConsensusRequest.getMemorySize();
-          }
+        long prevRef = indexedConsensusRequest.decRef();
+        if (prevRef == 1) {
+          requestSize += indexedConsensusRequest.getMemorySize();
         }
       }
       pendingEntries.clear();
       iotConsensusMemoryManager.free(requestSize, true);
       requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : bufferedEntries) {
-        synchronized (indexedConsensusRequest) {
-          long prevRef = indexedConsensusRequest.decRef();
-          if (prevRef == 1) {
-            requestSize += indexedConsensusRequest.getMemorySize();
-          }
+        long prevRef = indexedConsensusRequest.decRef();
+        if (prevRef == 1) {
+          requestSize += indexedConsensusRequest.getMemorySize();
         }
       }
       iotConsensusMemoryManager.free(requestSize, true);
