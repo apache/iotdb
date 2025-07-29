@@ -64,8 +64,10 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
     final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
-    final Map<String, List<InsertRowStatement>> insertRowStatementMap = new HashMap<>();
-    final Map<String, List<InsertTabletStatement>> insertTabletStatementMap = new HashMap<>();
+    final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
+        new HashMap<>();
+    final Map<String, List<InsertTabletStatement>> tableModelDatabaseInsertTabletStatementMap =
+        new HashMap<>();
 
     for (final PipeTransferTabletBinaryReqV2 binaryReq : binaryReqs) {
       final InsertBaseStatement statement = binaryReq.constructStatement();
@@ -74,15 +76,15 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       }
       if (statement.isWriteToTable()) {
         if (statement instanceof InsertRowStatement) {
-          insertRowStatementMap
+          tableModelDatabaseInsertRowStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .add((InsertRowStatement) statement);
         } else if (statement instanceof InsertTabletStatement) {
-          insertTabletStatementMap
+          tableModelDatabaseInsertTabletStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .add((InsertTabletStatement) statement);
         } else if (statement instanceof InsertRowsStatement) {
-          insertRowStatementMap
+          tableModelDatabaseInsertRowStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .addAll(((InsertRowsStatement) statement).getInsertRowStatementList());
         } else {
@@ -115,15 +117,15 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       }
       if (statement.isWriteToTable()) {
         if (statement instanceof InsertRowStatement) {
-          insertRowStatementMap
+          tableModelDatabaseInsertRowStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .add((InsertRowStatement) statement);
         } else if (statement instanceof InsertTabletStatement) {
-          insertTabletStatementMap
+          tableModelDatabaseInsertTabletStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .add((InsertTabletStatement) statement);
         } else if (statement instanceof InsertRowsStatement) {
-          insertRowStatementMap
+          tableModelDatabaseInsertRowStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .addAll(((InsertRowsStatement) statement).getInsertRowStatementList());
         } else {
@@ -155,7 +157,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         continue;
       }
       if (statement.isWriteToTable()) {
-        insertTabletStatementMap
+        tableModelDatabaseInsertTabletStatementMap
             .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
             .add(statement);
         continue;
@@ -173,16 +175,18 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     }
 
     for (final Map.Entry<String, List<InsertRowStatement>> insertRows :
-        insertRowStatementMap.entrySet()) {
+        tableModelDatabaseInsertRowStatementMap.entrySet()) {
       final InsertRowsStatement statement = new InsertRowsStatement();
+      statement.setWriteToTable(true);
       statement.setDatabaseName(insertRows.getKey());
       statement.setInsertRowStatementList(insertRows.getValue());
       statements.add(statement);
     }
 
     for (final Map.Entry<String, List<InsertTabletStatement>> insertTablets :
-        insertTabletStatementMap.entrySet()) {
+        tableModelDatabaseInsertTabletStatementMap.entrySet()) {
       final InsertMultiTabletsStatement statement = new InsertMultiTabletsStatement();
+      statement.setWriteToTable(true);
       statement.setDatabaseName(insertTablets.getKey());
       statement.setInsertTabletStatementList(insertTablets.getValue());
       statements.add(statement);
