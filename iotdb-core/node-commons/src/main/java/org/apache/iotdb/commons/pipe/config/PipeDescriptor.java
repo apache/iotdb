@@ -160,6 +160,12 @@ public class PipeDescriptor {
                 "pipe_listening_queue_transfer_snapshot_threshold",
                 String.valueOf(config.getPipeListeningQueueTransferSnapshotThreshold()))));
 
+    config.setPipeListeningQueueTransferSnapshotThreshold(
+            Long.parseLong(
+                    properties.getProperty(
+                            "pipe_listening_queue_transfer_snapshot_threshold",
+                            String.valueOf(config.getPipeListeningQueueTransferSnapshotThreshold()))));
+
     config.setPipeSnapshotExecutionMaxBatchSize(
         Integer.parseInt(
             properties.getProperty(

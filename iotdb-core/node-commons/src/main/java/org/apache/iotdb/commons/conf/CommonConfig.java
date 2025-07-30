@@ -330,6 +330,8 @@ public class CommonConfig {
   private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
+  private long pipeReceiverTabletBatchSize = 1024;
+
   private boolean subscriptionEnabled = false;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
@@ -1985,6 +1987,21 @@ public class CommonConfig {
     logger.info(
         "pipeEventReferenceEliminateIntervalSeconds is set to {}",
         pipeEventReferenceEliminateIntervalSeconds);
+  }
+
+  public long getPipeReceiverTabletBatchSize() {
+    return pipeReceiverTabletBatchSize;
+  }
+
+  public void setPipeReceiverTabletBatchSize(long pipeReceiverTabletBatchSize) {
+    if (this.pipeReceiverTabletBatchSize
+            == pipeReceiverTabletBatchSize) {
+      return;
+    }
+    this.pipeReceiverTabletBatchSize = pipeReceiverTabletBatchSize;
+    logger.info(
+            "pipeReceiverTabletBatchSize is set to {}",
+            pipeReceiverTabletBatchSize);
   }
 
   public boolean getSubscriptionEnabled() {
