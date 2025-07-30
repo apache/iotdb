@@ -152,6 +152,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           estimateSize = 4;
           insertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
         }
+        estimateSize += buffer.limit();
       } else {
         estimateSize =
             constructTabletBatch(
@@ -166,7 +167,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
             constructTabletBatch(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.getTableModelDatabaseName());
-        tabletDataBases.add(pipeRawTabletInsertionEvent.getTableModelDatabaseName());
       } else {
         try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
             final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -174,15 +174,12 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
           buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
         }
-        estimateSize = 4;
+        estimateSize = 4 + buffer.limit();
         tabletBuffers.add(buffer);
         tabletDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
       }
     }
 
-    if (Objects.nonNull(buffer)) {
-      estimateSize += buffer.limit();
-    }
     return estimateSize;
   }
 
