@@ -58,11 +58,6 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
   @Override
   public InsertTabletStatement constructStatement() {
-    return constructStatement(tablet, dataBaseName, isAligned);
-  }
-
-  public static InsertTabletStatement constructStatement(
-      final Tablet tablet, final String dataBaseName, final boolean isAligned) {
     if (Objects.isNull(dataBaseName)) {
       new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     } else {

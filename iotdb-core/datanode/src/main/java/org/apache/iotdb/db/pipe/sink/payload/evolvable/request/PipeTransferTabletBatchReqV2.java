@@ -44,8 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
-
 public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
   private final transient List<PipeTransferTabletBinaryReqV2> binaryReqs = new ArrayList<>();
@@ -148,12 +146,11 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     }
 
     for (final PipeTransferTabletRawReqV2 tabletReq : tabletReqs) {
-      final Tablet tablet = tabletReq.tablet;
       final InsertTabletStatement statement = tabletReq.constructStatement();
-      if (isTabletEmpty(tablet)) {
+      if (statement.isEmpty()) {
         continue;
       }
-      if (Objects.nonNull(tabletReq.dataBaseName)) {
+      if (statement.isWriteToTable()) {
         statements.add(statement);
         continue;
       }
