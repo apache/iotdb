@@ -314,53 +314,97 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public PathPatternTree getAuthorizedPatternTree(String username, PrivilegeType permission)
       throws AuthException {
+    LOGGER.info("=== CLUSTER AUTHORITY FETCHER GET AUTHORIZED PATTERN TREE START ===");
+    LOGGER.info("User: {}, Permission: {}", username, permission);
+
     PathPatternTree patternTree = new PathPatternTree();
     User user = iAuthorCache.getUserCache(username);
+
     if (user != null) {
+      LOGGER.info("User found in cache: {}", username);
+      LOGGER.info("User path privileges count: {}", user.getPathPrivilegeList().size());
+
       for (PathPrivilege path : user.getPathPrivilegeList()) {
         if (path.checkPrivilege(permission)) {
+          LOGGER.info("Adding user path privilege: {}", path.getPath());
           patternTree.appendPathPattern(path.getPath());
+        } else {
+          LOGGER.debug(
+              "User path privilege {} does not match permission {}", path.getPath(), permission);
         }
       }
+
+      LOGGER.info("User roles: {}", user.getRoleSet());
       for (String roleName : user.getRoleSet()) {
         Role role = iAuthorCache.getRoleCache(roleName);
         if (role != null) {
+          LOGGER.info(
+              "Role found in cache: {}, path privileges count: {}",
+              roleName,
+              role.getPathPrivilegeList().size());
           for (PathPrivilege path : role.getPathPrivilegeList()) {
             if (path.checkPrivilege(permission)) {
+              LOGGER.info("Adding role path privilege: {} from role {}", path.getPath(), roleName);
               patternTree.appendPathPattern(path.getPath());
+            } else {
+              LOGGER.debug(
+                  "Role path privilege {} from role {} does not match permission {}",
+                  path.getPath(),
+                  roleName,
+                  permission);
             }
           }
         } else {
+          LOGGER.info("Role {} not found in cache, fetching from ConfigNode", roleName);
           return fetchAuthizedPatternTree(username, permission);
         }
       }
       patternTree.constructTree();
+      LOGGER.info("Final pattern tree from cache: {}", patternTree);
+      LOGGER.info("=== CLUSTER AUTHORITY FETCHER GET AUTHORIZED PATTERN TREE END (CACHE) ===");
       return patternTree;
     } else {
+      LOGGER.info("User {} not found in cache, fetching from ConfigNode", username);
       return fetchAuthizedPatternTree(username, permission);
     }
   }
 
   private PathPatternTree fetchAuthizedPatternTree(String username, PrivilegeType permission)
       throws AuthException {
+    LOGGER.info("=== FETCH AUTHORIZED PATTERN TREE FROM CONFIGNODE START ===");
+    LOGGER.info("User: {}, Permission: {}", username, permission);
+
     TCheckUserPrivilegesReq req =
         new TCheckUserPrivilegesReq(
             username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), false);
+    LOGGER.info("Request to ConfigNode: {}", req);
+
     TAuthizedPatternTreeResp authizedPatternTree = new TAuthizedPatternTreeResp();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      LOGGER.info("Sending request to ConfigNode...");
       authizedPatternTree = configNodeClient.fetchAuthizedPatternTree(req);
+      LOGGER.info("Received response from ConfigNode: {}", authizedPatternTree.getStatus());
     } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
+      LOGGER.error("Failed to connect to ConfigNode: {}", e.getMessage(), e);
       authizedPatternTree.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
     }
+
     if (authizedPatternTree.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.info("ConfigNode request successful, processing response");
       if (acceptCache) {
+        LOGGER.info("Caching user information");
         iAuthorCache.putUserCache(username, cacheUser(authizedPatternTree.getPermissionInfo()));
       }
-      return PathPatternTree.deserialize(ByteBuffer.wrap(authizedPatternTree.getPathPatternTree()));
+      PathPatternTree result =
+          PathPatternTree.deserialize(ByteBuffer.wrap(authizedPatternTree.getPathPatternTree()));
+      LOGGER.info("Deserialized pattern tree: {}", result);
+      LOGGER.info("=== FETCH AUTHORIZED PATTERN TREE FROM CONFIGNODE END (SUCCESS) ===");
+      return result;
     } else {
+      LOGGER.error("ConfigNode request failed: {}", authizedPatternTree.getStatus().getMessage());
+      LOGGER.info("=== FETCH AUTHORIZED PATTERN TREE FROM CONFIGNODE END (FAILED) ===");
       throw new AuthException(
           TSStatusCode.EXECUTE_STATEMENT_ERROR, authizedPatternTree.getStatus().getMessage());
     }

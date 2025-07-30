@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LbacOperationClassifier;
@@ -247,37 +249,55 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
    */
   private boolean hasPermissionForSchemaInfo(T schemaInfo) {
     try {
+      LOGGER.info("=== SCHEMA INFO PERMISSION CHECK START ===");
       String userName = getCurrentUserName();
+      LOGGER.info("User: {}, SchemaInfo: {}", userName, schemaInfo);
 
       // Super user has access to everything
       if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        LOGGER.info("Super user access granted");
         return true;
       }
 
       // Extract database path from schema info
       String databasePath = extractDatabasePathFromSchemaInfo(schemaInfo);
+      LOGGER.info("Extracted database path: {}", databasePath);
+
       if (databasePath == null) {
         // If we can't extract database path, allow access (or apply default policy)
+        LOGGER.info("Cannot extract database path, allowing access");
         return true;
       }
 
       // Step 1: RBAC check - must pass first
-      if (!AuthorityChecker.checkDBVisible(userName, databasePath)) {
-        LOGGER.debug(
+      LOGGER.info("Performing RBAC check for database: {}", databasePath);
+      boolean rbacAllowed =
+          AuthorityChecker.checkFullPathOrPatternPermission(
+              userName, new PartialPath(databasePath), PrivilegeType.READ_SCHEMA);
+
+      if (!rbacAllowed) {
+        LOGGER.warn(
             "User {} denied RBAC access to schema info in database {}", userName, databasePath);
         return false;
       }
 
+      LOGGER.info("RBAC check passed");
+
       // Step 2: LBAC check - only if LBAC is enabled
       if (LbacPermissionChecker.isLbacEnabled()) {
+        LOGGER.info("LBAC is enabled, performing LBAC check");
         if (!LbacPermissionChecker.checkLbacPermissionForDatabase(
             userName, databasePath, LbacOperationClassifier.OperationType.READ)) {
-          LOGGER.debug(
+          LOGGER.warn(
               "User {} denied LBAC access to schema info in database {}", userName, databasePath);
           return false;
         }
+        LOGGER.info("LBAC check passed");
+      } else {
+        LOGGER.info("LBAC is disabled, skipping LBAC check");
       }
 
+      LOGGER.info("All permission checks passed for schema info");
       return true;
     } catch (Exception e) {
       LOGGER.warn("Error checking permission for schema info: {}", e.getMessage());

@@ -36,6 +36,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
   protected Set<Integer> permissions;
   protected String databaseName;
   protected String tableName;
+  private String readLabelPolicyExpression;
+  private String writeLabelPolicyExpression;
 
   public AuthorRelationalPlan(final ConfigPhysicalPlanType authorType) {
     super(authorType);
@@ -94,6 +96,22 @@ public class AuthorRelationalPlan extends AuthorPlan {
     this.permissions = permissions;
   }
 
+  public String getReadLabelPolicyExpression() {
+    return readLabelPolicyExpression;
+  }
+
+  public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
+    this.readLabelPolicyExpression = readLabelPolicyExpression;
+  }
+
+  public String getWriteLabelPolicyExpression() {
+    return writeLabelPolicyExpression;
+  }
+
+  public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
+    this.writeLabelPolicyExpression = writeLabelPolicyExpression;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -104,7 +122,9 @@ public class AuthorRelationalPlan extends AuthorPlan {
       return super.equals(o)
           && Objects.equals(this.databaseName, that.databaseName)
           && Objects.equals(this.tableName, that.tableName)
-          && Objects.equals(this.permissions, that.permissions);
+          && Objects.equals(this.permissions, that.permissions)
+          && Objects.equals(this.readLabelPolicyExpression, that.readLabelPolicyExpression)
+          && Objects.equals(this.writeLabelPolicyExpression, that.writeLabelPolicyExpression);
     } else {
       return false;
     }
@@ -112,7 +132,13 @@ public class AuthorRelationalPlan extends AuthorPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), databaseName, tableName, permissions);
+    return Objects.hash(
+        super.hashCode(),
+        databaseName,
+        tableName,
+        permissions,
+        readLabelPolicyExpression,
+        writeLabelPolicyExpression);
   }
 
   @Override
@@ -131,6 +157,10 @@ public class AuthorRelationalPlan extends AuthorPlan {
         + databaseName
         + ", TABLE:"
         + tableName
+        + ", readLabelPolicy:"
+        + readLabelPolicyExpression
+        + ", writeLabelPolicy:"
+        + writeLabelPolicyExpression
         + "]";
   }
 
@@ -147,6 +177,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
       stream.writeInt(permission);
     }
     stream.write(grantOpt ? (byte) 1 : (byte) 0);
+    BasicStructureSerDeUtil.write(readLabelPolicyExpression, stream);
+    BasicStructureSerDeUtil.write(writeLabelPolicyExpression, stream);
   }
 
   @Override
@@ -163,5 +195,7 @@ public class AuthorRelationalPlan extends AuthorPlan {
       permissions.add(buffer.getInt());
     }
     grantOpt = buffer.get() == (byte) 1;
+    readLabelPolicyExpression = BasicStructureSerDeUtil.readString(buffer);
+    writeLabelPolicyExpression = BasicStructureSerDeUtil.readString(buffer);
   }
 }

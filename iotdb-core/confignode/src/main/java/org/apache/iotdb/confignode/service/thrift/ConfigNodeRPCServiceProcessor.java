@@ -765,7 +765,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getPermissions(),
             req.isGrantOpt(),
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
-
+    // Set LBAC policies if present
+    if (req.isSetReadLabelPolicyExpression()) {
+      authorTreePlan.setReadLabelPolicyExpression(req.getReadLabelPolicyExpression());
+    }
+    if (req.isSetWriteLabelPolicyExpression()) {
+      authorTreePlan.setWriteLabelPolicyExpression(req.getWriteLabelPolicyExpression());
+    }
     return configManager.operatePermission(authorTreePlan);
   }
 
