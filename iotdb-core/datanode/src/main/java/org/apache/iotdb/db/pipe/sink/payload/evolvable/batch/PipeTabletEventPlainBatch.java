@@ -116,7 +116,13 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           }
         }
         assert batchTablet != null;
-        tabletBuffers.add(batchTablet.serialize());
+        try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+            final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+          batchTablet.serialize(outputStream);
+          ReadWriteIOUtils.write(true, outputStream);
+          tabletBuffers.add(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+        }
         tabletDataBases.add(databaseName);
       }
     }
@@ -201,6 +207,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
             .computeIfAbsent(tablet.getTableName(), k -> new Pair<>(0, new ArrayList<>()));
     currentBatch.setLeft(currentBatch.getLeft() + tablet.getRowSize());
     currentBatch.getRight().add(tablet);
-    return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
+    return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + 4;
   }
 }
