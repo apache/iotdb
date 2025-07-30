@@ -97,7 +97,7 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
     //            "-u",
     //            "root",
     //            "-pw",
-    //            "IoTDB@2011",
+    //            "root",
     //            "-path",
     //            "root.test.t2.**",
     //            "&",
@@ -121,7 +121,7 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
             "-u",
             "root",
             "-pw",
-            "IoTDB@2011",
+            "root",
             "-path",
             "root.test.t2.**",
             "&",
@@ -147,7 +147,7 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
     //            "-u",
     //            "root",
     //            "-pw",
-    //            "IoTDB@2011",
+    //            "root",
     //            "-path",
     //            "root.**");
     //    builder.environment().put("CLASSPATH", libPath);
@@ -168,7 +168,7 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
             "-u",
             "root",
             "-pw",
-            "IoTDB@2011",
+            "root",
             "-path",
             "root.**");
     builder1.environment().put("CLASSPATH", libPath);

@@ -260,7 +260,7 @@ public class MetricConfig {
     private String username = "root";
 
     /** The password of iotdb. */
-    private String password = "IoTDB@2011";
+    private String password = "root";
 
     /** The max number of connection. */
     private Integer maxConnectionNumber = 3;

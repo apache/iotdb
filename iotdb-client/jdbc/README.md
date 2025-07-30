@@ -163,7 +163,7 @@ public class JDBCExample {
 
     // Database credentials
     String username = "root";
-    String password = "IoTDB@2011";
+    String password = "root";
 
     Connection connection = null;
     try {
