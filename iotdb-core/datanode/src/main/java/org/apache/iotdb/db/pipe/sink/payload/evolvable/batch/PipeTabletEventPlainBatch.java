@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -106,8 +107,12 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         for (final Tablet tablet : tabletEntry.getValue().getRight()) {
           if (Objects.isNull(batchTablet)) {
             batchTablet = tablet;
-          } else {
-            batchTablet.append(tablet, tabletEntry.getValue().getLeft());
+          } else if (!batchTablet.append(tablet, tabletEntry.getValue().getLeft())) {
+            throw new PipeException(
+                "Failed to merge tablets due to inconsistent schema, database: "
+                    + databaseName
+                    + ", tableName: "
+                    + tablet.getTableName());
           }
         }
         assert batchTablet != null;
