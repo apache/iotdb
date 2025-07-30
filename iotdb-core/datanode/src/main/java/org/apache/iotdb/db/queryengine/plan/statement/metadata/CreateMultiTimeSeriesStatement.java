@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -58,17 +59,22 @@ public class CreateMultiTimeSeriesStatement extends Statement {
     return paths;
   }
 
-  @Override
+
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    return super.checkPermissionBeforeProcess(userName);
+  }
+
+  @Override
+  public TSStatus checkRbacPermission(String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     List<MeasurementPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
+            AuthorityChecker.checkFullPathOrPatternListPermission(
+                    userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+            checkedPaths,
+            PrivilegeType.WRITE_SCHEMA);
   }
 
   public void setPaths(List<MeasurementPath> paths) {

@@ -40,24 +40,15 @@ public abstract class AuthorityInformationStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    LOGGER.info("=== AUTHORITY INFORMATION STATEMENT PERMISSION CHECK START ===");
-    LOGGER.info("User: {}, Statement class: {}", userName, this.getClass().getSimpleName());
-
     try {
       if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        LOGGER.info("User is not super user, getting authorized path tree for READ_SCHEMA");
         this.authorityScope =
             AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA);
-        LOGGER.info("Authority scope set: {}", authorityScope);
       } else {
-        LOGGER.info("User is super user, bypassing permission check");
       }
     } catch (AuthException e) {
-      LOGGER.error("AuthException during permission check: {}", e.getMessage(), e);
       return new TSStatus(e.getCode().getStatusCode());
     }
-
-    LOGGER.info("AuthorityInformationStatement permission check completed successfully");
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

@@ -40,7 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
@@ -195,9 +194,13 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
+    // Use parent class's complete permission check flow (Root → RBAC → LBAC)
+    return super.checkPermissionBeforeProcess(userName);
+  }
+
+  @Override
+  public TSStatus checkRbacPermission(String userName) {
+    // Insert operations require WRITE_DATA permission
     List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathOrPatternListPermission(
@@ -498,7 +501,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         indexMapToLogicalViewList[realIndex] = i;
       }
     }
-    // construct map from device to measurements and record the index of its measurement
+    // construct map from device to measurements and record the index of its
+    // measurement
     // schema
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
         new HashMap<>();
@@ -530,7 +534,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             }
           });
     }
-    // check this map, ensure that all time series (measurements in each device) only appear once
+    // check this map, ensure that all time series (measurements in each device)
+    // only appear once
     validateMapFromDeviceToMeasurement(mapFromDeviceToMeasurementAndIndex);
     return mapFromDeviceToMeasurementAndIndex;
   }

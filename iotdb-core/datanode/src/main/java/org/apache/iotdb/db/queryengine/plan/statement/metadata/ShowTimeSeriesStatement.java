@@ -30,9 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -46,8 +43,6 @@ import java.util.List;
  */
 public class ShowTimeSeriesStatement extends ShowStatement {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ShowTimeSeriesStatement.class);
-
   private final PartialPath pathPattern;
   private SchemaFilter schemaFilter;
   // if is true, the result will be sorted according to the inserting frequency of the time series
@@ -58,10 +53,6 @@ public class ShowTimeSeriesStatement extends ShowStatement {
     super();
     this.pathPattern = pathPattern;
     this.orderByHeat = orderByHeat;
-    LOGGER.info(
-        "ShowTimeSeriesStatement created with pathPattern: {}, orderByHeat: {}",
-        pathPattern,
-        orderByHeat);
   }
 
   public PartialPath getPathPattern() {
@@ -94,46 +85,25 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    LOGGER.info("=== SHOW TIMESERIES PERMISSION CHECK START ===");
-    LOGGER.info(
-        "User: {}, PathPattern: {}, HasTimeCondition: {}",
-        userName,
-        pathPattern,
-        hasTimeCondition());
-
     if (hasTimeCondition()) {
-      LOGGER.info("ShowTimeSeriesStatement has time condition, using special permission check");
       try {
         if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-          LOGGER.info("User is not super user, getting authorized path tree");
           this.authorityScope =
               PathPatternTreeUtils.intersectWithFullPathPrefixTree(
                   AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA),
                   AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA));
-          LOGGER.info("Authority scope set: {}", authorityScope);
-        } else {
-          LOGGER.info("User is super user, bypassing permission check");
         }
       } catch (AuthException e) {
-        LOGGER.error("AuthException during permission check: {}", e.getMessage(), e);
         return new TSStatus(e.getCode().getStatusCode());
       }
-      LOGGER.info("ShowTimeSeriesStatement permission check completed successfully");
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      LOGGER.info(
-          "ShowTimeSeriesStatement has no time condition, using super.checkPermissionBeforeProcess");
-      TSStatus result = super.checkPermissionBeforeProcess(userName);
-      LOGGER.info("Super permission check result: {}", result);
-      return result;
+      return super.checkPermissionBeforeProcess(userName);
     }
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    LOGGER.debug(
-        "ShowTimeSeriesStatement.getPaths() called, returning: {}",
-        Collections.singletonList(pathPattern));
     return Collections.singletonList(pathPattern);
   }
 

@@ -134,16 +134,22 @@ public class AlterTimeSeriesStatement extends Statement {
     return isAlterView;
   }
 
-  @Override
+
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    return super.checkPermissionBeforeProcess(userName);
+  }
+
+  @Override
+  public TSStatus checkRbacPermission(String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternPermission(
-            userName, path, PrivilegeType.WRITE_SCHEMA),
-        PrivilegeType.WRITE_SCHEMA);
+            AuthorityChecker.checkFullPathOrPatternPermission(
+                    userName, path, PrivilegeType.WRITE_SCHEMA),
+            PrivilegeType.WRITE_SCHEMA);
   }
+
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

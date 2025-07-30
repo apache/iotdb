@@ -89,7 +89,6 @@ public class ShowDatabaseSecurityLabelStatement extends AuthorityInformationStat
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
-
     boolean hasPermission =
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE);
 
