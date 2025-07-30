@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
@@ -48,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -90,8 +93,7 @@ public class QueryStatement extends AuthorityInformationStatement {
   // row offset for result set. The default value is 0
   private long rowOffset = 0;
 
-  // series limit and offset for result set. The default value is 0, which means
-  // no limit
+  // series limit and offset for result set. The default value is 0, which means no limit
   private long seriesLimit = 0;
   // series offset for result set. The default value is 0
   private long seriesOffset = 0;
@@ -125,13 +127,11 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   private boolean isCountTimeAggregation = false;
 
-  // used for limit and offset push down optimizer, if we select all columns from
-  // aligned device, we
+  // used for limit and offset push down optimizer, if we select all columns from aligned device, we
   // can use statistics to skip
   private boolean lastLevelUseWildcard = false;
 
-  // used in limit/offset push down optimizer, if the result set is empty after
-  // pushing down in
+  // used in limit/offset push down optimizer, if the result set is empty after pushing down in
   // ASTVisitor,
   // we can skip the query
   private boolean isResultSetEmpty = false;
@@ -219,14 +219,15 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Use the enhanced LBAC-integrated permission check
-    return checkPermissionWithLbac(userName);
-  }
-
-  @Override
-  public PrivilegeType determinePrivilegeType() {
-    // Query operations require READ_DATA privilege
-    return PrivilegeType.READ_DATA;
+    try {
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        this.authorityScope =
+                AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA);
+      }
+    } catch (AuthException e) {
+      return new TSStatus(e.getCode().getStatusCode());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public SelectComponent getSelectComponent() {
@@ -395,12 +396,12 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   private boolean isGroupByVariation() {
     return groupByComponent != null
-        && groupByComponent.getWindowType() == WindowType.VARIATION_WINDOW;
+            && groupByComponent.getWindowType() == WindowType.VARIATION_WINDOW;
   }
 
   private boolean isGroupByCondition() {
     return groupByComponent != null
-        && groupByComponent.getWindowType() == WindowType.CONDITION_WINDOW;
+            && groupByComponent.getWindowType() == WindowType.CONDITION_WINDOW;
   }
 
   private boolean isGroupByCount() {
@@ -441,9 +442,9 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   public boolean isOrderByTimeInDevices() {
     return orderByComponent == null
-        || (orderByComponent.isBasedOnDevice()
+            || (orderByComponent.isBasedOnDevice()
             && (orderByComponent.getSortItemList().size() == 1
-                || orderByComponent.getTimeOrderPriority() == 1));
+            || orderByComponent.getTimeOrderPriority() == 1));
   }
 
   public boolean isOrderByTimeseries() {
@@ -507,7 +508,7 @@ public class QueryStatement extends AuthorityInformationStatement {
     return orderByComponent.getExpressionSortItemList();
   }
 
-  // update the sortItems with expressionSortItems
+  //  update the sortItems with expressionSortItems
   public void updateSortItems(Set<Expression> orderByExpressions) {
     Expression[] sortItemExpressions = orderByExpressions.toArray(new Expression[0]);
     List<SortItem> sortItems = getSortItemList();
@@ -528,7 +529,7 @@ public class QueryStatement extends AuthorityInformationStatement {
     int expressionIndex = 0;
     for (SortItem sortItem : sortItems) {
       SortItem newSortItem =
-          new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
+              new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
       if (sortItem.isExpression()) {
         newSortItem.setExpression(sortItemExpressions[expressionIndex]);
         expressionIndex++;
@@ -591,20 +592,20 @@ public class QueryStatement extends AuthorityInformationStatement {
   }
 
   public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
-      "Raw data and aggregation hybrid query is not supported.";
+          "Raw data and aggregation hybrid query is not supported.";
 
   public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL =
-      "Count_time aggregation function using with group by level is not supported.";
+          "Count_time aggregation function using with group by level is not supported.";
 
   public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG =
-      "Count_time aggregation function using with group by tag is not supported.";
+          "Count_time aggregation function using with group by tag is not supported.";
 
   public static final String COUNT_TIME_CAN_ONLY_EXIST_ALONE =
-      "Count_time aggregation can only exist alone, "
-          + "and cannot used with other queries or aggregations.";
+          "Count_time aggregation can only exist alone, "
+                  + "and cannot used with other queries or aggregations.";
 
   public static final String COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING =
-      "Count_time aggregation function can not be used with having clause.";
+          "Count_time aggregation function can not be used with having clause.";
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
@@ -637,10 +638,10 @@ public class QueryStatement extends AuthorityInformationStatement {
         String expressionString = resultColumn.getExpression().getExpressionString();
         if (expressionString.toLowerCase().contains(COUNT_TIME)) {
           checkCountTimeValidationInSelect(
-              resultColumn.getExpression(), outputColumn, selectComponent.getResultColumns());
+                  resultColumn.getExpression(), outputColumn, selectComponent.getResultColumns());
         }
         outputColumn.add(
-            resultColumn.getAlias() != null ? resultColumn.getAlias() : expressionString);
+                resultColumn.getAlias() != null ? resultColumn.getAlias() : expressionString);
       }
 
       for (Expression expression : getExpressionSortItemList()) {
@@ -664,18 +665,18 @@ public class QueryStatement extends AuthorityInformationStatement {
         for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
           Expression expression = resultColumn.getExpression();
           if (!(expression instanceof FunctionExpression
-              && expression.getExpressions().get(0) instanceof TimeSeriesOperand
-              && expression.isAggregationFunctionExpression())) {
+                  && expression.getExpressions().get(0) instanceof TimeSeriesOperand
+                  && expression.isAggregationFunctionExpression())) {
             throw new SemanticException(
-                expression + " can't be used in group by tag. It will be supported in the future.");
+                    expression + " can't be used in group by tag. It will be supported in the future.");
           }
         }
       }
       if (hasGroupByExpression()) {
         // Aggregation expression shouldn't exist in group by clause.
         List<Expression> aggregationExpression =
-            ExpressionAnalyzer.searchAggregationExpressions(
-                groupByComponent.getControlColumnExpression());
+                ExpressionAnalyzer.searchAggregationExpressions(
+                        groupByComponent.getControlColumnExpression());
         if (aggregationExpression != null && !aggregationExpression.isEmpty()) {
           throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
         }
@@ -683,7 +684,7 @@ public class QueryStatement extends AuthorityInformationStatement {
     } else {
       if (isGroupBy() || isGroupByLevel() || isGroupByTag()) {
         throw new SemanticException(
-            "Common queries and aggregated queries are not allowed to appear at the same time");
+                "Common queries and aggregated queries are not allowed to appear at the same time");
       }
       for (Expression expression : getExpressionSortItemList()) {
         if (hasAggregationFunction(expression)) {
@@ -695,7 +696,7 @@ public class QueryStatement extends AuthorityInformationStatement {
     if (hasWhere()) {
       Expression whereExpression = getWhereCondition().getPredicate();
       if (ExpressionAnalyzer.identifyOutputColumnType(whereExpression, true)
-          == ResultColumn.ColumnType.AGGREGATION) {
+              == ResultColumn.ColumnType.AGGREGATION) {
         throw new SemanticException("aggregate functions are not supported in WHERE clause");
       }
     }
@@ -703,15 +704,15 @@ public class QueryStatement extends AuthorityInformationStatement {
     if (hasHaving()) {
       Expression havingExpression = getHavingCondition().getPredicate();
       if (ExpressionAnalyzer.identifyOutputColumnType(havingExpression, true)
-          != ResultColumn.ColumnType.AGGREGATION) {
+              != ResultColumn.ColumnType.AGGREGATION) {
         throw new SemanticException("Expression of HAVING clause must to be an Aggregation");
       }
       if (!isAggregationQuery()) {
         throw new SemanticException(
-            "Expression of HAVING clause can not be used in NonAggregationQuery");
+                "Expression of HAVING clause can not be used in NonAggregationQuery");
       }
       if (havingExpression.toString().toLowerCase().contains(COUNT_TIME)
-          && (!new CountTimeAggregationAmountVisitor().process(havingExpression, null).isEmpty())) {
+              && (!new CountTimeAggregationAmountVisitor().process(havingExpression, null).isEmpty())) {
         throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
       }
       try {
@@ -735,7 +736,7 @@ public class QueryStatement extends AuthorityInformationStatement {
         }
         if (hasGroupByExpression()) {
           ExpressionAnalyzer.checkIsAllMeasurement(
-              getGroupByComponent().getControlColumnExpression());
+                  getGroupByComponent().getControlColumnExpression());
         }
         if (hasOrderByExpression()) {
           for (Expression expression : getExpressionSortItemList()) {
@@ -769,7 +770,7 @@ public class QueryStatement extends AuthorityInformationStatement {
       }
       if (isOrderByDevice()) {
         throw new SemanticException(
-            "Sorting by device is only supported in ALIGN BY DEVICE queries.");
+                "Sorting by device is only supported in ALIGN BY DEVICE queries.");
       }
       if (seriesLimit != 0 || seriesOffset != 0) {
         throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");
@@ -782,7 +783,7 @@ public class QueryStatement extends AuthorityInformationStatement {
       }
       if (isOrderByDevice()) {
         throw new SemanticException(
-            "Sorting by device is only supported in ALIGN BY DEVICE queries.");
+                "Sorting by device is only supported in ALIGN BY DEVICE queries.");
       }
     }
 
@@ -817,9 +818,9 @@ public class QueryStatement extends AuthorityInformationStatement {
     }
     if (isGroupByLevel()) {
       sqlBuilder
-          .append("\t")
-          .append(groupByLevelComponent.toSQLString(isGroupByTime()))
-          .append("\n");
+              .append("\t")
+              .append(groupByLevelComponent.toSQLString(isGroupByTime()))
+              .append("\n");
     }
     if (hasHaving()) {
       sqlBuilder.append("\t").append(havingCondition.toSQLString()).append("\n");
@@ -855,7 +856,7 @@ public class QueryStatement extends AuthorityInformationStatement {
   }
 
   private void checkCountTimeValidationInSelect(
-      Expression expression, Set<String> outputColumn, List<ResultColumn> resultColumns) {
+          Expression expression, Set<String> outputColumn, List<ResultColumn> resultColumns) {
     int countTimeAggSize = new CountTimeAggregationAmountVisitor().process(expression, null).size();
 
     if (countTimeAggSize > 1) {

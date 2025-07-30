@@ -419,22 +419,61 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     TAuthorizerResp authorizerResp = new TAuthorizerResp();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      authorizerResp =
-          isRelational
-              ? configNodeClient.queryRPermission(
-                  statementToAuthorizerReq((RelationalAuthorStatement) plan))
-              : configNodeClient.queryPermission(statementToAuthorizerReq((AuthorStatement) plan));
+      LOGGER.info(
+          "Querying permission for plan: {}, isRelational: {}",
+          plan.getClass().getSimpleName(),
+          isRelational);
+
+      if (isRelational) {
+        RelationalAuthorStatement relationalPlan = (RelationalAuthorStatement) plan;
+        LOGGER.info(
+            "Relational plan details - Type: {}, User: {}",
+            relationalPlan.getAuthorType(),
+            relationalPlan.getUserName());
+        authorizerResp =
+            configNodeClient.queryRPermission(statementToAuthorizerReq(relationalPlan));
+      } else {
+        AuthorStatement treePlan = (AuthorStatement) plan;
+        LOGGER.info(
+            "Tree plan details - Type: {}, User: {}",
+            treePlan.getAuthorType(),
+            treePlan.getUserName());
+        authorizerResp = configNodeClient.queryPermission(statementToAuthorizerReq(treePlan));
+      }
+
+      LOGGER.info("Query permission response status: {}", authorizerResp.getStatus());
+
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
+        LOGGER.error("Failed to query permission: {}", authorizerResp.getStatus().getMessage());
         future.setException(
             new IoTDBException(
                 authorizerResp.getStatus().message, authorizerResp.getStatus().code));
       } else {
-        AuthorityChecker.buildTSBlock(authorizerResp, future);
+        try {
+          LOGGER.info("Building TSBlock from permission info");
+          TPermissionInfoResp permissionInfo = authorizerResp.getPermissionInfo();
+          if (permissionInfo != null) {
+            LOGGER.info(
+                "Permission info available - User info: {}, Role info size: {}",
+                permissionInfo.getUserInfo() != null ? "present" : "null",
+                permissionInfo.getRoleInfo() != null ? permissionInfo.getRoleInfo().size() : 0);
+          } else {
+            LOGGER.warn("Permission info is null in response");
+          }
+          AuthorityChecker.buildTSBlock(authorizerResp, future);
+        } catch (Exception e) {
+          LOGGER.error("Error building TSBlock from permission response", e);
+          future.setException(
+              new IoTDBException(
+                  "Error processing permission data: " + e.getMessage(),
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+        }
       }
     } catch (AuthException e) {
+      LOGGER.error("Auth exception during permission query", e);
       future.setException(e);
     } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
+      LOGGER.error(CONNECTERROR, e);
       authorizerResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
       future.setException(new IoTDBException(authorizerResp.getStatus()));

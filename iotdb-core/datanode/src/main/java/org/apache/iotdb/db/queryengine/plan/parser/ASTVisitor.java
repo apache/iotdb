@@ -751,7 +751,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitShowDatabases(IoTDBSqlParser.ShowDatabasesContext ctx) {
     ShowDatabaseStatement showDatabaseStatement;
 
-    // 解析路径
     if (ctx.prefixPath() != null) {
       showDatabaseStatement = new ShowDatabaseStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
@@ -759,12 +758,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
 
-    // 处理 SHOW DATABASE ... SECURITY_LABEL
     if (ctx.SECURITY_LABEL() != null) {
       showDatabaseStatement.setShowSecurityLabel(true);
     }
 
-    // 处理 SHOW DATABASES DETAILS
+
     showDatabaseStatement.setDetailed(ctx.DETAILS() != null);
 
     return showDatabaseStatement;
@@ -2449,16 +2447,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPassWord(parseStringLiteral(ctx.password.getText()));
 
-    // Parse read label policy if present
+
     if (ctx.readPolicyExpression != null) {
-      // Parse the policy expression content
+
       String readPolicyExpression = parsePolicyExpression(ctx.readPolicyExpression);
       authorStatement.setReadLabelPolicyExpression(readPolicyExpression);
     }
 
-    // Parse write label policy if present
     if (ctx.writePolicyExpression != null) {
-      // Parse the policy expression content
       String writePolicyExpression = parsePolicyExpression(ctx.writePolicyExpression);
       authorStatement.setWriteLabelPolicyExpression(writePolicyExpression);
     }

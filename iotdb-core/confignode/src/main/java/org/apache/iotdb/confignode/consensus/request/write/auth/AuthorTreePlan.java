@@ -38,9 +38,7 @@ import java.util.Set;
 public class AuthorTreePlan extends AuthorPlan {
   protected Set<Integer> permissions;
   protected List<PartialPath> nodeNameList;
-  // Label policy expression for READ scope
   private String readLabelPolicyExpression;
-  // Label policy expression for WRITE scope
   private String writeLabelPolicyExpression;
 
   public AuthorTreePlan(final ConfigPhysicalPlanType type) {

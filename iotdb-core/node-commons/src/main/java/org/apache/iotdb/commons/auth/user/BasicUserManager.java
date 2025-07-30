@@ -210,9 +210,9 @@ public abstract class BasicUserManager extends BasicRoleManager {
         throw new AuthException(
             getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), user.getName()));
       }
-      // Update the user in memory
+
       entityMap.put(user.getName(), user);
-      // Save to storage
+
       accessor.saveEntity(user);
     } catch (IOException e) {
       throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, "Failed to save user", e);

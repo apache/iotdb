@@ -20,14 +20,15 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -42,12 +43,9 @@ import java.util.List;
  */
 public class ShowTimeSeriesStatement extends ShowStatement {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ShowTimeSeriesStatement.class);
-
   private final PartialPath pathPattern;
   private SchemaFilter schemaFilter;
-  // if is true, the result will be sorted according to the inserting frequency of
-  // the time series
+  // if is true, the result will be sorted according to the inserting frequency of the time series
   private final boolean orderByHeat;
   private WhereCondition timeCondition;
 
@@ -87,14 +85,21 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Use the enhanced LBAC-integrated permission check
-    return checkPermissionWithLbac(userName);
-  }
-
-  @Override
-  public PrivilegeType determinePrivilegeType() {
-    // Show time series operations require READ_SCHEMA privilege
-    return PrivilegeType.READ_SCHEMA;
+    if (hasTimeCondition()) {
+      try {
+        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+          this.authorityScope =
+              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                  AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA),
+                  AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA));
+        }
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return super.checkPermissionBeforeProcess(userName);
+    }
   }
 
   @Override

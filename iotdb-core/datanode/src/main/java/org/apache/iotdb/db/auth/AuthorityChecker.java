@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SecurityLabel;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -54,6 +56,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
@@ -130,10 +133,16 @@ public class AuthorityChecker {
   }
 
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
-    return checkAuthority(statement, session.getUsername());
+    long startTime = System.nanoTime();
+    try {
+      return checkAuthority(statement, session.getUsername());
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
+    }
   }
 
   public static TSStatus checkAuthority(Statement statement, String userName) {
+    long startTime = System.nanoTime();
     if (statement == null) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage("Statement cannot be null");
@@ -158,11 +167,18 @@ public class AuthorityChecker {
     PrivilegeType privilegeType = statement.determinePrivilegeType();
 
     // Perform LBAC permission check with correct privilege type
-    return checkPermissionWithLbac(userName, pathList, privilegeType);
+    try {
+      return checkPermissionWithLbac(userName, pathList, privilegeType);
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
+    }
   }
 
   public static TSStatus getGrantOptTSStatus(boolean hasGrantOpt, PrivilegeType privilegeType) {
-    return getTSStatus(hasGrantOpt, NO_GRANT_OPT_PERMISSION_PROMOTION + privilegeType);
+    return hasGrantOpt
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
+            .setMessage(NO_GRANT_OPT_PERMISSION_PROMOTION + privilegeType);
   }
 
   public static TSStatus getTSStatus(boolean hasPermission, String errMsg) {
@@ -172,54 +188,77 @@ public class AuthorityChecker {
   }
 
   public static TSStatus getTSStatus(boolean hasPermission, PrivilegeType neededPrivilege) {
-    return getTSStatus(hasPermission, NO_PERMISSION_PROMOTION + neededPrivilege);
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
   }
 
   public static TSStatus getGrantOptTSStatus(
       boolean hasPermission, PrivilegeType neededPrivilege, String database) {
-    return getTSStatus(
-        hasPermission, NO_GRANT_OPT_PERMISSION_PROMOTION + neededPrivilege + " ON " + database);
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
+            .setMessage(NO_GRANT_OPT_PERMISSION_PROMOTION + neededPrivilege + " ON DB:" + database);
   }
 
   public static TSStatus getGrantOptTSStatus(
       boolean hasPermission, PrivilegeType neededPrivilege, String database, String table) {
-    return getTSStatus(
-        hasPermission,
-        NO_GRANT_OPT_PERMISSION_PROMOTION + neededPrivilege + " ON " + database + "." + table);
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
+            .setMessage(
+                NO_GRANT_OPT_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + " ON "
+                    + database
+                    + "."
+                    + table);
   }
 
   public static TSStatus getTSStatus(
       boolean hasPermission, PrivilegeType neededPrivilege, String database) {
-    return getTSStatus(
-        hasPermission, NO_PERMISSION_PROMOTION + neededPrivilege + " ON " + database);
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " ON DB:" + database);
   }
 
   public static TSStatus getTSStatus(
       boolean hasPermission, PrivilegeType neededPrivilege, String database, String table) {
-    return getTSStatus(
-        hasPermission, NO_PERMISSION_PROMOTION + neededPrivilege + " ON " + database + "." + table);
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(
+                NO_PERMISSION_PROMOTION + neededPrivilege + " ON " + database + "." + table);
   }
 
   public static TSStatus getTSStatus(
       boolean hasPermission, PartialPath path, PrivilegeType neededPrivilege) {
-    return getTSStatus(hasPermission, NO_PERMISSION_PROMOTION + neededPrivilege + " ON " + path);
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " on " + path);
   }
 
   public static TSStatus getTSStatus(
       List<Integer> noPermissionIndexList,
       List<? extends PartialPath> pathList,
       PrivilegeType neededPrivilege) {
-    if (noPermissionIndexList.isEmpty()) {
+    if (noPermissionIndexList == null || noPermissionIndexList.isEmpty()) {
       return SUCCEED;
     }
-    StringBuilder errMsg = new StringBuilder(NO_PERMISSION_PROMOTION + neededPrivilege + " ON ");
-    for (int i = 0; i < noPermissionIndexList.size(); i++) {
-      if (i > 0) {
-        errMsg.append(", ");
-      }
-      errMsg.append(pathList.get(noPermissionIndexList.get(i)));
+
+    StringBuilder prompt = new StringBuilder(NO_PERMISSION_PROMOTION);
+    prompt.append(neededPrivilege);
+    prompt.append(" on [");
+    prompt.append(pathList.get(noPermissionIndexList.get(0)));
+    for (int i = 1; i < noPermissionIndexList.size(); i++) {
+      prompt.append(", ");
+      prompt.append(pathList.get(noPermissionIndexList.get(i)));
     }
-    return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(errMsg.toString());
+    prompt.append("]");
+    return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
   }
 
   public static boolean checkFullPathOrPatternPermission(
@@ -317,117 +356,81 @@ public class AuthorityChecker {
   }
 
   public static TSStatus checkSuperUserOrMaintain(String userName) {
-    if (SUPER_USER.equals(userName)) {
-      return SUCCEED;
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(ONLY_ADMIN_ALLOWED);
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
+        PrivilegeType.MAINTAIN);
   }
 
   public static void buildTSBlock(
       TAuthorizerResp authResp, SettableFuture<ConfigTaskResult> future) {
-    try {
-      DatasetHeader datasetHeader =
-          new DatasetHeader(LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS, false);
-      TsBlockBuilder builder = new TsBlockBuilder(datasetHeader.getRespDataTypes());
+    List<TSDataType> types = new ArrayList<>();
+    boolean listRoleUser =
+        authResp.tag.equals(ColumnHeaderConstant.ROLE)
+            || authResp.tag.equals(ColumnHeaderConstant.USER);
 
-      // Handle permission info
-      TPermissionInfoResp permissionInfo = authResp.getPermissionInfo();
-      if (permissionInfo != null) {
-        // Handle user info
-        TUserResp userInfo = permissionInfo.getUserInfo();
-        if (userInfo != null) {
-          appendEntryInfo("", userInfo, builder);
-        }
-
-        // Handle role info
-        Map<String, TRoleResp> roleInfo = permissionInfo.getRoleInfo();
-        if (roleInfo != null) {
-          for (Map.Entry<String, TRoleResp> entry : roleInfo.entrySet()) {
-            TRoleResp roleResp = entry.getValue();
-            appendEntryInfo(roleResp.getName(), roleResp, builder);
-          }
-        }
+    List<ColumnHeader> headerList = new ArrayList<>();
+    TsBlockBuilder builder;
+    if (listRoleUser) {
+      headerList.add(new ColumnHeader(authResp.getTag(), TSDataType.TEXT));
+      types.add(TSDataType.TEXT);
+      builder = new TsBlockBuilder(types);
+      for (String name : authResp.getMemberInfo()) {
+        builder.getTimeColumnBuilder().writeLong(0L);
+        builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
+        builder.declarePosition();
       }
-
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-    } catch (Exception e) {
-      LOGGER.error("Error building TSBlock", e);
-      future.set(new ConfigTaskResult(TSStatusCode.EXECUTE_STATEMENT_ERROR));
+    } else {
+      headerList = LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
+      types =
+          LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS.stream()
+              .map(ColumnHeader::getColumnType)
+              .collect(Collectors.toList());
+      builder = new TsBlockBuilder(types);
+      TUserResp user = authResp.getPermissionInfo().getUserInfo();
+      if (user != null) {
+        appendEntryInfo("", user.getPermissionInfo(), builder);
+      }
+      for (Map.Entry<String, TRoleResp> stringTRoleRespEntry :
+          authResp.getPermissionInfo().getRoleInfo().entrySet()) {
+        TRoleResp role = stringTRoleRespEntry.getValue();
+        appendEntryInfo(role.getName(), role, builder);
+      }
     }
+    DatasetHeader datasetHeader = new DatasetHeader(headerList, true);
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 
   private static void appendPriBuilder(
       String name, String scope, Set<Integer> priv, Set<Integer> grantOpt, TsBlockBuilder builder) {
-    builder.getTimeColumnBuilder().writeLong(0);
-    builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(1).writeBinary(new Binary(scope, TSFileConfig.STRING_CHARSET));
-    builder
-        .getColumnBuilder(2)
-        .writeBinary(
-            new Binary(
-                priv.stream().map(String::valueOf).collect(Collectors.joining(",")),
-                TSFileConfig.STRING_CHARSET));
-    builder
-        .getColumnBuilder(3)
-        .writeBinary(
-            new Binary(
-                grantOpt.stream().map(String::valueOf).collect(Collectors.joining(",")),
-                TSFileConfig.STRING_CHARSET));
-    builder.declarePosition();
+    for (int i : priv) {
+      builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeBinary(new Binary(scope, TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
+          .writeBinary(
+              new Binary(PrivilegeType.values()[i].toString(), TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(3).writeBoolean(grantOpt.contains(i));
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.declarePosition();
+    }
   }
 
   private static void appendEntryInfo(String name, TRoleResp resp, TsBlockBuilder builder) {
-    // System privilege
+    // System privilege.
     appendPriBuilder(name, "", resp.getSysPriSet(), resp.getSysPriSetGrantOpt(), builder);
-    // Any scope privilege
+    // Any scope privilege.
     appendPriBuilder(name, "*.*", resp.getAnyScopeSet(), resp.getAnyScopeGrantSet(), builder);
-    // Path privilege
+    // Path privilege.
     for (TPathPrivilege path : resp.getPrivilegeList()) {
       appendPriBuilder(name, path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
     }
-    // Database privilege
     for (Map.Entry<String, TDBPrivilege> entry : resp.getDbPrivilegeMap().entrySet()) {
       TDBPrivilege priv = entry.getValue();
       appendPriBuilder(
           name, entry.getKey() + ".*", priv.getPrivileges(), priv.getGrantOpt(), builder);
-      // Table privilege
-      for (Map.Entry<String, TTablePrivilege> tbEntry : priv.getTablePrivilegeMap().entrySet()) {
-        TTablePrivilege tb = tbEntry.getValue();
-        appendPriBuilder(
-            name,
-            entry.getKey() + "." + tbEntry.getKey(),
-            tb.getPrivileges(),
-            tb.getGrantOption(),
-            builder);
-      }
-    }
-  }
-
-  private static void appendEntryInfo(String name, TUserResp resp, TsBlockBuilder builder) {
-    // Handle user privileges similar to role privileges
-    // Get the nested TRoleResp from TUserResp
-    TRoleResp permissionInfo = resp.getPermissionInfo();
-
-    // System privilege
-    appendPriBuilder(
-        name, "", permissionInfo.getSysPriSet(), permissionInfo.getSysPriSetGrantOpt(), builder);
-    // Any scope privilege
-    appendPriBuilder(
-        name,
-        "*.*",
-        permissionInfo.getAnyScopeSet(),
-        permissionInfo.getAnyScopeGrantSet(),
-        builder);
-    // Path privilege
-    for (TPathPrivilege path : permissionInfo.getPrivilegeList()) {
-      appendPriBuilder(name, path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
-    }
-    // Database privilege
-    for (Map.Entry<String, TDBPrivilege> entry : permissionInfo.getDbPrivilegeMap().entrySet()) {
-      TDBPrivilege priv = entry.getValue();
-      appendPriBuilder(
-          name, entry.getKey() + ".*", priv.getPrivileges(), priv.getGrantOpt(), builder);
-      // Table privilege
       for (Map.Entry<String, TTablePrivilege> tbEntry : priv.getTablePrivilegeMap().entrySet()) {
         TTablePrivilege tb = tbEntry.getValue();
         appendPriBuilder(
@@ -451,6 +454,7 @@ public class AuthorityChecker {
    */
   public static TSStatus checkPermissionWithLbac(
       String userName, List<PartialPath> paths, PrivilegeType privilegeType) {
+
 
     // Step 1: Perform RBAC check first using the original path filtering logic
     List<Integer> noPermissionIndexList =
@@ -639,7 +643,6 @@ public class AuthorityChecker {
     try {
       LOGGER.debug("Getting database info for path: {}", databasePath);
 
-      // 从ConfigNode获取数据库信息
       try (ConfigNodeClient configNodeClient =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -657,9 +660,8 @@ public class AuthorityChecker {
               && resp.getDatabaseInfoMap().containsKey(databasePath)) {
             TDatabaseInfo databaseInfo = resp.getDatabaseInfoMap().get(databasePath);
 
-            // 使用LBAC方法获取安全标签信息
             try {
-              // 使用DatabaseLabelFetcher来获取安全标签
+
               SecurityLabel securityLabel =
                   DatabaseLabelFetcher.getDatabaseSecurityLabel(databasePath);
               if (securityLabel != null && !securityLabel.getLabels().isEmpty()) {
@@ -668,13 +670,11 @@ public class AuthorityChecker {
                     databasePath,
                     securityLabel.getLabels());
 
-                // 将安全标签信息添加到数据库信息中
                 Map<String, String> securityLabelMap = new HashMap<>();
                 for (Map.Entry<String, String> entry : securityLabel.getLabels().entrySet()) {
                   securityLabelMap.put(entry.getKey(), entry.getValue());
                 }
 
-                // 如果数据库信息中没有安全标签，则添加
                 if (databaseInfo.getSecurityLabel() == null) {
                   databaseInfo.setSecurityLabel(securityLabelMap);
                 }
@@ -691,17 +691,14 @@ public class AuthorityChecker {
         LOGGER.warn("Failed to get database info from ConfigNode for: {}", databasePath, e);
       }
 
-      // 如果从ConfigNode获取失败，尝试使用LBAC方法获取基本信息
       try {
         SecurityLabel securityLabel = DatabaseLabelFetcher.getDatabaseSecurityLabel(databasePath);
         if (securityLabel != null && !securityLabel.getLabels().isEmpty()) {
           LOGGER.debug("Using LBAC fallback for database info: {}", databasePath);
 
-          // 创建一个基本的数据库信息对象
           TDatabaseInfo fallbackInfo = new TDatabaseInfo();
           fallbackInfo.setName(databasePath);
 
-          // 设置安全标签
           Map<String, String> securityLabelMap = new HashMap<>();
           for (Map.Entry<String, String> entry : securityLabel.getLabels().entrySet()) {
             securityLabelMap.put(entry.getKey(), entry.getValue());

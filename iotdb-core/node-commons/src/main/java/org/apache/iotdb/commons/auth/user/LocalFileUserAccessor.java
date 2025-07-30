@@ -183,7 +183,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         // Version 2: format with LBAC fields
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-        // Load read and write label policy fields after password but before privileges
+
         user.setReadLabelPolicyExpression(
             IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setWriteLabelPolicyExpression(

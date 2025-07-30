@@ -34,14 +34,14 @@ import java.util.List;
 
 public class DropModelStatement extends Statement implements IConfigStatement {
 
-  private final String modelId;
+  private final String modelName;
 
-  public DropModelStatement(String modelId) {
-    this.modelId = modelId;
+  public DropModelStatement(String modelName) {
+    this.modelName = modelName;
   }
 
-  public String getModelId() {
-    return modelId;
+  public String getModelName() {
+    return modelName;
   }
 
   @Override

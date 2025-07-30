@@ -40,10 +40,9 @@ public class User extends Role {
 
   private boolean isOpenIdUser = false; // default NO openIdUser
 
-  // Label policy expression for READ scope
   private String readLabelPolicyExpression;
 
-  // Label policy expression for WRITE scope
+
   private String writeLabelPolicyExpression;
 
   public User() {
@@ -79,43 +78,29 @@ public class User extends Role {
     roleSet.add(roleName);
   }
 
+  public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
+    this.readLabelPolicyExpression = readLabelPolicyExpression;
+  }
+  public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
+    this.writeLabelPolicyExpression = writeLabelPolicyExpression;
+  }
+
+
   /** ------------ get func ----------------* */
 
-  /**
-   * Get READ label policy expression.
-   *
-   * @return READ label policy expression
-   */
+
   public String getReadLabelPolicyExpression() {
     return readLabelPolicyExpression;
   }
 
-  /**
-   * Set READ label policy expression.
-   *
-   * @param readLabelPolicyExpression READ policy expression string
-   */
-  public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
-    this.readLabelPolicyExpression = readLabelPolicyExpression;
-  }
 
-  /**
-   * Get WRITE label policy expression.
-   *
-   * @return WRITE label policy expression
-   */
+
+
   public String getWriteLabelPolicyExpression() {
     return writeLabelPolicyExpression;
   }
 
-  /**
-   * Set WRITE label policy expression.
-   *
-   * @param writeLabelPolicyExpression WRITE policy expression string
-   */
-  public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
-    this.writeLabelPolicyExpression = writeLabelPolicyExpression;
-  }
+
 
   public String getPassword() {
     return password;

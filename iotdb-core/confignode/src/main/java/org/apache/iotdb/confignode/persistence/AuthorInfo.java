@@ -221,22 +221,18 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
-          // Set read label policy if present
           if (readLabelPolicyExpression != null) {
             authorizer.setUserLabelPolicy(userName, readLabelPolicyExpression, "READ");
           }
-          // Set write label policy if present
           if (writeLabelPolicyExpression != null) {
             authorizer.setUserLabelPolicy(userName, writeLabelPolicyExpression, "WRITE");
           }
           break;
         case CreateUserWithRawPassword:
           authorizer.createUserWithRawPassword(userName, password);
-          // Set read label policy if present
           if (readLabelPolicyExpression != null) {
             authorizer.setUserLabelPolicy(userName, readLabelPolicyExpression, "READ");
           }
-          // Set write label policy if present
           if (writeLabelPolicyExpression != null) {
             authorizer.setUserLabelPolicy(userName, writeLabelPolicyExpression, "WRITE");
           }
@@ -617,19 +613,46 @@ public class AuthorInfo implements SnapshotProcessor {
   public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     boolean isTreePlan = plan instanceof AuthorTreePlan;
-    final User user = authorizer.getUser(plan.getUserName());
-    if (user == null) {
-      result.setStatus(
-          RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + plan.getUserName()));
-      return result;
+
+    LOGGER.info(
+        "Executing list user privileges for user: {}, isTreePlan: {}",
+        plan.getUserName(),
+        isTreePlan);
+
+    try {
+      final User user = authorizer.getUser(plan.getUserName());
+      if (user == null) {
+        String errorMsg = NO_USER_MSG + plan.getUserName();
+        LOGGER.warn("Failed to list privileges: {}", errorMsg);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, errorMsg));
+        return result;
+      }
+
+      LOGGER.info("User found, retrieving permission info for user: {}", plan.getUserName());
+      final TPermissionInfoResp resp =
+          getUserPermissionInfo(
+              plan.getUserName(), isTreePlan ? ModelType.TREE : ModelType.RELATIONAL);
+
+      // Check if permission info was retrieved successfully
+      if (resp == null) {
+        String errorMsg = "Failed to retrieve permission info for user: " + plan.getUserName();
+        LOGGER.error(errorMsg);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, errorMsg));
+        return result;
+      }
+
+      LOGGER.info("Successfully retrieved permission info for user: {}", plan.getUserName());
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      result.setTag(ColumnHeaderConstant.PRIVILEGES);
+      result.setPermissionInfoResp(resp);
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      String errorMsg =
+          "Error listing privileges for user: " + plan.getUserName() + ", error: " + e.getMessage();
+      LOGGER.error(errorMsg, e);
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, errorMsg));
     }
-    final TPermissionInfoResp resp =
-        getUserPermissionInfo(
-            plan.getUserName(), isTreePlan ? ModelType.TREE : ModelType.RELATIONAL);
-    resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setTag(ColumnHeaderConstant.PRIVILEGES);
-    result.setPermissionInfoResp(resp);
-    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+
     return result;
   }
 
@@ -738,24 +761,48 @@ public class AuthorInfo implements SnapshotProcessor {
    */
   public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
       throws AuthException {
+    LOGGER.info("Getting user permission info for user: {}, model type: {}", username, type);
+
     TPermissionInfoResp result = new TPermissionInfoResp();
-    User user = authorizer.getUser(username);
-    if (user == null) {
-      return AuthUtils.generateEmptyPermissionInfoResp();
-    }
-    TUserResp tUserResp = user.getUserInfo(type);
-    // Permission information for roles owned by users
-    if (!user.getRoleSet().isEmpty()) {
-      for (String roleName : user.getRoleSet()) {
-        Role role = authorizer.getRole(roleName);
-        TRoleResp roleResp = role.getRoleInfo(type);
-        result.putToRoleInfo(roleName, roleResp);
+    try {
+      User user = authorizer.getUser(username);
+      if (user == null) {
+        LOGGER.warn("User not found: {}", username);
+        return AuthUtils.generateEmptyPermissionInfoResp();
       }
-    } else {
-      result.setRoleInfo(new HashMap<>());
+
+      LOGGER.info("User found, retrieving user info for: {}", username);
+      TUserResp tUserResp = user.getUserInfo(type);
+
+      // Permission information for roles owned by users
+      if (!user.getRoleSet().isEmpty()) {
+        LOGGER.info(
+            "User {} has {} roles, retrieving role info", username, user.getRoleSet().size());
+        for (String roleName : user.getRoleSet()) {
+          Role role = authorizer.getRole(roleName);
+          if (role != null) {
+            TRoleResp roleResp = role.getRoleInfo(type);
+            result.putToRoleInfo(roleName, roleResp);
+          } else {
+            LOGGER.warn("Role {} assigned to user {} not found", roleName, username);
+          }
+        }
+      } else {
+        LOGGER.info("User {} has no roles", username);
+        result.setRoleInfo(new HashMap<>());
+      }
+
+      result.setUserInfo(tUserResp);
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      LOGGER.info("Successfully retrieved permission info for user: {}", username);
+    } catch (Exception e) {
+      String errorMsg =
+          "Error retrieving permission info for user: " + username + ", error: " + e.getMessage();
+      LOGGER.error(errorMsg, e);
+      result.setStatus(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()).setMessage(errorMsg));
     }
-    result.setUserInfo(tUserResp);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
     return result;
   }
 

@@ -519,7 +519,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         isTableModel = false;
       }
 
-      // Handle null security label (drop operation)
+
       Map<String, String> securityLabels = new java.util.HashMap<>();
       if (alterDatabaseSecurityLabelStatement.getSecurityLabel() != null) {
         securityLabels = alterDatabaseSecurityLabelStatement.getSecurityLabel().getLabels();
@@ -527,7 +527,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       TSStatus tsStatus;
       if (isTableModel) {
-        // Use table model API
+
         final TAlterDatabaseSecurityLabelReq req =
             new TAlterDatabaseSecurityLabelReq()
                 .setDatabasePath(
@@ -535,7 +535,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 .setSecurityLabel(securityLabels);
         tsStatus = configNodeClient.alterDatabaseSecurityLabel(req);
       } else {
-        // Use tree model API
+
         final TAlterDatabaseSecurityLabelReq req =
             new TAlterDatabaseSecurityLabelReq()
                 .setDatabasePath(

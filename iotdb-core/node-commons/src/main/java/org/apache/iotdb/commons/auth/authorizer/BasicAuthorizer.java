@@ -219,7 +219,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
 
-    // Check what policy we're updating
     boolean isReadOnly =
         labelPolicyScope.toUpperCase().contains("READ")
             && !labelPolicyScope.toUpperCase().contains("WRITE");
@@ -227,15 +226,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         !labelPolicyScope.toUpperCase().contains("READ")
             && labelPolicyScope.toUpperCase().contains("WRITE");
 
-    // Update only the specific policy field
+
     if (isReadOnly) {
-      // Update only READ policy
+
       user.setReadLabelPolicyExpression(labelPolicyExpression);
     } else if (isWriteOnly) {
-      // Update only WRITE policy
+
       user.setWriteLabelPolicyExpression(labelPolicyExpression);
     } else {
-      // Invalid scope - must be either READ or WRITE, not both
+
       throw new AuthException(
           TSStatusCode.EXECUTE_STATEMENT_ERROR,
           "Label policy scope must be either 'READ' or 'WRITE', not both");
@@ -252,7 +251,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
 
-    // Check what policies we're dropping
+
     boolean isReadWrite =
         labelPolicyScope.toUpperCase().contains("READ")
             && labelPolicyScope.toUpperCase().contains("WRITE");
@@ -263,19 +262,18 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         !labelPolicyScope.toUpperCase().contains("READ")
             && labelPolicyScope.toUpperCase().contains("WRITE");
 
-    // Drop the specific policy fields
+
     if (isReadWrite) {
-      // Drop both READ and WRITE policies
+
       user.setReadLabelPolicyExpression(null);
       user.setWriteLabelPolicyExpression(null);
     } else if (isReadOnly) {
-      // Drop only READ policy
+
       user.setReadLabelPolicyExpression(null);
     } else if (isWriteOnly) {
-      // Drop only WRITE policy
+
       user.setWriteLabelPolicyExpression(null);
     } else {
-      // Invalid scope - should not happen with proper validation
       throw new AuthException(
           TSStatusCode.EXECUTE_STATEMENT_ERROR,
           "Invalid label policy scope: "

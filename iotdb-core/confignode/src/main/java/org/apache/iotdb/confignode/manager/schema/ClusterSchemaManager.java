@@ -394,7 +394,7 @@ public class ClusterSchemaManager {
     // Clear cache when database is created/modified
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       clearSecurityLabelCache();
-      clearDatabaseNamesCache(); // 添加这行
+      clearDatabaseNamesCache();
     }
 
     return result;

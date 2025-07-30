@@ -56,10 +56,10 @@ public class PathUtils {
     } catch (PathParseException e) {
       throw new IllegalPathException(path);
     } catch (OutOfMemoryError e) {
-      // Catch memory overflow errors and provide clearer error messages
+
       throw new IllegalPathException("Path parsing caused memory overflow: " + path);
     } catch (Exception e) {
-      // Catch other exceptions like thread interruption
+
       throw new IllegalPathException("Path parsing failed: " + path + " - " + e.getMessage());
     }
   }
