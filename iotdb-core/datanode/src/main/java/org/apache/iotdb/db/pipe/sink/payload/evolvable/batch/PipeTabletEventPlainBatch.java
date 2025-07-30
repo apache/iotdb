@@ -25,12 +25,15 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReqV2;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -51,6 +54,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private final List<String> binaryDataBases = new ArrayList<>();
   private final List<String> insertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
+
+  private final Map<String, Map<String, Tablet>> tableModelTabletBuffer = new HashMap<>();
 
   // Used to rate limit when transferring data
   private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated = new HashMap<>();
@@ -112,37 +117,26 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   private int buildTabletInsertionBuffer(final TabletInsertionEvent event)
-      throws IOException, WALPipeException {
+      throws IOException {
     int databaseEstimateSize = 0;
     final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
-      // Read the bytebuffer from the wal file and transfer it directly without serializing or
-      // deserializing if possible
       final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
-      if (Objects.isNull(insertNode)) {
-        buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
-        binaryBuffers.add(buffer);
-        if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
-          databaseEstimateSize =
-              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
-          binaryDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
-        } else {
-          databaseEstimateSize = 4;
-          binaryDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
-        }
-      } else {
+      if (!(insertNode instanceof RelationalInsertTabletNode)) {
         buffer = insertNode.serializeToByteBuffer();
         insertNodeBuffers.add(buffer);
         if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
           databaseEstimateSize =
-              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
+                  pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
           insertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
           databaseEstimateSize = 4;
           insertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
         }
+      } else {
+
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
