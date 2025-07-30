@@ -16,55 +16,12 @@
 # under the License.
 #
 
-import inspect
-import logging
-import multiprocessing
-import os
-import random
-import sys
-import threading
-
-from ainode.core.constant import (
-    AINODE_LOG_DIR,
-    AINODE_LOG_FILE_LEVELS,
-    AINODE_LOG_FILE_NAMES,
-    STD_LEVEL,
-)
+from ainode.core.logger.base_logger import BaseLogger
 from ainode.core.util.decorator import singleton
 
 
-class LoggerFilter(logging.Filter):
-    def filter(self, record):
-        record.msg = f"{self.custom_log_info()}: {record.msg}"
-        return True
-
-    @staticmethod
-    def custom_log_info():
-        frame = inspect.currentframe()
-        stack_trace = inspect.getouterframes(frame)
-
-        pid = os.getpid()
-        process_name = multiprocessing.current_process().name
-
-        stack_info = ""
-        frame_info = stack_trace[7]
-        file_name = frame_info.filename
-        # if file_name is not in current working directory, find the first "iotdb" in the path
-        for l in range(len(file_name)):
-            i = len(file_name) - l - 1
-            if file_name[i:].startswith("iotdb/") or file_name[i:].startswith(
-                "iotdb\\"
-            ):
-                file_name = file_name[i:]
-                break
-
-        stack_info += f"{file_name}:{frame_info.lineno}-{frame_info.function}"
-
-        return f"[{pid}:{process_name}] {stack_info}"
-
-
 @singleton
-class Logger:
+class Logger(BaseLogger):
     """Logger is a singleton, it will be initialized when AINodeDescriptor is inited for the first time.
         You can just use Logger() to get it anywhere.
 
@@ -78,64 +35,5 @@ class Logger:
     _lock: process lock for logger. This is just a precaution, we currently do not have multiprocessing
     """
 
-    def __init__(self, log_dir=AINODE_LOG_DIR):
-
-        self.logger_format = logging.Formatter(
-            fmt="%(asctime)s %(levelname)s %(" "message)s", datefmt="%Y-%m-%d %H:%M:%S"
-        )
-
-        self.logger = logging.getLogger(str(random.random()))
-        self.logger.handlers.clear()
-        self.logger.setLevel(logging.DEBUG)
-        self.console_handler = logging.StreamHandler(sys.stdout)
-        self.console_handler.setLevel(STD_LEVEL)
-        self.console_handler.setFormatter(self.logger_format)
-
-        self.logger.addHandler(self.console_handler)
-
-        if log_dir is not None:
-            file_names = AINODE_LOG_FILE_NAMES
-            file_levels = AINODE_LOG_FILE_LEVELS
-            if not os.path.exists(log_dir):
-                os.makedirs(log_dir)
-            for file_name in file_names:
-                log_path = log_dir + "/" + file_name
-                if not os.path.exists(log_path):
-                    f = open(log_path, mode="w", encoding="utf-8")
-                    f.close()
-            self.file_handlers = []
-            for l in range(len(file_names)):
-                self.file_handlers.append(
-                    logging.FileHandler(log_dir + "/" + file_names[l], mode="a")
-                )
-                self.file_handlers[l].setLevel(file_levels[l])
-                self.file_handlers[l].setFormatter(self.logger_format)
-
-            for file_handler in self.file_handlers:
-                self.logger.addHandler(file_handler)
-        else:
-            log_dir = "None"
-
-        self.logger.addFilter(LoggerFilter())
-        self._lock = threading.Lock()
-        self.info(f"Logger init successfully. Log will be written to {log_dir}")
-
-    def debug(self, *args) -> None:
-        self._lock.acquire()
-        self.logger.debug(" ".join(map(str, args)))
-        self._lock.release()
-
-    def info(self, *args) -> None:
-        self._lock.acquire()
-        self.logger.info(" ".join(map(str, args)))
-        self._lock.release()
-
-    def warning(self, *args) -> None:
-        self._lock.acquire()
-        self.logger.warning(" ".join(map(str, args)))
-        self._lock.release()
-
-    def error(self, *args) -> None:
-        self._lock.acquire()
-        self.logger.error(" ".join(map(str, args)))
-        self._lock.release()
+    def __init__(self, log_file_name_prefix: str = AINODE_LOG_FILE_NAME_PREFIX):
+        super().__init__(log_file_name_prefix=log_file_name_prefix)

@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -72,6 +73,28 @@ class InferenceStrategy(ABC):
 # we only get valueList currently.
 class TimerXLStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **_):
+        if torch.cuda.is_available():
+            device = next(self.model.parameters()).device
+        else:
+            device = torch.device("cpu")
+        # Get possible rank
+        if torch.distributed.is_initialized():
+            global_rank = torch.distributed.get_rank()
+            world_size  = torch.distributed.get_world_size()
+        else:
+            # Not distribution, default rank=0, world_size=1
+            global_rank, world_size = 0, 1
+
+        if device.type == "cuda":
+            gpu_name = torch.cuda.get_device_name(device.index)
+            logger.info(
+                f"[rank {global_rank}/{world_size}] "
+                f"Running on GPU {device.index} ({gpu_name})"
+            )
+        else:
+            logger.info(f"[rank {global_rank}/{world_size}] Running on CPU")
+
+        logger.info("Start inference")
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
@@ -79,6 +102,7 @@ class TimerXLStrategy(InferenceStrategy):
         # TODO: unify model inference input
         output = self.model.generate(seqs, max_new_tokens=predict_length, revin=True)
         df = pd.DataFrame(output[0])
+        logger.info("Complete inference")
         return convert_to_binary(df)
 
 
@@ -139,7 +163,7 @@ class InferenceManager:
     # DEFAULT_DEVICE = "cpu"
     DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     DEFAULT_POOL_SIZE = (
-        0  # TODO: Remove these parameter by sampling model inference consumption
+        1  # TODO: Remove these parameter by sampling model inference consumption
     )
     WAITING_INTERVAL_IN_MS = (
         AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()

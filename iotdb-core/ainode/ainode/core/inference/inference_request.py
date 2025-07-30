@@ -63,11 +63,15 @@ class InferenceRequest:
             self.batch_size, max_new_tokens, device="cpu"
         )  # shape: [self.batch_size, max_new_steps]
 
+        self.logger = Logger()
+
     def mark_running(self):
         self.state = InferenceRequestState.RUNNING
+        logger.info("mark_running")
 
     def mark_finished(self):
         self.state = InferenceRequestState.FINISHED
+        logger.info("mark_finished")
 
     def is_finished(self) -> bool:
         return (

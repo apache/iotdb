@@ -21,7 +21,7 @@ import sys
 
 import torch.multiprocessing as mp
 
-from ainode.core.ainode import AINode
+from ainode.core.ai_node import AINode
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import TSStatusCode
 from ainode.core.exception import MissingConfigError
