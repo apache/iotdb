@@ -93,6 +93,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     binaryDataBases.clear();
     insertNodeDataBases.clear();
     tabletDataBases.clear();
+    tableModelTabletMap.clear();
 
     pipe2BytesAccumulated.clear();
   }
@@ -127,6 +128,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       }
     }
 
+    tableModelTabletMap.clear();
+
     return PipeTransferTabletBatchReqV2.toTPipeTransferReq(
         binaryBuffers,
         insertNodeBuffers,
@@ -146,7 +149,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private long buildTabletInsertionBuffer(final TabletInsertionEvent event) throws IOException {
     long estimateSize;
-    ByteBuffer buffer = null;
+    final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
