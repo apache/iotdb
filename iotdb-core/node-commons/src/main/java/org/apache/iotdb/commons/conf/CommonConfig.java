@@ -67,7 +67,7 @@ public class CommonConfig {
 
   private String adminName = "root";
 
-  private String adminPassword = "IoTDB@2011";
+  private String adminPassword = "root";
 
   private String oldUserFolder =
       IoTDBConstant.DN_DEFAULT_DATA_DIR
