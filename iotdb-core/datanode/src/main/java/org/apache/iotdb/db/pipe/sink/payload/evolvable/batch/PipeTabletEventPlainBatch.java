@@ -56,7 +56,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private final List<String> insertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
 
-  private final Map<String, Map<String, Pair<Long, List<Tablet>>>> tableModelTabletMap =
+  private final Map<String, Map<String, Pair<Integer, List<Tablet>>>> tableModelTabletMap =
       new HashMap<>();
 
   // Used to rate limit when transferring data
@@ -100,6 +100,25 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   public PipeTransferTabletBatchReqV2 toTPipeTransferReq() throws IOException {
+    for (final Map.Entry<String, Map<String, Pair<Integer, List<Tablet>>>> insertTablets :
+        tableModelTabletMap.entrySet()) {
+      final String databaseName = insertTablets.getKey();
+      for (final Map.Entry<String, Pair<Integer, List<Tablet>>> tabletEntry :
+          insertTablets.getValue().entrySet()) {
+        Tablet batchTablet = null;
+        for (final Tablet tablet : tabletEntry.getValue().getRight()) {
+          if (Objects.isNull(batchTablet)) {
+            batchTablet = tablet;
+          } else {
+            batchTablet.append(tablet, tabletEntry.getValue().getLeft());
+          }
+        }
+        assert batchTablet != null;
+        tabletBuffers.add(batchTablet.serialize());
+        tabletDataBases.add(databaseName);
+      }
+    }
+
     return PipeTransferTabletBatchReqV2.toTPipeTransferReq(
         binaryBuffers,
         insertNodeBuffers,
@@ -172,7 +191,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private long constructTabletBatch(final Tablet tablet, final String databaseName) {
     final AtomicLong size = new AtomicLong(0);
-    final Pair<Long, List<Tablet>> currentBatch =
+    final Pair<Integer, List<Tablet>> currentBatch =
         tableModelTabletMap
             .computeIfAbsent(
                 databaseName,
@@ -180,7 +199,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
                   size.addAndGet(RamUsageEstimator.sizeOf(databaseName));
                   return new HashMap<>();
                 })
-            .computeIfAbsent(tablet.getTableName(), k -> new Pair<>(0L, new ArrayList<>()));
+            .computeIfAbsent(tablet.getTableName(), k -> new Pair<>(0, new ArrayList<>()));
     currentBatch.setLeft(currentBatch.getLeft() + tablet.getRowSize());
     currentBatch.getRight().add(tablet);
     return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
