@@ -21,11 +21,11 @@ package org.apache.iotdb.commons.pipe.agent.task.meta;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -50,7 +50,7 @@ public class PipeTaskMeta {
    * Stores the exceptions encountered during run time of each pipe task.
    *
    * <p>The exceptions are instances of {@link PipeRuntimeCriticalException}, {@link
-   * PipeRuntimeConnectorCriticalException} and {@link PipeRuntimeNonCriticalException}.
+   * PipeRuntimeSinkCriticalException} and {@link PipeRuntimeNonCriticalException}.
    *
    * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
    * sharing the same connector, and nothing.

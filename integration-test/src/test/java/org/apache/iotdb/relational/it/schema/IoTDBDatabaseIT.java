@@ -569,7 +569,7 @@ public class IoTDBDatabaseIT {
               "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
           "plugin_name,plugin_type,class_name,plugin_jar,",
           Collections.singleton(
-              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,"));
+              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
@@ -668,7 +668,7 @@ public class IoTDBDatabaseIT {
               "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
           "plugin_name,plugin_type,class_name,plugin_jar,",
           Collections.singleton(
-              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,"));
+              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,"));
 
       statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00')");
       TestUtils.assertResultSetEqual(

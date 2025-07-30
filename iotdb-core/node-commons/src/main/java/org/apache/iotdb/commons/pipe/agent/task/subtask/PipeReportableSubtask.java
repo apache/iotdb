@@ -20,9 +20,9 @@
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
 import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.slf4j.Logger;
@@ -77,8 +77,8 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
   private void onEnrichedEventFailure(final Throwable throwable) {
     final int maxRetryTimes =
-        throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
-            ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
+        throwable instanceof PipeRuntimeSinkRetryTimesConfigurableException
+            ? ((PipeRuntimeSinkRetryTimesConfigurableException) throwable).getRetryTimes()
             : MAX_RETRY_TIMES;
 
     if (retryCount.get() == 0) {

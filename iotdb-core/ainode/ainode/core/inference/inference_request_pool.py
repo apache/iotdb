@@ -16,6 +16,7 @@
 # under the License.
 #
 
+import gc
 import random
 import threading
 import time
@@ -27,6 +28,7 @@ from transformers import PretrainedConfig
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.inference_request import InferenceRequest
+from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 
@@ -61,11 +63,13 @@ class InferenceRequestPool(mp.Process):
         self._model_manager = None
         self.device = None
 
-        # TODO: A scheduler is necessary for better handling following queues
         self._threads = []
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
         self._running_queue = mp.Queue()  # Requests that are currently being processed
         self._finished_queue = result_queue  # Requests that are finished
+        self._scheduler = BasicScheduler(
+            self._waiting_queue, self._running_queue, self._finished_queue, self.pool_id
+        )
         self._stop_event = mp.Event()
 
         # Fix inference seed
@@ -73,21 +77,45 @@ class InferenceRequestPool(mp.Process):
         torch.manual_seed(self.FIX_SEED)
         np.random.seed(self.FIX_SEED)
 
-    def memory_is_available(self, request):
-        # need test with several rounds of dummy data
-        pass
+    def _warm_up_and_estimate_memory(self):
+        # TODO: Test per token memory usage, add support for cpu in the future
+        torch.cuda.empty_cache()
+        gc.collect()
+        dummy_input = torch.zeros(
+            (1, self.config.input_token_len), dtype=torch.float32
+        ).to(self.device)
+
+        # force cuda synchronization to avoid any asynchronous memory allocation issues
+        torch.cuda.reset_peak_memory_stats(self.device)
+        torch.cuda.synchronize(self.device)
+        memory_before_warmup = torch.cuda.memory_allocated(self.device)
+        logger.info(
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Before warm-up, peak memory usage: {memory_before_warmup:.2f} bytes"
+        )
+
+        # warm-up
+        with torch.no_grad():
+            self.model.generate(dummy_input, max_new_tokens=1)
+        torch.cuda.synchronize(self.device)
+        peak_memory_1_token = torch.cuda.max_memory_allocated(self.device)
+        logger.info(
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Baseline memory usage for 1 token: {peak_memory_1_token:.2f} bytes"
+        )
+        logger.info(
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Differentiation : {peak_memory_1_token-memory_before_warmup:.2f} bytes"
+        )
 
     def _activate_requests(self):
-        if self._waiting_queue.empty():
-            return
-        request: InferenceRequest = self._waiting_queue.get()
-        # TODO: Check memory size before activating requests
-        request.inputs = request.inference_pipeline.preprocess_inputs(request.inputs)
-        request.mark_running()
-        logger.debug(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
-        )
-        self._running_queue.put(request)
+        requests = self._scheduler.schedule_activate()
+        for request in requests:
+            request.inputs = request.inference_pipeline.preprocess_inputs(
+                request.inputs
+            )
+            request.mark_running()
+            self._running_queue.put(request)
+            logger.debug(
+                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
+            )
 
     def _requests_activate_loop(self):
         while not self._stop_event.is_set():
@@ -95,36 +123,32 @@ class InferenceRequestPool(mp.Process):
             self._activate_requests()
 
     def _step(self):
-        if self._running_queue.empty():
-            return
+        requests = self._scheduler.schedule_step()
         # TODO: We need a batcher to accelerate the concurrent inference
-        # TODO: Check memory size before executing requests
-        request: InferenceRequest = self._running_queue.get()
-        inputs = request.inputs.to(self.device)
-        output = self.model.generate(
-            inputs,
-            max_new_tokens=request.max_new_tokens,
-            num_samples=10,
-            revin=True,
-        )
-        request.output_tensor = request.output_tensor.to(
-            self.device
-        )  # Ensure output tensor is on the same device
-        request.write_step_output(output[0].mean(dim=0))
-        request.inference_pipeline.post_decode()
-        if request.is_finished():
-            request.inference_pipeline.post_inference()
-            logger.debug(
-                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
+        for request in requests:
+            request.inputs = request.inputs.to(self.device)
+            output = self.model.generate(
+                request.inputs,
+                max_new_tokens=request.max_new_tokens,
+                num_samples=10,
+                revin=True,
             )
-            # ensure the output tensor is on CPU before sending to result queue
-            request.output_tensor = request.output_tensor.cpu()
-            self._finished_queue.put(request)
-        else:
-            logger.debug(
-                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
-            )
-            self._waiting_queue.put(request)
+            request.output_tensor = request.output_tensor.to(self.device)
+            request.write_step_output(output[0].mean(dim=0))
+            request.inference_pipeline.post_decode()
+            if request.is_finished():
+                request.inference_pipeline.post_inference()
+                logger.debug(
+                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
+                )
+                # ensure the output tensor is on CPU before sending to result queue
+                request.output_tensor = request.output_tensor.cpu()
+                self._finished_queue.put(request)
+            else:
+                logger.debug(
+                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
+                )
+                self._waiting_queue.put(request)
 
     def _requests_execute_loop(self):
         while not self._stop_event.is_set():
@@ -134,7 +158,10 @@ class InferenceRequestPool(mp.Process):
     def run(self):
         self._model_manager = ModelManager()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self._scheduler.device = self.device
         self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
+
+        # self._warm_up_and_estimate_memory()
 
         activate_daemon = threading.Thread(
             target=self._requests_activate_loop, daemon=True
@@ -151,3 +178,15 @@ class InferenceRequestPool(mp.Process):
 
     def stop(self):
         self._stop_event.set()
+        logger.info(
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Stopping and releasing resources."
+        )
+        try:
+            del self.model
+            if "cuda" in str(self.device):
+                torch.cuda.empty_cache()
+            gc.collect()
+        except Exception as e:
+            logger.warning(
+                f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Failed to clean up: {e}"
+            )

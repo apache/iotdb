@@ -297,6 +297,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeGlobalTimeFilter(analysis, queryStatement);
 
       if (queryStatement.isLastQuery()) {
+        context.generateGlobalTimeFilter(analysis);
         return analyzeLastQuery(queryStatement, analysis, schemaTree, context);
       }
 

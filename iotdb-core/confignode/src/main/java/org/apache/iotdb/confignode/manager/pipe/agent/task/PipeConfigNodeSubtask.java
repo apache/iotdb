@@ -23,17 +23,17 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractConnectorSubtask;
+import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
-import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionConnectorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionSinkMetrics;
+import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -48,7 +48,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeInfo.CONFIG_REGION_ID;
 
-public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
+public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
@@ -79,7 +79,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     initProcessor(processorAttributes);
     initConnector(connectorAttributes);
 
-    PipeConfigRegionConnectorMetrics.getInstance().register(this);
+    PipeConfigRegionSinkMetrics.getInstance().register(this);
     PipeEventCommitManager.getInstance()
         .register(pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeName + "_" + creationTime);
   }
@@ -144,8 +144,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       // 3. Customize connector
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskConnectorRuntimeEnvironment(
-                  pipeName, creationTime, CONFIG_REGION_ID.getId()));
+              new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
       outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
 
       // 4. Handshake
@@ -164,7 +163,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   }
 
   /**
-   * Try to consume an {@link Event} by the {@link IoTDBConfigRegionExtractor}.
+   * Try to consume an {@link Event} by the {@link IoTDBConfigRegionSource}.
    *
    * @return {@code true} if the {@link Event} is consumed successfully, {@code false} if no more
    *     {@link Event} can be consumed
@@ -187,7 +186,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
       if (!(event instanceof ProgressReportEvent)) {
         outputPipeConnector.transfer(event);
-        PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
+        PipeConfigRegionSinkMetrics.getInstance().markConfigEvent(taskID);
       }
       decreaseReferenceCountAndReleaseLastEvent(event, true);
 
@@ -224,7 +223,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
     PipeEventCommitManager.getInstance()
         .deregister(pipeName, creationTime, CONFIG_REGION_ID.getId());
-    PipeConfigRegionConnectorMetrics.getInstance().deregister(taskID);
+    PipeConfigRegionSinkMetrics.getInstance().deregister(taskID);
 
     try {
       extractor.close();
