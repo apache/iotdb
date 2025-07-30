@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -50,6 +51,7 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -59,6 +61,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
 
@@ -139,6 +142,22 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public void setTimes(long[] times) {
     this.times = times;
+  }
+
+  public Tablet convertToTablet() {
+    final Tablet tablet =
+        new Tablet(
+            getTableName(),
+            Arrays.asList(measurements),
+            Arrays.asList(dataTypes),
+            Arrays.stream(columnCategories)
+                .map(TsTableColumnCategory::toTsFileColumnType)
+                .collect(Collectors.toList()),
+            rowCount);
+    tablet.setBitMaps(nullBitMaps);
+    tablet.setTimestamps(times);
+    tablet.setValues(columns);
+    return tablet;
   }
 
   @Override

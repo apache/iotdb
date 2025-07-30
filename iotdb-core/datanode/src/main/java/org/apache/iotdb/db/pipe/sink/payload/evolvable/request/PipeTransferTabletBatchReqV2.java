@@ -43,6 +43,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
 public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
@@ -66,8 +69,8 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
     final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
         new HashMap<>();
-    final Map<String, List<InsertTabletStatement>> tableModelDatabaseInsertTabletStatementMap =
-        new HashMap<>();
+    final Map<String, Map<String, Tablet>> tableModelDBTable2TabletMap = new HashMap<>();
+    final AtomicReference<Exception> lastExcept = new AtomicReference<>();
 
     for (final PipeTransferTabletBinaryReqV2 binaryReq : binaryReqs) {
       final InsertBaseStatement statement = binaryReq.constructStatement();
@@ -80,9 +83,21 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .add((InsertRowStatement) statement);
         } else if (statement instanceof InsertTabletStatement) {
-          tableModelDatabaseInsertTabletStatementMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
-              .add((InsertTabletStatement) statement);
+          tableModelDBTable2TabletMap
+              .computeIfAbsent(statement.getDatabaseName().get(), k -> new HashMap<>())
+              .compute(
+                  statement.getTableName(),
+                  (k, v) -> {
+                    final Tablet tablet = ((InsertTabletStatement) statement).convertToTablet();
+                    if (Objects.isNull(v)) {
+                      return tablet;
+                    } else {
+                      if (!v.append(tablet)) {
+                        lastExcept.set(null);
+                      }
+                      return v;
+                    }
+                  });
         } else if (statement instanceof InsertRowsStatement) {
           tableModelDatabaseInsertRowStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
@@ -121,9 +136,21 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .add((InsertRowStatement) statement);
         } else if (statement instanceof InsertTabletStatement) {
-          tableModelDatabaseInsertTabletStatementMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
-              .add((InsertTabletStatement) statement);
+          tableModelDBTable2TabletMap
+              .computeIfAbsent(statement.getDatabaseName().get(), k -> new HashMap<>())
+              .compute(
+                  statement.getTableName(),
+                  (k, v) -> {
+                    final Tablet tablet = ((InsertTabletStatement) statement).convertToTablet();
+                    if (Objects.isNull(v)) {
+                      return tablet;
+                    } else {
+                      if (!v.append(tablet)) {
+                        lastExcept.set(null);
+                      }
+                      return v;
+                    }
+                  });
         } else if (statement instanceof InsertRowsStatement) {
           tableModelDatabaseInsertRowStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
@@ -152,17 +179,28 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     }
 
     for (final PipeTransferTabletRawReqV2 tabletReq : tabletReqs) {
-      final InsertTabletStatement statement = tabletReq.constructStatement();
-      if (statement.isEmpty()) {
+      final Tablet tablet = tabletReq.tablet;
+      if (isTabletEmpty(tablet)) {
         continue;
       }
-      if (statement.isWriteToTable()) {
-        tableModelDatabaseInsertTabletStatementMap
-            .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
-            .add(statement);
+      if (Objects.nonNull(tabletReq.dataBaseName)) {
+        tableModelDBTable2TabletMap
+            .computeIfAbsent(tabletReq.dataBaseName, k -> new HashMap<>())
+            .compute(
+                tablet.getTableName(),
+                (k, v) -> {
+                  if (Objects.isNull(v)) {
+                    return tablet;
+                  } else {
+                    if (!v.append(tablet)) {
+                      lastExcept.set(null);
+                    }
+                    return v;
+                  }
+                });
         continue;
       }
-      insertTabletStatementList.add(statement);
+      insertTabletStatementList.add(tabletReq.constructStatement());
     }
 
     insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
@@ -183,13 +221,14 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       statements.add(statement);
     }
 
-    for (final Map.Entry<String, List<InsertTabletStatement>> insertTablets :
-        tableModelDatabaseInsertTabletStatementMap.entrySet()) {
-      final InsertMultiTabletsStatement statement = new InsertMultiTabletsStatement();
-      statement.setWriteToTable(true);
-      statement.setDatabaseName(insertTablets.getKey());
-      statement.setInsertTabletStatementList(insertTablets.getValue());
-      statements.add(statement);
+    for (final Map.Entry<String, Map<String, Tablet>> insertTablets :
+        tableModelDBTable2TabletMap.entrySet()) {
+      final String databaseName = insertTablets.getKey();
+      for (final Map.Entry<String, Tablet> tablet : insertTablets.getValue().entrySet()) {
+        // The tablets in table model are all aligned
+        statements.add(
+            PipeTransferTabletRawReqV2.constructStatement(tablet.getValue(), databaseName, true));
+      }
     }
     return statements;
   }
