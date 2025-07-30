@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
@@ -461,6 +462,10 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropDatabaseSecurityLabelTableModel(String databaseName);
 
   SettableFuture<ConfigTaskResult> showDatabaseSecurityLabelTableModel(String databaseName);
+
+  // =============================== Tree Model LBAC =========================================
+  SettableFuture<ConfigTaskResult> showDatabaseSecurityLabel(
+      ShowDatabaseSecurityLabelStatement statement);
 
   // =============================== AI =========================================
   SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);

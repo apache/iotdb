@@ -1060,7 +1060,7 @@ public class IoTDBConfig {
   private boolean enableAuditLogForNativeInsertApi = true;
 
   /** whether to enable LBAC (Label-Based Access Control) */
-  private boolean enableLbac = false;
+  private boolean enableLbac = true;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();

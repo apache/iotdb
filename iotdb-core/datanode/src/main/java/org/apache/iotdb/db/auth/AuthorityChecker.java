@@ -22,29 +22,23 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.SecurityLabel;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
-import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -98,7 +92,7 @@ public class AuthorityChecker {
       PerformanceOverviewMetrics.getInstance();
 
   private AuthorityChecker() {
-    // Utility class, prevent instantiation
+    // empty constructor
   }
 
   public static IAuthorityFetcher getAuthorityFetcher() {
@@ -106,6 +100,7 @@ public class AuthorityChecker {
   }
 
   public static boolean invalidateCache(String username, String roleName) {
+    PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
@@ -132,10 +127,11 @@ public class AuthorityChecker {
     return authorityFetcher.get().operatePermission(authorStatement);
   }
 
+  /** Check whether specific Session has the authorization to given plan. */
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
     try {
-      return checkAuthority(statement, session.getUsername());
+      return statement.checkPermissionBeforeProcess(session.getUsername());
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
@@ -143,32 +139,8 @@ public class AuthorityChecker {
 
   public static TSStatus checkAuthority(Statement statement, String userName) {
     long startTime = System.nanoTime();
-    if (statement == null) {
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage("Statement cannot be null");
-    }
-
-    // Check if this is a database-related operation that should be subject to LBAC
-    if (!LbacOperationClassifier.isLbacRelevantOperation(statement)) {
-      // Not a database-related operation, skip LBAC check
-      return SUCCEED;
-    }
-
-    // Get paths from statement for LBAC check
-    List<? extends PartialPath> paths = statement.getPaths();
-    if (paths == null || paths.isEmpty()) {
-      return SUCCEED;
-    }
-
-    // Convert to list for LBAC check
-    List<PartialPath> pathList = new ArrayList<>(paths);
-
-    // Determine privilege type based on statement type
-    PrivilegeType privilegeType = statement.determinePrivilegeType();
-
-    // Perform LBAC permission check with correct privilege type
     try {
-      return checkPermissionWithLbac(userName, pathList, privilegeType);
+      return statement.checkPermissionBeforeProcess(userName);
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
@@ -333,8 +305,18 @@ public class AuthorityChecker {
   }
 
   public static boolean checkDBVisible(String userName, String database) {
-    return authorityFetcher.get().checkDBVisible(userName, database).getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    TSStatus status = authorityFetcher.get().checkDBVisible(userName, database);
+    boolean result = status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    if (!result) {
+      LOGGER.warn(
+          "RBAC check failed for user {} on database {}: {}",
+          userName,
+          database,
+          status.getMessage());
+    } else {
+      LOGGER.debug("RBAC check passed for user {} on database {}", userName, database);
+    }
+    return result;
   }
 
   public static boolean checkTableVisible(String userName, String database, String table) {
@@ -444,89 +426,13 @@ public class AuthorityChecker {
   }
 
   /**
-   * Enhanced permission check with LBAC integration. This method performs RBAC check first, then
-   * LBAC check if RBAC passes.
-   *
-   * @param userName The username requesting access
-   * @param paths The paths involved in the operation
-   * @param privilegeType The privilege type (READ_DATA, WRITE_DATA, etc.)
-   * @return TSStatus indicating success or failure
-   */
-  public static TSStatus checkPermissionWithLbac(
-      String userName, List<PartialPath> paths, PrivilegeType privilegeType) {
-
-
-    // Step 1: Perform RBAC check first using the original path filtering logic
-    List<Integer> noPermissionIndexList =
-        checkFullPathOrPatternListPermission(userName, paths, privilegeType);
-
-    if (!noPermissionIndexList.isEmpty()) {
-      // RBAC check failed, return error with the failed paths
-      return getTSStatus(noPermissionIndexList, paths, privilegeType);
-    }
-
-    // Step 2: Check if LBAC is enabled
-    if (!LbacPermissionChecker.isLbacEnabled()) {
-      // LBAC is disabled, only perform RBAC check (which already passed)
-      LOGGER.debug("LBAC is disabled, skipping LBAC check for user: {}", userName);
-      return SUCCEED;
-    }
-
-    // Step 3: If LBAC is enabled, perform LBAC check
-    try {
-      // Convert privilege type to LBAC operation type
-      LbacOperationClassifier.OperationType lbacOperationType =
-          convertPrivilegeTypeToLbacOperation(privilegeType);
-      LOGGER.warn("=== AUTHORITY CHECKER DEBUG ===");
-      LOGGER.warn("PrivilegeType: {}", privilegeType);
-      LOGGER.warn("Converted LBAC OperationType: {}", lbacOperationType);
-      if (lbacOperationType == null) {
-        // Not a LBAC-relevant operation, allow access
-        LOGGER.warn("Not a LBAC-relevant operation, allowing access");
-        return SUCCEED;
-      }
-
-      // Check LBAC permission for each path
-      for (PartialPath path : paths) {
-        String devicePath = path.getFullPath();
-        String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(devicePath);
-
-        if (databasePath != null) {
-          // Check LBAC permission for this database
-          TSStatus lbacStatus =
-              checkDatabaseLbacPermission(userName, databasePath, lbacOperationType);
-          if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            return lbacStatus;
-          }
-        } else {
-          // If database path is null (e.g., path contains wildcards),
-          // we need to check all matching databases
-          List<String> matchingDatabases = findMatchingDatabases(devicePath);
-          for (String database : matchingDatabases) {
-            TSStatus lbacStatus =
-                checkDatabaseLbacPermission(userName, database, lbacOperationType);
-            if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              return lbacStatus;
-            }
-          }
-        }
-      }
-
-      return SUCCEED;
-    } catch (Exception e) {
-      LOGGER.error("Error during LBAC permission check for user: {}", userName, e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage("Error during LBAC permission check: " + e.getMessage());
-    }
-  }
-
-  /**
-   * Convert RBAC privilege type to LBAC operation type.
+   * Convert RBAC privilege type to LBAC operation type. RBAC write_data + write_schema → LBAC write
+   * RBAC read_data + read_schema → LBAC read
    *
    * @param privilegeType The RBAC privilege type
-   * @return The corresponding LBAC operation type
+   * @return The corresponding LBAC operation type, or null for non-database operations
    */
-  private static LbacOperationClassifier.OperationType convertPrivilegeTypeToLbacOperation(
+  public static LbacOperationClassifier.OperationType convertPrivilegeTypeToLbacOperation(
       PrivilegeType privilegeType) {
     switch (privilegeType) {
       case READ_DATA:
@@ -536,259 +442,114 @@ public class AuthorityChecker {
       case WRITE_SCHEMA:
         return LbacOperationClassifier.OperationType.WRITE;
       default:
-        return null; // Not a LBAC-relevant operation
+        // For non-database operations, return null
+        return null;
     }
   }
 
   /**
-   * Check database-level LBAC permission for a specific user and operation.
+   * Unified RBAC+LBAC filtering for databases with proper operation type conversion. This method
+   * provides a unified interface for filtering database maps based on both RBAC and LBAC
+   * permissions, automatically handling the LBAC enable/disable switch.
    *
-   * @param userName The username
-   * @param databasePath The database path
-   * @param operationType The LBAC operation type
-   * @return TSStatus indicating the LBAC permission check result
+   * @param originalMap Original database map
+   * @param userName User name
+   * @param privilegeType RBAC privilege type (will be converted to LBAC operation type)
+   * @return Filtered map containing only databases the user can access
    */
-  private static TSStatus checkDatabaseLbacPermission(
-      String userName, String databasePath, LbacOperationClassifier.OperationType operationType) {
+  public static <T> Map<String, T> filterDatabaseMapByPermissions(
+      Map<String, T> originalMap, String userName, PrivilegeType privilegeType) {
 
-    try {
-      // Get user object
-      User user = getUserByName(userName);
-      if (user == null) {
-        return new TSStatus(TSStatusCode.USER_NOT_EXIST.getStatusCode())
-            .setMessage("User not found for LBAC check");
-      }
-
-      // Get database information from ConfigNode
-      TDatabaseInfo databaseInfo = getDatabaseInfo(databasePath);
-      if (databaseInfo == null) {
-        databaseInfo = new TDatabaseInfo();
-        databaseInfo.setSecurityLabel(new HashMap<>());
-      }
-
-      boolean hasPermission =
-          LbacPermissionChecker.checkDatabaseLbacPermission(
-              user, databasePath, databaseInfo, operationType);
-
-      if (hasPermission) {
-        return SUCCEED;
-      } else {
-        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage("LBAC permission denied for database: " + databasePath);
-      }
-
-    } catch (Exception e) {
-      LOGGER.error("Error checking LBAC permission for database: {}", databasePath, e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage("Internal error during LBAC check: " + e.getMessage());
-    }
-  }
-
-  /**
-   * Get user by name from cache or ConfigNode.
-   *
-   * @param userName The username
-   * @return User object or null if not found
-   */
-  private static User getUserByName(String userName) {
-    try {
-      // Try to get user from cache first
-      User user = authorityFetcher.get().getAuthorCache().getUserCache(userName);
-
-      if (user != null) {
-        return user;
-      }
-
-      // Fetch user from ConfigNode if not in cache
-      TCheckUserPrivilegesReq req =
-          new TCheckUserPrivilegesReq(userName, 0, PrivilegeType.READ_DATA.ordinal(), false);
-
-      try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-
-        TPermissionInfoResp permissionInfoResp = configNodeClient.checkUserPrivileges(req);
-
-        if (permissionInfoResp != null
-            && permissionInfoResp.getStatus().getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-
-          // Use ClusterAuthorityFetcher's cacheUser method to construct User object
-          ClusterAuthorityFetcher clusterFetcher = (ClusterAuthorityFetcher) authorityFetcher.get();
-          User fetchedUser = clusterFetcher.cacheUser(permissionInfoResp);
-
-          // Cache the user for future use
-          authorityFetcher.get().getAuthorCache().putUserCache(userName, fetchedUser);
-
-          return fetchedUser;
-        }
-      } catch (Exception e) {
-        LOGGER.warn("Failed to fetch user from ConfigNode: {}", userName, e);
-      }
-
-    } catch (Exception e) {
-      LOGGER.error("Error getting user: {}", userName, e);
+    if (originalMap == null || originalMap.isEmpty()) {
+      return Collections.emptyMap();
     }
 
-    return null;
-  }
+    // Super user sees all
+    if (SUPER_USER.equals(userName)) {
+      return originalMap;
+    }
 
-  /**
-   * Get database information from ConfigNode. This method now uses LBAC security label information
-   * for better integration.
-   *
-   * @param databasePath The database path
-   * @return TDatabaseInfo or null if not found
-   */
-  private static TDatabaseInfo getDatabaseInfo(String databasePath) {
-    try {
-      LOGGER.debug("Getting database info for path: {}", databasePath);
+    Map<String, T> filteredMap = new HashMap<>();
+    int totalCount = originalMap.size();
+    int rbacAllowedCount = 0;
+    int lbacAllowedCount = 0;
 
-      try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-
-        TGetDatabaseReq req = new TGetDatabaseReq();
-        req.setDatabasePathPattern(Collections.singletonList(databasePath));
-        req.setScopePatternTree(new PathPatternTree().serialize());
-        req.setIsTableModel(false);
-
-        TShowDatabaseResp resp = configNodeClient.showDatabase(req);
-
-        if (resp != null
-            && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-
-          if (resp.getDatabaseInfoMap() != null
-              && resp.getDatabaseInfoMap().containsKey(databasePath)) {
-            TDatabaseInfo databaseInfo = resp.getDatabaseInfoMap().get(databasePath);
-
-            try {
-
-              SecurityLabel securityLabel =
-                  DatabaseLabelFetcher.getDatabaseSecurityLabel(databasePath);
-              if (securityLabel != null && !securityLabel.getLabels().isEmpty()) {
-                LOGGER.debug(
-                    "Found security label for database {}: {}",
-                    databasePath,
-                    securityLabel.getLabels());
-
-                Map<String, String> securityLabelMap = new HashMap<>();
-                for (Map.Entry<String, String> entry : securityLabel.getLabels().entrySet()) {
-                  securityLabelMap.put(entry.getKey(), entry.getValue());
-                }
-
-                if (databaseInfo.getSecurityLabel() == null) {
-                  databaseInfo.setSecurityLabel(securityLabelMap);
-                }
-              }
-            } catch (Exception e) {
-              LOGGER.debug(
-                  "Could not get security label for database {}: {}", databasePath, e.getMessage());
-            }
-
-            return databaseInfo;
-          }
-        }
-      } catch (Exception e) {
-        LOGGER.warn("Failed to get database info from ConfigNode for: {}", databasePath, e);
-      }
+    for (Map.Entry<String, T> entry : originalMap.entrySet()) {
+      String database = entry.getKey();
 
       try {
-        SecurityLabel securityLabel = DatabaseLabelFetcher.getDatabaseSecurityLabel(databasePath);
-        if (securityLabel != null && !securityLabel.getLabels().isEmpty()) {
-          LOGGER.debug("Using LBAC fallback for database info: {}", databasePath);
+        // Step 1: RBAC check using checkFullPathOrPatternPermission method
+        boolean rbacAllowed =
+            checkFullPathOrPatternPermission(userName, new PartialPath(database), privilegeType);
 
-          TDatabaseInfo fallbackInfo = new TDatabaseInfo();
-          fallbackInfo.setName(databasePath);
+        if (rbacAllowed) {
+          rbacAllowedCount++;
 
-          Map<String, String> securityLabelMap = new HashMap<>();
-          for (Map.Entry<String, String> entry : securityLabel.getLabels().entrySet()) {
-            securityLabelMap.put(entry.getKey(), entry.getValue());
+          // Step 2: LBAC check (only if enabled)
+          if (LbacPermissionChecker.isLbacEnabled()) {
+            // Convert PrivilegeType to LBAC operation type
+            LbacOperationClassifier.OperationType lbacOpType =
+                convertPrivilegeTypeToLbacOperation(privilegeType);
+
+            if (lbacOpType != null) {
+              boolean lbacAllowed =
+                  LbacPermissionChecker.checkLbacPermissionForDatabase(
+                      userName, database, lbacOpType);
+              if (lbacAllowed) {
+                filteredMap.put(database, entry.getValue());
+                lbacAllowedCount++;
+              } else {
+                LOGGER.warn("Database {} denied by LBAC for user {}", database, userName);
+              }
+            } else {
+              LOGGER.warn("Cannot convert privilege type {} to LBAC operation type", privilegeType);
+            }
+            // If lbacOpType is null (non-database operation), don't add to filtered map
+          } else {
+            // LBAC disabled, only RBAC check needed
+            filteredMap.put(database, entry.getValue());
           }
-          fallbackInfo.setSecurityLabel(securityLabelMap);
-
-          return fallbackInfo;
+        } else {
+          LOGGER.warn("Database {} denied by RBAC for user {}", database, userName);
         }
       } catch (Exception e) {
-        LOGGER.debug("LBAC fallback also failed for database {}: {}", databasePath, e.getMessage());
+        LOGGER.warn("Permission check failed for database {}: {}", database, e.getMessage());
       }
-
-      return null;
-    } catch (Exception e) {
-      LOGGER.warn("Error in getDatabaseInfo for: {}", databasePath, e);
-      return null;
     }
+
+    LOGGER.info(
+        "Database filtering complete - Total: {}, RBAC allowed: {}, LBAC allowed: {}, Final: {}",
+        totalCount,
+        rbacAllowedCount,
+        lbacAllowedCount,
+        filteredMap.size());
+
+    return filteredMap;
   }
 
   /**
-   * Extract database path from device path. This is a utility method to extract database path from
-   * device path.
+   * Extract database path from full path, supporting wildcards. This method handles various path
+   * patterns and extracts the database portion.
    *
-   * @param devicePath The device path
-   * @return The database path or null if extraction fails
+   * <p>Examples: - "root.db1" → "root.db1" - "root.db1.device1" → "root.db1" - "root.db1.**" →
+   * "root.db1" - "root.**" → null (too broad, requires special handling)
+   *
+   * @param fullPath The full path potentially containing wildcards
+   * @return The extracted database path, or null if cannot extract valid database
    */
-  private static String extractDatabasePathFromDevicePath(String devicePath) {
-    if (devicePath == null || devicePath.trim().isEmpty()) {
+  public static String extractDatabaseFromPath(String fullPath) {
+    if (fullPath == null || !fullPath.startsWith("root.")) {
       return null;
     }
 
-    // Split by dots and take the first two parts as database path
-    String[] parts = devicePath.split("\\.");
+    // Remove wildcard patterns
+    String cleanPath = fullPath.replace(".**", "").replace(".*", "");
+
+    String[] parts = cleanPath.split("\\.");
     if (parts.length >= 2) {
-      return parts[0] + "." + parts[1];
-    } else if (parts.length == 1) {
-      return parts[0];
+      return parts[0] + "." + parts[1]; // root.database format
     }
 
     return null;
-  }
-
-  /**
-   * Get all databases from ConfigNode.
-   *
-   * @return List of database names
-   */
-  private static List<String> getAllDatabases() {
-    try {
-      try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-
-        // Create request to get all databases
-        TGetDatabaseReq req = new TGetDatabaseReq();
-        req.setDatabasePathPattern(Collections.emptyList()); // Get all databases
-        req.setScopePatternTree(new PathPatternTree().serialize());
-        req.setIsTableModel(false);
-
-        TShowDatabaseResp resp = configNodeClient.showDatabase(req);
-        if (resp != null && resp.getDatabaseInfoMap() != null) {
-          return new ArrayList<>(resp.getDatabaseInfoMap().keySet());
-        }
-      }
-    } catch (Exception e) {
-      LOGGER.error("Failed to get all databases: {}", e.getMessage(), e);
-    }
-    return new ArrayList<>();
-  }
-
-  /**
-   * Find databases that match the given pattern.
-   *
-   * @param pattern The pattern to match (e.g., "root.**")
-   * @return List of matching database names
-   */
-  private static List<String> findMatchingDatabases(String pattern) {
-    List<String> allDatabases = getAllDatabases();
-    List<String> matchingDatabases = new ArrayList<>();
-
-    for (String database : allDatabases) {
-      if (LbacPermissionChecker.isDatabasePathMatchPattern(database, pattern)) {
-        matchingDatabases.add(database);
-      }
-    }
-
-    LOGGER.debug(
-        "Found {} databases matching pattern '{}': {}",
-        matchingDatabases.size(),
-        pattern,
-        matchingDatabases);
-    return matchingDatabases;
   }
 }

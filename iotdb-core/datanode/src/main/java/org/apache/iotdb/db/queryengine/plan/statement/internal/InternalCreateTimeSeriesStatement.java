@@ -48,12 +48,12 @@ public class InternalCreateTimeSeriesStatement extends Statement {
   private final boolean isAligned;
 
   public InternalCreateTimeSeriesStatement(
-          PartialPath devicePath,
-          List<String> measurements,
-          List<TSDataType> tsDataTypes,
-          List<TSEncoding> encodings,
-          List<CompressionType> compressors,
-          boolean isAligned) {
+      PartialPath devicePath,
+      List<String> measurements,
+      List<TSDataType> tsDataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      boolean isAligned) {
     super();
     setType(StatementType.INTERNAL_CREATE_TIMESERIES);
     this.devicePath = devicePath;
@@ -91,8 +91,8 @@ public class InternalCreateTimeSeriesStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return measurements.stream()
-            .map(devicePath::concatAsMeasurementPath)
-            .collect(Collectors.toList());
+        .map(devicePath::concatAsMeasurementPath)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -102,10 +102,10 @@ public class InternalCreateTimeSeriesStatement extends Statement {
     }
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternListPermission(
-                    userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-            checkedPaths,
-            PrivilegeType.WRITE_SCHEMA);
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override

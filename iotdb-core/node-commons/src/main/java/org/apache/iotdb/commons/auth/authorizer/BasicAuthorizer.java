@@ -179,6 +179,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void setUserLabelPolicy(
       String username, String labelPolicyExpression, String labelPolicyScope) throws AuthException {
+    LOGGER.info(
+        "BasicAuthorizer.setUserLabelPolicy - User: {}, Policy: {}, Scope: {}",
+        username,
+        labelPolicyExpression,
+        labelPolicyScope);
+
     User user = userManager.getEntity(username);
     if (user == null) {
       throw new AuthException(
@@ -226,7 +232,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         !labelPolicyScope.toUpperCase().contains("READ")
             && labelPolicyScope.toUpperCase().contains("WRITE");
 
-
     if (isReadOnly) {
 
       user.setReadLabelPolicyExpression(labelPolicyExpression);
@@ -251,7 +256,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
 
-
     boolean isReadWrite =
         labelPolicyScope.toUpperCase().contains("READ")
             && labelPolicyScope.toUpperCase().contains("WRITE");
@@ -261,7 +265,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     boolean isWriteOnly =
         !labelPolicyScope.toUpperCase().contains("READ")
             && labelPolicyScope.toUpperCase().contains("WRITE");
-
 
     if (isReadWrite) {
 

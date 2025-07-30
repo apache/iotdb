@@ -37,7 +37,7 @@ statement
 
 ddlStatement
     // Database
-    : createDatabase | dropDatabase | dropPartition | alterDatabase | showDatabases | countDatabases
+    : createDatabase | dropDatabase | dropPartition | alterDatabase | showDatabases | countDatabases |showDatabaseSecurityLabel
     // Timeseries & Path
     | createTimeseries | dropTimeseries | alterTimeseries
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
@@ -147,7 +147,11 @@ securityLabelPair
 // ---- Show Databases
 showDatabases
     : SHOW (STORAGE GROUP | DATABASES) DETAILS? prefixPath?
-    |SHOW DATABASES prefixPath? SECURITY_LABEL
+    ;
+
+// ---- Show Database Security Label
+showDatabaseSecurityLabel
+    : SHOW DATABASES prefixPath? SECURITY_LABEL
     ;
 
 // ---- Count Databases

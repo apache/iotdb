@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacOperationClassifier;
+import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -32,11 +31,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaS
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -45,16 +41,17 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
-import static org.apache.iotdb.db.queryengine.execution.operator.Operator.NOT_BLOCKED;
 
 public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaQueryScanOperator.class);
   private static final long MAX_SIZE =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
@@ -150,17 +147,16 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         } else if (schemaReader.hasNext() && (limit < 0 || count < offset + limit)) {
           final T element = schemaReader.next();
           if (++count > offset) {
-            // Check permissions for all schema info types
-            if (shouldCheckPermissions() && !hasPermissionForSchemaInfo(element)) {
-              // Skip this schema info if user doesn't have permission
-              continue;
+            // Check permissions for schema info before including it in results
+            if (hasPermissionForSchemaInfo(element)) {
+              setColumns(element, tsBlockBuilder);
+              if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+                next = tsBlockBuilder.build();
+                tsBlockBuilder.reset();
+                return NOT_BLOCKED;
+              }
             }
-            setColumns(element, tsBlockBuilder);
-            if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
-              next = tsBlockBuilder.build();
-              tsBlockBuilder.reset();
-              return NOT_BLOCKED;
-            }
+            // If permission check fails, we skip this element but continue processing
           }
         } else {
           if (tsBlockBuilder.isEmpty()) {
@@ -175,126 +171,6 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
       } catch (final Exception e) {
         throw new SchemaExecutionException(e);
       }
-    }
-  }
-
-  /** Check if we should check permissions for this query */
-  private boolean shouldCheckPermissions() {
-    // Check permissions for all schema queries
-    return true;
-  }
-
-  /**
-   * Check if the current user has permission to access the schema info This method handles all
-   * types of schema information
-   */
-  private boolean hasPermissionForSchemaInfo(ISchemaInfo schemaInfo) {
-    try {
-      String userName = getCurrentUserName();
-      if (AuthorityChecker.SUPER_USER.equals(userName)) {
-        return true;
-      }
-
-      String databasePath = extractDatabasePathFromSchemaInfo(schemaInfo);
-      if (databasePath != null) {
-        PartialPath databasePartialPath = new PartialPath(databasePath);
-        List<PartialPath> paths = Collections.singletonList(databasePartialPath);
-
-        TSStatus permissionStatus =
-            AuthorityChecker.checkPermissionWithLbac(userName, paths, PrivilegeType.READ_SCHEMA);
-
-        return permissionStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
-      }
-
-      return true; // Allow access if we can't extract database path
-    } catch (Exception e) {
-      // Log error but allow access to avoid breaking queries
-      return true;
-    }
-  }
-
-  /**
-   * Extract database path from schema info This method handles different types of schema
-   * information
-   */
-  private String extractDatabasePathFromSchemaInfo(ISchemaInfo schemaInfo) {
-    try {
-      if (schemaInfo instanceof ITimeSeriesSchemaInfo) {
-        return extractDatabasePathFromTimeSeries(
-            ((ITimeSeriesSchemaInfo) schemaInfo).getFullPath());
-      } else if (schemaInfo instanceof IDeviceSchemaInfo) {
-        return extractDatabasePathFromDevice(((IDeviceSchemaInfo) schemaInfo).getFullPath());
-      } else {
-        // For other types of schema info, try to extract database path from the schema
-        // info
-        // This is a fallback for any other schema info types
-        return extractDatabasePathFromGenericSchemaInfo(schemaInfo);
-      }
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
-  /** Extract database path from time series full path */
-  private String extractDatabasePathFromTimeSeries(String fullPath) {
-    try {
-      String[] pathParts = fullPath.split("\\.");
-      if (pathParts.length >= 2) {
-        return pathParts[0] + "." + pathParts[1];
-      }
-      return null;
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
-  /** Extract database path from device full path */
-  private String extractDatabasePathFromDevice(String fullPath) {
-    try {
-      String[] pathParts = fullPath.split("\\.");
-      if (pathParts.length >= 2) {
-        return pathParts[0] + "." + pathParts[1];
-      }
-      return null;
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
-  /**
-   * Extract database path from generic schema info This is a fallback method for other schema info
-   * types
-   */
-  private String extractDatabasePathFromGenericSchemaInfo(ISchemaInfo schemaInfo) {
-    try {
-      // Try to get the full path from the schema info
-      String fullPath = null;
-      if (schemaInfo instanceof ITimeSeriesSchemaInfo) {
-        fullPath = ((ITimeSeriesSchemaInfo) schemaInfo).getFullPath();
-      } else if (schemaInfo instanceof IDeviceSchemaInfo) {
-        fullPath = ((IDeviceSchemaInfo) schemaInfo).getFullPath();
-      }
-
-      if (fullPath != null) {
-        return extractDatabasePathFromTimeSeries(fullPath);
-      }
-
-      return null;
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
-  /** Get current user name from session */
-  private String getCurrentUserName() {
-    try {
-      return operatorContext
-          .getDriverContext()
-          .getFragmentInstanceContext()
-          .getSessionInfo()
-          .getUserName();
-    } catch (Exception e) {
-      return "unknown";
     }
   }
 
@@ -362,6 +238,91 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
     if (schemaReader != null) {
       schemaReader.close();
       schemaReader = null;
+    }
+  }
+
+  /**
+   * Check if user has permission to access the schema info Combines RBAC and LBAC checks with LBAC
+   * switch support
+   */
+  private boolean hasPermissionForSchemaInfo(T schemaInfo) {
+    try {
+      String userName = getCurrentUserName();
+
+      // Super user has access to everything
+      if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        return true;
+      }
+
+      // Extract database path from schema info
+      String databasePath = extractDatabasePathFromSchemaInfo(schemaInfo);
+      if (databasePath == null) {
+        // If we can't extract database path, allow access (or apply default policy)
+        return true;
+      }
+
+      // Step 1: RBAC check - must pass first
+      if (!AuthorityChecker.checkDBVisible(userName, databasePath)) {
+        LOGGER.debug(
+            "User {} denied RBAC access to schema info in database {}", userName, databasePath);
+        return false;
+      }
+
+      // Step 2: LBAC check - only if LBAC is enabled
+      if (LbacPermissionChecker.isLbacEnabled()) {
+        if (!LbacPermissionChecker.checkLbacPermissionForDatabase(
+            userName, databasePath, LbacOperationClassifier.OperationType.READ)) {
+          LOGGER.debug(
+              "User {} denied LBAC access to schema info in database {}", userName, databasePath);
+          return false;
+        }
+      }
+
+      return true;
+    } catch (Exception e) {
+      LOGGER.warn("Error checking permission for schema info: {}", e.getMessage());
+      // In case of error, deny access for security
+      return false;
+    }
+  }
+
+  /**
+   * Extract database path from schema info This method handles different types of schema
+   * information
+   */
+  private String extractDatabasePathFromSchemaInfo(T schemaInfo) {
+    try {
+      // Try to get path information from schema info
+      // This implementation depends on the specific ISchemaInfo type
+      String fullPath = schemaInfo.toString(); // Simplified approach
+
+      if (fullPath != null && fullPath.startsWith("root.")) {
+        String[] parts = fullPath.split("\\.");
+        if (parts.length >= 2) {
+          return parts[0] + "." + parts[1]; // root.database
+        }
+      }
+
+      // Fallback: use current database from context
+      return getDatabase();
+    } catch (Exception e) {
+      LOGGER.debug("Error extracting database path from schema info: {}", e.getMessage());
+      return getDatabase(); // Fallback to current database
+    }
+  }
+
+  /** Get current user name from operator context */
+  private String getCurrentUserName() {
+    try {
+      // Try to get user from session context
+      return operatorContext
+          .getDriverContext()
+          .getFragmentInstanceContext()
+          .getSessionInfo()
+          .getUserName();
+    } catch (Exception e) {
+      LOGGER.warn("Failed to get current user name, using 'unknown': {}", e.getMessage());
+      return "unknown";
     }
   }
 

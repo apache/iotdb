@@ -64,10 +64,10 @@ public class InsertStatement extends Statement {
     }
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternListPermission(
-                    userName, checkedPaths, PrivilegeType.WRITE_DATA),
-            checkedPaths,
-            PrivilegeType.WRITE_DATA);
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            userName, checkedPaths, PrivilegeType.WRITE_DATA),
+        checkedPaths,
+        PrivilegeType.WRITE_DATA);
   }
 
   public PartialPath getDevice() {

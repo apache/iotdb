@@ -21,20 +21,29 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.schema.SecurityLabel;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.apache.iotdb.db.protocol.client.ConfigNodeInfo.CONFIG_REGION_ID;
 
 /**
  * Core LBAC (Label-Based Access Control) permission checker. This class integrates operation
@@ -820,6 +829,105 @@ public class LbacPermissionChecker {
   }
 
   /**
+   * Filter security label map based on user's RBAC and LBAC permissions This method combines both
+   * RBAC (AuthorityChecker) and LBAC filtering Following the same pattern as AuthorityChecker for
+   * consistency
+   */
+  public static Map<String, String> filterSecurityLabelMapByPermissions(
+      Map<String, String> originalMap, String userName) {
+
+    if (originalMap == null || originalMap.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    // Super user sees all databases
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return originalMap;
+    }
+
+    Map<String, String> filteredMap = new HashMap<>();
+
+    for (Map.Entry<String, String> entry : originalMap.entrySet()) {
+      String database = entry.getKey();
+
+      // Step 1: RBAC filtering - check if user can see this database
+      if (AuthorityChecker.checkDBVisible(userName, database)) {
+        // Step 2: LBAC filtering - check LBAC permissions
+        if (checkLbacPermissionForDatabase(
+            userName, database, LbacOperationClassifier.OperationType.READ)) {
+          filteredMap.put(database, entry.getValue());
+        }
+      }
+    }
+
+    return filteredMap;
+  }
+
+  /**
+   * Check LBAC permission for a specific database with given operation type. This method follows
+   * the same pattern as AuthorityChecker.checkDBVisible and includes enhanced wildcard pattern
+   * support.
+   */
+  public static boolean checkLbacPermissionForDatabase(
+      String userName, String database, LbacOperationClassifier.OperationType operationType) {
+
+    try {
+      if (!isLbacEnabled()) {
+        LOGGER.debug(
+            "LBAC disabled, allowing access for user {} to database {}", userName, database);
+        return true; // LBAC disabled, allow access
+      }
+
+      if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        LOGGER.debug("Super user {} accessing database {}", userName, database);
+        return true; // Super user always has access
+      }
+
+      // Extract clean database path from potentially wildcarded input
+      String cleanDatabasePath = AuthorityChecker.extractDatabaseFromPath(database);
+      if (cleanDatabasePath == null) {
+        LOGGER.warn("Cannot extract valid database path from input: {}", database);
+        return false; // Cannot extract valid database path, deny access for security
+      }
+
+      // Get user for LBAC check
+      User user = getUserByName(userName);
+      if (user == null) {
+        LOGGER.warn("User {} not found for LBAC check", userName);
+        return false; // User not found, deny access
+      }
+
+      // Get database label using the clean database path
+      SecurityLabel databaseLabel = DatabaseLabelFetcher.getSecurityLabelForPath(cleanDatabasePath);
+      if (databaseLabel == null) {
+        LOGGER.debug("No security label found for database: {}", cleanDatabasePath);
+      } else {
+        LOGGER.debug(
+            "Database {} has security label: {}", cleanDatabasePath, databaseLabel.getLabels());
+      }
+
+      // Get user's label policy for the operation type
+      String userPolicy = getUserLabelPolicy(user, operationType);
+      if (userPolicy == null || userPolicy.trim().isEmpty()) {
+        LOGGER.debug(
+            "No label policy found for user {} with operation type {}", userName, operationType);
+      } else {
+        LOGGER.debug("User {} has label policy for {}: {}", userName, operationType, userPolicy);
+      }
+
+      // Evaluate label policy
+      boolean result = LabelPolicyEvaluator.evaluate(userPolicy, databaseLabel);
+      LOGGER.debug(
+          "LBAC evaluation result for user {} on database {}: {}", userName, database, result);
+      return result;
+
+    } catch (Exception e) {
+      LOGGER.warn("Error checking LBAC permission for database {}: {}", database, e.getMessage());
+      return false; // On error, deny access for security
+    }
+  }
+
+  /**
    * Filter database info map based on LBAC permissions for the current user Only show databases
    * that the user has permission to access If user has policy but database has no label, deny
    * access to that database
@@ -1278,19 +1386,46 @@ public class LbacPermissionChecker {
    */
   private static TDatabaseInfo getDatabaseInfo(String databasePath) {
     try {
-      // TODO: Implement proper database info fetching from cluster
-      // This should use the same data source as checkDatabaseLbacPermission
-      // For now, return null to use fallback method
-      return null;
+      // Get database info from ConfigNode
+      org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor
+          executor =
+              org.apache.iotdb.db.queryengine.plan.execution.config.executor
+                  .ClusterConfigTaskExecutor.getInstance();
+
+      // Create a request to get database information
+      TGetDatabaseReq req =
+          new TGetDatabaseReq(
+              Arrays.asList(databasePath.split("\\.")),
+              org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE.serialize());
+
+      // Use the same client manager as other methods
+      IClientManager<ConfigRegionId, ConfigNodeClient> clientManager =
+          ConfigNodeClientManager.getInstance();
+
+      try (ConfigNodeClient client = clientManager.borrowClient(CONFIG_REGION_ID)) {
+
+        TShowDatabaseResp resp = client.showDatabase(req);
+
+        if (resp.getStatus() != null
+            && resp.getStatus().getCode()
+                == org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && resp.getDatabaseInfoMap() != null
+            && resp.getDatabaseInfoMap().containsKey(databasePath)) {
+
+          return resp.getDatabaseInfoMap().get(databasePath);
+        } else {
+          LOGGER.debug("Database {} not found or error in response", databasePath);
+          return null;
+        }
+      }
     } catch (Exception e) {
       LOGGER.warn("Error getting database info for path {}: {}", databasePath, e.getMessage());
       return null;
     }
   }
 
-  // checkLabelMatch方法用于判断标签与策略是否匹配
   private static boolean checkLabelMatch(String label, String policy) {
-    // 简单实现：如果policy为null或空，允许；否则要求label包含policy字符串
+
     if (policy == null || policy.trim().isEmpty()) {
       return true;
     }
@@ -1298,40 +1433,5 @@ public class LbacPermissionChecker {
       return false;
     }
     return label.contains(policy);
-  }
-
-  /**
-   * Check if a database path matches a pattern path.
-   *
-   * @param databasePath The database path to check
-   * @param patternPath The pattern path (e.g., "root.**")
-   * @return true if the database path matches the pattern
-   */
-  public static boolean isDatabasePathMatchPattern(String databasePath, String patternPath) {
-    if (databasePath == null || patternPath == null) {
-      return false;
-    }
-
-    LOGGER.debug("Checking if database path '{}' matches pattern '{}'", databasePath, patternPath);
-
-    // Handle special cases
-    if ("root.**".equals(patternPath)) {
-      // root.** should match all databases that start with "root."
-      boolean matches = databasePath.startsWith("root.");
-      LOGGER.debug("Pattern 'root.**' matches database '{}': {}", databasePath, matches);
-      return matches;
-    }
-
-    // Convert pattern to regex for other cases
-    String regex = patternPath.replace(".", "\\.").replace("*", ".*").replace("**", ".*");
-
-    boolean matches = databasePath.matches(regex);
-    LOGGER.debug(
-        "Pattern '{}' (regex: '{}') matches database '{}': {}",
-        patternPath,
-        regex,
-        databasePath,
-        matches);
-    return matches;
   }
 }

@@ -42,7 +42,6 @@ public class User extends Role {
 
   private String readLabelPolicyExpression;
 
-
   private String writeLabelPolicyExpression;
 
   public User() {
@@ -81,26 +80,19 @@ public class User extends Role {
   public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
     this.readLabelPolicyExpression = readLabelPolicyExpression;
   }
+
   public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
     this.writeLabelPolicyExpression = writeLabelPolicyExpression;
   }
 
-
   /** ------------ get func ----------------* */
-
-
   public String getReadLabelPolicyExpression() {
     return readLabelPolicyExpression;
   }
 
-
-
-
   public String getWriteLabelPolicyExpression() {
     return writeLabelPolicyExpression;
   }
-
-
 
   public String getPassword() {
     return password;

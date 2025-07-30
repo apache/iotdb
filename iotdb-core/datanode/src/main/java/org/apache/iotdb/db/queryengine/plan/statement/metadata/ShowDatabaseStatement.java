@@ -53,13 +53,11 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
 
   private final PartialPath pathPattern;
   private boolean isDetailed;
-  private boolean showSecurityLabel; // Add field for security label display
 
   public ShowDatabaseStatement(final PartialPath pathPattern) {
     super();
     this.pathPattern = pathPattern;
     this.isDetailed = false;
-    this.showSecurityLabel = false; // Initialize to false
   }
 
   public PartialPath getPathPattern() {
@@ -74,37 +72,18 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
     isDetailed = detailed;
   }
 
-  public boolean isShowSecurityLabel() {
-    return showSecurityLabel;
-  }
-
-  public void setShowSecurityLabel(final boolean showSecurityLabel) {
-    this.showSecurityLabel = showSecurityLabel;
-  }
-
   public void buildTSBlock(
       final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future) {
 
-    final List<TSDataType> outputDataTypes;
-    if (showSecurityLabel) {
-      // When showing security labels, use only database name and security label
-      // columns
-      outputDataTypes =
-          ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
-              .map(ColumnHeader::getColumnType)
-              .collect(Collectors.toList());
-    } else {
-      // Normal database info display
-      outputDataTypes =
-          isDetailed
-              ? ColumnHeaderConstant.showDatabasesDetailColumnHeaders.stream()
-                  .map(ColumnHeader::getColumnType)
-                  .collect(Collectors.toList())
-              : ColumnHeaderConstant.showDatabasesColumnHeaders.stream()
-                  .map(ColumnHeader::getColumnType)
-                  .collect(Collectors.toList());
-    }
+    final List<TSDataType> outputDataTypes =
+        isDetailed
+            ? ColumnHeaderConstant.showDatabasesDetailColumnHeaders.stream()
+                .map(ColumnHeader::getColumnType)
+                .collect(Collectors.toList())
+            : ColumnHeaderConstant.showDatabasesColumnHeaders.stream()
+                .map(ColumnHeader::getColumnType)
+                .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (final Map.Entry<String, TDatabaseInfo> entry :
@@ -115,103 +94,24 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       final TDatabaseInfo databaseInfo = entry.getValue();
 
       builder.getTimeColumnBuilder().writeLong(0L);
-
-      if (showSecurityLabel) {
-        // Output database name and security label
-        builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
-        Map<String, String> securityLabelMap = databaseInfo.getSecurityLabel();
-        String securityLabel = "";
-        if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
-          // Convert map to string representation
-          securityLabel =
-              securityLabelMap.entrySet().stream()
-                  .map(labelEntry -> labelEntry.getKey() + ":" + labelEntry.getValue())
-                  .collect(Collectors.joining(","));
-        }
-        builder
-            .getColumnBuilder(1)
-            .writeBinary(new Binary(securityLabel, TSFileConfig.STRING_CHARSET));
-      } else {
-        // Normal database info output
-        builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
-        builder.getColumnBuilder(1).writeInt(databaseInfo.getSchemaReplicationFactor());
-        builder.getColumnBuilder(2).writeInt(databaseInfo.getDataReplicationFactor());
-        builder.getColumnBuilder(3).writeLong(databaseInfo.getTimePartitionOrigin());
-        builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
-        if (isDetailed) {
-          builder.getColumnBuilder(5).writeInt(databaseInfo.getSchemaRegionNum());
-          builder.getColumnBuilder(6).writeInt(databaseInfo.getMinSchemaRegionNum());
-          builder.getColumnBuilder(7).writeInt(databaseInfo.getMaxSchemaRegionNum());
-          builder.getColumnBuilder(8).writeInt(databaseInfo.getDataRegionNum());
-          builder.getColumnBuilder(9).writeInt(databaseInfo.getMinDataRegionNum());
-          builder.getColumnBuilder(10).writeInt(databaseInfo.getMaxDataRegionNum());
-        }
+      builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeInt(databaseInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(2).writeInt(databaseInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(3).writeLong(databaseInfo.getTimePartitionOrigin());
+      builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
+      if (isDetailed) {
+        builder.getColumnBuilder(5).writeInt(databaseInfo.getSchemaRegionNum());
+        builder.getColumnBuilder(6).writeInt(databaseInfo.getMinSchemaRegionNum());
+        builder.getColumnBuilder(7).writeInt(databaseInfo.getMaxSchemaRegionNum());
+        builder.getColumnBuilder(8).writeInt(databaseInfo.getDataRegionNum());
+        builder.getColumnBuilder(9).writeInt(databaseInfo.getMinDataRegionNum());
+        builder.getColumnBuilder(10).writeInt(databaseInfo.getMaxDataRegionNum());
       }
       builder.declarePosition();
     }
 
-    final DatasetHeader datasetHeader;
-    if (showSecurityLabel) {
-      datasetHeader = DatasetHeaderFactory.getShowDatabaseSecurityLabelHeader();
-    } else {
-      datasetHeader = DatasetHeaderFactory.getShowDatabaseHeader(isDetailed);
-    }
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDatabaseHeader(isDetailed);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-  }
-
-  /**
-   * @param securityLabelMap
-   * @param future
-   */
-  public void buildTSBlockFromSecurityLabel(
-      Map<String, String> securityLabelMap, SettableFuture<ConfigTaskResult> future) {
-    try {
-      // Add debug logging
-      System.out.println("buildTSBlockFromSecurityLabel called with map: " + securityLabelMap);
-      System.out.println(
-          "Map size: " + (securityLabelMap != null ? securityLabelMap.size() : "null"));
-      System.out.println("showSecurityLabel flag: " + showSecurityLabel);
-      System.out.println("pathPattern: " + pathPattern);
-
-      List<TSDataType> outputDataTypes =
-          ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
-              .map(ColumnHeader::getColumnType)
-              .collect(Collectors.toList());
-      System.out.println("Output data types: " + outputDataTypes);
-      TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-
-      if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
-        System.out.println("Processing " + securityLabelMap.size() + " entries");
-        for (Map.Entry<String, String> entry : securityLabelMap.entrySet()) {
-          System.out.println("Processing entry: " + entry.getKey() + " -> " + entry.getValue());
-          builder.getTimeColumnBuilder().writeLong(0L);
-          builder
-              .getColumnBuilder(0)
-              .writeBinary(new Binary(entry.getKey(), TSFileConfig.STRING_CHARSET));
-          builder
-              .getColumnBuilder(1)
-              .writeBinary(
-                  new Binary(
-                      entry.getValue() == null ? "" : entry.getValue(),
-                      TSFileConfig.STRING_CHARSET));
-          builder.declarePosition();
-        }
-        System.out.println("Successfully processed all entries");
-      } else {
-        System.out.println("Security label map is null or empty, no data to add");
-      }
-
-      future.set(
-          new ConfigTaskResult(
-              TSStatusCode.SUCCESS_STATUS,
-              builder.build(),
-              DatasetHeaderFactory.getShowDatabaseSecurityLabelHeader()));
-      System.out.println("Successfully set future result");
-    } catch (Exception e) {
-      System.out.println("Exception in buildTSBlockFromSecurityLabel: " + e.getMessage());
-      e.printStackTrace();
-      future.setException(e);
-    }
   }
 
   @Override

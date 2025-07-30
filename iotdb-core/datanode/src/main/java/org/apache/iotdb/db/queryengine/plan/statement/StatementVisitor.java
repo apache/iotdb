@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesSt
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
@@ -714,6 +715,11 @@ public abstract class StatementVisitor<R, C> {
   public R visitSetUserLabelPolicy(
       SetUserLabelPolicyStatement setUserLabelPolicyStatement, C context) {
     return visitStatement(setUserLabelPolicyStatement, context);
+  }
+
+  public R visitShowDatabaseSecurityLabel(
+      ShowDatabaseSecurityLabelStatement showDatabaseSecurityLabelStatement, C context) {
+    return visitStatement(showDatabaseSecurityLabelStatement, context);
   }
 
   public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {

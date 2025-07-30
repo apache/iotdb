@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowCluste
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContinuousQueriesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDataNodesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDatabaseSecurityLabelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
@@ -145,6 +146,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
@@ -817,13 +819,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitDropModel(
       DropModelStatement dropModelStatement, MPPQueryContext context) {
-    return new DropModelTask(dropModelStatement.getModelId());
+    return new DropModelTask(dropModelStatement.getModelName());
   }
 
   @Override
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
-    return new ShowModelsTask(showModelsStatement.getModelId());
+    return new ShowModelsTask(showModelsStatement.getModelName());
   }
 
   @Override
@@ -869,5 +871,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitSetUserLabelPolicy(
       SetUserLabelPolicyStatement statement, MPPQueryContext context) {
     return new SetUserLabelPolicyTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitShowDatabaseSecurityLabel(
+      ShowDatabaseSecurityLabelStatement statement, MPPQueryContext context) {
+    return new ShowDatabaseSecurityLabelTask(statement);
   }
 }

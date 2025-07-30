@@ -114,8 +114,14 @@ public class AlterDatabaseSecurityLabelStatement extends Statement implements IC
 
     if (databasePath != null) {
       List<PartialPath> paths = Collections.singletonList(databasePath);
-      return AuthorityChecker.checkPermissionWithLbac(
-          userName, paths, PrivilegeType.MANAGE_DATABASE);
+      List<Integer> noPermissionIndexList =
+          AuthorityChecker.checkFullPathOrPatternListPermission(
+              userName, paths, PrivilegeType.MANAGE_DATABASE);
+      if (!noPermissionIndexList.isEmpty()) {
+        return AuthorityChecker.getTSStatus(
+            noPermissionIndexList, paths, PrivilegeType.MANAGE_DATABASE);
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
     return AuthorityChecker.getTSStatus(

@@ -71,7 +71,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertRowStatement.class);
 
   private static final long INSTANCE_SIZE =
-          RamUsageEstimator.shallowSizeOfInstance(InsertRowStatement.class);
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowStatement.class);
 
   protected static final byte TYPE_RAW_STRING = -1;
   protected static final byte TYPE_NULL = -2;
@@ -198,7 +198,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     if (dataType.isCompatible(dataTypes[columnIndex])) {
       values[columnIndex] =
-              dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
+          dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
@@ -217,14 +217,14 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       if (measurementSchemas[i] == null) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw new QueryProcessException(
-                  new PathNotExistException(
-                          devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+              new PathNotExistException(
+                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
         } else {
           markFailedMeasurement(
-                  i,
-                  new QueryProcessException(
-                          new PathNotExistException(
-                                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
+              i,
+              new QueryProcessException(
+                  new PathNotExistException(
+                      devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
         }
         continue;
       }
@@ -237,18 +237,18 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         }
       } catch (Exception e) {
         LOGGER.warn(
-                "data type of {}.{} is not consistent, "
-                        + "registered type {}, inserting timestamp {}, value {}",
-                devicePath,
-                measurements[i],
-                dataTypes[i],
-                time,
-                values[i]);
+            "data type of {}.{} is not consistent, "
+                + "registered type {}, inserting timestamp {}, value {}",
+            devicePath,
+            measurements[i],
+            dataTypes[i],
+            time,
+            values[i]);
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw e;
         } else {
           markFailedMeasurement(
-                  i, new SemanticException(e, TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()));
+              i, new SemanticException(e, TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()));
         }
       }
     }
@@ -266,8 +266,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
 
     InsertBaseStatement.FailedMeasurementInfo failedMeasurementInfo =
-            new InsertBaseStatement.FailedMeasurementInfo(
-                    measurements[index], dataTypes[index], values[index], cause);
+        new InsertBaseStatement.FailedMeasurementInfo(
+            measurements[index], dataTypes[index], values[index], cause);
     failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
 
     measurements[index] = null;
@@ -281,19 +281,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       return;
     }
     failedMeasurementIndex2Info.forEach(
-            (index, info) -> {
-              if (measurements != null) {
-                measurements[index] = info.getMeasurement();
-              }
+        (index, info) -> {
+          if (measurements != null) {
+            measurements[index] = info.getMeasurement();
+          }
 
-              if (dataTypes != null) {
-                dataTypes[index] = info.getDataType();
-              }
+          if (dataTypes != null) {
+            dataTypes[index] = info.getDataType();
+          }
 
-              if (values != null) {
-                values[index] = info.getValue();
-              }
-            });
+          if (values != null) {
+            values[index] = info.getValue();
+          }
+        });
     failedMeasurementIndex2Info.clear();
   }
 
@@ -306,9 +306,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     super.semanticCheck();
     if (measurements.length != values.length) {
       throw new SemanticException(
-              String.format(
-                      "the measurementList's size %d is not consistent with the valueList's size %d",
-                      measurements.length, values.length));
+          String.format(
+              "the measurementList's size %d is not consistent with the valueList's size %d",
+              measurements.length, values.length));
     }
   }
 
@@ -321,11 +321,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       return Collections.singletonList(this);
     }
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
-            this.getMapFromDeviceToMeasurementAndIndex();
+        this.getMapFromDeviceToMeasurementAndIndex();
     // Reconstruct statements
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry :
-            mapFromDeviceToMeasurementAndIndex.entrySet()) {
+        mapFromDeviceToMeasurementAndIndex.entrySet()) {
       List<Pair<String, Integer>> pairList = entry.getValue();
       InsertRowStatement statement = new InsertRowStatement();
       statement.setTime(this.time);
@@ -340,7 +340,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         int realIndex = pairList.get(i).right;
         copiedValues[i] = this.values[realIndex];
         measurements[i] =
-                Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
+            Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
         if (this.measurementIsAligned != null) {
@@ -449,7 +449,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public void validateMeasurementSchema(
-          int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
+      int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
     this.validateMeasurementSchema(index, measurementSchemaInfo);
     if (this.measurementIsAligned == null) {
       this.measurementIsAligned = new boolean[this.measurements.length];
@@ -487,7 +487,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
     return new Pair<>(
-            this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
+        this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
   }
 
   @TableModel
@@ -502,7 +502,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
         deviceIdSegments[i + 1] =
-                values[columnIndex] != null ? values[columnIndex].toString() : null;
+            values[columnIndex] != null ? values[columnIndex].toString() : null;
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -541,9 +541,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
-            + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas)
-            + RamUsageEstimator.sizeOf(measurementIsAligned)
-            + InsertNodeMemoryEstimator.sizeOfIDeviceID(deviceID);
+        + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas)
+        + RamUsageEstimator.sizeOf(measurementIsAligned)
+        + InsertNodeMemoryEstimator.sizeOfIDeviceID(deviceID);
   }
 
   @Override

@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacOperationClassifier;
+import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -44,7 +42,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -130,35 +127,10 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
               return o1.getNodeType() - o2.getNodeType();
             });
 
-    // Filter nodes based on permissions
+    // Apply RBAC and LBAC filtering to nodes
     String userName = getCurrentUserName();
     for (TSchemaNode node : nodePaths) {
-      String fullPath = node.getNodeName();
-      String databasePath = extractDatabasePathFromFullPath(fullPath);
-
-      if (databasePath != null) {
-        try {
-          PartialPath dbPartialPath = new PartialPath(databasePath);
-          List<PartialPath> paths = Collections.singletonList(dbPartialPath);
-          TSStatus permissionStatus =
-              AuthorityChecker.checkPermissionWithLbac(userName, paths, PrivilegeType.READ_SCHEMA);
-          if (permissionStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            sortSet.add(node);
-          } else {
-            LOGGER.debug(
-                "User {} denied access to child path {} in database {}: {}",
-                userName,
-                fullPath,
-                databasePath,
-                permissionStatus.getMessage());
-          }
-        } catch (Exception e) {
-          LOGGER.warn("Error checking permission for path {}: {}", fullPath, e.getMessage());
-          // In case of error, default to not adding the path to be safe
-        }
-      } else {
-        // If database path cannot be extracted, include it (or decide based on policy)
-        // For now, assuming it's allowed if no specific database path can be determined
+      if (hasPermissionForNode(userName, node)) {
         sortSet.add(node);
       }
     }
@@ -180,29 +152,81 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
     return tsBlockBuilder.build();
   }
 
-  /** Extract database path from full path */
-  private String extractDatabasePathFromFullPath(String fullPath) {
+  /**
+   * Check if user has permission to access the schema node Combines RBAC and LBAC checks with LBAC
+   * switch support
+   */
+  private boolean hasPermissionForNode(String userName, TSchemaNode node) {
     try {
-      String[] pathParts = fullPath.split("\\.");
-      if (pathParts.length >= 2) {
-        return pathParts[0] + "." + pathParts[1];
+      // Super user has access to everything
+      if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        return true;
       }
-      return null;
+
+      // Extract database path from node name
+      String databasePath = extractDatabasePathFromNodeName(node.getNodeName());
+      if (databasePath == null) {
+        // If we can't extract database path, allow access (or apply default policy)
+        return true;
+      }
+
+      // Step 1: RBAC check - must pass first
+      if (!AuthorityChecker.checkDBVisible(userName, databasePath)) {
+        LOGGER.debug(
+            "User {} denied RBAC access to node {} in database {}",
+            userName,
+            node.getNodeName(),
+            databasePath);
+        return false;
+      }
+
+      // Step 2: LBAC check - only if LBAC is enabled
+      if (LbacPermissionChecker.isLbacEnabled()) {
+        if (!LbacPermissionChecker.checkLbacPermissionForDatabase(
+            userName, databasePath, LbacOperationClassifier.OperationType.READ)) {
+          LOGGER.debug(
+              "User {} denied LBAC access to node {} in database {}",
+              userName,
+              node.getNodeName(),
+              databasePath);
+          return false;
+        }
+      }
+
+      return true;
     } catch (Exception e) {
-      LOGGER.warn("Error extracting database path from full path {}: {}", fullPath, e.getMessage());
-      return null;
+      LOGGER.warn("Error checking permission for node {}: {}", node.getNodeName(), e.getMessage());
+      // In case of error, deny access for security
+      return false;
     }
   }
 
-  /** Get current user name from session */
+  /** Extract database path from node name For example: "root.database.device" -> "root.database" */
+  private String extractDatabasePathFromNodeName(String nodeName) {
+    if (nodeName == null || !nodeName.startsWith("root.")) {
+      return null;
+    }
+
+    String[] parts = nodeName.split("\\.");
+    if (parts.length >= 2) {
+      return parts[0] + "." + parts[1]; // root.database
+    }
+
+    return null;
+  }
+
+  /** Get current user name from operator context */
   private String getCurrentUserName() {
     try {
+      // Try to get user from session context
+      // This is a simplified implementation - actual implementation may vary
       return operatorContext
           .getDriverContext()
           .getFragmentInstanceContext()
           .getSessionInfo()
           .getUserName();
     } catch (Exception e) {
+      LOGGER.warn("Failed to get current user name, using 'unknown': {}", e.getMessage());
       return "unknown";
     }
   }

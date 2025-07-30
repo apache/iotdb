@@ -936,6 +936,12 @@ public class AuthorInfo implements SnapshotProcessor {
       String policyExpression = req.getPolicyExpression();
       String scope = req.getScope();
 
+      LOGGER.info(
+          "Setting user label policy - User: {}, Policy: {}, Scope: {}",
+          username,
+          policyExpression,
+          scope);
+
       policyExpression = fixPolicyExpressionSpacing(policyExpression);
 
       // Check if scope contains both READ and WRITE regardless of order
