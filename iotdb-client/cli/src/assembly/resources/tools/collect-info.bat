@@ -46,8 +46,8 @@ set "passwd_param=root"
 set "host_param=127.0.0.1"
 set "port_param=6667"
 
-if exist "%IOTDB_HOME%\conf\iotdb-system.properties" (
-  set "properties_file=%IOTDB_HOME%\conf\iotdb-system.properties"
+if exist "%IOTDB_HOME%\conf\system.properties" (
+  set "properties_file=%IOTDB_HOME%\conf\system.properties"
 ) else (
   set "properties_file=%IOTDB_HOME%\conf\iotdb-datanode.properties"
 )

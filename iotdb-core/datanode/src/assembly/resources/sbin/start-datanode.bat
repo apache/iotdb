@@ -103,10 +103,10 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
 )
 
 @REM SET CONFIG FILE
-IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
-  set CONFIG_FILE="%IOTDB_CONF%\iotdb-system.properties"
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-system.properties" (
-  set CONFIG_FILE="%IOTDB_HOME%\conf\iotdb-system.properties"
+IF EXIST "%IOTDB_CONF%\system.properties" (
+  set CONFIG_FILE="%IOTDB_CONF%\system.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\system.properties" (
+  set CONFIG_FILE="%IOTDB_HOME%\conf\system.properties"
 ) ELSE IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
   set CONFIG_FILE="%IOTDB_CONF%\iotdb-datanode.properties"
 ) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
@@ -138,7 +138,7 @@ IF DEFINED CONFIG_FILE (
       set dn_data_region_consensus_port=%%i
   )
 ) ELSE (
-  echo "Can't find iotdb-system.properties or iotdb-datanode.properties, check the default ports"
+  echo "Can't find system.properties or iotdb-datanode.properties, check the default ports"
   set dn_rpc_port=6667
   set dn_internal_port=10730
   set dn_mpp_data_exchange_port=10740

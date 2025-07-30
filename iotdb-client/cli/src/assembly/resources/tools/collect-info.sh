@@ -85,8 +85,8 @@ choose_unit() {
     echo "$unit"
 }
 
-if [ -f "$IOTDB_HOME/conf/iotdb-system.properties" ]; then
-  properties_file="$IOTDB_HOME/conf/iotdb-system.properties"
+if [ -f "$IOTDB_HOME/conf/system.properties" ]; then
+  properties_file="$IOTDB_HOME/conf/system.properties"
 else
   properties_file="$IOTDB_HOME/conf/iotdb-datanode.properties"
 fi

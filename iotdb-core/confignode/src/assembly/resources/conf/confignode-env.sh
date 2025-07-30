@@ -166,8 +166,8 @@ get_cn_system_dir() {
     fi
 }
 
-if [ -f "${CONFIGNODE_CONF}/iotdb-system.properties" ]; then
-  	heap_dump_dir=$(get_cn_system_dir "iotdb-system.properties")
+if [ -f "${CONFIGNODE_CONF}/system.properties" ]; then
+  	heap_dump_dir=$(get_cn_system_dir "system.properties")
 else
   	heap_dump_dir=$(get_cn_system_dir "iotdb-confignode.properties")
 fi

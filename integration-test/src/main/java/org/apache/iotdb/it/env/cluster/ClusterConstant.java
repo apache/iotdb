@@ -148,7 +148,7 @@ public class ClusterConstant {
       "pipeConsensusStreamMode.dataRegionReplicaNumber";
 
   // Property file names
-  public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "iotdb-system.properties";
+  public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "system.properties";
 
   // Properties' keys
   // Common

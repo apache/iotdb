@@ -236,11 +236,11 @@ public class IoTDBStartCheck {
                 + " Please upgrade to v0.10 first");
         System.exit(-1);
       }
-      String versionString = properties.getProperty(IOTDB_VERSION_STRING);
-      if (versionString.startsWith("0.")) {
-        logger.error("IoTDB version is too old");
-        System.exit(-1);
-      }
+      //      String versionString = properties.getProperty(IOTDB_VERSION_STRING);
+      //      if (versionString.startsWith("0.")) {
+      //        logger.error("IoTDB version is too old");
+      //        System.exit(-1);
+      //      }
       checkImmutableSystemProperties();
     }
   }

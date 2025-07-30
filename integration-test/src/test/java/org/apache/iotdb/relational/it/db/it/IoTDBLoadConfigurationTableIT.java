@@ -62,7 +62,7 @@ public class IoTDBLoadConfigurationTableIT {
             + File.separator
             + "conf"
             + File.separator
-            + "iotdb-system.properties";
+            + "system.properties";
     long length = new File(confPath).length();
     try (FileWriter fileWriter = new FileWriter(confPath, true)) {
       fileWriter.write(System.lineSeparator());

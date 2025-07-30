@@ -22,7 +22,7 @@ echo ---------------------
 echo Starting Printing the IoTDB Data Directory Overview
 echo ---------------------
 
-source "$(dirname "$0")/../../sbin/iotdb-common.sh"
+source "$(dirname "$0")/../../sbin/common.sh"
 #get_iotdb_include and checkAllVariables is in common.sh
 VARS=$(get_iotdb_include "$*")
 checkAllVariables

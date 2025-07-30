@@ -55,7 +55,7 @@ public class ConfigurationFileUtilsTest {
     File confignodeConfigFile = new File(dir + File.separator + "iotdb-confignode.properties");
     File datanodeConfigFile = new File(dir + File.separator + "iotdb-datanode.properties");
     File commonConfigFile = new File(dir + File.separator + "iotdb-common.properties");
-    File systemConfigFile = new File(dir + File.separator + "iotdb-system.properties");
+    File systemConfigFile = new File(dir + File.separator + "system.properties");
     generateFile(confignodeConfigFile, "a=1");
     generateFile(datanodeConfigFile, "b=2");
     generateFile(commonConfigFile, "c=3");

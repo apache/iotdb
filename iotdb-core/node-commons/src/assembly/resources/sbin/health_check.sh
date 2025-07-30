@@ -31,7 +31,7 @@ system_settings_pre_check(){
   ulimit_value=$(ulimit -n)
 }
 
-source "${IOTDB_HOME}/sbin/iotdb-common.sh"
+source "${IOTDB_HOME}/sbin/common.sh"
 
 HELP="Usage: $0 [-ips <ip1> <port1> <port2>,<ip2> <port3> <port4>] [-o <all/local/remote>]"
 
@@ -170,8 +170,8 @@ get_properties_value() {
     local file_name=$1
     local property_name=$2
     local default_value=$3
-    if [ -f "${IOTDB_HOME}/conf/iotdb-system.properties" ]; then
-        local file_path="${IOTDB_HOME}/conf/iotdb-system.properties"
+    if [ -f "${IOTDB_HOME}/conf/system.properties" ]; then
+        local file_path="${IOTDB_HOME}/conf/system.properties"
     else
         local file_path="${IOTDB_HOME}/conf/${file_name}.properties"
     fi

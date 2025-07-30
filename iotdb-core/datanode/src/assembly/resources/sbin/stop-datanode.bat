@@ -22,8 +22,8 @@
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
-IF EXIST "%superior_dir%\conf\iotdb-system.properties" (
-  set config_file="%superior_dir%\conf\iotdb-system.properties"
+IF EXIST "%superior_dir%\conf\system.properties" (
+  set config_file="%superior_dir%\conf\system.properties"
 ) ELSE (
   IF EXIST "%superior_dir%\conf\iotdb-datanode.properties" (
     set config_file=%superior_dir%\conf\iotdb-datanode.properties

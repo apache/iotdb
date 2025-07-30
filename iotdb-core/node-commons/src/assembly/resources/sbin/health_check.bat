@@ -230,8 +230,8 @@ exit /b
 :local_dirs_check
 
 setlocal enabledelayedexpansion
-if exist "%IOTDB_HOME%\conf\iotdb-system.properties" (
-  set "properties_file=%IOTDB_HOME%\conf\iotdb-system.properties"
+if exist "%IOTDB_HOME%\conf\system.properties" (
+  set "properties_file=%IOTDB_HOME%\conf\system.properties"
 ) ELSE (
   set "properties_file=%IOTDB_HOME%\conf\iotdb-datanode.properties"
 )
@@ -352,11 +352,11 @@ if defined operation_dirs (
 exit /b
 
 :local_ports_check
-IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
-  set DATANODE_CONFIG_FILE_PATH="%IOTDB_CONF%\iotdb-system.properties"
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-system.properties" (
-  set DATANODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\iotdb-system.properties"
-) ELSE IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+IF EXIST "%IOTDB_CONF%\system.properties" (
+  set DATANODE_CONFIG_FILE_PATH="%IOTDB_CONF%\system.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\system.properties" (
+  set DATANODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\system.properties"
+) ELSE IF EXIST "%IOTDB_CONF%\system.properties" (
   set DATANODE_CONFIG_FILE_PATH="%IOTDB_CONF%\iotdb-datanode.properties"
 ) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
   set DATANODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\iotdb-datanode.properties"
@@ -392,11 +392,11 @@ IF DEFINED DATANODE_CONFIG_FILE_PATH (
   set dn_data_region_consensus_port=10760
 )
 
-IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
-  set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_CONF%\iotdb-system.properties"
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-system.properties" (
-  set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\iotdb-system.properties"
-) ELSE IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+IF EXIST "%IOTDB_CONF%\system.properties" (
+  set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_CONF%\system.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\system.properties" (
+  set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\system.properties"
+) ELSE IF EXIST "%IOTDB_CONF%\system.properties" (
   set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_CONF%\iotdb-confignode.properties"
 ) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-confignode.properties" (
   set CONFIGNODE_CONFIG_FILE_PATH="%IOTDB_HOME%\conf\iotdb-confignode.properties"

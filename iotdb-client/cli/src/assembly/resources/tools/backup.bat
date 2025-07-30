@@ -38,9 +38,9 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   echo Can't find datanode-env.bat
 )
 
-IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+IF EXIST "%IOTDB_CONF%\system.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-    "%IOTDB_CONF%\iotdb-system.properties"') do (
+    "%IOTDB_CONF%\system.properties"') do (
       set dn_rpc_port=%%i
   )
 ) ELSE IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
@@ -52,9 +52,9 @@ IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
   set dn_rpc_port=6667
 )
 
-IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+IF EXIST "%IOTDB_CONF%\system.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
-    "%IOTDB_CONF%\iotdb-system.properties"') do (
+    "%IOTDB_CONF%\system.properties"') do (
       set cn_internal_port=%%i
   )
 ) ELSE IF EXIST "%IOTDB_CONF%\iotdb-confignode.properties" (

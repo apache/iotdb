@@ -70,8 +70,8 @@ get_properties_value() {
     local file_name=$1
     local property_name=$2
     local default_value=$3
-    if [ -f "${IOTDB_HOME}/conf/iotdb-system.properties" ]; then
-            local file_path="${IOTDB_HOME}/conf/iotdb-system.properties"
+    if [ -f "${IOTDB_HOME}/conf/system.properties" ]; then
+            local file_path="${IOTDB_HOME}/conf/system.properties"
     else
             local file_path="${IOTDB_HOME}/conf/${file_name}.properties"
     fi

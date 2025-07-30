@@ -84,10 +84,10 @@ IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
 
 @REM CHECK THE PORT USAGES
 @REM SET CONFIG FILE
-IF EXIST "%CONFIGNODE_CONF%\iotdb-system.properties" (
-  set CONFIG_FILE="%CONFIGNODE_CONF%\iotdb-system.properties"
-) ELSE IF EXIST "%CONFIGNODE_HOME%\conf\iotdb-system.properties" (
-  set CONFIG_FILE="%CONFIGNODE_HOME%\conf\iotdb-system.properties"
+IF EXIST "%CONFIGNODE_CONF%\system.properties" (
+  set CONFIG_FILE="%CONFIGNODE_CONF%\system.properties"
+) ELSE IF EXIST "%CONFIGNODE_HOME%\conf\system.properties" (
+  set CONFIG_FILE="%CONFIGNODE_HOME%\conf\system.properties"
 ) ELSE IF EXIST "%CONFIGNODE_CONF%\iotdb-confignode.properties" (
   set CONFIG_FILE="%CONFIGNODE_CONF%\iotdb-confignode.properties"
 ) ELSE IF EXIST "%CONFIGNODE_HOME%\conf\iotdb-confignode.properties" (
@@ -106,7 +106,7 @@ IF DEFINED CONFIG_FILE (
       set cn_consensus_port=%%i
   )
 ) ELSE (
-  echo "Can't find iotdb-system.properties or iotdb-confignode.properties, check the default ports"
+  echo "Can't find system.properties or iotdb-confignode.properties, check the default ports"
   set cn_internal_port=10710
   set cn_consensus_port=10720
 )

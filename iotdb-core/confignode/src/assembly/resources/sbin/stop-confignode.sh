@@ -18,10 +18,10 @@
 # under the License.
 #
 
-source "$(dirname "$0")/iotdb-common.sh"
+source "$(dirname "$0")/common.sh"
 CONFIGNODE_CONF="$(dirname "$0")/../conf"
 
-if [ -f "${CONFIGNODE_CONF}/iotdb-system.properties" ]; then
+if [ -f "${CONFIGNODE_CONF}/system.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/system.properties)
     # trim the port
     cn_internal_port=$(echo "$cn_internal_port" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')

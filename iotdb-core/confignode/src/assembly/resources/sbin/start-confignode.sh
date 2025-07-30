@@ -24,7 +24,7 @@ echo ----------------------------
 
 
 
-source "$(dirname "$0")/iotdb-common.sh"
+source "$(dirname "$0")/common.sh"
 
 # iotdb server runs on foreground by default
 foreground="yes"

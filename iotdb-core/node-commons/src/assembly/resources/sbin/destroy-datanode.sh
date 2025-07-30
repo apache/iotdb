@@ -33,8 +33,8 @@ nohup bash ${IOTDB_HOME}/sbin/stop-datanode.sh -f >/dev/null 2>&1 &
 
 rm -rf ${IOTDB_HOME}/data/datanode/ >/dev/null 2>&1 &
 
-if [ -f "${IOTDB_HOME}/conf/iotdb-system.properties" ]; then
-  IOTDB_DATANODE_CONFIG="${IOTDB_HOME}/conf/iotdb-system.properties"
+if [ -f "${IOTDB_HOME}/conf/system.properties" ]; then
+  IOTDB_DATANODE_CONFIG="${IOTDB_HOME}/conf/system.properties"
 else
   IOTDB_DATANODE_CONFIG="${IOTDB_HOME}/conf/iotdb-datanode.properties"
 fi

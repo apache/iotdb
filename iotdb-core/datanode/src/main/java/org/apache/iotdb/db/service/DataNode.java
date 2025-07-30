@@ -192,8 +192,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   public static void main(String[] args) {
-    logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
-    logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
+    logger.info("DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
+    logger.info("DataNode default charset is: {}", Charset.defaultCharset().displayName());
     DataNode dataNode = new DataNode();
     int returnCode = dataNode.run(args);
     if (returnCode != 0) {
