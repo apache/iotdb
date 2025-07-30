@@ -143,6 +143,9 @@ public class DeviceMetadataIndexEntryCache {
     boolean memoryReserved = false;
     while (true) {
       if (costOfOneFile * (currentNum + 1) > MAX_CACHED_SIZE) {
+        if (memoryReserved) {
+          context.getMemoryReservationContext().releaseMemoryCumulatively(costOfOneFile);
+        }
         return false;
       }
       try {
