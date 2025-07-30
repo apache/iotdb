@@ -42,6 +42,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 
@@ -129,7 +130,11 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
   }
 
   @Test
-  public void test2() throws IoTDBConnectionException, StatementExecutionException, SQLException {
+  public void test2()
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          SQLException,
+          InterruptedException {
     try (ITableSession session =
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
@@ -157,18 +162,26 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
       otherNodes.add(dataNodeWrapper.getIpAndPortString());
     }
 
-    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection(otherNodes)) {
-      session.executeNonQueryStatement("use " + DATABASE_NAME);
-      SessionDataSet sessionDataSet =
-          session.executeQueryStatement(
-              "select device, count(s1) from table1 where (device = 'd1' or device = 'd2') and time <= -1 group by device");
-      int count = 0;
-      while (sessionDataSet.hasNext()) {
-        sessionDataSet.next();
-        count++;
+    // Until the data is synchronized by IoTConsensus, query results may not be available.
+    int maxTestCount = 30;
+    for (int i = 0; i < maxTestCount; i++) {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection(otherNodes)) {
+        session.executeNonQueryStatement("use " + DATABASE_NAME);
+        SessionDataSet sessionDataSet =
+            session.executeQueryStatement(
+                "select device, count(s1) from table1 where (device = 'd1' or device = 'd2') and time <= -1 group by device");
+        int count = 0;
+        while (sessionDataSet.hasNext()) {
+          sessionDataSet.next();
+          count++;
+        }
+        if (count == 1) {
+          return;
+        }
       }
-      Assert.assertEquals(1, count);
+      Thread.currentThread().sleep(TimeUnit.SECONDS.toMillis(1));
     }
+    Assert.fail();
   }
 
   private void ensureAllDataNodeRunning() {
