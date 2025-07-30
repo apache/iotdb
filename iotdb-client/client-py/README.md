@@ -61,7 +61,7 @@ from iotdb.Session import Session
 ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
-password_ = "root"
+password_ = "IoTDB@2011"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()
@@ -324,7 +324,7 @@ from iotdb.Session import Session
 ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
-password_ = "root"
+password_ = "IoTDB@2011"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 result = session.execute_query_statement("SELECT * FROM root.*")
@@ -349,7 +349,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_something(self):
         with IoTDBContainer() as c:
-            session = Session("localhost", c.get_exposed_port(6667), "root", "root")
+            session = Session("localhost", c.get_exposed_port(6667), "root", "IoTDB@2011")
             session.open(False)
             result = session.execute_query_statement("SHOW TIMESERIES")
             print(result)
@@ -374,7 +374,7 @@ from iotdb.dbapi import connect
 ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
-password_ = "root"
+password_ = "IoTDB@2011"
 conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="Asia/Shanghai",sqlalchemy_mode=False)
 cursor = conn.cursor()
 ```
@@ -553,7 +553,7 @@ from iotdb.Session import Session
 ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
-password_ = "root"
+password_ = "IoTDB@2011"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()

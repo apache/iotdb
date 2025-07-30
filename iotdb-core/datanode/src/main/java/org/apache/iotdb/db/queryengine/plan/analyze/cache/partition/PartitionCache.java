@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -478,11 +479,22 @@ public class PartitionCache {
       try {
         // try to fetch database from config node when miss
         fetchDatabaseAndUpdateCache(result, deviceIDs);
-        if (!result.isSuccess() && isAutoCreate) {
-          // try to auto create database of failed device
-          createDatabaseAndUpdateCache(result, deviceIDs, userName);
-          if (!result.isSuccess()) {
-            throw new StatementAnalyzeException("Failed to get database Map");
+        if (!result.isSuccess()) {
+          if (isAutoCreate) {
+            // try to auto create database of failed device
+            createDatabaseAndUpdateCache(result, deviceIDs, userName);
+            if (!result.isSuccess()) {
+              throw new StatementAnalyzeException("Failed to get database Map");
+            }
+          } else {
+            // check if it is to auto create the system database
+            for (IDeviceID deviceID : deviceIDs) {
+              if (!deviceID.isTableModel()
+                  && deviceID.startWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
+                createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
+                break;
+              }
+            }
           }
         }
       } catch (MetadataException e) {

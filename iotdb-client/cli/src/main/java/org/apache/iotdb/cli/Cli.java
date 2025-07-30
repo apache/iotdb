@@ -45,7 +45,7 @@ import java.util.Properties;
 
 import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 
-/** args[]: -h 127.0.0.1 -p 6667 -u root -pw root */
+/** args[]: -h 127.0.0.1 -p 6667 -u root -pw IoTDB@2011 */
 public class Cli extends AbstractCli {
   private static CommandLine commandLine;
   // TODO: Make non-static

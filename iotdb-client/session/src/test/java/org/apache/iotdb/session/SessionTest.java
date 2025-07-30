@@ -1195,7 +1195,7 @@ public class SessionTest {
   @Test
   public void testEmptyNodeUrls() {
     try {
-      ISession failedSession = new Session(Collections.emptyList(), "root", "root");
+      ISession failedSession = new Session(Collections.emptyList(), "root", "IoTDB@2011");
       fail();
     } catch (IllegalArgumentException e) {
       assertEquals("nodeUrls shouldn't be empty.", e.getMessage());

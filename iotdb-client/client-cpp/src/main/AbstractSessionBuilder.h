@@ -27,7 +27,7 @@ public:
     std::string host = "localhost";
     int rpcPort = 6667;
     std::string username = "root";
-    std::string password = "root";
+    std::string password = "IoTDB@2011";
     std::string zoneId = "";
     int fetchSize = 10000;
     std::string sqlDialect = "tree";

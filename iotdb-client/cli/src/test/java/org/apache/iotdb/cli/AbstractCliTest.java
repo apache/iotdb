@@ -118,12 +118,14 @@ public class AbstractCliTest {
   @Test
   public void testRemovePasswordArgs() {
     AbstractCli.init();
-    String[] input = new String[] {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root"};
-    String[] res = new String[] {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root"};
+    String[] input =
+        new String[] {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "IoTDB@2011"};
+    String[] res =
+        new String[] {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "IoTDB@2011"};
     isTwoStringArrayEqual(res, AbstractCli.removePasswordArgs(input));
 
-    input = new String[] {"-h", "127.0.0.1", "-p", "6667", "-pw", "root", "-u", "root"};
-    res = new String[] {"-h", "127.0.0.1", "-p", "6667", "-pw", "root", "-u", "root"};
+    input = new String[] {"-h", "127.0.0.1", "-p", "6667", "-pw", "IoTDB@2011", "-u", "root"};
+    res = new String[] {"-h", "127.0.0.1", "-p", "6667", "-pw", "IoTDB@2011", "-u", "root"};
     isTwoStringArrayEqual(res, AbstractCli.removePasswordArgs(input));
 
     input = new String[] {"-h", "127.0.0.1", "-p", "6667", "root", "-u", "root", "-pw"};

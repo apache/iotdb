@@ -29,12 +29,12 @@ from iotdb.utils.NumpyTablet import NumpyTablet
 ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
-password_ = "root"
+password_ = "IoTDB@2011"
 # session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="Asia/Shanghai", enable_redirection=True)
 session = Session.init_from_node_urls(
     node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
     user="root",
-    password="root",
+    password="IoTDB@2011",
     fetch_size=1024,
     zone_id="Asia/Shanghai",
     enable_redirection=True,

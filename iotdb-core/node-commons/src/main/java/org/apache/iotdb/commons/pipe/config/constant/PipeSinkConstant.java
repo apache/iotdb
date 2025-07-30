@@ -86,7 +86,7 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
   public static final String SINK_IOTDB_PASSWORD_KEY = "sink.password";
-  public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
+  public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "IoTDB@2011";
 
   public static final String CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY =
       "connector.exception.data.convert-on-type-mismatch";

@@ -75,8 +75,8 @@ public class DataMigrationExample {
       path = args[0];
     }
 
-    readerPool = new SessionPool("127.0.0.1", 6667, "root", "root", CONCURRENCY);
-    writerPool = new SessionPool("127.0.0.1", 6668, "root", "root", CONCURRENCY);
+    readerPool = new SessionPool("127.0.0.1", 6667, "root", "IoTDB@2011", CONCURRENCY);
+    writerPool = new SessionPool("127.0.0.1", 6668, "root", "IoTDB@2011", CONCURRENCY);
 
     SessionDataSetWrapper deviceDataSet = readerPool.executeQueryStatement("count devices " + path);
     DataIterator deviceIter = deviceDataSet.iterator();

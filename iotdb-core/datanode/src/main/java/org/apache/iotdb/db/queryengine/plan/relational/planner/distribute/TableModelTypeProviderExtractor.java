@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -49,9 +50,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
@@ -96,6 +99,18 @@ public class TableModelTypeProviderExtractor {
         }
         beTypeProvider.putTableModelType(symbol, feTypeProvider.getTableModelType(symbol));
       }
+    }
+
+    @Override
+    public Void visitInto(IntoNode node, Void context) {
+      node.getChild().accept(this, context);
+      List<Symbol> outputSymbols = node.getOutputSymbols();
+      List<Type> outputTypes = node.getOutputType();
+
+      for (int i = 0; i < outputSymbols.size(); i++) {
+        beTypeProvider.putTableModelType(outputSymbols.get(i), outputTypes.get(i));
+      }
+      return null;
     }
 
     @Override

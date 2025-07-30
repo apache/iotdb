@@ -33,7 +33,7 @@ COLLECTION_DIR="iotdb-info"
 HELP="Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-jp <jdk_path>] [-dd <data_dir>]"
 
 user_param="root"
-passwd_param="root"
+passwd_param="IoTDB@2011"
 host_param="127.0.0.1"
 port_param="6667"
 jdk_path_param=""

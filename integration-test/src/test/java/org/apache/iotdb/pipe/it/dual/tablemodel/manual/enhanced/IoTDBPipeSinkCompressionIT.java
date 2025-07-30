@@ -72,6 +72,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -145,7 +146,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
               "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -165,7 +167,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "root");
-      connectorAttributes.put("connector.password", "root");
+      connectorAttributes.put("connector.password", "IoTDB@2011");
       connectorAttributes.put("connector.compressor", compressionTypes);
 
       final TSStatus status =
@@ -180,7 +182,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"),
           handleFailure);
@@ -194,7 +196,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
               "insert into root.db.d1(time, s1) values (6, 6)",
               "insert into root.db.d1(time, s1) values (7, 7)",
               "insert into root.db.d1(time, s1) values (8, 8)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -202,7 +205,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"),
           handleFailure);
@@ -234,7 +237,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
               "insert into root.db.d1(time, s3) values (1, 1)",
               "insert into root.db.d1(time, s4) values (1, 1)",
               "insert into root.db.d1(time, s5) values (1, 1)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -329,6 +333,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
       }
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           3,
           showPipeResult.stream()

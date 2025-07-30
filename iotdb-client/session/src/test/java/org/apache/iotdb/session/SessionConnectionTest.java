@@ -91,7 +91,7 @@ public class SessionConnectionTest {
         new Session.Builder()
             .nodeUrls(Collections.singletonList("127.0.0.1:12"))
             .username("root")
-            .password("root")
+            .password("IoTDB@2011")
             .enableAutoFetch(false)
             .build();
     Whitebox.setInternalState(sessionConnection, "session", session);
@@ -163,7 +163,7 @@ public class SessionConnectionTest {
             .host("local")
             .port(12)
             .username("root")
-            .password("root")
+            .password("IoTDB@2011")
             .enableAutoFetch(false)
             .build();
     SessionConnection sessionConnection1 =
@@ -184,7 +184,7 @@ public class SessionConnectionTest {
             .host("local")
             .port(12)
             .username("root")
-            .password("root")
+            .password("IoTDB@2011")
             .enableAutoFetch(false)
             .build();
     SessionConnection sessionConnection1 =

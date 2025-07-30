@@ -46,7 +46,8 @@ import java.util.concurrent.Future;
  *
  * <p>The usage of export-csv.sh can be found in the <a
  * href="https://iotdb.apache.org/zh/UserGuide/V1.2.x/Tools-System/Import-Export-Tool.html#csv%E5%AF%BC%E5%85%A5%E5%AF%BC%E5%87%BA%E5%B7%A5%E5%85%B7">documentation</a>.
- * For example: ./export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td . -q "show timeseries"
+ * For example: ./export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw IoTDB@2011 -td . -q "show
+ * timeseries"
  */
 public class PathCheckExample {
   private static final List<String> INPUT_LIST = new ArrayList<>();

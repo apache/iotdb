@@ -258,7 +258,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (addAINode) {
       this.aiNodeWrapperList = new ArrayList<>();
-      startAINode(seedConfigNode, testClassName);
+      startAINode(seedConfigNode, this.dataNodeWrapperList.get(0).getPort(), testClassName);
     }
 
     checkClusterStatusWithoutUnknown();
@@ -307,11 +307,13 @@ public abstract class AbstractEnv implements BaseEnv {
     return dataNodeWrapper;
   }
 
-  private void startAINode(final String seedConfigNode, final String testClassName) {
+  private void startAINode(
+      final String seedConfigNode, final int clusterIngressPort, final String testClassName) {
     final String aiNodeEndPoint;
     final AINodeWrapper aiNodeWrapper =
         new AINodeWrapper(
             seedConfigNode,
+            clusterIngressPort,
             testClassName,
             testMethodName,
             index,
@@ -537,7 +539,8 @@ public abstract class AbstractEnv implements BaseEnv {
       if (statusCode != 0) {
         logger.info("Node {} is not running due to {}", nodeWrapper.getId(), statusCode);
       }
-      if (statusCode == TSStatusCode.PORT_OCCUPIED.getStatusCode()) {
+      if (statusCode == TSStatusCode.PORT_OCCUPIED.getStatusCode() || statusCode == 1) {
+        // the occupation of jmx port may return 1
         try {
           Map<Integer, Long> portOccupationMap =
               EnvUtils.listPortOccupation(
@@ -959,7 +962,7 @@ public abstract class AbstractEnv implements BaseEnv {
                               + dataNodeEndpoint
                               + getParam(null, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
                           System.getProperty("User", "root"),
-                          System.getProperty("Password", "root"))) {
+                          System.getProperty("Password", "IoTDB@2011"))) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
               } catch (final Exception e) {

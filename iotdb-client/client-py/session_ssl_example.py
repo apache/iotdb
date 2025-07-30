@@ -23,7 +23,7 @@ from iotdb.table_session import TableSession, TableSessionConfig
 ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
-password_ = "root"
+password_ = "IoTDB@2011"
 # Configure SSL enabled
 use_ssl = True
 # Configure certificate path

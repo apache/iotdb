@@ -780,10 +780,25 @@ public class LoadCache {
 
   public void updateTopology(Map<Integer, Set<Integer>> latestTopology) {
     if (!latestTopology.equals(topologyGraph)) {
-      LOGGER.info("[Topology Service] Cluster topology changed, latest: {}", latestTopology);
+      LOGGER.info("[Topology] Cluster topology changed, latest: {}", latestTopology);
+      for (int fromId : latestTopology.keySet()) {
+        for (int toId : latestTopology.keySet()) {
+          boolean originReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          boolean newReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          if (originReachable != newReachable) {
+            LOGGER.info(
+                "[Topology] Topology of DataNode {} is now {} to DataNode {}",
+                fromId,
+                newReachable ? "reachable" : "unreachable",
+                toId);
+          }
+        }
+      }
+      topologyGraph = latestTopology;
+      topologyUpdated.set(true);
     }
-    topologyGraph = latestTopology;
-    topologyUpdated.set(true);
   }
 
   @Nullable

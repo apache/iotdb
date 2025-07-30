@@ -114,7 +114,7 @@ def delete_data():
 ip = "127.0.0.1"
 port = "6667"
 username = "root"
-password = "root"
+password = "IoTDB@2011"
 pool_config = PoolConfig(
     node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
     user_name=username,

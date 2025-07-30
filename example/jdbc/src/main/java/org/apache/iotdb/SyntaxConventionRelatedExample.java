@@ -69,7 +69,7 @@ public class SyntaxConventionRelatedExample {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
             DriverManager.getConnection(
-                "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "root");
+                "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "IoTDB@2011");
         Statement statement = connection.createStatement()) {
 
       // set JDBC fetchSize

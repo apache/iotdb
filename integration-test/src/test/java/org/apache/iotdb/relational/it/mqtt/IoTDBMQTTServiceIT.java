@@ -48,7 +48,7 @@ public class IoTDBMQTTServiceIT {
   private BlockingConnection connection;
   private static final String IP = System.getProperty("RemoteIp", "127.0.0.1");
   private static final String USER = System.getProperty("RemoteUser", "root");
-  private static final String PASSWORD = System.getProperty("RemotePassword", "root");
+  private static final String PASSWORD = System.getProperty("RemotePassword", "IoTDB@2011");
   private static final String DATABASE = "mqtttest";
   public static final String FORMATTER = "line";
 

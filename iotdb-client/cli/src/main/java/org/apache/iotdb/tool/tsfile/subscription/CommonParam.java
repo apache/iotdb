@@ -42,7 +42,7 @@ public class CommonParam {
   private static String srcHost = "127.0.0.1";
   private static int srcPort = 6667;
   private static String srcUserName = "root";
-  private static String srcPassword = "root";
+  private static String srcPassword = "IoTDB@2011";
   private static String sqlDialect = "tree";
   private static String startTime = "";
   private static String endTime = "";

@@ -70,7 +70,7 @@ warnings.simplefilter("always", DeprecationWarning)
 class Session(object):
     DEFAULT_FETCH_SIZE = 5000
     DEFAULT_USER = "root"
-    DEFAULT_PASSWORD = "root"
+    DEFAULT_PASSWORD = "IoTDB@2011"
     DEFAULT_ZONE_ID = get_localzone_name()
     RETRY_NUM = 3
     SQL_DIALECT = "tree"

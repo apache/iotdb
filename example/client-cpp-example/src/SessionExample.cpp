@@ -376,7 +376,7 @@ void queryLast() {
 int main() {
     LOG_LEVEL = LEVEL_DEBUG;
 
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session("127.0.0.1", 6667, "root", "IoTDB@2011");
     session->open(false);
 
     cout << "setStorageGroup: root.sg1\n" << endl;

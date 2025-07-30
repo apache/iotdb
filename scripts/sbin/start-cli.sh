@@ -51,7 +51,7 @@ PARAMETERS=""
 
 # if [ $# -eq 0 ]
 # then
-# 	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw root"
+# 	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw IoTDB@2011"
 # fi
 
 # if DEFAULT_SQL_DIALECT is empty, set it to "tree"
@@ -61,7 +61,7 @@ fi
 
 # Added parameters when default parameters are missing
 user_param="-u root"
-passwd_param="-pw root"
+passwd_param="-pw IoTDB@2011"
 host_param="-h 127.0.0.1"
 port_param="-p 6667"
 sql_dialect_param="-sql_dialect $DEFAULT_SQL_DIALECT"

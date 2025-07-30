@@ -49,7 +49,7 @@ public class Constants {
   public static final String PW_ARGS = "pw";
   public static final String PW_NAME = "password";
   public static final String PW_DESC = "Password (optional)";
-  public static final String PW_DEFAULT_VALUE = "root";
+  public static final String PW_DEFAULT_VALUE = "IoTDB@2011";
 
   public static final String USERNAME_ARGS = "u";
   public static final String USERNAME_NAME = "username";

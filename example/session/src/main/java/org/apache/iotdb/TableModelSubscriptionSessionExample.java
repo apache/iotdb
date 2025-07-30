@@ -103,7 +103,7 @@ public class TableModelSubscriptionSessionExample {
             .host("127.0.0.1")
             .port(6667)
             .username("root")
-            .password("root")
+            .password("IoTDB@2011")
             .build()) {
       final Properties config = new Properties();
       config.put(TopicConstant.DATABASE_KEY, "db.*");
@@ -151,7 +151,7 @@ public class TableModelSubscriptionSessionExample {
               .host("127.0.0.1")
               .port(6667)
               .username("root")
-              .password("root")
+              .password("IoTDB@2011")
               .build()) {
         session.getTopics().forEach((System.out::println));
         session.getSubscriptions().forEach((System.out::println));
@@ -166,7 +166,7 @@ public class TableModelSubscriptionSessionExample {
         new TableSessionBuilder()
             .nodeUrls(Collections.singletonList(HOST + ":" + PORT))
             .username("root")
-            .password("root")
+            .password("IoTDB@2011")
             .build()) {
       createDataBaseAndTable(session, "db1", "test1");
       createDataBaseAndTable(session, "db1", "test2");

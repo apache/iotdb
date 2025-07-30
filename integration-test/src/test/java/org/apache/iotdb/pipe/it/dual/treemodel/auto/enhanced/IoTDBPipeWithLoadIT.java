@@ -76,6 +76,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
   }
@@ -116,12 +118,24 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d2 (time, s1) values (1, 1), (3, 3)",
               "insert into root.db.d3 (time, s1) values (1, 1), (3, 3)",
               "insert into root.db.d4 (time, s1) values (1, 1), (3, 3)",
-              "flush",
+              "flush"),
+          null)) {
+        return;
+      }
+      // adding new devices may create a new region, and thus trigger leader re-balancing
+      // the old leader may not have synced data to the new leader, and the result is that
+      // the following deletions performed on the new leader can not delete anything
+      // wait for a while to increase the chance that data has been synced to the new leader
+      Thread.sleep(5000);
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
               "delete from root.db.d1.s2 where time <= 2",
               "delete from root.db.d1.s3 where time >= 1 and time <= 3",
               "delete from root.db.d3.** where time <= 2",
               "delete from root.db.d4.** where time >= 1 and time <= 3",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -135,7 +149,10 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("4,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("4,"));
     }
   }
 }

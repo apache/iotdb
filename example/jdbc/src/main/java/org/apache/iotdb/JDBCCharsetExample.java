@@ -41,7 +41,7 @@ public class JDBCCharsetExample {
 
     try (final Connection connection =
             DriverManager.getConnection(
-                "jdbc:iotdb://127.0.0.1:6667?charset=GB18030", "root", "root");
+                "jdbc:iotdb://127.0.0.1:6667?charset=GB18030", "root", "IoTDB@2011");
         final IoTDBStatement statement = (IoTDBStatement) connection.createStatement()) {
 
       final String insertSQLWithGB18030 =
@@ -63,7 +63,7 @@ public class JDBCCharsetExample {
     System.out.println("[Charset: " + charset + "]");
     try (final Connection connection =
             DriverManager.getConnection(
-                "jdbc:iotdb://127.0.0.1:6667?charset=" + charset, "root", "root");
+                "jdbc:iotdb://127.0.0.1:6667?charset=" + charset, "root", "IoTDB@2011");
         final IoTDBStatement statement = (IoTDBStatement) connection.createStatement()) {
       outputResult(statement.executeQuery("select ** from root"), Charset.forName(charset));
     } catch (IoTDBSQLException e) {
