@@ -67,7 +67,7 @@ public class LbacOperationClassifier {
           // Data deletion operations
           StatementType.DELETE,
           StatementType.DELETE_PARTITION,
-
+          StatementType.DELETE_TIME_SERIES,
           // Template operations
           StatementType.CREATE_TEMPLATE,
           StatementType.SET_TEMPLATE,

@@ -105,6 +105,7 @@ public class AlterDatabaseSecurityLabelStatement extends Statement implements IC
     return visitor.visitAlterDatabaseSecurityLabel(this, context);
   }
 
+  @Override
   public TSStatus checkPermissionBeforeProcess(final String userName) {
     // Database security label operations require MANAGE_DATABASE permission
     if (AuthorityChecker.SUPER_USER.equals(userName)) {

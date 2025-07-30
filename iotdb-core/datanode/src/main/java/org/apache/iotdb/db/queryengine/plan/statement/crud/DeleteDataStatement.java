@@ -50,6 +50,11 @@ public class DeleteDataStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    return super.checkPermissionBeforeProcess(userName);
+  }
+
+  @Override
+  public TSStatus checkRbacPermission(String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }

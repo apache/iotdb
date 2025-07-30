@@ -134,6 +134,7 @@ public class AlterTimeSeriesStatement extends Statement {
     return isAlterView;
   }
 
+  @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
     return super.checkPermissionBeforeProcess(userName);
   }
