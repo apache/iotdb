@@ -27,7 +27,7 @@ from iotdb.utils.Tablet import ColumnType, Tablet
 config = TableSessionConfig(
     node_urls=["localhost:6667"],
     username="root",
-    password="root",
+    password="IoTDB@2011",
     time_zone="Asia/Shanghai",
 )
 session = TableSession(config)
@@ -67,7 +67,7 @@ session.close()
 config = TableSessionConfig(
     node_urls=["localhost:6667"],
     username="root",
-    password="root",
+    password="IoTDB@2011",
     database="test1",
     time_zone="Asia/Shanghai",
 )
@@ -95,7 +95,7 @@ session.close()
 config = TableSessionConfig(
     node_urls=["localhost:6667"],
     username="root",
-    password="root",
+    password="IoTDB@2011",
 )
 session = TableSession(config)
 session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")

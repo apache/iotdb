@@ -130,7 +130,7 @@ public class TabletExample {
    */
   public static void main(String[] args) throws Exception {
 
-    try (Session session = new Session("127.0.0.1", 6667, "root", "root")) {
+    try (Session session = new Session("127.0.0.1", 6667, "root", "IoTDB@2011")) {
       session.open();
       String dataFileName = "sample.csv";
       int rowSize = 10000;

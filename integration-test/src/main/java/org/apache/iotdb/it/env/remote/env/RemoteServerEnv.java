@@ -68,7 +68,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   private final String dataNodeMetricPort = System.getProperty("RemoteDataNodeMetricPort", "9093");
   private final String user = System.getProperty("RemoteUser", "root");
-  private final String password = System.getProperty("RemotePassword", "root");
+  private final String password = System.getProperty("RemotePassword", "IoTDB@2011");
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
   private RemoteClusterConfig clusterConfig = new RemoteClusterConfig();
 
@@ -134,7 +134,7 @@ public class RemoteServerEnv implements BaseEnv {
       connection =
           DriverManager.getConnection(
               Config.IOTDB_URL_PREFIX + ip_addr + ":" + port,
-              BaseEnv.constructProperties(this.user, this.password, sqlDialect));
+              BaseEnv.constructProperties(username, password, sqlDialect));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       throw new AssertionError();

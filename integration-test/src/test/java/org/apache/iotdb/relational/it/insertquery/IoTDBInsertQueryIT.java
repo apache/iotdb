@@ -271,14 +271,15 @@ public class IoTDBInsertQueryIT {
     Statement adminStmt = adminCon.createStatement();
     try {
       // create user
-      adminStmt.execute("CREATE USER tmpuser 'tmppw'");
+      adminStmt.execute("CREATE USER tmpuser 'tmppw123456789'");
       // create table vehicle1
       adminStmt.execute("USE test");
       adminStmt.execute(String.format(createTableTemplate, 1));
       adminStmt.execute("GRANT INSERT ON test.vehicle1 TO USER tmpuser");
 
       try (Connection connection =
-              EnvFactory.getEnv().getConnection("tmpuser", "tmppw", BaseEnv.TABLE_SQL_DIALECT);
+              EnvFactory.getEnv()
+                  .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE test");
         // insert into vehicle1 select * from vehicle0
@@ -297,7 +298,8 @@ public class IoTDBInsertQueryIT {
       adminStmt.execute("GRANT SELECT ON test.vehicle0 TO USER tmpuser");
 
       try (Connection connection =
-              EnvFactory.getEnv().getConnection("tmpuser", "tmppw", BaseEnv.TABLE_SQL_DIALECT);
+              EnvFactory.getEnv()
+                  .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE test");
         // insert into vehicle1 select * from vehicle0
@@ -315,7 +317,8 @@ public class IoTDBInsertQueryIT {
       adminStmt.execute("GRANT INSERT ON test.vehicle1 TO USER tmpuser");
       // adminStmt.execute("GRANT WRITE_DATA ON test.vehicle1 TO USER tmpuser");
       try (Connection connection =
-              EnvFactory.getEnv().getConnection("tmpuser", "tmppw", BaseEnv.TABLE_SQL_DIALECT);
+              EnvFactory.getEnv()
+                  .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE test");
         // insert into vehicle1 select * from vehicle0

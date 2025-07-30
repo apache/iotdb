@@ -73,7 +73,7 @@ public class SessionExample {
             .host(LOCAL_HOST)
             .port(6667)
             .username("root")
-            .password("root")
+            .password("IoTDB@2011")
             .version(Version.V_1_0)
             .build();
     session.open(false);
@@ -112,7 +112,7 @@ public class SessionExample {
     //    deleteTimeseries();
     //    setTimeout();
 
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "IoTDB@2011");
     sessionEnableRedirect.setEnableQueryRedirection(true);
     sessionEnableRedirect.open(false);
 
@@ -820,7 +820,7 @@ public class SessionExample {
   }
 
   private static void setTimeout() throws IoTDBConnectionException {
-    try (Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000)) {
+    try (Session tempSession = new Session(LOCAL_HOST, 6667, "root", "IoTDB@2011", 10000, 20000)) {
       tempSession.setQueryTimeout(60000);
     }
   }

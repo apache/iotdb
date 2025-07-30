@@ -26,7 +26,7 @@ public class SessionConfig {
   public static final String DEFAULT_HOST = "localhost";
   public static final int DEFAULT_PORT = 6667;
   public static final String DEFAULT_USER = "root";
-  public static final String DEFAULT_PASSWORD = "root";
+  public static final String DEFAULT_PASSWORD = "IoTDB@2011";
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
   public static final boolean DEFAULT_REDIRECTION_MODE = true;

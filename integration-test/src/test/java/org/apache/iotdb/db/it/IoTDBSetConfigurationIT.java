@@ -155,7 +155,7 @@ public class IoTDBSetConfigurationIT {
       // legal value
       statement.execute("set configuration \"default_storage_group_level\"=\"3\"");
       statement.execute("INSERT INTO root.a.b.c.d1(timestamp, s1) VALUES (1, 1)");
-      ResultSet databases = statement.executeQuery("show databases");
+      ResultSet databases = statement.executeQuery("show databases root.a.**");
       databases.next();
       Assert.assertEquals("root.a.b.c", databases.getString(1));
       assertFalse(databases.next());
@@ -193,7 +193,7 @@ public class IoTDBSetConfigurationIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("INSERT INTO root.a.b.c.d1(timestamp, s1) VALUES (1, 1)");
-      ResultSet databases = statement.executeQuery("show databases");
+      ResultSet databases = statement.executeQuery("show databases root.a");
       databases.next();
       // the default value should take effect
       Assert.assertEquals("root.a", databases.getString(1));

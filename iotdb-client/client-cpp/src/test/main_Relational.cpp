@@ -29,7 +29,7 @@ std::shared_ptr<TableSession> session =
         ->host("127.0.0.1")
         ->rpcPort(6667)
         ->username("root")
-        ->password("root")
+        ->password("IoTDB@2011")
         ->build()
     );
 

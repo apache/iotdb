@@ -57,7 +57,7 @@ public abstract class AbstractTsFileTool {
   protected static String host = "127.0.0.1";
   protected static String port = "6667";
   protected static String username = "root";
-  protected static String password = "root";
+  protected static String password = "IoTDB@2011";
 
   protected AbstractTsFileTool() {}
 

@@ -138,7 +138,7 @@ mentioned above, the header file and the dynamic library:
 
     int main() {
         std::cout << "open session" << std::endl;
-        std::shared_ptr<Session> session(new Session("127.0.0.1", 6667, "root", "root"));
+        std::shared_ptr<Session> session(new Session("127.0.0.1", 6667, "root", "IoTDB@2011"));
         session->open(false);
 
         std::cout << "setStorageGroup: root.test01" << std::endl;

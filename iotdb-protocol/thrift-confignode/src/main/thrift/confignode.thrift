@@ -1511,6 +1511,8 @@ service IConfigNodeRPCService {
 
   TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
 
+  TPermissionInfoResp getUser(string userName);
+
 
 
   // ======================================================

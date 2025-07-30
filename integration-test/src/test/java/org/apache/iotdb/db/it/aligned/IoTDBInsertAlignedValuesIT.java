@@ -357,7 +357,7 @@ public class IoTDBInsertAlignedValuesIT {
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.sg_device(time, status) aligned values (4000, true)");
 
-      try (ResultSet resultSet = statement.executeQuery("select ** from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.sg_device")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
         assertFalse(resultSet.next());

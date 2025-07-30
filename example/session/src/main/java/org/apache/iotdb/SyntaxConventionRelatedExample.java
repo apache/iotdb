@@ -84,7 +84,7 @@ public class SyntaxConventionRelatedExample {
             .host(LOCAL_HOST)
             .port(6667)
             .username("root")
-            .password("root")
+            .password("IoTDB@2011")
             .version(Version.V_1_0)
             .build();
     session.open(false);

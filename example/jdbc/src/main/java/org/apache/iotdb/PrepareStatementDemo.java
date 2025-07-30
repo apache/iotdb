@@ -37,7 +37,7 @@ public class PrepareStatementDemo {
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "IoTDB@2011");
         PreparedStatement preparedStatement =
             connection.prepareStatement(
                 "insert into root.ln.wf01.wt01(timestamp,status,temperature) values(?,?,?)")) {

@@ -380,6 +380,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
+        onOperatePermissionSuccess(plan);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (AuthException e) {
@@ -389,6 +390,16 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       future.setException(e);
     }
     return future;
+  }
+
+  private void onOperatePermissionSuccess(Object plan) {
+    if (plan instanceof RelationalAuthorStatement) {
+      RelationalAuthorStatement stmt = (RelationalAuthorStatement) plan;
+      stmt.onSuccess();
+    } else if (plan instanceof AuthorStatement) {
+      AuthorStatement stmt = (AuthorStatement) plan;
+      stmt.onSuccess();
+    }
   }
 
   @Override
@@ -514,6 +525,32 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         return status.getStatus();
       }
     }
+  }
+
+  public User getUser(String userName) {
+    checkCacheAvailable();
+    User user = iAuthorCache.getUserCache(userName);
+    if (user != null) {
+      return user;
+    } else {
+      TPermissionInfoResp permissionInfoResp = null;
+      try (ConfigNodeClient configNodeClient =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        permissionInfoResp = configNodeClient.getUser(userName);
+      } catch (ClientManagerException | TException e) {
+        LOGGER.error(CONNECTERROR);
+      }
+      user = cacheUser(permissionInfoResp);
+      if (permissionInfoResp != null
+          && permissionInfoResp.getStatus().getCode()
+              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (acceptCache) {
+          iAuthorCache.putUserCache(userName, user);
+        }
+      }
+    }
+    return user;
   }
 
   @Override

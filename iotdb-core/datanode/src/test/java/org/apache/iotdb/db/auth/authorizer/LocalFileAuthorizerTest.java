@@ -45,7 +45,7 @@ public class LocalFileAuthorizerTest {
   PartialPath nodeName;
   static final String roleName = "role";
   static final String userName = "user";
-  static final String password = "password";
+  static final String password = "password123456";
   static final String database = "testDB";
   static final String table = "testTB";
 
@@ -64,7 +64,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testLogin() throws AuthException {
-    Assert.assertTrue(authorizer.login("root", "root"));
+    Assert.assertTrue(authorizer.login("root", "IoTDB@2011"));
     Assert.assertFalse(authorizer.login("root", "error"));
   }
 
@@ -104,7 +104,7 @@ public class LocalFileAuthorizerTest {
     } catch (AuthException e) {
       assertEquals("Role role already exists", e.getMessage());
     }
-    authorizer.createUser(userName, "password");
+    authorizer.createUser(userName, "password123456");
     authorizer.grantRoleToUser(roleName, userName);
     authorizer.deleteRole(roleName);
     try {
@@ -229,15 +229,15 @@ public class LocalFileAuthorizerTest {
   @Test
   public void testUpdatePassword() throws AuthException {
     authorizer.createUser(userName, password);
-    authorizer.updateUserPassword(userName, "newPassword");
-    Assert.assertTrue(authorizer.login(userName, "newPassword"));
+    authorizer.updateUserPassword(userName, "newPassword123456");
+    Assert.assertTrue(authorizer.login(userName, "newPassword123456"));
   }
 
   @Test
   public void testGetAllUsersAndRoles() throws AuthException {
-    authorizer.createUser("user0", "user");
-    authorizer.createUser("user1", "user1");
-    authorizer.createUser("user2", "user2");
+    authorizer.createUser("user0", "user123456789");
+    authorizer.createUser("user1", "user1123456789");
+    authorizer.createUser("user2", "user2123456789");
     authorizer.createRole("role0");
     authorizer.createRole("role1");
     authorizer.createRole("role2");
@@ -254,7 +254,7 @@ public class LocalFileAuthorizerTest {
 
     int userCnt = 10;
     for (int i = 0; i < userCnt; i++) {
-      authorizer.createUser("newUser" + i, "password" + i);
+      authorizer.createUser("newUser" + i, "password123456" + i);
     }
     userList = authorizer.listAllUsers();
     assertEquals(11, userList.size());

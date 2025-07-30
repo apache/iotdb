@@ -46,7 +46,7 @@ def session_test(use_session_pool=False):
                 db.get_container_host_ip(),
                 db.get_exposed_port(6667),
                 "root",
-                "root",
+                "IoTDB@2011",
                 None,
                 1024,
                 max_retry=3,

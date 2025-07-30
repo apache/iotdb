@@ -42,7 +42,7 @@ set "START_CLI_PATH=%IOTDB_HOME%\sbin\windows\start-cli.bat"
 
 set "HELP=Usage: %0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-dd <data_dir>]"
 set "user_param=root"
-set "passwd_param=root"
+set "passwd_param=IoTDB@2011"
 set "host_param=127.0.0.1"
 set "port_param=6667"
 

@@ -657,7 +657,7 @@ private:
     }
 
 public:
-    Session(const std::string& host, int rpcPort) : username_("root"), password_("root"), version(Version::V_1_0) {
+    Session(const std::string& host, int rpcPort) : username_("root"), password_("IoTDB@2011"), version(Version::V_1_0) {
         this->host_ = host;
         this->rpcPort_ = rpcPort;
         initZoneId();

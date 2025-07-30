@@ -112,7 +112,7 @@ def create_open_session():
     ip = "127.0.0.1"
     port_ = "6667"
     username_ = "root"
-    password_ = "root"
+    password_ = "IoTDB@2011"
     session = Session(
         ip, port_, username_, password_, fetch_size=1024, zone_id="Asia/Shanghai"
     )

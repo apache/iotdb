@@ -46,7 +46,7 @@ public class TableModelSessionPoolExample {
         new TableSessionPoolBuilder()
             .nodeUrls(Collections.singletonList(LOCAL_URL))
             .user("root")
-            .password("root")
+            .password("IoTDB@2011")
             .maxSize(1)
             .build();
 
@@ -159,7 +159,7 @@ public class TableModelSessionPoolExample {
         new TableSessionPoolBuilder()
             .nodeUrls(Collections.singletonList(LOCAL_URL))
             .user("root")
-            .password("root")
+            .password("IoTDB@2011")
             .maxSize(1)
             .database("test1")
             .build();

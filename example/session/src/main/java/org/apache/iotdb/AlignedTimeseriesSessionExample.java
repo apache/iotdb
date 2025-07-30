@@ -57,7 +57,7 @@ public class AlignedTimeseriesSessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session("127.0.0.1", 6667, "root", "IoTDB@2011");
     session.open(false);
 
     // set session fetchSize

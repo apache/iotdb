@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -31,10 +32,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -60,12 +58,14 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /** This is an example for integration test. */
+@SuppressWarnings("EmptyTryBlock")
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAuthIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -78,9 +78,9 @@ public class IoTDBAuthIT {
   public void allPrivilegesTest() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStmt = userCon.createStatement()) {
         // 1. tempuser doesn't have any privilege
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
@@ -165,7 +165,7 @@ public class IoTDBAuthIT {
             () -> userStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA ON root.a"));
 
         adminStmt.execute("GRANT ALL ON root.** TO USER tempuser WITH GRANT OPTION");
-        userStmt.execute("CREATE USER testuser 'password'");
+        userStmt.execute("CREATE USER testuser 'password123456'");
         userStmt.execute("GRANT ALL ON root.** TO USER testuser WITH GRANT OPTION");
         ResultSet dataSet = userStmt.executeQuery("LIST PRIVILEGES OF USER testuser");
 
@@ -195,9 +195,9 @@ public class IoTDBAuthIT {
   public void testSetDeleteSG() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER sgtest 'sgtest'");
+      adminStmt.execute("CREATE USER sgtest 'sgtest123456'");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("sgtest", "sgtest");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("sgtest", "sgtest123456");
           Statement userStmt = userCon.createStatement()) {
 
         Assert.assertThrows(
@@ -220,7 +220,7 @@ public class IoTDBAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       Assert.assertThrows(
-          SQLException.class, () -> adminStmt.execute("CREATE USER tempuser 'temppw '"));
+          SQLException.class, () -> adminStmt.execute("CREATE USER tempuser 'temppw 123456'"));
     }
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
@@ -233,15 +233,15 @@ public class IoTDBAuthIT {
   public void updatePasswordTest() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
-      Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
+      Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
       userCon.close();
 
-      adminStmt.execute("ALTER USER tempuser SET PASSWORD 'newpw'");
+      adminStmt.execute("ALTER USER tempuser SET PASSWORD 'newpw1234567'");
 
       boolean caught = false;
       try {
-        userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+        userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw1234567");
       } catch (SQLException e) {
         caught = true;
       } finally {
@@ -249,7 +249,7 @@ public class IoTDBAuthIT {
       }
       assertTrue(caught);
 
-      userCon = EnvFactory.getEnv().getConnection("tempuser", "newpw");
+      userCon = EnvFactory.getEnv().getConnection("tempuser", "newpw1234567");
 
       userCon.close();
     }
@@ -259,9 +259,9 @@ public class IoTDBAuthIT {
   public void illegalGrantRevokeUserTest() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStmt = userCon.createStatement()) {
 
         // grant a non-existing user
@@ -320,9 +320,9 @@ public class IoTDBAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
 
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStmt = userCon.createStatement()) {
 
         // grant and revoke the user the privilege to create time series
@@ -357,8 +357,8 @@ public class IoTDBAuthIT {
   public void templateQueryTest() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStmt = userCon.createStatement()) {
         adminStmt.execute(
             "GRANT READ_DATA ON root.sg.aligned_template.temperature TO USER tempuser");
@@ -386,9 +386,9 @@ public class IoTDBAuthIT {
   public void insertQueryTest() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStmt = userCon.createStatement()) {
 
         adminStmt.execute("GRANT MANAGE_DATABASE ON root.** TO USER tempuser");
@@ -433,8 +433,8 @@ public class IoTDBAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
 
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStmt = userCon.createStatement()) {
 
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE ROLE admin"));
@@ -454,7 +454,7 @@ public class IoTDBAuthIT {
         userStmt.execute("CREATE TIMESERIES root.a.c WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.a(timestamp,b,c) VALUES (1,100,1000)");
         // userStmt.execute("DELETE FROM root.a.b WHERE TIME <= 1000000000");
-        ResultSet resultSet = userStmt.executeQuery("SELECT * FROM root.**");
+        ResultSet resultSet = userStmt.executeQuery("SELECT * FROM root.a");
         validateResultSet(resultSet, "1,100,1000,\n");
         resultSet.close();
 
@@ -484,7 +484,7 @@ public class IoTDBAuthIT {
         validateResultSet(resultSet, ans);
 
         for (int i = 0; i < 10; i++) {
-          adminStmt.execute("CREATE USER user" + i + " 'password" + i + "'");
+          adminStmt.execute("CREATE USER user" + i + " 'password" + i + "123456'");
         }
         resultSet = adminStmt.executeQuery("LIST USER");
         ans =
@@ -568,8 +568,8 @@ public class IoTDBAuthIT {
     Connection adminCon = EnvFactory.getEnv().getConnection();
     Statement adminStmt = adminCon.createStatement();
     try {
-      adminStmt.execute("CREATE USER user1 'password'");
-      adminStmt.execute("CREATE USER user2 'password'");
+      adminStmt.execute("CREATE USER user1 'password123456'");
+      adminStmt.execute("CREATE USER user2 'password123456'");
       adminStmt.execute("CREATE ROLE role1");
       adminStmt.execute("CREATE ROLE role2");
       adminStmt.execute("GRANT ROLE role1 TO user1");
@@ -581,7 +581,7 @@ public class IoTDBAuthIT {
       // user2 : role1, role2;
       ResultSet resultSet;
       String ans;
-      Connection userCon = EnvFactory.getEnv().getConnection("user1", "password");
+      Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
       Statement userStmt = userCon.createStatement();
       try {
         resultSet = userStmt.executeQuery("LIST ROLE OF USER user1");
@@ -598,7 +598,7 @@ public class IoTDBAuthIT {
         userCon.close();
       }
 
-      Connection user2Con = EnvFactory.getEnv().getConnection("user2", "password");
+      Connection user2Con = EnvFactory.getEnv().getConnection("user2", "password123456");
       Statement user2Stmt = user2Con.createStatement();
       try {
         Assert.assertThrows(SQLException.class, () -> user2Stmt.execute("LIST ROLE OF USER user1"));
@@ -622,7 +622,7 @@ public class IoTDBAuthIT {
     Statement adminStmt = adminCon.createStatement();
 
     try {
-      adminStmt.execute("CREATE USER user1 'password1'");
+      adminStmt.execute("CREATE USER user1 'password123456'");
       adminStmt.execute("GRANT READ_SCHEMA ON root.a.b TO USER user1");
       adminStmt.execute("CREATE ROLE role1");
       adminStmt.execute("GRANT READ_SCHEMA,WRITE_DATA ON root.a.b.c TO ROLE role1");
@@ -712,7 +712,7 @@ public class IoTDBAuthIT {
     Statement adminStmt = adminCon.createStatement();
 
     try {
-      adminStmt.execute("CREATE USER chenduxiu 'orange'");
+      adminStmt.execute("CREATE USER chenduxiu 'orange123456'");
 
       adminStmt.execute("CREATE ROLE xijing");
       adminStmt.execute("CREATE ROLE dalao");
@@ -774,10 +774,10 @@ public class IoTDBAuthIT {
       };
 
       for (int i = 0; i < members.length - 1; i++) {
-        adminStmt.execute("CREATE USER " + members[i] + " 'a666666'");
+        adminStmt.execute("CREATE USER " + members[i] + " 'a666666123456'");
         adminStmt.execute("GRANT ROLE dalao TO  " + members[i]);
       }
-      adminStmt.execute("CREATE USER RiverSky 'a2333333'");
+      adminStmt.execute("CREATE USER RiverSky 'a2333333123456'");
       adminStmt.execute("GRANT ROLE zhazha TO RiverSky");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST USER OF ROLE dalao");
@@ -847,12 +847,12 @@ public class IoTDBAuthIT {
     Statement adminStmt = adminCon.createStatement();
 
     for (int i = 0; i < 10; i++) {
-      adminStmt.execute("CREATE USER user" + i + " 'password" + i + "'");
+      adminStmt.execute("CREATE USER user" + i + " 'password" + i + "123456'");
     }
 
-    adminStmt.execute("CREATE USER tempuser 'temppw'");
+    adminStmt.execute("CREATE USER tempuser 'temppw123456'");
 
-    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
         Statement userStmt = userCon.createStatement()) {
       try {
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("LIST USER"));
@@ -883,10 +883,10 @@ public class IoTDBAuthIT {
 
   @Test
   public void testExecuteBatchWithPrivilege() throws SQLException {
-    try (Connection adminCon = EnvFactory.getEnv().getConnection("root", "root");
+    try (Connection adminCon = EnvFactory.getEnv().getConnection("root", "IoTDB@2011");
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStatement = userCon.createStatement()) {
         userStatement.addBatch("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64");
         userStatement.addBatch("CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64");
@@ -899,12 +899,12 @@ public class IoTDBAuthIT {
   public void testExecuteBatchWithPrivilege1() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
       adminStmt.execute("GRANT WRITE_DATA on root.sg1.** TO USER tempuser");
       adminStmt.execute("GRANT WRITE_SCHEMA on root.sg1.** TO USER tempuser");
       adminStmt.execute("GRANT MANAGE_DATABASE on root.** TO USER tempuser");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStatement = userCon.createStatement()) {
         userStatement.addBatch("insert into root.sg1.d1(timestamp,s1) values (1,1)");
         userStatement.addBatch("insert into root.sg1.d1(timestamp,s2) values (3,1)");
@@ -937,7 +937,7 @@ public class IoTDBAuthIT {
   public void testSelectUDTF() throws SQLException {
     try (Connection adminConnection = EnvFactory.getEnv().getConnection();
         Statement adminStatement = adminConnection.createStatement()) {
-      adminStatement.execute("CREATE USER a_application 'a_application'");
+      adminStatement.execute("CREATE USER a_application 'a_application123456'");
       adminStatement.execute("CREATE ROLE application_role");
       adminStatement.execute("GRANT READ_DATA ON root.test.** TO ROLE application_role");
       adminStatement.execute("GRANT ROLE application_role TO a_application");
@@ -946,7 +946,7 @@ public class IoTDBAuthIT {
     }
 
     try (Connection userConnection =
-            EnvFactory.getEnv().getConnection("a_application", "a_application");
+            EnvFactory.getEnv().getConnection("a_application", "a_application123456");
         Statement userStatement = userConnection.createStatement();
         ResultSet resultSet =
             userStatement.executeQuery(
@@ -960,15 +960,15 @@ public class IoTDBAuthIT {
   public void testGrantUserRole() throws SQLException {
     try (Connection adminConnection = EnvFactory.getEnv().getConnection();
         Statement adminStatement = adminConnection.createStatement()) {
-      adminStatement.execute("CREATE USER user01 'pass1234'");
-      adminStatement.execute("CREATE USER user02 'pass1234'");
+      adminStatement.execute("CREATE USER user01 'pass1234123456'");
+      adminStatement.execute("CREATE USER user02 'pass1234123456'");
       adminStatement.execute("CREATE ROLE manager");
       adminStatement.execute("GRANT MANAGE_ROLE on root.** TO USER user01");
       Assert.assertThrows(
           SQLException.class, () -> adminStatement.execute("GRANT role manager to `root`"));
     }
 
-    try (Connection userCon = EnvFactory.getEnv().getConnection("user01", "pass1234");
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user01", "pass1234123456");
         Statement userStatement = userCon.createStatement()) {
       try {
         userStatement.execute("grant role manager to user02");
@@ -983,9 +983,9 @@ public class IoTDBAuthIT {
     // 1. CREATE USER1, USER2, USER3, testRole
     Connection adminCon = EnvFactory.getEnv().getConnection();
     Statement adminStmt = adminCon.createStatement();
-    adminStmt.execute("CREATE USER user1 'password'");
-    adminStmt.execute("CREATE USER user2 'password'");
-    adminStmt.execute("CREATE USER user3 'password'");
+    adminStmt.execute("CREATE USER user1 'password123456'");
+    adminStmt.execute("CREATE USER user2 'password123456'");
+    adminStmt.execute("CREATE USER user3 'password123456'");
     adminStmt.execute("CREATE ROLE testRole");
     adminStmt.execute("GRANT manage_database ON root.** TO ROLE testRole WITH GRANT OPTION");
     adminStmt.execute("GRANT READ_DATA ON root.t1.** TO ROLE testRole");
@@ -1049,7 +1049,7 @@ public class IoTDBAuthIT {
 
     // 5. Login user1 to list user2 privileges will success
     // user1 cannot grant any privilegs to user3
-    try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password");
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
         Statement userStmt = userCon.createStatement()) {
       try {
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
@@ -1080,7 +1080,7 @@ public class IoTDBAuthIT {
       }
     }
     // 6.Login user2 grant and revoke will success.
-    try (Connection userCon = EnvFactory.getEnv().getConnection("user2", "password");
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user2", "password123456");
         Statement userStmt = userCon.createStatement()) {
       try {
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
@@ -1118,7 +1118,7 @@ public class IoTDBAuthIT {
     // 3. READ_DATA on root.t1.**
     // 4. READ_SCHEMA on root.t3.t2.**
 
-    try (Connection userCon = EnvFactory.getEnv().getConnection("user3", "password");
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user3", "password123456");
         Statement userStmt = userCon.createStatement()) {
       try {
         // because role's privilege
@@ -1143,8 +1143,8 @@ public class IoTDBAuthIT {
     // 1. revoke from user/role
     Connection adminCon = EnvFactory.getEnv().getConnection();
     Statement adminStmt = adminCon.createStatement();
-    adminStmt.execute("CREATE USER user1 'password'");
-    adminStmt.execute("CREATE USER user2 'password'");
+    adminStmt.execute("CREATE USER user1 'password123456'");
+    adminStmt.execute("CREATE USER user2 'password123456'");
 
     // 2. user1 has all privileges with grant option on root.**
     //    user2 has all privileges without grant option on root.**
@@ -1161,7 +1161,7 @@ public class IoTDBAuthIT {
       sql = "GRANT %s on root.** to USER user2";
       adminStmt.execute(String.format(sql, item));
     }
-    Connection user1Con = EnvFactory.getEnv().getConnection("user1", "password");
+    Connection user1Con = EnvFactory.getEnv().getConnection("user1", "password123456");
     Statement user1Stmt = user1Con.createStatement();
     ResultSet resultSet;
     String ans = "";
@@ -1195,7 +1195,7 @@ public class IoTDBAuthIT {
     // 1. revoke from user/role
     Connection adminCon = EnvFactory.getEnv().getConnection();
     Statement adminStmt = adminCon.createStatement();
-    adminStmt.execute("CREATE USER user1 'password'");
+    adminStmt.execute("CREATE USER user1 'password123456'");
     adminStmt.execute("GRANT READ_DATA ON root.sg.d1.** TO USER user1 with grant option;");
     adminStmt.execute("GRANT READ_DATA ON root.sg.aligned_template.temperature TO USER user1;");
     adminStmt.execute("CREATE DATABASE root.sg;");
@@ -1206,7 +1206,7 @@ public class IoTDBAuthIT {
     adminStmt.execute("insert into root.sg.d2(time,s1,s2) values(1,1,1)");
     adminStmt.execute(
         "insert into root.sg.aligned_template(time,temperature,status) values(1,20,true)");
-    try (ResultSet resultSet = adminStmt.executeQuery("select * from root.**;")) {
+    try (ResultSet resultSet = adminStmt.executeQuery("select * from root.sg.**;")) {
       Set<String> standards =
           new HashSet<>(
               Arrays.asList(
@@ -1223,7 +1223,7 @@ public class IoTDBAuthIT {
       }
       Assert.assertTrue(standards.isEmpty());
     }
-    Connection user1Con = EnvFactory.getEnv().getConnection("user1", "password");
+    Connection user1Con = EnvFactory.getEnv().getConnection("user1", "password123456");
     Statement user1Stmt = user1Con.createStatement();
     try (ResultSet resultSet = user1Stmt.executeQuery("select * from root.**;")) {
       Set<String> standards =
@@ -1245,9 +1245,9 @@ public class IoTDBAuthIT {
   public void insertWithTemplateTest() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      adminStmt.execute("CREATE USER tempuser 'temppw123456'");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStmt = userCon.createStatement()) {
 
         adminStmt.execute("CREATE DATABASE root.a");
@@ -1281,9 +1281,9 @@ public class IoTDBAuthIT {
     Connection adminCon = EnvFactory.getEnv().getConnection();
     Statement adminStmt = adminCon.createStatement();
     adminStmt.execute("create role head");
-    adminStmt.execute("create user head 'password'");
+    adminStmt.execute("create user head 'password123456'");
     adminStmt.execute("create role tail");
-    adminStmt.execute("create user tail 'password'");
+    adminStmt.execute("create user tail 'password123456'");
   }
 
   @Test
@@ -1317,9 +1317,9 @@ public class IoTDBAuthIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER Jack 'temppw'");
+      adminStmt.execute("CREATE USER Jack 'temppw123456'");
 
-      try (Connection JackConnection = EnvFactory.getEnv().getConnection("Jack", "temppw");
+      try (Connection JackConnection = EnvFactory.getEnv().getConnection("Jack", "temppw123456");
           Statement Jack = JackConnection.createStatement()) {
         testClusterManagementSqlImpl(
             clusterManagementSQLList,
@@ -1353,10 +1353,10 @@ public class IoTDBAuthIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getTableConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER Jack 'temppw'");
+      adminStmt.execute("CREATE USER Jack 'temppw123456'");
 
       try (Connection JackConnection =
-              EnvFactory.getEnv().getConnection("Jack", "temppw", BaseEnv.TABLE_SQL_DIALECT);
+              EnvFactory.getEnv().getConnection("Jack", "temppw123456", BaseEnv.TABLE_SQL_DIALECT);
           Statement Jack = JackConnection.createStatement()) {
         // Jack has no authority to execute these SQLs
         for (String sql : clusterManagementSQLList) {
@@ -1415,12 +1415,183 @@ public class IoTDBAuthIT {
 
   @Test
   public void noNeedPrivilegeTest() {
-    createUser("tempuser", "temppw");
+    createUser("tempuser", "temppw123456");
     String[] expectedHeader = new String[] {"CurrentUser"};
     String[] retArray =
         new String[] {
           "tempuser,",
         };
-    resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw");
+    resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw123456");
+  }
+
+  @Ignore
+  @Test
+  public void testStrongPassword() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET CONFIGURATION 'enforce_strong_password'='true'");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'NO_LOWER_CASE_123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one lowercase letter.", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'NO_LOWER_CASE_123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one lowercase letter.", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'no_upper_case_123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one uppercase letter.", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'no_upper_case_123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one uppercase letter.", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'noooooo_DIGIT'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals("820: Invalid password, must contain at least one digit.", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'noooooo_DIGIT'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals("820: Invalid password, must contain at least one digit.", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'noSpecial123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one special character.", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'noSpecial123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one special character.", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA '1234567891011'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one lowercase letter, one uppercase letter, one special character.",
+          e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password '1234567891011'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one lowercase letter, one uppercase letter, one special character.",
+          e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA123456789 'userA123456789'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals("820: Password cannot be the same as user name", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'root'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals("820: Password cannot be the same as user name", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'strongPassword#1234'");
+
+      statement.execute("SET CONFIGURATION 'enforce_strong_password'='false'");
+
+      statement.execute("create user userB '123412345678'");
+      statement.execute("alter user root set password 'root12345678'");
+    }
+  }
+
+  @Test
+  public void testPasswordHistory() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      testPasswordHistoryCreate(statement);
+      testPasswordHistoryAlter(statement);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public void testPasswordHistoryCreate(Statement statement) throws SQLException {
+    statement.execute("create user userA 'abcdef123456'");
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last password from root.__system.password_history.`_userA`")) {
+      if (!resultSet.next()) {
+        fail("Password history not found");
+      }
+      assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
+    }
+  }
+
+  public void testPasswordHistoryAlter(Statement statement) throws SQLException {
+    statement.execute("alter user userA set password 'abcdef654321'");
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last password from root.__system.password_history.`_userA`")) {
+      if (!resultSet.next()) {
+        fail("Password history not found");
+      }
+      assertEquals(AuthUtils.encryptPassword("abcdef654321"), resultSet.getString("Value"));
+    }
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select oldPassword from root.__system.password_history.`_userA` order by time desc limit 1")) {
+      if (!resultSet.next()) {
+        fail("Password history not found");
+      }
+      assertEquals(
+          AuthUtils.encryptPassword("abcdef123456"),
+          resultSet.getString("root.__system.password_history._userA.oldPassword"));
+    }
   }
 }

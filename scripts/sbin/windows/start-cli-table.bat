@@ -79,13 +79,13 @@ REM ----------------------------------------------------------------------------
 :okClasspath
 set PARAMETERS=%*
 
-@REM if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
+@REM if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw IoTDB@2011
 
 @REM if DEFAULT_SQL_DIALECT is empty, set it to "tree"
 if "%DEFAULT_SQL_DIALECT%" == "" set DEFAULT_SQL_DIALECT=tree
 
 @REM set default parameters
-set pw_parameter=-pw root
+set pw_parameter=-pw IoTDB@2011
 set u_parameter=-u root
 set p_parameter=-p 6667
 set h_parameter=-h 127.0.0.1

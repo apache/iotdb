@@ -48,7 +48,7 @@ class TableSessionConfig(object):
             username (str, optional): The username for the database connection.
                                       Defaults to "root".
             password (str, optional): The password for the database connection.
-                                      Defaults to "root".
+                                      Defaults to "IoTDB@2011".
             database (str, optional): The target database to connect to. Defaults to None.
             fetch_size (int, optional): The number of rows to fetch per query. Defaults to 5000.
             time_zone (str, optional): The default time zone for the session.

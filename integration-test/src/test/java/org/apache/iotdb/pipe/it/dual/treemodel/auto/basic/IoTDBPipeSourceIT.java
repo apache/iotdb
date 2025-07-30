@@ -74,6 +74,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setIsPipeEnableMemoryCheck(false);
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -81,6 +82,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setIsPipeEnableMemoryCheck(false);
+    receiverEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -441,7 +443,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)",
               "insert into root.aligned.6TS.`6` ("
                   + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-                  + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"))) {
+                  + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"),
+          null)) {
         return;
       }
 
@@ -491,7 +494,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         // and is skipped flush when the pipe starts. In this case, the "waitForTsFileClose()"
         // may not return until a flush is executed, namely the data transfer relies
         // on a flush operation.
-        if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
           return;
         }
         assertTimeseriesCountOnReceiver(receiverEnv, expectedTimeseriesCount.get(i));
@@ -499,7 +502,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show devices",
+          "show devices root.nonAligned.**",
           "Device,IsAligned,Template,TTL(ms),",
           new HashSet<>(
               Arrays.asList(
@@ -507,7 +510,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                   "root.nonAligned.100TS,false,null,INF,",
                   "root.nonAligned.1000TS,false,null,INF,",
                   "root.nonAligned.`1(TS)`,false,null,INF,",
-                  "root.nonAligned.6TS.`6`,false,null,INF,",
+                  "root.nonAligned.6TS.`6`,false,null,INF,")));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show devices root.aligned.**",
+          "Device,IsAligned,Template,TTL(ms),",
+          new HashSet<>(
+              Arrays.asList(
                   "root.aligned.1TS,true,null,INF,",
                   "root.aligned.100TS,true,null,INF,",
                   "root.aligned.1000TS,true,null,INF,",
@@ -552,7 +561,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (1, 10)",
               "insert into root.db2.d1 (time, at1) values (1, 20)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -577,7 +587,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (2, 11)",
               "insert into root.db2.d1 (time, at1) values (2, 21)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -593,7 +604,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db*.**",
           "count(root.db1.d1.at1),count(root.db2.d1.at1),",
           Collections.singleton("2,2,"));
     }
@@ -615,7 +626,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d2 (time, at1) values (1, 20)",
               "insert into root.db.d3 (time, at1) values (1, 30)",
               "insert into root.db.d4 (time, at1) values (1, 40)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -671,18 +683,19 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"))) {
+              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time <= 1",
+          "select count(*) from root.db.** where time <= 1",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("1,0,1,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time >= 2",
+          "select count(*) from root.db.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("2,1,0,"));
     }
@@ -704,7 +717,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -735,7 +749,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
@@ -751,7 +765,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("3,3,"));
     }
@@ -774,7 +788,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (6000, 6), (7000, 7), (8000, 8), (9000, 9), (10000, 10)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -800,7 +815,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
@@ -810,13 +825,14 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d3 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
 
@@ -826,13 +842,14 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d4 (time, at1)"
                   + " values (6000, 6), (7000, 7), (8000, 8), (9000, 9), (10000, 10)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
     }
@@ -854,7 +871,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -884,7 +902,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
@@ -900,7 +918,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("3,3,"));
     }
@@ -922,7 +940,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (2000, 3, 4)",
               // TsFile 2, not extracted because pattern not overlapped
               "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (2000, 3, 4)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -931,7 +950,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               // TsFile 3, not extracted because time range not overlapped
               "insert into root.db.d1 (time, at1, at2)" + " values (3000, 1, 2), (4000, 3, 4)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -961,7 +981,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** group by level=0",
+          "select count(*) from root.db.** group by level=0",
           "count(root.*.*.*),",
           Collections.singleton("4,"));
     }
@@ -1004,7 +1024,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -1012,7 +1033,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -1021,7 +1043,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5000, 1), (16000, 3)",
               "insert into root.db.d1 (time, at1, at2)" + " values (5001, 1, 2), (6001, 3, 4)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -1037,14 +1060,20 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
+    // for system password history
+    count += 2;
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton(count + ","));
+        receiverEnv,
+        "count timeseries root.**",
+        "count(timeseries),",
+        Collections.singleton(count + ","));
   }
 
   private void assertPipeCount(int count) throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(count, showPipeResult.size());
       // for (TShowPipeInfo showPipeInfo : showPipeResult) {
       //   System.out.println(showPipeInfo);

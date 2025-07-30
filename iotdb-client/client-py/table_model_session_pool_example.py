@@ -125,7 +125,7 @@ def delete_data():
 
 # Create a session pool
 username = "root"
-password = "root"
+password = "IoTDB@2011"
 node_urls = ["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"]
 fetch_size = 1024
 database = "db1"

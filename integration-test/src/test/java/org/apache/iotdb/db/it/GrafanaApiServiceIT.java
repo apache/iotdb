@@ -84,7 +84,7 @@ public class GrafanaApiServiceIT {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
-    String authorization = getAuthorization("root", "root");
+    String authorization = getAuthorization("root", "IoTDB@2011");
     httpPost.setHeader("Authorization", authorization);
     return httpPost;
   }
@@ -95,7 +95,7 @@ public class GrafanaApiServiceIT {
     HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/grafana/v1/login");
     CloseableHttpResponse response = null;
     try {
-      String authorization = getAuthorization("root", "root");
+      String authorization = getAuthorization("root", "IoTDB@2011");
       httpGet.setHeader("Authorization", authorization);
       for (int i = 0; i < 30; i++) {
         try {
