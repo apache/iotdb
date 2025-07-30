@@ -25,7 +25,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReqV2;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -116,10 +115,9 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     return pipe2BytesAccumulated;
   }
 
-  private int buildTabletInsertionBuffer(final TabletInsertionEvent event)
-      throws IOException {
-    int databaseEstimateSize = 0;
-    final ByteBuffer buffer;
+  private int buildTabletInsertionBuffer(final TabletInsertionEvent event) throws IOException {
+    int estimateSize = 0;
+    ByteBuffer buffer = null;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
@@ -128,11 +126,11 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         buffer = insertNode.serializeToByteBuffer();
         insertNodeBuffers.add(buffer);
         if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
-          databaseEstimateSize =
-                  pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
+          estimateSize =
+              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
           insertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
-          databaseEstimateSize = 4;
+          estimateSize = 4;
           insertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
         }
       } else {
@@ -149,13 +147,17 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       }
       tabletBuffers.add(buffer);
       if (pipeRawTabletInsertionEvent.isTableModelEvent()) {
-        databaseEstimateSize = pipeRawTabletInsertionEvent.getTableModelDatabaseName().length();
+        estimateSize = pipeRawTabletInsertionEvent.getTableModelDatabaseName().length();
         tabletDataBases.add(pipeRawTabletInsertionEvent.getTableModelDatabaseName());
       } else {
-        databaseEstimateSize = 4;
+        estimateSize = 4;
         tabletDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
       }
     }
-    return buffer.limit() + databaseEstimateSize;
+
+    if (Objects.nonNull(buffer)) {
+      estimateSize += buffer.limit();
+    }
+    return estimateSize;
   }
 }
