@@ -134,7 +134,6 @@ public class AlterTimeSeriesStatement extends Statement {
     return isAlterView;
   }
 
-
   public TSStatus checkPermissionBeforeProcess(String userName) {
     return super.checkPermissionBeforeProcess(userName);
   }
@@ -145,11 +144,10 @@ public class AlterTimeSeriesStatement extends Statement {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternPermission(
-                    userName, path, PrivilegeType.WRITE_SCHEMA),
-            PrivilegeType.WRITE_SCHEMA);
+        AuthorityChecker.checkFullPathOrPatternPermission(
+            userName, path, PrivilegeType.WRITE_SCHEMA),
+        PrivilegeType.WRITE_SCHEMA);
   }
-
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

@@ -71,7 +71,6 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
   }
 
   @Override
-
   public TSStatus checkPermissionBeforeProcess(String userName) {
     return super.checkPermissionBeforeProcess(userName);
   }
@@ -83,12 +82,11 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     }
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathOrPatternListPermission(
-                    userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-            checkedPaths,
-            PrivilegeType.WRITE_SCHEMA);
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
   }
-
 
   public PartialPath getDevicePath() {
     return devicePath;
