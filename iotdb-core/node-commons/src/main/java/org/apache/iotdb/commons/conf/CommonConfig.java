@@ -1994,14 +1994,11 @@ public class CommonConfig {
   }
 
   public void setPipeReceiverTabletBatchSize(long pipeReceiverTabletBatchSize) {
-    if (this.pipeReceiverTabletBatchSize
-            == pipeReceiverTabletBatchSize) {
+    if (this.pipeReceiverTabletBatchSize == pipeReceiverTabletBatchSize) {
       return;
     }
     this.pipeReceiverTabletBatchSize = pipeReceiverTabletBatchSize;
-    logger.info(
-            "pipeReceiverTabletBatchSize is set to {}",
-            pipeReceiverTabletBatchSize);
+    logger.info("pipeReceiverTabletBatchSize is set to {}", pipeReceiverTabletBatchSize);
   }
 
   public boolean getSubscriptionEnabled() {

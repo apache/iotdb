@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -44,7 +43,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
@@ -70,8 +68,6 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
     final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
         new HashMap<>();
-    final Map<String, Map<String, Tablet>> tableModelDBTable2TabletMap = new HashMap<>();
-    final AtomicReference<Exception> lastExcept = new AtomicReference<>();
 
     for (final PipeTransferTabletBinaryReqV2 binaryReq : binaryReqs) {
       final InsertBaseStatement statement = binaryReq.constructStatement();
@@ -84,21 +80,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .add((InsertRowStatement) statement);
         } else if (statement instanceof InsertTabletStatement) {
-          tableModelDBTable2TabletMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new HashMap<>())
-              .compute(
-                  statement.getTableName(),
-                  (k, v) -> {
-                    final Tablet tablet = ((InsertTabletStatement) statement).convertToTablet();
-                    if (Objects.isNull(v)) {
-                      return tablet;
-                    } else {
-                      if (!v.append(tablet)) {
-                        lastExcept.set(null);
-                      }
-                      return v;
-                    }
-                  });
+          statements.add(statement);
         } else if (statement instanceof InsertRowsStatement) {
           tableModelDatabaseInsertRowStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
@@ -137,21 +119,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
               .add((InsertRowStatement) statement);
         } else if (statement instanceof InsertTabletStatement) {
-          tableModelDBTable2TabletMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new HashMap<>())
-              .compute(
-                  statement.getTableName(),
-                  (k, v) -> {
-                    final Tablet tablet = ((InsertTabletStatement) statement).convertToTablet();
-                    if (Objects.isNull(v)) {
-                      return tablet;
-                    } else {
-                      if (!v.append(tablet)) {
-                        lastExcept.set(null);
-                      }
-                      return v;
-                    }
-                  });
+          statements.add(statement);
         } else if (statement instanceof InsertRowsStatement) {
           tableModelDatabaseInsertRowStatementMap
               .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
@@ -181,28 +149,15 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
     for (final PipeTransferTabletRawReqV2 tabletReq : tabletReqs) {
       final Tablet tablet = tabletReq.tablet;
+      final InsertTabletStatement statement = tabletReq.constructStatement();
       if (isTabletEmpty(tablet)) {
         continue;
       }
       if (Objects.nonNull(tabletReq.dataBaseName)) {
-        new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
-        tableModelDBTable2TabletMap
-            .computeIfAbsent(tabletReq.dataBaseName, k -> new HashMap<>())
-            .compute(
-                tablet.getTableName(),
-                (k, v) -> {
-                  if (Objects.isNull(v)) {
-                    return tablet;
-                  } else {
-                    if (!v.append(tablet)) {
-                      lastExcept.set(null);
-                    }
-                    return v;
-                  }
-                });
+        statements.add(statement);
         continue;
       }
-      insertTabletStatementList.add(tabletReq.constructStatement());
+      insertTabletStatementList.add(statement);
     }
 
     insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
@@ -223,15 +178,6 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       statements.add(statement);
     }
 
-    for (final Map.Entry<String, Map<String, Tablet>> insertTablets :
-        tableModelDBTable2TabletMap.entrySet()) {
-      final String databaseName = insertTablets.getKey();
-      for (final Map.Entry<String, Tablet> tablet : insertTablets.getValue().entrySet()) {
-        // The tablets in table model are all aligned
-        statements.add(
-            PipeTransferTabletRawReqV2.constructStatement(tablet.getValue(), databaseName, true));
-      }
-    }
     return statements;
   }
 
