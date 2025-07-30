@@ -67,7 +67,7 @@ while true; do
         ;;
         -D)
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
-            #checkConfigNodeEnvVariables is in iotdb-common.sh
+            #checkConfigNodeEnvVariables is in common.sh
             checkConfigNodeEnvVariables $2
             shift 2
         ;;
@@ -109,15 +109,15 @@ if [ "$(id -u)" -ne 0 ]; then
   echo "Notice: in some systems, ConfigNode must run in sudo mode to write data. The process may fail."
 fi
 
-#checkAllVariables is in iotdb-common.sh
+#checkAllVariables is in common.sh
 checkAllConfigNodeVariables
 
-#checkConfigNodePortUsages is in iotdb-common.sh
+#checkConfigNodePortUsages is in common.sh
 checkConfigNodePortUsages
 
 PARAMS="-s $PARAMS"
 
-#initEnv is in iotdb-common.sh
+#initEnv is in common.sh
 initConfigNodeEnv
 
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS $IOTDB_HEAP_DUMP_COMMAND"

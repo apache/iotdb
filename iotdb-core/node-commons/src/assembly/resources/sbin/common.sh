@@ -169,17 +169,17 @@ checkDataNodePortUsages () {
   fi
   occupied=false
   if [ -f "$IOTDB_CONF/iotdb-system.properties" ]; then
-      dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
-      dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
-      dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
-      dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
-      dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
+      dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_CONF}"/system.properties)
+      dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_CONF}"/system.properties)
+      dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_CONF}"/system.properties)
+      dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/system.properties)
+      dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/system.properties)
   elif [ -f "$IOTDB_HOME/conf/iotdb-system.properties" ]; then
-      dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
-      dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
-      dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
-      dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
-      dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
+      dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/system.properties)
+      dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/system.properties)
+      dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/system.properties)
+      dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/system.properties)
+      dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/system.properties)
   elif [ -f "$IOTDB_CONF/iotdb-datanode.properties" ]; then
     dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
@@ -276,11 +276,11 @@ checkConfigNodePortUsages () {
   fi
   occupied=false
   if [ -f "$CONFIGNODE_CONF/iotdb-system.properties" ]; then
-    cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-system.properties)
-    cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-system.properties)
+    cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/system.properties)
+    cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/system.properties)
   elif [ -f "$CONFIGNODE_HOME/conf/iotdb-system.properties" ]; then
-    cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-system.properties)
-    cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-system.properties)
+    cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/system.properties)
+    cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/system.properties)
   elif [ -f "$CONFIGNODE_CONF/iotdb-confignode.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
     cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)

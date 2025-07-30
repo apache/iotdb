@@ -62,7 +62,7 @@ while true; do
         ;;
         -D)
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
-            #checkEnvVariables is in iotdb-common.sh
+            #checkEnvVariables is in common.sh
             checkEnvVariables "$2"
             shift 2
         ;;
@@ -102,10 +102,10 @@ if [ "$(id -u)" -ne 0 ]; then
   echo "Notice: in some systems, DataNode must run in sudo mode to write data. The process may fail."
 fi
 
-#checkAllVariables is in iotdb-common.sh
+#checkAllVariables is in common.sh
 checkAllVariables
 
-#checkDataNodePortUsages is in iotdb-common.sh
+#checkDataNodePortUsages is in common.sh
 checkDataNodePortUsages
 
 CLASSPATH=""
@@ -138,7 +138,7 @@ echo ---------------------
 echo "Starting IoTDB DataNode"
 echo ---------------------
 
-#initEnv is in iotdb-common.sh
+#initEnv is in common.sh
 initEnv
 
 # check whether we can enable heap dump when oom

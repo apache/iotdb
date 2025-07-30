@@ -202,7 +202,7 @@
             <resource>
                 <directory>${project.basedir}/src/assembly/resources/conf</directory>
                 <includes>
-                    <include>iotdb-system.properties.template</include>
+                    <include>system.properties.template</include>
                 </includes>
                 <filtering>false</filtering>
             </resource>

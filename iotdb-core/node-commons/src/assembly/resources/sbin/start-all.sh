@@ -21,7 +21,7 @@
 if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="`dirname "$0"`/.."
 fi
-IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
+IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/cluster.properties
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
   exec ${IOTDB_HOME}/sbin/start-standalone.sh
 else

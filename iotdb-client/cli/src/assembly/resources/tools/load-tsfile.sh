@@ -22,8 +22,8 @@ echo ---------------------
 echo Start Loading TsFile
 echo ---------------------
 
-source "$(dirname "$0")/../sbin/iotdb-common.sh"
-#get_iotdb_include and checkAllVariables is in iotdb-common.sh
+source "$(dirname "$0")/../sbin/common.sh"
+#get_iotdb_include and checkAllVariables is in common.sh
 VARS=$(get_iotdb_include "$*")
 checkAllVariables
 export IOTDB_HOME="${IOTDB_HOME}"

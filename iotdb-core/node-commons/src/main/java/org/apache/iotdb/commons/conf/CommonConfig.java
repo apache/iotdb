@@ -48,8 +48,8 @@ public class CommonConfig {
   public static final String OLD_CONFIG_NODE_CONFIG_NAME = "iotdb-confignode.properties";
   public static final String OLD_DATA_NODE_CONFIG_NAME = "iotdb-datanode.properties";
   public static final String OLD_COMMON_CONFIG_NAME = "iotdb-common.properties";
-  public static final String SYSTEM_CONFIG_NAME = "iotdb-system.properties";
-  public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
+  public static final String SYSTEM_CONFIG_NAME = "system.properties";
+  public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret

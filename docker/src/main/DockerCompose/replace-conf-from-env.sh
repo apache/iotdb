@@ -19,7 +19,7 @@
 #
 
 conf_path=${IOTDB_HOME}/conf
-target_files="iotdb-system.properties"
+target_files="system.properties"
 
 function process_single(){
 	local key_value="$1"

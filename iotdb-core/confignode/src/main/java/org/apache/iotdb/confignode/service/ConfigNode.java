@@ -361,7 +361,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
     TEndPoint seedConfigNode = CONF.getSeedConfigNode();
     if (seedConfigNode == null) {
-      LOGGER.error("Please set the cn_seed_config_node parameter in iotdb-system.properties file.");
+      LOGGER.error("Please set the cn_seed_config_node parameter in system.properties file.");
       throw new StartupException("The seedConfigNode setting in conf is empty");
     }
 

@@ -44,12 +44,12 @@
     </fileSets>
     <files>
         <file>
-            <source>${project.basedir}/../node-commons/src/assembly/resources/conf/iotdb-system.properties</source>
-            <destName>conf/iotdb-system.properties</destName>
+            <source>${project.basedir}/../node-commons/src/assembly/resources/conf/system.properties</source>
+            <destName>conf/system.properties</destName>
         </file>
         <file>
-            <source>${project.basedir}/../node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
-            <destName>sbin/iotdb-common.sh</destName>
+            <source>${project.basedir}/../node-commons/src/assembly/resources/sbin/common.sh</source>
+            <destName>sbin/common.sh</destName>
         </file>
     </files>
 </assembly>
