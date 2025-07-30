@@ -40,6 +40,8 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -54,6 +56,9 @@ import java.util.stream.Collectors;
  */
 public class ShowDatabaseSecurityLabelStatement extends AuthorityInformationStatement
     implements IConfigStatement {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ShowDatabaseSecurityLabelStatement.class);
 
   private final PartialPath pathPattern;
 
@@ -77,15 +82,24 @@ public class ShowDatabaseSecurityLabelStatement extends AuthorityInformationStat
     return QueryType.READ;
   }
 
-  @Override
-  public PrivilegeType determinePrivilegeType() {
-    return PrivilegeType.READ_SCHEMA;
-  }
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
 
-  @Override
-  public TSStatus checkRbacPermission(String userName) {
-    // For show operations, check if user has any schema read permission
-    // This follows the same pattern as other show statements
+    // Database security label operations require MANAGE_DATABASE permission
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+
+    boolean hasPermission =
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE);
+
+    if (!hasPermission) {
+
+      return AuthorityChecker.getTSStatus(
+          AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
+          PrivilegeType.MANAGE_DATABASE);
+    }
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

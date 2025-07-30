@@ -105,22 +105,9 @@ public class AlterDatabaseSecurityLabelStatement extends Statement implements IC
     return visitor.visitAlterDatabaseSecurityLabel(this, context);
   }
 
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
+    // Database security label operations require MANAGE_DATABASE permission
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-
-    if (databasePath != null) {
-      List<PartialPath> paths = Collections.singletonList(databasePath);
-      List<Integer> noPermissionIndexList =
-          AuthorityChecker.checkFullPathOrPatternListPermission(
-              userName, paths, PrivilegeType.MANAGE_DATABASE);
-      if (!noPermissionIndexList.isEmpty()) {
-        return AuthorityChecker.getTSStatus(
-            noPermissionIndexList, paths, PrivilegeType.MANAGE_DATABASE);
-      }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
