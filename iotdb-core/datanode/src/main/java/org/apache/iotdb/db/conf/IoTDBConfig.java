@@ -1164,6 +1164,8 @@ public class IoTDBConfig {
 
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
+  private boolean enableNullValueIncludedInQuatityStats = false;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4133,5 +4135,14 @@ public class IoTDBConfig {
 
   public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
     this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public boolean isEnableNullValueIncludedInQuatityStats() {
+    return enableNullValueIncludedInQuatityStats;
+  }
+
+  public void setEnableNullValueIncludedInQuatityStats(
+      boolean enableNullValueIncludedInQuatityStats) {
+    this.enableNullValueIncludedInQuatityStats = enableNullValueIncludedInQuatityStats;
   }
 }

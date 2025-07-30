@@ -1091,6 +1091,12 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+
+    conf.setEnableNullValueIncludedInQuatityStats(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enableNullValueIncludedInQuatityStats",
+                String.valueOf(conf.isEnableNullValueIncludedInQuatityStats()))));
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {

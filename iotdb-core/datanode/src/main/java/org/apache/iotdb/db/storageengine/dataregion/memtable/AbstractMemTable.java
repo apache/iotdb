@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -211,7 +212,9 @@ public abstract class AbstractMemTable implements IMemTable {
     int pointsInserted =
         insertRowNode.getMeasurements().length
             - insertRowNode.getFailedMeasurementNumber()
-            - nullPointsNumber;
+            - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
+                ? 0
+                : nullPointsNumber);
 
     totalPointsNum += pointsInserted;
     return pointsInserted;
