@@ -27,7 +27,6 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -42,7 +41,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
@@ -104,27 +102,29 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       final String databaseName = insertTablets.getKey();
       for (final Map.Entry<String, Pair<Integer, List<Tablet>>> tabletEntry :
           insertTablets.getValue().entrySet()) {
-        Tablet batchTablet = null;
+        final List<Tablet> batchTablets = new ArrayList<>();
         for (final Tablet tablet : tabletEntry.getValue().getRight()) {
-          if (Objects.isNull(batchTablet)) {
-            batchTablet = tablet;
-          } else if (!batchTablet.append(tablet, tabletEntry.getValue().getLeft())) {
-            throw new PipeException(
-                "Failed to merge tablets due to inconsistent schema, database: "
-                    + databaseName
-                    + ", tableName: "
-                    + tablet.getTableName());
+          boolean success = false;
+          for (final Tablet batchTablet : batchTablets) {
+            if (batchTablet.append(tablet, tabletEntry.getValue().getLeft())) {
+              success = true;
+              break;
+            }
+          }
+          if (!success) {
+            batchTablets.add(tablet);
           }
         }
-        assert batchTablet != null;
-        try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-            final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-          batchTablet.serialize(outputStream);
-          ReadWriteIOUtils.write(true, outputStream);
-          tabletBuffers.add(
-              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+        for (final Tablet batchTablet : batchTablets) {
+          try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+              final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+            batchTablet.serialize(outputStream);
+            ReadWriteIOUtils.write(true, outputStream);
+            tabletBuffers.add(
+                ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+          }
+          tabletDataBases.add(databaseName);
         }
-        tabletDataBases.add(databaseName);
       }
     }
 
