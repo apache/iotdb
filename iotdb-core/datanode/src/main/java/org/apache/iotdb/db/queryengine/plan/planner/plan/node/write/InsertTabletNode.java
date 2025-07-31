@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -56,7 +55,6 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
-import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -72,7 +70,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
@@ -188,22 +185,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public void setRange(List<Integer> range) {
     this.range = range;
-  }
-
-  public Tablet convertToTablet() {
-    final Tablet tablet =
-        new Tablet(
-            getTableName(),
-            Arrays.asList(measurements),
-            Arrays.asList(dataTypes),
-            Arrays.stream(columnCategories)
-                .map(TsTableColumnCategory::toTsFileColumnType)
-                .collect(Collectors.toList()),
-            rowCount);
-    tablet.setBitMaps(bitMaps);
-    tablet.setTimestamps(times);
-    tablet.setValues(columns);
-    return tablet;
   }
 
   @Override

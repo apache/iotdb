@@ -149,7 +149,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   private long buildTabletInsertionBuffer(final TabletInsertionEvent event) throws IOException {
-    long estimateSize;
+    long estimateSize = 0;
     final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
@@ -169,10 +169,12 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         }
         estimateSize += buffer.limit();
       } else {
-        estimateSize =
-            constructTabletBatch(
-                ((RelationalInsertTabletNode) insertNode).convertToTablet(),
-                pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+        for (final Tablet tablet :
+            ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets()) {
+          estimateSize +=
+              constructTabletBatch(
+                  tablet, pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+        }
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
