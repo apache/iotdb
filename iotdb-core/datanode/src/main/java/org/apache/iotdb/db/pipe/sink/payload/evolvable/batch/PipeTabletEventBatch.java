@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
 
@@ -43,6 +44,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private static PipeModelFixedMemoryBlock pipeModelFixedMemoryBlock = null;
 
   protected final List<EnrichedEvent> events = new ArrayList<>();
+  protected final BiConsumer<Long, Long> recordMetric;
 
   private final int maxDelayInMs;
   private long firstEventProcessingTime = Long.MIN_VALUE;
@@ -52,12 +54,23 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   protected volatile boolean isClosed = false;
 
-  protected PipeTabletEventBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
+  protected PipeTabletEventBatch(
+      final int maxDelayInMs,
+      final long requestMaxBatchSizeInBytes,
+      final BiConsumer<Long, Long> recordMetric) {
     if (pipeModelFixedMemoryBlock == null) {
       init();
     }
 
     this.maxDelayInMs = maxDelayInMs;
+    if (recordMetric != null) {
+      this.recordMetric = recordMetric;
+    } else {
+      this.recordMetric =
+          (timeInterval, bufferSize) -> {
+            // do nothing
+          };
+    }
 
     // limit in buffer size
     this.allocatedMemoryBlock =
@@ -129,13 +142,11 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     final long diff = System.currentTimeMillis() - firstEventProcessingTime;
     if (totalBufferSize >= getMaxBatchSizeInBytes() || diff >= maxDelayInMs) {
       allocatedMemoryBlock.updateCurrentMemoryEfficiencyAdjustMem((double) diff / maxDelayInMs);
-      recordMetric(diff, totalBufferSize);
+      recordMetric.accept(diff, totalBufferSize);
       return true;
     }
     return false;
   }
-
-  protected abstract void recordMetric(final long timeInterval, final long bufferSize);
 
   private long getMaxBatchSizeInBytes() {
     return allocatedMemoryBlock.getMemoryUsageInBytes();
