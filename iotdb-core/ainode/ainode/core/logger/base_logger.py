@@ -87,4 +87,6 @@ class BaseLogger:
 
     def _write(self, function, *msg):
         with self._lock:
+            # The stack level of caller is 3, because:
+            # caller -> BaseLogger.info -> BaseLogger._write
             function(" ".join(map(str, msg)), stacklevel=3)
