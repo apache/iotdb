@@ -152,14 +152,14 @@ public class PipeTabletEventSorter {
 
   private int getLastNonnullIndex(
       final int i, final BitMap originalBitMap, final BitMap deDuplicatedBitMap) {
-    if (originalBitMap == null) {
-      return index[deDuplicatedIndex[i]];
-    }
     if (deDuplicatedIndex == null) {
-      if (originalBitMap.isMarked(index[i])) {
+      if (originalBitMap != null && originalBitMap.isMarked(index[i])) {
         deDuplicatedBitMap.mark(i);
       }
       return index[i];
+    }
+    if (originalBitMap == null) {
+      return index[deDuplicatedIndex[i]];
     }
     int lastNonnullIndex = deDuplicatedIndex[i];
     int lastIndex = i > 0 ? deDuplicatedIndex[i - 1] : -1;
