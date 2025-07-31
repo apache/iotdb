@@ -78,6 +78,7 @@ public class IoTDBWindowTVFIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(512 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
