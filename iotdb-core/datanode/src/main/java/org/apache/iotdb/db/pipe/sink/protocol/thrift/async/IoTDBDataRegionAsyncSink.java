@@ -861,4 +861,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       tabletBatchBuilder.setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
     }
   }
+
+  @Override
+  public void setBatchEventSizeHistogram(Histogram eventSizeHistogram) {
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.setEventSizeHistogram(eventSizeHistogram);
+    }
+  }
 }
