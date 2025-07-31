@@ -26,6 +26,8 @@ import torch
 import torch.multiprocessing as mp
 from transformers import PretrainedConfig
 
+from ainode.core.constant import AINODE_INFERENCE_LOG_DIR_TEMPLATE
+from ainode.core.logger.base_logger import BaseLogger
 from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
 from ainode.core.logger.base_logger import BaseLogger
@@ -60,7 +62,7 @@ class InferenceRequestPool(mp.Process):
         self._model_manager = None
         # TODO: Assign device immediately when the pool is created
         self.device = None
-        self.logger = BaseLogger(f"log_inference_rank_{self.device}")
+        self.logger = BaseLogger(INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device))
 
         self._threads = []
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
