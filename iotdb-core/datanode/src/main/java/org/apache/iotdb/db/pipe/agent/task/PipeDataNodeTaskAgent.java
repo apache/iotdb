@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -691,7 +692,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final PipeParameters sourceParameters,
       final PipeParameters processorParameters,
       final PipeParameters sinkParameters) {
-    if (!PipeConfig.getInstance().isPipeEnableMemoryCheck()) {
+    if (!PipeConfig.getInstance().isPipeEnableMemoryCheck() || !isInnerSource(sourceParameters)) {
       return;
     }
 
@@ -702,6 +703,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     needMemory += calculateTsFileParserMemory(sourceParameters, sinkParameters);
     needMemory += calculateSinkBatchMemory(sinkParameters);
     needMemory += calculateSendTsFileReadBufferMemory(sourceParameters, sinkParameters);
+    needMemory += calculateAssignerMemory(sourceParameters);
 
     PipeMemoryManager pipeMemoryManager = PipeDataNodeResourceManager.memory();
     final long freeMemorySizeInBytes = pipeMemoryManager.getFreeMemorySizeInBytes();
@@ -720,6 +722,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       LOGGER.warn(message);
       throw new PipeException(message);
     }
+  }
+
+  private boolean isInnerSource(final PipeParameters sourceParameters) {
+    final String pluginName =
+        sourceParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    return pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName());
   }
 
   private void calculateInsertNodeQueueMemory(final PipeParameters sourceParameters) {
@@ -866,5 +880,20 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     return PipeConfig.getInstance().getSendTsFileReadBuffer();
+  }
+
+  private long calculateAssignerMemory(final PipeParameters sourceParameters) {
+    try {
+      if (!PipeInsertionDataNodeListener.getInstance().isEmpty()
+          || !DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(sourceParameters)
+              .getLeft()) {
+        return 0;
+      }
+      return PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferSize()
+          * PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes()
+          * Math.min(StorageEngine.getInstance().getDataRegionNumber(), 10);
+    } catch (final IllegalPathException e) {
+      return 0;
+    }
   }
 }

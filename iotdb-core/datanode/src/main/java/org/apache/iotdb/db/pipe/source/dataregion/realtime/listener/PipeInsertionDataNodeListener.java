@@ -172,6 +172,10 @@ public class PipeInsertionDataNodeListener {
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
   }
 
+  public boolean isEmpty() {
+    return dataRegionId2Assigner.isEmpty();
+  }
+
   //////////////////////////// Permission change ////////////////////////////
 
   public void invalidateAllCache() {
