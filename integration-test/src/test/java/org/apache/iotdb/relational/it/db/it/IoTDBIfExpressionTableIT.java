@@ -101,13 +101,13 @@ public class IoTDBIfExpressionTableIT {
 
   @Test
   public void testKind2Basic() {
-    String sql = "select if(s1=0, 99, if(s1=22, 999, 9999)) from table1";
-    String[] retArray = new String[] {"99,", "9999,", "999,", "9999,"};
+    String sql = "select if(s3=0.0, s4, if(s3=22.0, 999.0, 9999.0)) from table2";
+    String[] retArray = new String[] {"44.0,", "9999.0,", "999.0,", "9999.0,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
 
     // without false value
-    sql = "select if(s1=0, 99, if(s1=22, 999)) from table1";
-    retArray = new String[] {"99,", "null,", "999,", "null,"};
+    sql = "select if(s3=0.0, s4, if(s3=22.0, 999.0)) from table2";
+    retArray = new String[] {"44.0,", "null,", "999.0,", "null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
 
