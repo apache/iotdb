@@ -205,12 +205,10 @@ public class FragmentInstanceManager {
                   } else if (t instanceof UDFTypeMismatchException) {
                     stateMachine.failed(new SemanticException(t.getMessage()));
                   } else if (t instanceof UDFException) {
+                    logger.warn("Exception happened when executing UDTF: ", t);
                     stateMachine.failed(
                         new IoTDBRuntimeException(
-                            t.getMessage(),
-                            TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(),
-                            t,
-                            true));
+                            t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
                   } else {
                     logger.warn("error when create FragmentInstanceExecution.", t);
                     stateMachine.failed(t);
