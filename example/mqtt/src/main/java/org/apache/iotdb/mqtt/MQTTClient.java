@@ -32,7 +32,7 @@ public class MQTTClient {
     MQTT mqtt = new MQTT();
     mqtt.setHost("127.0.0.1", 1883);
     mqtt.setUserName("root");
-    mqtt.setPassword("IoTDB@2011");
+    mqtt.setPassword("root");
     mqtt.setConnectAttemptsMax(3);
     mqtt.setReconnectDelay(10);
 

@@ -48,7 +48,7 @@ public class SessionPoolExample {
             .host("127.0.0.1")
             .port(6667)
             .user("root")
-            .password("IoTDB@2011")
+            .password("root")
             .maxSize(3)
             .build();
   }
@@ -62,7 +62,7 @@ public class SessionPoolExample {
         new SessionPool.Builder()
             .nodeUrls(nodeUrls)
             .user("root")
-            .password("IoTDB@2011")
+            .password("root")
             .maxSize(3)
             .build();
   }

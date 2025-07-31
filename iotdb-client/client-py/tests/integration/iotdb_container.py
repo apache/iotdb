@@ -31,7 +31,7 @@ logger = setup_logger(__name__)
 
 class IoTDBContainer(DockerContainer):
     IOTDB_USER = environ.get("IOTDB_USER", "root")
-    IOTDB_PASSWORD = environ.get("IOTDB_PASSWORD", "IoTDB@2011")
+    IOTDB_PASSWORD = environ.get("IOTDB_PASSWORD", "root")
 
     def _configure(self):
         pass
@@ -42,7 +42,7 @@ class IoTDBContainer(DockerContainer):
             self.get_container_host_ip(),
             self.get_exposed_port(6667),
             "root",
-            "IoTDB@2011",
+            "root",
         )
         session.open(False)
         with session.execute_statement("SHOW CLUSTER") as session_data_set:
