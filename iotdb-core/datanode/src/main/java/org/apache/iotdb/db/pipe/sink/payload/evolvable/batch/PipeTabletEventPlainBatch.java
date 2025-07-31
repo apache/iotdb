@@ -55,6 +55,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private final List<String> insertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
 
+  // database -> tableName -> Pair<size, tablets to batch>
   private final Map<String, Map<String, Pair<Integer, List<Tablet>>>> tableModelTabletMap =
       new HashMap<>();
 
