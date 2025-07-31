@@ -71,7 +71,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         // Disable sender compaction for tsfile determination in loose range test
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setDnConnectionTimeoutMs(600000)
+        .setIsPipeEnableMemoryCheck(false);
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     receiverEnv
@@ -79,11 +81,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();

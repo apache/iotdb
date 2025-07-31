@@ -76,7 +76,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
-        .setDataReplicationFactor(dataRegionReplicationFactor);
+        .setDataReplicationFactor(dataRegionReplicationFactor)
+        .setDnConnectionTimeoutMs(600000)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -85,11 +87,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(schemaRegionConsensus)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
-        .setDataReplicationFactor(dataRegionReplicationFactor);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(dataRegionReplicationFactor)
+        .setDnConnectionTimeoutMs(600000)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
     receiverEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
