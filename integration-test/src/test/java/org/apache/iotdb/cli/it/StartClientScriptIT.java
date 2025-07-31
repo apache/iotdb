@@ -91,7 +91,7 @@ public class StartClientScriptIT extends AbstractScriptIT {
             "-u",
             "root",
             "-pw",
-            "IoTDB@2011",
+            "root",
             "&",
             "exit",
             "%^errorlevel%");
@@ -134,7 +134,7 @@ public class StartClientScriptIT extends AbstractScriptIT {
             "-u",
             "root",
             "-pw",
-            "IoTDB@2011");
+            "root");
     builder.environment().put("IOTDB_HOME", homePath);
     testOutput(builder, output, 1);
 

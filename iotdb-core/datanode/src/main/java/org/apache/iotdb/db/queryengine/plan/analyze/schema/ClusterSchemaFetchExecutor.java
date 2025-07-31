@@ -256,6 +256,8 @@ class ClusterSchemaFetchExecutor {
       }
       try (SetThreadName ignored = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
+        ClusterSchemaTree.SchemaNodeBatchDeserializer deserializer =
+            new ClusterSchemaTree.SchemaNodeBatchDeserializer();
         Set<String> databaseSet = new HashSet<>();
         while (coordinator.getQueryExecution(queryId).hasNextResult()) {
           // The query will be transited to FINISHED when invoking getBatchResult() at the last time
@@ -273,7 +275,7 @@ class ClusterSchemaFetchExecutor {
           }
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, databaseSet);
+            parseFetchedData(column.getBinary(i), result, deserializer, databaseSet, context);
           }
         }
         result.setDatabases(databaseSet);
@@ -288,7 +290,11 @@ class ClusterSchemaFetchExecutor {
   }
 
   private void parseFetchedData(
-      Binary data, ClusterSchemaTree resultSchemaTree, Set<String> databaseSet) {
+      Binary data,
+      ClusterSchemaTree resultSchemaTree,
+      ClusterSchemaTree.SchemaNodeBatchDeserializer deserializer,
+      Set<String> databaseSet,
+      MPPQueryContext context) {
     InputStream inputStream = new ByteArrayInputStream(data.getValues());
     try {
       byte type = ReadWriteIOUtils.readByte(inputStream);
@@ -298,7 +304,24 @@ class ClusterSchemaFetchExecutor {
           databaseSet.add(ReadWriteIOUtils.readString(inputStream));
         }
       } else if (type == 1) {
-        resultSchemaTree.mergeSchemaTree(ClusterSchemaTree.deserialize(inputStream));
+        // for data from old version
+        ClusterSchemaTree deserializedSchemaTree = ClusterSchemaTree.deserialize(inputStream);
+        if (context != null) {
+          context.reserveMemoryForSchemaTree(deserializedSchemaTree.ramBytesUsed());
+        }
+        resultSchemaTree.mergeSchemaTree(deserializedSchemaTree);
+      } else if (type == 2 || type == 3) {
+        if (deserializer.isFirstBatch()) {
+          long memCost = ReadWriteIOUtils.readLong(inputStream);
+          if (context != null) {
+            context.reserveMemoryForSchemaTree(memCost);
+          }
+        }
+        deserializer.deserializeFromBatch(inputStream);
+        if (type == 3) {
+          // 'type == 3' indicates this batch is finished
+          resultSchemaTree.mergeSchemaTree(deserializer.finish());
+        }
       } else {
         throw new RuntimeException(
             new MetadataException("Failed to fetch schema because of unrecognized data"));

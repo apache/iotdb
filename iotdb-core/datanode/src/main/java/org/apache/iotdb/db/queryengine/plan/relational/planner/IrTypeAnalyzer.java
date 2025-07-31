@@ -72,9 +72,9 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -228,7 +228,7 @@ public class IrTypeAnalyzer {
 
     @Override
     protected Type visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
-      Set<Type> resultTypes =
+      LinkedHashSet<Type> resultTypes =
           node.getWhenClauses().stream()
               .map(
                   clause -> {
@@ -239,9 +239,12 @@ public class IrTypeAnalyzer {
                         operandType);
                     return setExpressionType(clause, process(clause.getResult(), context));
                   })
-              .collect(Collectors.toSet());
+              .collect(Collectors.toCollection(LinkedHashSet::new));
 
-      checkArgument(resultTypes.size() == 1, "All result types must be the same: %s", resultTypes);
+      if (resultTypes.size() != 1) {
+        throw new SemanticException(
+            String.format("All result types must be the same: %s", resultTypes));
+      }
       Type resultType = resultTypes.iterator().next();
       node.getDefaultValue()
           .ifPresent(
@@ -261,7 +264,7 @@ public class IrTypeAnalyzer {
     protected Type visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
       Type operandType = process(node.getOperand(), context);
 
-      Set<Type> resultTypes =
+      LinkedHashSet<Type> resultTypes =
           node.getWhenClauses().stream()
               .map(
                   clause -> {
@@ -273,9 +276,13 @@ public class IrTypeAnalyzer {
                         operandType);
                     return setExpressionType(clause, process(clause.getResult(), context));
                   })
-              .collect(Collectors.toSet());
+              .collect(Collectors.toCollection(LinkedHashSet::new));
 
-      checkArgument(resultTypes.size() == 1, "All result types must be the same: %s", resultTypes);
+      if (resultTypes.size() != 1) {
+        throw new SemanticException(
+            String.format("All result types must be the same: %s", resultTypes));
+      }
+
       Type resultType = resultTypes.iterator().next();
       node.getDefaultValue()
           .ifPresent(
@@ -293,12 +300,15 @@ public class IrTypeAnalyzer {
 
     @Override
     protected Type visitCoalesceExpression(CoalesceExpression node, Context context) {
-      Set<Type> types =
+      LinkedHashSet<Type> types =
           node.getOperands().stream()
               .map(operand -> process(operand, context))
-              .collect(Collectors.toSet());
+              .collect(Collectors.toCollection(LinkedHashSet::new));
 
-      checkArgument(types.size() == 1, "All operands must have the same type: %s", types);
+      if (types.size() != 1) {
+        throw new SemanticException(
+            String.format("All operands must have the same type: %s", types));
+      }
       return setExpressionType(node, types.iterator().next());
     }
 

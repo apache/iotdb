@@ -133,7 +133,7 @@ public class IoTDBRestServiceIT {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
-    String authorization = getAuthorization("root", "IoTDB@2011");
+    String authorization = getAuthorization("root", "root");
     httpPost.setHeader("Authorization", authorization);
     return httpPost;
   }

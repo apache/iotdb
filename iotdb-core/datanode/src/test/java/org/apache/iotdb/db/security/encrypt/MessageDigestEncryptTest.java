@@ -95,7 +95,7 @@ public class MessageDigestEncryptTest {
 
   @Test
   public void testMessageDigestValidatePassword() {
-    String password = "IoTDB@2011";
+    String password = "root";
     assertTrue(
         messageDigestEncrypt.validate(
             password,

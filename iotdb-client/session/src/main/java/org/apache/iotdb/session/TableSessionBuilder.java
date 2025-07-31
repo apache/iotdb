@@ -71,7 +71,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    *
    * @param password the password.
    * @return the current {@link TableSessionBuilder} instance.
-   * @defaultValue "IoTDB@2011"
+   * @defaultValue "root"
    */
   public TableSessionBuilder password(String password) {
     this.pw = password;
