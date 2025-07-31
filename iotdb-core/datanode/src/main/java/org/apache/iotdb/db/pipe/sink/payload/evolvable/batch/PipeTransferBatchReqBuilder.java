@@ -75,6 +75,8 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   private Histogram tabletBatchTimeIntervalHistogram = new DoNothingHistogram();
   private Histogram tsFileBatchTimeIntervalHistogram = new DoNothingHistogram();
 
+  private Histogram eventSizeHistogram = new DoNothingHistogram();
+
   // If the leader cache is disabled (or unable to find the endpoint of event in the leader cache),
   // the event will be stored in the default batch.
   private final PipeTabletEventBatch defaultBatch;
@@ -220,14 +222,16 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     endPointToBatch.values().forEach(PipeTabletEventPlainBatch::close);
   }
 
-  public void recordTabletMetric(long timeInterval, long bufferSize) {
+  public void recordTabletMetric(long timeInterval, long bufferSize, long eventSize) {
     this.tabletBatchTimeIntervalHistogram.update(timeInterval);
     this.tabletBatchSizeHistogram.update(bufferSize);
+    this.eventSizeHistogram.update(eventSize);
   }
 
-  public void recordTsFileMetric(long timeInterval, long bufferSize) {
+  public void recordTsFileMetric(long timeInterval, long bufferSize, long eventSize) {
     this.tsFileBatchTimeIntervalHistogram.update(timeInterval);
     this.tsFileBatchSizeHistogram.update(bufferSize);
+    this.eventSizeHistogram.update(eventSize);
   }
 
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
@@ -251,6 +255,12 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
     if (tsFileBatchTimeIntervalHistogram != null) {
       this.tsFileBatchTimeIntervalHistogram = tsFileBatchTimeIntervalHistogram;
+    }
+  }
+
+  public void setEventSizeHistogram(Histogram eventSizeHistogram) {
+    if (eventSizeHistogram != null) {
+      this.eventSizeHistogram = eventSizeHistogram;
     }
   }
 }

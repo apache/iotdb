@@ -648,4 +648,8 @@ public abstract class IoTDBSink implements PipeConnector {
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
     // do nothing by default
   }
+
+  public void setBatchEventSizeHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+    // do nothing by default
+  }
 }
