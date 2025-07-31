@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -41,8 +43,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PathPatternTree {
-
+public class PathPatternTree implements Accountable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PathPatternTree.class);
+  private static final long LIST_SIZE = RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
   private PathPatternNode<Void, VoidSerializer> root;
 
   private List<PartialPath> pathPatternList;
@@ -436,5 +440,16 @@ public class PathPatternTree {
   @Override
   public int hashCode() {
     return Objects.hash(root);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + root.ramBytesUsed()
+        + (Objects.nonNull(pathPatternList)
+            ? LIST_SIZE
+                + (long) pathPatternList.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                + pathPatternList.stream().map(PartialPath::estimateSize).reduce(0, Integer::sum)
+            : 0L);
   }
 }
