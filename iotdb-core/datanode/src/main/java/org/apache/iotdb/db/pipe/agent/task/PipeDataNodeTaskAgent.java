@@ -689,10 +689,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected void calculateMemoryUsage(
+      final PipeStaticMeta staticMeta,
       final PipeParameters sourceParameters,
       final PipeParameters processorParameters,
       final PipeParameters sinkParameters) {
-    if (!PipeConfig.getInstance().isPipeEnableMemoryCheck() || !isInnerSource(sourceParameters)) {
+    if (!PipeConfig.getInstance().isPipeEnableMemoryCheck()
+        || !isInnerSource(sourceParameters)
+        || !PipeType.USER.equals(staticMeta.getPipeType())) {
       return;
     }
 
