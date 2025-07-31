@@ -506,13 +506,13 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
     try {
       future.sync();
     } catch (Throwable e) {
-      return false;
+      throw new IOException(e);
     }
     if (connecting.get()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1);
       } catch (InterruptedException e) {
-        return false;
+        throw new IOException(e);
       }
     }
     synchronized (lock) {

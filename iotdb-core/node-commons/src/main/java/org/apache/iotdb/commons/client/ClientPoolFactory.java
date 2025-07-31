@@ -220,30 +220,6 @@ public class ClientPoolFactory {
     }
   }
 
-  public static class SyncDataNodeHeartbeatServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
-    @Override
-    public GenericKeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
-        ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-      GenericKeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> clientPool =
-          new GenericKeyedObjectPool<>(
-              new SyncDataNodeInternalServiceClient.Factory(
-                  manager,
-                  new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
-                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
-                      .setPrintLogWhenEncounterException(false)
-                      .build()),
-              new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                  .build()
-                  .getConfig());
-      ClientManagerMetrics.getInstance()
-          .registerClientManager(this.getClass().getSimpleName(), clientPool);
-      return clientPool;
-    }
-  }
-
   public static class SyncDataNodeMPPDataExchangeServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> {
 
