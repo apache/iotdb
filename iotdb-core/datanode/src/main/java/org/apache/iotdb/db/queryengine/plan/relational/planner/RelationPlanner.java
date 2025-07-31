@@ -235,7 +235,33 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings(), outerContext);
     }
 
+    final Query namedQuery = analysis.getNamedQuery(table);
     final Scope scope = analysis.getScope(table);
+
+    if (namedQuery != null) {
+      RelationPlan subPlan;
+      if (analysis.isExpandableQuery(namedQuery)) {
+        subPlan =
+            new QueryPlanner(
+                    analysis,
+                    symbolAllocator,
+                    queryContext,
+                    outerContext,
+                    sessionInfo,
+                    recursiveSubqueries)
+                .plan(namedQuery);
+      } else {
+        subPlan = process(namedQuery, null);
+      }
+      List<Type> types =
+          analysis.getOutputDescriptor(table).getAllFields().stream()
+              .map(Field::getType)
+              .collect(toImmutableList());
+
+      NodeAndMappings coerced = coerce(subPlan, types, symbolAllocator, idAllocator);
+      return new RelationPlan(coerced.getNode(), scope, coerced.getFields(), outerContext);
+    }
+
     final ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     final Collection<Field> fields = scope.getRelationType().getAllFields();
