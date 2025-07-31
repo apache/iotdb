@@ -1097,10 +1097,17 @@ public class PartitionManager {
                         .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
                         .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
                 regionInfo.setTsFileSize(regionSize);
+
+                long rawDataSize =
+                    getLoadManager()
+                        .getLoadCache()
+                        .getRegionRawSizeMap()
+                        .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
+                        .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
+                regionInfo.setRawDataSize(rawDataSize);
               });
 
       return regionInfoListResp;
-
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
