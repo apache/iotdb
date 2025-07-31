@@ -1347,7 +1347,8 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final String columnName,
-      final TSDataType dataType)
+      final TSDataType dataType,
+      final boolean isAllowTableIsView)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1358,6 +1359,13 @@ public class ClusterSchemaManager {
               String.format("Table '%s.%s' does not exist", database, tableName)),
           null);
     }
+
+    final Optional<Pair<TSStatus, TsTable>> result =
+        checkTable4View(database, originalTable, isAllowTableIsView);
+    if (result.isPresent()) {
+      return result.get();
+    }
+
     TSStatus tsStatus =
         clusterSchemaInfo.preAlterColumnDataType(database, tableName, columnName, dataType);
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -39,6 +40,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -57,6 +59,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.relational.it.session.IoTDBSessionRelationalIT.genValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -870,5 +874,128 @@ public class IoTDBAlterColumnTypeIT {
     }
 
     filesToLoad.forEach(File::delete);
+  }
+
+  @Test
+  public void testAlterViewType() throws IoTDBConnectionException, StatementExecutionException {
+    String[] createTreeDataSqls = {
+      "CREATE ALIGNED TIMESERIES root.db.battery.b0(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b0(time, voltage, current) aligned values ("
+          + (System.currentTimeMillis() - 100000)
+          + ", 1, 1)",
+      "CREATE ALIGNED TIMESERIES root.db.battery.b1(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (1, 1, 1)",
+      "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (2, 1, 1)",
+      "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (3, 1, 1)",
+      "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (4, 1, 1)",
+      "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values ("
+          + System.currentTimeMillis()
+          + ", 1, 1)",
+      "CREATE TIMESERIES root.db.battery.b2.voltage INT32",
+      "CREATE TIMESERIES root.db.battery.b2.current FLOAT",
+      "INSERT INTO root.db.battery.b2(time, voltage, current) values (1, 1, 1)",
+      "INSERT INTO root.db.battery.b2(time, voltage, current) values (2, 1, 1)",
+      "INSERT INTO root.db.battery.b2(time, voltage, current) values (3, 1, 1)",
+      "INSERT INTO root.db.battery.b2(time, voltage, current) values (4, 1, 1)",
+      "INSERT INTO root.db.battery.b2(time, voltage, current) values ("
+          + System.currentTimeMillis()
+          + ", 1, 1)",
+      "CREATE ALIGNED TIMESERIES root.db.battery.b3(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b3(time, voltage, current) aligned values ("
+          + (System.currentTimeMillis() - 100000)
+          + ", 1, 1)",
+      "CREATE ALIGNED TIMESERIES root.db.battery.b4(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b4(time, voltage, current) aligned values ("
+          + (System.currentTimeMillis() - 100000)
+          + ", 1, 1)",
+      "CREATE ALIGNED TIMESERIES root.db.battery.b5(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b5(time, voltage, current) aligned values ("
+          + (System.currentTimeMillis() - 100000)
+          + ", 1, 1)",
+      "CREATE ALIGNED TIMESERIES root.db.battery.b6(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b6(time, voltage, current) aligned values ("
+          + (System.currentTimeMillis() - 100000)
+          + ", 1, 1)",
+      "CREATE ALIGNED TIMESERIES root.db.battery.b7(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b7(time, voltage, current) aligned values ("
+          + (System.currentTimeMillis() - 100000)
+          + ", 1, 1)",
+      "CREATE ALIGNED TIMESERIES root.db.battery.b8(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b8(time, voltage, current) aligned values ("
+          + (System.currentTimeMillis() - 100000)
+          + ", 1, 1)",
+      "CREATE ALIGNED TIMESERIES root.db.battery.b9(voltage INT32, current FLOAT)",
+      "INSERT INTO root.db.battery.b9(time, voltage, current) aligned values ("
+          + (System.currentTimeMillis() - 100000)
+          + ", 1, 1)",
+      "flush",
+      "set ttl to root.db.battery.** 200000",
+      "set ttl to root.db.battery.b0 50000",
+      "set ttl to root.db.battery.b6 50000",
+    };
+
+    String[] createTableSqls = {
+      "CREATE DATABASE test",
+      "USE test",
+      "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
+    };
+
+    prepareData(createTreeDataSqls);
+    prepareTableData(createTableSqls);
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select count(*) from view1 where battery = 'b1'");
+      Assert.assertTrue(sessionDataSet.hasNext());
+      RowRecord record = sessionDataSet.next();
+      Assert.assertEquals(1, record.getField(0).getLongV());
+      Assert.assertFalse(sessionDataSet.hasNext());
+      sessionDataSet.close();
+
+      sessionDataSet = session.executeQueryStatement("select * from view1");
+      int count = 0;
+      while (sessionDataSet.hasNext()) {
+        sessionDataSet.next();
+        count++;
+      }
+      sessionDataSet.close();
+      Assert.assertEquals(8, count);
+
+      // alter the type to "to"
+      TSDataType from = TSDataType.FLOAT;
+      TSDataType to = TSDataType.DOUBLE;
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
+      if (isCompatible) {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TABLE view1 ALTER COLUMN current SET DATA TYPE " + to);
+          //          SessionDataSet dataSet = session.executeQueryStatement(
+          //                  "DESC view1");
+          //          while (dataSet.hasNext()) {
+          //            RowRecord rowRecord = dataSet.next();
+          //            System.out.println("rowRecord is " + rowRecord.toString());
+          //          }
+        } catch (Exception e) {
+          assertEquals(
+              "701: Table 'test.view1' is a tree view table, does not support alter table",
+              e.getMessage());
+        }
+      } else {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TABLE view1 ALTER COLUMN current SET DATA TYPE " + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
+        }
+      }
+
+      session.executeNonQueryStatement("DROP VIEW view1");
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("DELETE TIMESERIES root.db.battery.**");
+    }
   }
 }
