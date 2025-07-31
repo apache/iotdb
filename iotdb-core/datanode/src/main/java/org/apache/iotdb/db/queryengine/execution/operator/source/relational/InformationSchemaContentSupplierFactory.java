@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -523,7 +524,8 @@ public class InformationSchemaContentSupplierFactory {
           == TConsensusGroupType.DataRegion.ordinal()) {
         columnBuilders[12].writeLong(regionInfo.getTsFileSize());
         columnBuilders[13].writeDouble(
-            (double) regionInfo.getRawDataSize() / regionInfo.getTsFileSize());
+            MathUtils.roundWithGivenPrecision(
+                (double) regionInfo.getRawDataSize() / regionInfo.getTsFileSize(), 2));
       } else {
         columnBuilders[12].appendNull();
         columnBuilders[13].appendNull();
