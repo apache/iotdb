@@ -560,7 +560,8 @@ public class ClusterSchemaTree implements ISchemaTree {
   public static class SchemaNodeBatchDeserializer {
     private byte nodeType;
     private int childNum;
-    private Deque<SchemaNode> stack = new ArrayDeque<>();
+    // This class is likely to be faster than Stack when used as a stack
+    private final Deque<SchemaNode> stack = new ArrayDeque<>();
     private SchemaNode child;
     private boolean hasLogicalView = false;
     private boolean hasNormalTimeSeries = false;
@@ -621,15 +622,20 @@ public class ClusterSchemaTree implements ISchemaTree {
         result.hasNormalTimeSeries = hasNormalTimeSeries;
         return result;
       } finally {
-        nodeType = 0;
-        childNum = 0;
-        stack.clear();
-        child = null;
-        hasLogicalView = false;
-        hasNormalTimeSeries = false;
-        templateMap = new HashMap<>();
-        isFirstBatch = true;
+        reset();
       }
+    }
+
+    private void reset() {
+      nodeType = 0;
+      childNum = 0;
+      stack.clear();
+      child = null;
+      hasLogicalView = false;
+      hasNormalTimeSeries = false;
+      // templateMap is set to the returned schema tree, so we should create a new one
+      templateMap = new HashMap<>();
+      isFirstBatch = true;
     }
   }
 

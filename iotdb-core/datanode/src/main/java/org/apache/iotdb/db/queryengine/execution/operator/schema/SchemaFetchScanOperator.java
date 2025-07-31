@@ -162,7 +162,8 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
     boolean isFirstBatch = schemaNodeIteratorForSerialize == null;
     prepareSchemaNodeIteratorForSerialize();
-    // to indicate this binary data is database info
+    // to indicate this binary data is a part of schema tree, and the remaining parts will be sent
+    // later
     ReadWriteIOUtils.write((byte) 2, baos);
     // the estimated mem cost to deserialize the total schema tree
     if (isFirstBatch) {
