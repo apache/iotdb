@@ -364,6 +364,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
   }
 
+  public void setEventSizeHistogram(Histogram eventSizeHistogram) {
+    if (outputPipeConnector instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeConnector).setBatchEventSizeHistogram(eventSizeHistogram);
+    }
+  }
+
   //////////////////////////// Error report ////////////////////////////
 
   @Override
