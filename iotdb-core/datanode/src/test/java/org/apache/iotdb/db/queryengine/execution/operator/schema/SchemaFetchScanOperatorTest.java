@@ -101,7 +101,7 @@ public class SchemaFetchScanOperatorTest {
       Binary binary = tsBlock.getColumn(0).getBinary(0);
       InputStream inputStream = new ByteArrayInputStream(binary.getValues());
       if (!deserializer.isFirstBatch()) {
-        Assert.assertEquals(1, type);
+        Assert.assertEquals(2, type);
       }
       type = ReadWriteIOUtils.readByte(inputStream);
       if (deserializer.isFirstBatch()) {
@@ -109,7 +109,7 @@ public class SchemaFetchScanOperatorTest {
       }
       deserializer.deserializeFromBatch(inputStream);
     }
-    Assert.assertEquals(2, type);
+    Assert.assertEquals(3, type);
     Assert.assertFalse(schemaFetchScanOperator.hasNext());
     ClusterSchemaTree schemaTree = deserializer.finish();
 

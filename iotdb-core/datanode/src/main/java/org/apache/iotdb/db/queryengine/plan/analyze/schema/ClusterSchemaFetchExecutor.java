@@ -303,14 +303,23 @@ class ClusterSchemaFetchExecutor {
         for (int i = 0; i < size; i++) {
           databaseSet.add(ReadWriteIOUtils.readString(inputStream));
         }
-      } else if (type == 1 || type == 2) {
+      } else if (type == 1) {
+        // for data from old version
+        ClusterSchemaTree deserializedSchemaTree = ClusterSchemaTree.deserialize(inputStream);
+        if (context != null) {
+          context.reserveMemoryForSchemaTree(deserializedSchemaTree.ramBytesUsed());
+        }
+        resultSchemaTree.mergeSchemaTree(deserializedSchemaTree);
+      } else if (type == 2 || type == 3) {
         if (deserializer.isFirstBatch()) {
           long memCost = ReadWriteIOUtils.readLong(inputStream);
-          context.reserveMemoryForSchemaTree(memCost);
+          if (context != null) {
+            context.reserveMemoryForSchemaTree(memCost);
+          }
         }
         deserializer.deserializeFromBatch(inputStream);
-        if (type == 2) {
-          // 'type == 2' indicates this batch is finished
+        if (type == 3) {
+          // 'type == 3' indicates this batch is finished
           resultSchemaTree.mergeSchemaTree(deserializer.finish());
         }
       } else {
