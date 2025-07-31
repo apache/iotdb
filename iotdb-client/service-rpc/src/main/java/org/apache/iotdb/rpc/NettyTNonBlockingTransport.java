@@ -55,7 +55,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.security.KeyStore;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -505,14 +504,13 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
   @Override
   public boolean finishConnect() throws IOException {
     try {
-      future.get();
-    } catch (InterruptedException | ExecutionException e) {
+      future.sync();
+    } catch (Throwable e) {
       return false;
     }
-    if (!connected.get()) {
+    if (connecting.get()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1);
-        logger.info("sleep here");
       } catch (InterruptedException e) {
         return false;
       }
