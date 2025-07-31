@@ -580,4 +580,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     return this;
   }
+
+  @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    dnConfig.setEnforceStrongPassword(enforceStrongPassword);
+    cnConfig.setEnforceStrongPassword(enforceStrongPassword);
+    return this;
+  }
 }

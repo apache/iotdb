@@ -20,9 +20,9 @@
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -254,7 +254,7 @@ public class PipeHeartbeatParser {
                   pipeName);
             }
 
-            if (exception instanceof PipeRuntimeConnectorCriticalException) {
+            if (exception instanceof PipeRuntimeSinkCriticalException) {
               ((PipeTableResp) pipeTaskInfo.get().showPipes())
                   .filter(true, pipeName).getAllPipeMeta().stream()
                       .filter(pipeMeta -> !pipeMeta.getStaticMeta().getPipeName().equals(pipeName))

@@ -65,7 +65,7 @@ public class LocalFileUserAccessorTest {
 
   @Test
   public void test() throws IOException, IllegalPathException {
-    User user = new User("test", "password");
+    User user = new User("test", "password123456");
     user.grantSysPrivilege(PrivilegeType.EXTEND_TEMPLATE, false);
     user.grantSysPrivilege(PrivilegeType.MANAGE_USER, false);
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.test"));
@@ -105,7 +105,7 @@ public class LocalFileUserAccessorTest {
   public void testLoadOldVersion() throws IOException, IllegalPathException {
     User role = new User();
     role.setName("root");
-    role.setPassword("password");
+    role.setPassword("password123456");
     List<PathPrivilege> pathPriList = new ArrayList<>();
     PathPrivilege rootPathPriv = new PathPrivilege(new PartialPath("root.**"));
     PathPrivilege normalPathPriv = new PathPrivilege(new PartialPath("root.b.c.**"));

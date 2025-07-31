@@ -295,10 +295,6 @@ public class CommonConfig {
 
   private int pipeReceiverReqDecompressedMaxLengthInBytes = 1073741824; // 1GB
 
-  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated
-  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
-  private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
-
   private double pipeMetaReportMaxLogNumPerRound = 0.1;
   private int pipeMetaReportMaxLogIntervalRounds = 360;
   private int pipeTsFilePinMaxLogNumPerRound = 10;
@@ -434,6 +430,11 @@ public class CommonConfig {
 
   /** ssl trust Store password. */
   private String trustStorePwd = "";
+
+  private boolean enforceStrongPassword = false;
+  private long passwordExpirationDays = -1;
+  // an old password cannot be reused within the given interval if >= 0.
+  private long passwordReuseIntervalDays = -1;
 
   CommonConfig() {
     // Empty constructor
@@ -1517,51 +1518,6 @@ public class CommonConfig {
     return pipeReceiverReqDecompressedMaxLengthInBytes;
   }
 
-  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
-    return pipeMaxAllowedHistoricalTsFilePerDataRegion;
-  }
-
-  public void setPipeMaxAllowedHistoricalTsFilePerDataRegion(
-      int pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
-    if (this.pipeMaxAllowedHistoricalTsFilePerDataRegion
-        == pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
-      return;
-    }
-    this.pipeMaxAllowedHistoricalTsFilePerDataRegion =
-        pipeMaxAllowedPendingTsFileEpochPerDataRegion;
-    logger.info(
-        "pipeMaxAllowedHistoricalTsFilePerDataRegion is set to {}",
-        pipeMaxAllowedPendingTsFileEpochPerDataRegion);
-  }
-
-  public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
-    return pipeMaxAllowedPendingTsFileEpochPerDataRegion;
-  }
-
-  public void setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
-      int pipeExtractorPendingQueueTsfileLimit) {
-    if (this.pipeMaxAllowedPendingTsFileEpochPerDataRegion
-        == pipeExtractorPendingQueueTsfileLimit) {
-      return;
-    }
-    this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
-    logger.info(
-        "pipeMaxAllowedPendingTsFileEpochPerDataRegion is set to {}.",
-        pipeMaxAllowedPendingTsFileEpochPerDataRegion);
-  }
-
-  public long getPipeMaxAllowedLinkedTsFileCount() {
-    return pipeMaxAllowedLinkedTsFileCount;
-  }
-
-  public void setPipeMaxAllowedLinkedTsFileCount(long pipeMaxAllowedLinkedTsFileCount) {
-    if (this.pipeMaxAllowedLinkedTsFileCount == pipeMaxAllowedLinkedTsFileCount) {
-      return;
-    }
-    this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
-    logger.info("pipeMaxAllowedLinkedTsFileCount is set to {}", pipeMaxAllowedLinkedTsFileCount);
-  }
-
   public double getPipeMetaReportMaxLogNumPerRound() {
     return pipeMetaReportMaxLogNumPerRound;
   }
@@ -2514,5 +2470,29 @@ public class CommonConfig {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public boolean isEnforceStrongPassword() {
+    return enforceStrongPassword;
+  }
+
+  public void setEnforceStrongPassword(boolean enforceStrongPassword) {
+    this.enforceStrongPassword = enforceStrongPassword;
+  }
+
+  public long getPasswordExpirationDays() {
+    return passwordExpirationDays;
+  }
+
+  public void setPasswordExpirationDays(long passwordExpirationDays) {
+    this.passwordExpirationDays = passwordExpirationDays;
+  }
+
+  public long getPasswordReuseIntervalDays() {
+    return passwordReuseIntervalDays;
+  }
+
+  public void setPasswordReuseIntervalDays(long passwordReuseIntervalDays) {
+    this.passwordReuseIntervalDays = passwordReuseIntervalDays;
   }
 }

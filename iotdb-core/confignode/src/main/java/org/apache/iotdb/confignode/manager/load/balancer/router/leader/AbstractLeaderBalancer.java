@@ -40,6 +40,7 @@ public abstract class AbstractLeaderBalancer {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLeaderBalancer.class);
   public static final String GREEDY_POLICY = "GREEDY";
   public static final String CFD_POLICY = "CFD";
+  public static final String HASH_POLICY = "HASH";
 
   // Set<RegionGroupId>
   protected final Set<TConsensusGroupId> regionGroupIntersection;

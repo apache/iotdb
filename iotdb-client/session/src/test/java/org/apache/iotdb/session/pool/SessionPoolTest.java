@@ -191,7 +191,7 @@ public class SessionPoolTest {
             .host("host")
             .port(11)
             .user("user")
-            .password("password")
+            .password("password123456")
             .maxSize(5)
             .enableAutoFetch(false)
             .build();

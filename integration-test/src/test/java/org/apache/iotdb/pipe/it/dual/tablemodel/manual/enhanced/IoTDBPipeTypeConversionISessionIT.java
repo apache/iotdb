@@ -43,6 +43,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -84,6 +85,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertTabletReceiveByTsFile() {
     prepareTypeConversionTest(
         (ITableSession senderSession, ITableSession receiverSession, Tablet tablet) -> {
@@ -185,7 +187,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
         null,
         "table",
         env,
-        Arrays.asList("create database if not exists test", "use test", tableCreation));
+        Arrays.asList("create database if not exists test", "use test", tableCreation),
+        null);
   }
 
   private void createDataPipe(boolean isTSFile) {
@@ -200,7 +203,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
     TestUtils.tryExecuteNonQueriesWithRetry(
-        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql));
+        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql), null);
   }
 
   private void validateResultSet(

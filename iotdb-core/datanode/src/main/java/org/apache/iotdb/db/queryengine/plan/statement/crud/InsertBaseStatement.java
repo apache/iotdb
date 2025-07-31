@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -43,6 +44,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -77,6 +79,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
+
+  protected Type[] typeConvertors;
+  protected InputLocation[] inputLocations;
 
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
@@ -170,6 +175,14 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       dataTypes = new TSDataType[measurements.length];
     }
     this.dataTypes[i] = dataType;
+  }
+
+  public void setTypeConvertors(Type[] typeConvertors) {
+    this.typeConvertors = typeConvertors;
+  }
+
+  public void setInputLocations(InputLocation[] inputLocations) {
+    this.inputLocations = inputLocations;
   }
 
   /** Returns true when this statement is empty and no need to write into the server */
@@ -606,6 +619,12 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     }
     if (columnCategories != null) {
       CommonUtils.swapArray(columnCategories, src, target);
+    }
+    if (typeConvertors != null) {
+      CommonUtils.swapArray(typeConvertors, src, target);
+    }
+    if (inputLocations != null) {
+      CommonUtils.swapArray(inputLocations, src, target);
     }
     idColumnIndices = null;
   }

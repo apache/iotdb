@@ -1856,6 +1856,9 @@ public class IoTDBSessionRelationalIT {
           WALEntry entry;
           try (WALReader walReader = new WALReader(walFile)) {
             entry = walReader.next();
+            if (!(entry.getValue() instanceof RelationalInsertTabletNode)) {
+              continue;
+            }
             RelationalInsertTabletNode tabletNode = (RelationalInsertTabletNode) entry.getValue();
             assertTrue(
                 Arrays.stream(tabletNode.getColumnCategories())

@@ -18,9 +18,13 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.utils.DataNodeAuthUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
 import com.google.common.collect.ImmutableList;
 
@@ -40,6 +44,7 @@ public class RelationalAuthorStatement extends Statement {
   private String roleName;
 
   private String password;
+  private String oldPassword;
 
   private Set<PrivilegeType> privilegeType;
 
@@ -243,5 +248,47 @@ public class RelationalAuthorStatement extends Statement {
         + privilegeType
         + ", grantOption:"
         + grantOption;
+  }
+
+  /**
+   * Post-process when the statement is successfully executed.
+   *
+   * @return null if the post-process succeeds, a status otherwise.
+   */
+  public TSStatus onSuccess() {
+    if (authorType == AuthorRType.CREATE_USER) {
+      return onCreateUserSuccess();
+    } else if (authorType == AuthorRType.UPDATE_USER) {
+      return onUpdateUserSuccess();
+    }
+    return null;
+  }
+
+  private TSStatus onCreateUserSuccess() {
+    TSStatus tsStatus = DataNodeAuthUtils.recordPassword(userName, password, null);
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  private TSStatus onUpdateUserSuccess() {
+    TSStatus tsStatus = DataNodeAuthUtils.recordPassword(userName, password, oldPassword);
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  public String getOldPassword() {
+    return oldPassword;
+  }
+
+  public void setOldPassword(String oldPassword) {
+    this.oldPassword = oldPassword;
   }
 }
