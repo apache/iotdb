@@ -100,6 +100,10 @@ public class IoTDBOrderByIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeCommonConfig()
+        .setQueryMemoryProportion("1:100:200:50:200:400:200:50");
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }

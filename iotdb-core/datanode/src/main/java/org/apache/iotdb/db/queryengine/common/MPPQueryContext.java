@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongConsumer;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -89,6 +90,10 @@ public class MPPQueryContext {
   // the updateScanNum process in distributed planning can be skipped.
   private boolean needUpdateScanNumForLastQuery = false;
 
+  private long reservedMemoryCostForSchemaTree = 0;
+  private boolean releaseSchemaTreeAfterAnalyzing = true;
+  private LongConsumer reserveMemoryForSchemaTreeFunc = null;
+
   private boolean userQuery = false;
 
   public MPPQueryContext(QueryId queryId) {
@@ -127,6 +132,34 @@ public class MPPQueryContext {
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
     this.initResultNodeContext();
+  }
+
+  public void setReserveMemoryForSchemaTreeFunc(LongConsumer reserveMemoryForSchemaTreeFunc) {
+    this.reserveMemoryForSchemaTreeFunc = reserveMemoryForSchemaTreeFunc;
+  }
+
+  public void reserveMemoryForSchemaTree(long memoryCost) {
+    if (reserveMemoryForSchemaTreeFunc == null) {
+      return;
+    }
+    reserveMemoryForSchemaTreeFunc.accept(memoryCost);
+    this.reservedMemoryCostForSchemaTree += memoryCost;
+  }
+
+  public void setReleaseSchemaTreeAfterAnalyzing(boolean releaseSchemaTreeAfterAnalyzing) {
+    this.releaseSchemaTreeAfterAnalyzing = releaseSchemaTreeAfterAnalyzing;
+  }
+
+  public boolean releaseSchemaTreeAfterAnalyzing() {
+    return releaseSchemaTreeAfterAnalyzing;
+  }
+
+  public void releaseMemoryForSchemaTree() {
+    if (reservedMemoryCostForSchemaTree <= 0) {
+      return;
+    }
+    this.memoryReservationManager.releaseMemoryCumulatively(reservedMemoryCostForSchemaTree);
+    reservedMemoryCostForSchemaTree = 0;
   }
 
   public void prepareForRetry() {
