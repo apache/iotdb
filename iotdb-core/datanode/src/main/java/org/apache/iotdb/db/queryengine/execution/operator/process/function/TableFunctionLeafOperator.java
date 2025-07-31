@@ -77,7 +77,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
       processor.process(columnBuilders);
     } catch (Exception e) {
       throw new IoTDBRuntimeException(
-          e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
+          e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), e, true);
     }
     return buildTsBlock(columnBuilders);
   }
@@ -104,7 +104,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
       processor.beforeDestroy();
     } catch (Exception e) {
       throw new IoTDBRuntimeException(
-          e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
+          e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), e, true);
     }
   }
 

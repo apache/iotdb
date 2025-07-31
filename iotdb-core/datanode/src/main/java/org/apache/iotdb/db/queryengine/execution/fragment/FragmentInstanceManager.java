@@ -207,7 +207,10 @@ public class FragmentInstanceManager {
                   } else if (t instanceof UDFException) {
                     stateMachine.failed(
                         new IoTDBRuntimeException(
-                            t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
+                            t.getMessage(),
+                            TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(),
+                            t,
+                            true));
                   } else {
                     logger.warn("error when create FragmentInstanceExecution.", t);
                     stateMachine.failed(t);
