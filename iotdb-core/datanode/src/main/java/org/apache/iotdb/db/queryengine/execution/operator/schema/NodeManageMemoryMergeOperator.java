@@ -20,12 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.node.MNodeType;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LbacOperationClassifier;
 import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -155,19 +152,13 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   }
 
   /**
-   * Check if user has permission to access the schema node Combines RBAC and LBAC checks with LBAC
-   * switch support
+   * Check if user has permission to access the node Only performs LBAC check since RBAC is handled
+   * by Statement layer through authorityScope
    */
   private boolean hasPermissionForNode(String userName, TSchemaNode node) {
     try {
       LOGGER.info("=== NODE PERMISSION CHECK START ===");
       LOGGER.info("User: {}, Node: {}", userName, node.getNodeName());
-
-      // Super user has access to everything
-      if (AuthorityChecker.SUPER_USER.equals(userName)) {
-        LOGGER.info("Super user access granted");
-        return true;
-      }
 
       // Extract database path from node name
       String databasePath = extractDatabasePathFromNodeName(node.getNodeName());
@@ -179,24 +170,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
         return true;
       }
 
-      // Step 1: RBAC check - must pass first
-      LOGGER.info("Performing RBAC check for database: {}", databasePath);
-      boolean rbacAllowed =
-          AuthorityChecker.checkFullPathOrPatternPermission(
-              userName, new PartialPath(databasePath), PrivilegeType.READ_SCHEMA);
-
-      if (!rbacAllowed) {
-        LOGGER.warn(
-            "User {} denied RBAC access to node {} in database {}",
-            userName,
-            node.getNodeName(),
-            databasePath);
-        return false;
-      }
-
-      LOGGER.info("RBAC check passed");
-
-      // Step 2: LBAC check - only if LBAC is enabled
+      // Only perform LBAC check since RBAC is handled by Statement layer
       if (LbacPermissionChecker.isLbacEnabled()) {
         LOGGER.info("LBAC is enabled, performing LBAC check");
         if (!LbacPermissionChecker.checkLbacPermissionForDatabase(

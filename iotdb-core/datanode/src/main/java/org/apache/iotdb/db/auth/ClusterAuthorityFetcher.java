@@ -361,6 +361,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       }
       patternTree.constructTree();
       LOGGER.info("Final pattern tree from cache: {}", patternTree);
+      LOGGER.info("Final pattern tree size: {}", patternTree.getAllPathPatterns().size());
       LOGGER.info("=== CLUSTER AUTHORITY FETCHER GET AUTHORIZED PATTERN TREE END (CACHE) ===");
       return patternTree;
     } else {

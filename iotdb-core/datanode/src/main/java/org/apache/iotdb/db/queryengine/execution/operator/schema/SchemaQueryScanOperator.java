@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LbacOperationClassifier;
 import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -130,13 +127,18 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
    * {@link SchemaQueryScanOperator#next} will be set.
    */
   private ListenableFuture<?> tryGetNext() {
+    LOGGER.info("=== SCHEMA QUERY SCAN OPERATOR TRY GET NEXT START ===");
+
     if (schemaReader == null) {
       schemaReader = createSchemaReader();
+      LOGGER.info("Created schema reader: {}", schemaReader);
     }
+
     while (true) {
       try {
         final ListenableFuture<?> readerBlocked = schemaReader.isBlocked();
         if (!readerBlocked.isDone()) {
+          LOGGER.info("Schema reader is blocked, waiting...");
           final SettableFuture<?> settableFuture = SettableFuture.create();
           readerBlocked.addListener(
               () -> {
@@ -148,29 +150,51 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
           return settableFuture;
         } else if (schemaReader.hasNext() && (limit < 0 || count < offset + limit)) {
           final T element = schemaReader.next();
+          LOGGER.info("Got schema element: {}", element);
+          LOGGER.info("Count: {}, Offset: {}, Limit: {}", count, offset, limit);
+
           if (++count > offset) {
+            LOGGER.info("Processing element (count > offset), checking permissions");
             // Check permissions for schema info before including it in results
             if (hasPermissionForSchemaInfo(element)) {
+              LOGGER.info("Permission check passed, adding element to result");
               setColumns(element, tsBlockBuilder);
               if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
                 next = tsBlockBuilder.build();
                 tsBlockBuilder.reset();
+                LOGGER.info("TsBlock reached max size, returning");
                 return NOT_BLOCKED;
               }
+            } else {
+              LOGGER.info("Permission check failed, skipping element");
             }
             // If permission check fails, we skip this element but continue processing
+          } else {
+            LOGGER.info("Skipping element (count <= offset)");
           }
         } else {
+          LOGGER.info("No more data from schema reader or limit reached");
+          LOGGER.info(
+              "Schema reader has next: {}, Limit: {}, Count: {}, Offset: {}",
+              schemaReader.hasNext(),
+              limit,
+              count,
+              offset);
+
           if (tsBlockBuilder.isEmpty()) {
             next = null;
             isFinished = true;
+            LOGGER.info("TsBlockBuilder is empty, setting finished to true");
           } else {
             next = tsBlockBuilder.build();
+            LOGGER.info("Building final TsBlock with {} rows", next.getPositionCount());
           }
           tsBlockBuilder.reset();
+          LOGGER.info("=== SCHEMA QUERY SCAN OPERATOR TRY GET NEXT END ===");
           return NOT_BLOCKED;
         }
       } catch (final Exception e) {
+        LOGGER.error("Error in tryGetNext: {}", e.getMessage(), e);
         throw new SchemaExecutionException(e);
       }
     }
@@ -244,20 +268,14 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   /**
-   * Check if user has permission to access the schema info Combines RBAC and LBAC checks with LBAC
-   * switch support
+   * Check if user has permission to access the schema info Only performs LBAC check since RBAC is
+   * handled by Statement layer through authorityScope
    */
   private boolean hasPermissionForSchemaInfo(T schemaInfo) {
     try {
       LOGGER.info("=== SCHEMA INFO PERMISSION CHECK START ===");
       String userName = getCurrentUserName();
       LOGGER.info("User: {}, SchemaInfo: {}", userName, schemaInfo);
-
-      // Super user has access to everything
-      if (AuthorityChecker.SUPER_USER.equals(userName)) {
-        LOGGER.info("Super user access granted");
-        return true;
-      }
 
       // Extract database path from schema info
       String databasePath = extractDatabasePathFromSchemaInfo(schemaInfo);
@@ -269,21 +287,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         return true;
       }
 
-      // Step 1: RBAC check - must pass first
-      LOGGER.info("Performing RBAC check for database: {}", databasePath);
-      boolean rbacAllowed =
-          AuthorityChecker.checkFullPathOrPatternPermission(
-              userName, new PartialPath(databasePath), PrivilegeType.READ_SCHEMA);
-
-      if (!rbacAllowed) {
-        LOGGER.warn(
-            "User {} denied RBAC access to schema info in database {}", userName, databasePath);
-        return false;
-      }
-
-      LOGGER.info("RBAC check passed");
-
-      // Step 2: LBAC check - only if LBAC is enabled
+      // Only perform LBAC check since RBAC is handled by Statement layer
       if (LbacPermissionChecker.isLbacEnabled()) {
         LOGGER.info("LBAC is enabled, performing LBAC check");
         if (!LbacPermissionChecker.checkLbacPermissionForDatabase(
