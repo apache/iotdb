@@ -516,6 +516,7 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   private static class SchemaNodePostOrderIterator implements Iterator<SchemaNode> {
+    // This class is likely to be faster than Stack when used as a stack
     private final Deque<Pair<SchemaNode, Iterator<SchemaNode>>> stack = new ArrayDeque<>();
     private SchemaNode nextNode;
 
