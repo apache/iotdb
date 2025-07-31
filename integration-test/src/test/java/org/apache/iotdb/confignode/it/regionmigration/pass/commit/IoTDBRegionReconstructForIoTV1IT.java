@@ -192,7 +192,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       // now, the query should work fine, but the update of region status may have some delay
       long start = System.currentTimeMillis();
       while (true) {
-        SessionDataSet resultSet = null;
+        SessionDataSet resultSet;
         try {
           resultSet = session.executeQueryStatement("select * from root.sg.**");
         } catch (StatementExecutionException e) {
@@ -201,10 +201,12 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
           }
           continue;
         }
-        RowRecord rowRecord = resultSet.next();
-        Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
-        Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
-        break;
+        if (resultSet.hasNext()) {
+          RowRecord rowRecord = resultSet.next();
+          Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
+          Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
+          break;
+        }
       }
     }
   }
