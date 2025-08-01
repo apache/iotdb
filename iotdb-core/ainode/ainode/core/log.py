@@ -16,126 +16,132 @@
 # under the License.
 #
 
-import inspect
+import gzip
 import logging
-import multiprocessing
 import os
 import random
+import re
+import shutil
 import sys
 import threading
+from logging.handlers import TimedRotatingFileHandler
 
 from ainode.core.constant import (
     AINODE_LOG_DIR,
     AINODE_LOG_FILE_LEVELS,
-    AINODE_LOG_FILE_NAMES,
-    STD_LEVEL,
+    AINODE_LOG_FILE_NAME_PREFIX,
+    DEFAULT_LOG_LEVEL,
+    LOG_FILE_TYPE,
 )
 from ainode.core.util.decorator import singleton
 
 
-class LoggerFilter(logging.Filter):
-    def filter(self, record):
-        record.msg = f"{self.custom_log_info()}: {record.msg}"
-        return True
-
-    @staticmethod
-    def custom_log_info():
-        frame = inspect.currentframe()
-        stack_trace = inspect.getouterframes(frame)
-
-        pid = os.getpid()
-        process_name = multiprocessing.current_process().name
-
-        stack_info = ""
-        frame_info = stack_trace[7]
-        file_name = frame_info.filename
-        # if file_name is not in current working directory, find the first "iotdb" in the path
-        for l in range(len(file_name)):
-            i = len(file_name) - l - 1
-            if file_name[i:].startswith("iotdb/") or file_name[i:].startswith(
-                "iotdb\\"
-            ):
-                file_name = file_name[i:]
-                break
-
-        stack_info += f"{file_name}:{frame_info.lineno}-{frame_info.function}"
-
-        return f"[{pid}:{process_name}] {stack_info}"
-
-
-@singleton
-class Logger:
-    """Logger is a singleton, it will be initialized when AINodeDescriptor is inited for the first time.
-        You can just use Logger() to get it anywhere.
+class BaseLogger:
+    """
+    BaseLogger is a base class for logging, which implements daily compress, log files management, custom format, etc.
 
     Args:
-        log_dir: log directory
+        log_file_name_prefix: the prefix of the log file name, it is used to distinguish different processes.
+        log_dir: log directory, default is AINODE_HOME/logs.
 
-    logger_format: log format
-    logger: global logger with custom format and level
-    file_handlers: file handlers for different levels
-    console_handler: console handler for stdout
-    _lock: process lock for logger. This is just a precaution, we currently do not have multiprocessing
+    Attributes:
+        logger_format: log format
+        logger: global logger with custom format and level
+        console_handler: console handler for stdout
+        _lock: process lock for logger. This is just a precaution, we currently do not have multiprocessing
     """
 
-    def __init__(self, log_dir=AINODE_LOG_DIR):
-
+    def __init__(self, log_file_name_prefix: str, log_dir=AINODE_LOG_DIR):
         self.logger_format = logging.Formatter(
-            fmt="%(asctime)s %(levelname)s %(" "message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            fmt="%(asctime)s %(levelname)s [%(process)d:%(processName)s] "
+            "%(filename)s:%(funcName)s:%(lineno)d - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
+
+        self._lock = threading.Lock()
 
         self.logger = logging.getLogger(str(random.random()))
         self.logger.handlers.clear()
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(DEFAULT_LOG_LEVEL)
         self.console_handler = logging.StreamHandler(sys.stdout)
-        self.console_handler.setLevel(STD_LEVEL)
+        self.console_handler.setLevel(DEFAULT_LOG_LEVEL)
         self.console_handler.setFormatter(self.logger_format)
-
         self.logger.addHandler(self.console_handler)
 
-        if log_dir is not None:
-            file_names = AINODE_LOG_FILE_NAMES
-            file_levels = AINODE_LOG_FILE_LEVELS
-            if not os.path.exists(log_dir):
-                os.makedirs(log_dir)
-            for file_name in file_names:
-                log_path = log_dir + "/" + file_name
-                if not os.path.exists(log_path):
-                    f = open(log_path, mode="w", encoding="utf-8")
-                    f.close()
-            self.file_handlers = []
-            for l in range(len(file_names)):
-                self.file_handlers.append(
-                    logging.FileHandler(log_dir + "/" + file_names[l], mode="a")
-                )
-                self.file_handlers[l].setLevel(file_levels[l])
-                self.file_handlers[l].setFormatter(self.logger_format)
+        # Set log file handler
+        for i in range(len(LOG_FILE_TYPE)):
+            file_name = log_file_name_prefix + LOG_FILE_TYPE[i] + ".log"
+            # create log file if not exist
+            os.makedirs(log_dir, exist_ok=True)
+            file_path = os.path.join(log_dir, f"{file_name}")
+            if not os.path.exists(file_path):
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write("")
+            # create handler
+            file_level = AINODE_LOG_FILE_LEVELS[i]
+            file_handler = TimedRotatingFileHandler(
+                filename=file_path,
+                when="MIDNIGHT",
+                interval=1,
+                encoding="utf-8",
+            )
 
-            for file_handler in self.file_handlers:
-                self.logger.addHandler(file_handler)
-        else:
-            log_dir = "None"
+            # set renamer
+            def universal_namer(
+                default_name: str, internal_file_name: str = file_name
+            ) -> str:
+                # to avoid outer variable late binding
+                base, ext = os.path.splitext(internal_file_name)
+                base_log_dir = os.path.dirname(default_name)
+                suffix = default_name.rsplit(".", 1)[-1]  # e.g. 2025-08-01_13-45
+                digits = re.sub(r"[-_]", "", suffix)
+                return os.path.join(base_log_dir, f"{base}-{digits}{ext}.gz")
 
-        self.logger.addFilter(LoggerFilter())
-        self._lock = threading.Lock()
-        self.info(f"Logger init successfully. Log will be written to {log_dir}")
+            file_handler.namer = universal_namer
 
-    def debug(self, *args) -> None:
-        self._lock.acquire()
-        self.logger.debug(" ".join(map(str, args)))
-        self._lock.release()
+            # set gzip
+            def gzip_rotator(src: str, dst: str):
+                with open(src, "rb") as f_in, gzip.open(dst, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+                # delete the old .log file
+                os.remove(src)
 
-    def info(self, *args) -> None:
-        self._lock.acquire()
-        self.logger.info(" ".join(map(str, args)))
-        self._lock.release()
+            file_handler.rotator = gzip_rotator
+            # other settings
+            file_handler.setLevel(file_level)
+            file_handler.setFormatter(self.logger_format)
+            self.logger.addHandler(file_handler)
 
-    def warning(self, *args) -> None:
-        self._lock.acquire()
-        self.logger.warning(" ".join(map(str, args)))
-        self._lock.release()
+        self.info(f"Logger init successfully.")
 
-    def error(self, *args) -> None:
-        self._lock.acquire()
-        self.logger.error(" ".join(map(str, args)))
-        self._lock.release()
+    # interfaces
+    def debug(self, *msg):
+        self._write(self.logger.debug, *msg)
+
+    def info(self, *msg):
+        self._write(self.logger.info, *msg)
+
+    def warning(self, *msg):
+        self._write(self.logger.warning, *msg)
+
+    def error(self, *msg):
+        self._write(self.logger.error, *msg)
+
+    def _write(self, function, *msg):
+        with self._lock:
+            # The stack level of caller is 3, because:
+            # caller -> BaseLogger.info -> BaseLogger._write
+            function(" ".join(map(str, msg)), stacklevel=3)
+
+
+@singleton
+class Logger(BaseLogger):
+    """
+    Logger is a singleton, just use Logger() to get it in the specified process.
+
+    Args:
+        log_file_name_prefix: the prefix of the log file name, it is used to distinguish inference, training and the main process.
+    """
+
+    def __init__(self, log_file_name_prefix: str = AINODE_LOG_FILE_NAME_PREFIX):
+        super().__init__(log_file_name_prefix=log_file_name_prefix)

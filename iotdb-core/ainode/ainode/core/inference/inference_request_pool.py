@@ -27,12 +27,10 @@ import torch.multiprocessing as mp
 from transformers import PretrainedConfig
 
 from ainode.core.config import AINodeDescriptor
-from ainode.core.inference.inference_request import InferenceRequest
+from ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
 from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
-
-logger = Logger()
 
 
 class InferenceRequestPool(mp.Process):
@@ -61,7 +59,11 @@ class InferenceRequestPool(mp.Process):
         self.pool_kwargs = pool_kwargs
         self.model = None
         self._model_manager = None
+        # TODO: Assign device immediately when the pool is created
         self.device = None
+        self.logger = Logger(
+            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
+        )
 
         self._threads = []
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
@@ -89,7 +91,7 @@ class InferenceRequestPool(mp.Process):
         torch.cuda.reset_peak_memory_stats(self.device)
         torch.cuda.synchronize(self.device)
         memory_before_warmup = torch.cuda.memory_allocated(self.device)
-        logger.info(
+        self.logger.info(
             f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Before warm-up, peak memory usage: {memory_before_warmup:.2f} bytes"
         )
 
@@ -98,10 +100,10 @@ class InferenceRequestPool(mp.Process):
             self.model.generate(dummy_input, max_new_tokens=1)
         torch.cuda.synchronize(self.device)
         peak_memory_1_token = torch.cuda.max_memory_allocated(self.device)
-        logger.info(
+        self.logger.info(
             f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Baseline memory usage for 1 token: {peak_memory_1_token:.2f} bytes"
         )
-        logger.info(
+        self.logger.info(
             f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Differentiation : {peak_memory_1_token-memory_before_warmup:.2f} bytes"
         )
 
@@ -113,7 +115,7 @@ class InferenceRequestPool(mp.Process):
             )
             request.mark_running()
             self._running_queue.put(request)
-            logger.debug(
+            self.logger.debug(
                 f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
             )
 
@@ -138,14 +140,14 @@ class InferenceRequestPool(mp.Process):
             request.inference_pipeline.post_decode()
             if request.is_finished():
                 request.inference_pipeline.post_inference()
-                logger.debug(
+                self.logger.debug(
                     f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
                 )
                 # ensure the output tensor is on CPU before sending to result queue
                 request.output_tensor = request.output_tensor.cpu()
                 self._finished_queue.put(request)
             else:
-                logger.debug(
+                self.logger.debug(
                     f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
                 )
                 self._waiting_queue.put(request)
@@ -175,10 +177,10 @@ class InferenceRequestPool(mp.Process):
         execute_daemon.start()
         for thread in self._threads:
             thread.join()
-        logger.info(
+        self.logger.info(
             f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool exited cleanly."
         )
 
     def stop(self):
         self._stop_event.set()
-        logger.debug(f"[Inference][Pool-{self.pool_id}] stop() called")
+        self.logger.info(f"[Inference][Pool-{self.pool_id}] stop() called")
