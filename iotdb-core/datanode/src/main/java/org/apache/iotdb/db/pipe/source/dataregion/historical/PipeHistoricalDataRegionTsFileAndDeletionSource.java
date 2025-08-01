@@ -119,7 +119,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileAndDeletionSource.class);
 
   private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
-  private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 

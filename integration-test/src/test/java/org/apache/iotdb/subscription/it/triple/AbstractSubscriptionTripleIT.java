@@ -74,6 +74,7 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
     sender
         .getConfig()
         .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setSubscriptionPrefetchTsFileBatchMaxDelayInMs(500)
         .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(32 * 1024);
