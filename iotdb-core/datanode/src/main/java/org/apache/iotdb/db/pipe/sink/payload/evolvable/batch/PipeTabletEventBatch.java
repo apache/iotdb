@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.BiConsumer;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
 
@@ -44,7 +43,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private static PipeModelFixedMemoryBlock pipeModelFixedMemoryBlock = null;
 
   protected final List<EnrichedEvent> events = new ArrayList<>();
-  protected final BiConsumer<Long, Long> recordMetric;
+  protected final TriLongConsumer recordMetric;
 
   private final int maxDelayInMs;
   private long firstEventProcessingTime = Long.MIN_VALUE;
@@ -57,7 +56,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   protected PipeTabletEventBatch(
       final int maxDelayInMs,
       final long requestMaxBatchSizeInBytes,
-      final BiConsumer<Long, Long> recordMetric) {
+      final TriLongConsumer recordMetric) {
     if (pipeModelFixedMemoryBlock == null) {
       init();
     }
@@ -67,7 +66,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       this.recordMetric = recordMetric;
     } else {
       this.recordMetric =
-          (timeInterval, bufferSize) -> {
+          (timeInterval, bufferSize, events) -> {
             // do nothing
           };
     }
@@ -142,7 +141,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     final long diff = System.currentTimeMillis() - firstEventProcessingTime;
     if (totalBufferSize >= getMaxBatchSizeInBytes() || diff >= maxDelayInMs) {
       allocatedMemoryBlock.updateCurrentMemoryEfficiencyAdjustMem((double) diff / maxDelayInMs);
-      recordMetric.accept(diff, totalBufferSize);
+      recordMetric.accept(diff, totalBufferSize, events.size());
       return true;
     }
     return false;
@@ -234,5 +233,10 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
           PipeDataNodeResourceManager.memory()
               .forceAllocateForModelFixedMemoryBlock(0, PipeMemoryBlockType.BATCH);
     }
+  }
+
+  @FunctionalInterface
+  public interface TriLongConsumer {
+    void accept(long l1, long l2, long l3);
   }
 }

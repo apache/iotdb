@@ -41,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiConsumer;
 
 public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
@@ -61,7 +60,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   PipeTabletEventPlainBatch(
       final int maxDelayInMs,
       final long requestMaxBatchSizeInBytes,
-      final BiConsumer<Long, Long> recordMetric) {
+      final TriLongConsumer recordMetric) {
     super(maxDelayInMs, requestMaxBatchSizeInBytes, recordMetric);
   }
 

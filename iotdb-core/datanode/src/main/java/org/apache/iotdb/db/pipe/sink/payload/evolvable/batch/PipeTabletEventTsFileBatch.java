@@ -72,7 +72,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -103,7 +102,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   public PipeTabletEventTsFileBatch(
       final int maxDelayInMs,
       final long requestMaxBatchSizeInBytes,
-      final BiConsumer<Long, Long> recordMetric) {
+      final TriLongConsumer recordMetric) {
     super(maxDelayInMs, requestMaxBatchSizeInBytes, recordMetric);
 
     try {
