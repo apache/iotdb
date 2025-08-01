@@ -65,7 +65,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
-        .setIsPipeEnableMemoryCheck(false).setDataNodeMemoryProportion("3:3:1:1:3:1");
+        .setIsPipeEnableMemoryCheck(false)
+        .setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()

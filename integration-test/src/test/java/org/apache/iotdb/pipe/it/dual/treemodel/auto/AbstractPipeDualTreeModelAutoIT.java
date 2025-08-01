@@ -57,14 +57,16 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setEnforceStrongPassword(false).setIsPipeEnableMemoryCheck(false).setDataNodeMemoryProportion("3:3:1:1:9:1");
+        .setEnforceStrongPassword(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setDataNodeMemoryProportion("3:3:1:1:9:1");
 
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);

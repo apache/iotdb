@@ -74,7 +74,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         .setEnableCrossSpaceCompaction(false)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false).setLeaderDistributionPolicy("HASH");
+        .setIsPipeEnableMemoryCheck(false)
+        .setLeaderDistributionPolicy("HASH");
 
     receiverEnv
         .getConfig()

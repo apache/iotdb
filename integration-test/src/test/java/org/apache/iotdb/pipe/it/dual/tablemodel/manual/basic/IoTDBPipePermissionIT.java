@@ -70,7 +70,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
-            .setPipeMemoryManagementEnabled(false)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
