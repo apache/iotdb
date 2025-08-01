@@ -138,6 +138,8 @@ public interface CommonConfig {
 
   CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
 
+  CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
+
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
 
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);

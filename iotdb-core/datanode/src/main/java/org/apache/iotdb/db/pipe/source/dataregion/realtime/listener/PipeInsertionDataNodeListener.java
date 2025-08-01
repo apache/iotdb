@@ -139,6 +139,10 @@ public class PipeInsertionDataNodeListener {
         (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
   }
 
+  public boolean isEmpty() {
+    return dataRegionId2Assigner.isEmpty();
+  }
+
   /////////////////////////////// singleton ///////////////////////////////
 
   private PipeInsertionDataNodeListener() {
