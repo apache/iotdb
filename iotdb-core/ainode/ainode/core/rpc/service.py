@@ -49,12 +49,15 @@ class AINodeThreadPoolServer(TServer.TThreadPoolServer):
         self.serverTransport.listen()
         while not self._stop_event.is_set():
             try:
-                client = self.serverTransport.accept()
+                client = self.serverTransport.accept()  # TODO: Fix the block problem
                 if not client:
                     continue
                 self.clients.put(client)
             except Exception as x:
                 logger.error(x)
+        logger.info(
+            "The RPC service thread pool of IoTDB-AINode has successfully stopped."
+        )
 
     def stop(self) -> None:
         if not self._stop_event.is_set():
