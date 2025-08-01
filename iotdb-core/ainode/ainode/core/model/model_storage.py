@@ -18,28 +18,28 @@
 
 import concurrent.futures
 import json
-import numpy as np
 import os
 import shutil
-import yaml
 from collections.abc import Callable
 from typing import Dict
 
 import torch
 from torch import nn
-from transformers import AutoModel, AutoConfig
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import (
-    DEFAULT_CONFIG_FILE_NAME,
-    DEFAULT_MODEL_FILE_NAME,
     MODEL_CONFIG_FILE_IN_JSON,
+    MODEL_WEIGHTS_FILE_IN_PT,
     TSStatusCode,
 )
-from ainode.core.exception import BuiltInModelDeletionError, ModelNotExistError
+from ainode.core.exception import (
+    BuiltInModelDeletionError,
+    ModelNotExistError,
+    UnsupportedError,
+)
 from ainode.core.log import Logger
 from ainode.core.model.built_in_model_factory import (
-    download_ltsm_if_necessary,
+    download_built_in_ltsm_from_hf_if_necessary,
     fetch_built_in_model,
 )
 from ainode.core.model.model_factory import fetch_model_by_uri
@@ -54,6 +54,7 @@ from ainode.core.model.model_info import (
     get_built_in_model_type,
     get_model_file_type,
 )
+from ainode.core.model.uri_utils import get_model_register_strategy
 from ainode.core.util.lock import ModelLockPool
 from ainode.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
 from ainode.thrift.common.ttypes import TSStatus
@@ -169,7 +170,7 @@ class ModelStorage(object):
         """
         with self._lock_pool.get_lock(model_id).write_lock():
             local_dir = os.path.join(self._builtin_model_dir, model_id)
-            return download_ltsm_if_necessary(
+            return download_built_in_ltsm_from_hf_if_necessary(
                 get_built_in_model_type(self._model_info_map[model_id].model_type),
                 local_dir,
             )
@@ -210,8 +211,7 @@ class ModelStorage(object):
         """
         Args:
             model_id: id of model to register
-            uri: network dir path or local dir path of model to register, where model.pt and config.yaml are required,
-                e.g. https://huggingface.co/user/modelname/resolve/main/ or /Users/admin/Desktop/model
+            uri: network or local dir path of the model to register
         Returns:
             configs: TConfigs
             attributes: str
@@ -221,8 +221,7 @@ class ModelStorage(object):
             # create storage dir if not exist
             if not os.path.exists(storage_path):
                 os.makedirs(storage_path)
-            model_storage_path = os.path.join(storage_path, DEFAULT_MODEL_FILE_NAME)
-            config_storage_path = os.path.join(storage_path, DEFAULT_CONFIG_FILE_NAME)
+            uri_type, parsed_uri, model_file_type = get_model_register_strategy(uri)
             self._model_info_map[model_id] = ModelInfo(
                 model_id=model_id,
                 model_type="",
@@ -232,7 +231,7 @@ class ModelStorage(object):
             try:
                 # TODO: The uri should be fetched asynchronously
                 configs, attributes = fetch_model_by_uri(
-                    uri, model_storage_path, config_storage_path
+                    uri_type, parsed_uri, storage_path, model_file_type
                 )
                 self._model_info_map[model_id].state = ModelStates.ACTIVE
                 return configs, attributes
@@ -315,10 +314,11 @@ class ModelStorage(object):
             else:
                 # load the user-defined model
                 model_dir = os.path.join(self._model_dir, f"{model_id}")
-                if self._is_huggingface_format(model_dir):
-                    return self._load_huggingface_user_model(model_dir, inference_attrs)
+                model_file_type = get_model_file_type(model_dir)
+                if model_file_type == ModelFileType.SAFETENSORS:
+                    raise UnsupportedError("SAFETENSORS format")
                 else:
-                    model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
+                    model_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_PT)
 
                     if not os.path.exists(model_path):
                         raise ModelNotExistError(model_path)
@@ -336,91 +336,6 @@ class ModelStorage(object):
                             f"acceleration failed, fallback to normal mode: {str(e)}"
                         )
                     return model
-                
-    def _is_huggingface_format(self, model_dir: str) -> bool:
-        """Use unified interface from model_info.py"""
-        return get_model_file_type(model_dir) == ModelFileType.SAFETENSORS
-    
-    def _load_huggingface_user_model(self, model_dir: str, inference_attrs: Dict[str, str]) -> Callable:
-        """
-        Load HuggingFace user model (simplified version - only load into memory).
-        """
-        config_path = os.path.join(model_dir, DEFAULT_CONFIG_FILE_NAME)
-        
-        with open(config_path, "r", encoding="utf-8") as f:
-            config_dict = yaml.safe_load(f)
-        
-        source_dir = config_dict.get("attributes", {}).get("source_dir", model_dir)
-        predict_length = int(inference_attrs.get("predict_length", 
-                                                config_dict.get("attributes", {}).get("predict_length", 96)))
-        repo_id = config_dict.get("attributes", {}).get("repo_id", "unknown")
-        
-        try:           
-            config = AutoConfig.from_pretrained(source_dir, trust_remote_code=True)
-            model = AutoModel.from_pretrained(source_dir, config=config, trust_remote_code=True)
-            
-            def inference(data):
-                """
-                Simplified inference function - only load model into memory.
-                Currently does not guarantee inference functionality.
-                """
-                logger.info(f"HuggingFace model loaded into memory.")
-                logger.info(f"Model type: {type(model).__name__}")
-                logger.info(f"Repository: {repo_id}")
-                logger.info(f"Input data shape: {data.shape if hasattr(data, 'shape') else 'unknown'}")
-                logger.info(f"Expected output length: {predict_length}")
-                
-                return np.zeros(predict_length, dtype=np.float64)
-            
-            return inference
-            
-        except Exception as e:
-            logger.error(f"Failed to load HuggingFace model from {source_dir}: {e}")
-            raise
-
-    def _generic_transformers_inference(self, model, data, predict_length: int):
-        try:
-            if isinstance(data, np.ndarray):
-                if len(data.shape) == 1:
-                    input_data = data.tolist()
-                else:
-                    input_data = [row.tolist() for row in data]
-            else:
-                input_data = data if isinstance(data, list) else [data]
-            
-            inference_methods = [
-                ('predict', lambda: model.predict(input_data)),
-                ('generate', lambda: model.generate(inputs=input_data, max_length=predict_length)),
-                ('forward', lambda: model(input_data)),
-                ('__call__', lambda: model(input_data)),
-            ]
-            
-            for method_name, method in inference_methods:
-                if hasattr(model, method_name):
-                    try:
-                        result = method()
-                        
-                        if hasattr(result, 'predictions'):
-                            return np.array(result.predictions, dtype=np.float64)
-                        elif hasattr(result, 'last_hidden_state'):
-                            return result.last_hidden_state.detach().numpy().astype(np.float64)
-                        elif isinstance(result, (list, tuple)) and len(result) > 0:
-                            return np.array(result[0], dtype=np.float64)
-                        else:
-                            result_array = np.array(result, dtype=np.float64)
-                            if result_array.size > 0:
-                                return result_array
-                                
-                    except Exception as e:
-                        logger.debug(f"Method {method_name} failed: {e}")
-                        continue
-            
-            logger.warning(f"All inference methods failed, returning zeros")
-            return np.zeros(predict_length, dtype=np.float64)
-            
-        except Exception as e:
-            logger.error(f"Transformers inference failed: {e}")
-            return np.zeros(predict_length, dtype=np.float64)
 
     def save_model(self, model_id: str, model: nn.Module):
         """
@@ -437,7 +352,7 @@ class ModelStorage(object):
                 # save the user-defined model
                 model_dir = os.path.join(self._model_dir, f"{model_id}")
                 os.makedirs(model_dir, exist_ok=True)
-                model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
+                model_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_PT)
                 try:
                     scripted_model = (
                         model
