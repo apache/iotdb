@@ -777,7 +777,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     if (session != null && !session.isLogin()) {
       final BasicOpenSessionResp openSessionResp =
           SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
+              session,
               username,
               password,
               ZoneId.systemDefault().toString(),
