@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -66,6 +65,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
@@ -107,8 +107,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
-import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
@@ -240,72 +238,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean doAsyncLoad(final Analysis analysis) {
-    long startTime = System.nanoTime();
+    final long startTime = System.nanoTime();
     try {
-      final String[] loadActiveListeningDirs =
-          IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
-      String targetFilePath = null;
-      for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
-          i < size;
-          i++) {
-        if (loadActiveListeningDirs[i] != null) {
-          targetFilePath = loadActiveListeningDirs[i];
-          break;
-        }
+      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(tsFiles, null, isDeleteAfterLoad)) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        analysis.setStatement(loadTsFileStatement);
+        return true;
       }
-      if (targetFilePath == null) {
-        LOGGER.warn("Load active listening dir is not set. Will try sync load instead.");
-        return false;
-      }
-
-      try {
-        loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to async load tsfiles {} to target dir {}. Will try sync load instead.",
-            tsFiles,
-            targetFilePath,
-            e);
-        return false;
-      }
-
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      analysis.setStatement(loadTsFileStatement);
-      return true;
+      LOGGER.info("Async Load has failed, and is now trying to load sync");
+      return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
     }
-  }
-
-  private void loadTsFilesAsyncToTargetDir(final File targetDir, final List<File> files)
-      throws IOException {
-    for (final File file : files) {
-      if (file == null) {
-        continue;
-      }
-
-      loadTsFileAsyncToTargetDir(targetDir, file);
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".resource"));
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".mods"));
-    }
-  }
-
-  private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
-      throws IOException {
-    if (!file.exists()) {
-      return;
-    }
-    RetryUtils.retryOnException(
-        () -> {
-          if (isDeleteAfterLoad) {
-            moveFileWithMD5Check(file, targetDir);
-          } else {
-            copyFileWithMD5Check(file, targetDir);
-          }
-          return null;
-        });
   }
 
   private boolean checkBeforeAnalyzeFileByFile(Analysis analysis) {
