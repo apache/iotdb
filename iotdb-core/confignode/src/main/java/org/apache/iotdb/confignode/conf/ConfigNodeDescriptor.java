@@ -652,6 +652,12 @@ public class ConfigNodeDescriptor {
                 "ratis_first_election_timeout_max_ms",
                 String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))));
 
+    conf.setRatisTransferLeaderTimeoutMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "ratis_transfer_leader_timeout_ms",
+                String.valueOf(conf.getRatisTransferLeaderTimeoutMs()))));
+
     conf.setConfigNodeRatisLogMax(
         Long.parseLong(
             properties.getProperty(
