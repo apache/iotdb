@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.autocreate;
+package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -34,32 +34,32 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
+import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2AutoCreateSchema.class})
-public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
+@Category({MultiClusterIT2DualTableManualEnhanced.class})
+public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
   @Override
   @Before
@@ -75,6 +75,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
@@ -87,12 +88,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment(3, 3, 180);
@@ -116,24 +114,18 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
     a.deleteCharAt(a.length() - 1);
 
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+    TableModelUtils.insertData("test", "test", 0, 1, senderEnv);
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
-              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
-        return;
-      }
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
@@ -149,28 +141,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
+      TableModelUtils.assertCountData("test", "test", 1, receiverEnv);
       receiverEnv.getDataNodeWrapper(0).stop();
 
       // Ensure that the kill -9 operation is completed
       Thread.sleep(5000);
-      for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
-        if (!nodeWrapper.isAlive()) {
-          continue;
-        }
-        TestUtils.assertDataEventuallyOnEnv(
-            receiverEnv,
-            nodeWrapper,
-            "select count(*) from root.**",
-            "count(root.db.d1.s1),",
-            Collections.singleton("2,"),
-            600);
-      }
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"))) {
-        return;
-      }
-
+      TableModelUtils.insertData("test", "test", 1, 2, senderEnv);
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -179,60 +155,53 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       if (!nodeWrapper.isAlive()) {
         continue;
       }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          nodeWrapper,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("3,"),
-          600);
+      TableModelUtils.assertCountData("test", "test", 2, receiverEnv, nodeWrapper);
       return;
     }
   }
 
   @Test
-  public void testWithAllParametersInLogMode() throws Exception {
-    testWithAllParameters("log");
+  public void testWithAllParametersInStreamingMode() throws Exception {
+    testWithAllParameters("true");
   }
 
   @Test
-  public void testWithAllParametersInFileMode() throws Exception {
-    testWithAllParameters("file");
+  public void testWithAllParametersInNotStreamingMode() throws Exception {
+    testWithAllParameters("false");
   }
 
-  @Test
-  public void testWithAllParametersInHybridMode() throws Exception {
-    testWithAllParameters("hybrid");
-  }
-
-  public void testWithAllParameters(final String realtimeMode) throws Exception {
+  private void testWithAllParameters(final String realtimeMode) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
+    boolean insertResult = true;
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
-              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
         return;
       }
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.history.enable", "true");
-      extractorAttributes.put("extractor.history.start-time", "2010-01-01T08:00:00+08:00");
-      extractorAttributes.put("extractor.history.end-time", "2010-01-02T08:00:00+08:00");
-      extractorAttributes.put("extractor.realtime.enable", "true");
-      extractorAttributes.put("extractor.realtime.mode", realtimeMode);
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("database-name", "test");
+      extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("start-time", "0");
+      extractorAttributes.put("end-time", "199");
+      extractorAttributes.put("mode.streaming", realtimeMode);
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
@@ -255,153 +224,194 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("1,"));
+          TableModelUtils.getQuerySql("test"),
+          TableModelUtils.generateHeaderResults(),
+          TableModelUtils.generateExpectedResults(0, 100),
+          "test",
+          handleFailure);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 100, 300, senderEnv);
+      if (!insertResult) {
         return;
       }
-
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
+          TableModelUtils.getQuerySql("test"),
+          TableModelUtils.generateHeaderResults(),
+          TableModelUtils.generateExpectedResults(0, 200),
+          "test",
+          handleFailure);
     }
   }
 
+  // This function has a certain probability of triggering replica asynchrony. To ensure the success
+  // of the test, it will be retried 5 times. The exception will be thrown after five retries.
   @Test
   public void testPipeAfterDataRegionLeaderStop() throws Exception {
-    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    for (int retry = 0; retry < 5; retry++) {
+      try {
+        if (retry != 0) {
+          this.setUp();
+        }
+        final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort = receiverDataNode.getPort();
+        final String receiverIp = receiverDataNode.getIp();
+        final int receiverPort = receiverDataNode.getPort();
+        final Consumer<String> handleFailure =
+            o -> {
+              TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+              TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+            };
 
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+        boolean insertResult = true;
 
-      extractorAttributes.put("extractor.pattern", "root.db.d1");
+        try (final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+          final Map<String, String> extractorAttributes = new HashMap<>();
+          final Map<String, String> processorAttributes = new HashMap<>();
+          final Map<String, String> connectorAttributes = new HashMap<>();
+          TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+          TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+          insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+          insertResult =
+              insertResult && TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+          if (!insertResult) {
+            return;
+          }
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+          extractorAttributes.put("extractor", "iotdb-extractor");
+          extractorAttributes.put("database-name", "test");
+          extractorAttributes.put("capture.table", "true");
+          extractorAttributes.put("table-name", "test");
+          extractorAttributes.put("start-time", "0");
+          extractorAttributes.put("end-time", "300");
+          extractorAttributes.put("user", "root");
 
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
+          connectorAttributes.put("connector", "iotdb-thrift-connector");
+          connectorAttributes.put("connector.batch.enable", "false");
+          connectorAttributes.put("connector.ip", receiverIp);
+          connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+          final TSStatus status =
+              client.createPipe(
+                  new TCreatePipeReq("p1", connectorAttributes)
+                      .setExtractorAttributes(extractorAttributes)
+                      .setProcessorAttributes(processorAttributes));
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
+          Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+          insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+          insertResult =
+              insertResult && TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+          if (!insertResult) {
+            return;
+          }
+
+          final AtomicInteger leaderPort = new AtomicInteger(-1);
+          final TShowRegionResp showRegionResp =
+              client.showRegion(new TShowRegionReq().setIsTableModel(true));
+          showRegionResp
+              .getRegionInfoList()
+              .forEach(
+                  regionInfo -> {
+                    if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
+                      leaderPort.set(regionInfo.getClientRpcPort());
+                    }
+                  });
+
+          int leaderIndex = -1;
+          for (int i = 0; i < 3; ++i) {
+            if (senderEnv.getDataNodeWrapper(i).getPort() == leaderPort.get()) {
+              leaderIndex = i;
+              try {
+                senderEnv.shutdownDataNode(i);
+              } catch (final Throwable e) {
+                e.printStackTrace();
+                return;
+              }
+              try {
+                TimeUnit.SECONDS.sleep(1);
+              } catch (final InterruptedException ignored) {
+              }
+              try {
+                senderEnv.startDataNode(i);
+                ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
+              } catch (final Throwable e) {
+                e.printStackTrace();
+                return;
+              }
+            }
+          }
+          if (leaderIndex == -1) { // ensure the leader is stopped
+            fail();
+          }
+
+          insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
+          insertResult =
+              insertResult && TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv);
+          if (!insertResult) {
+            return;
+          }
+
+          TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
+        }
+
+        try {
+          TestUtils.restartCluster(senderEnv);
+          TestUtils.restartCluster(receiverEnv);
+        } catch (final Throwable e) {
+          e.printStackTrace();
+          return;
+        }
+
+        try (final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+          // Create a new pipe and write new data
+          final Map<String, String> extractorAttributes = new HashMap<>();
+          final Map<String, String> processorAttributes = new HashMap<>();
+          final Map<String, String> connectorAttributes = new HashMap<>();
+
+          extractorAttributes.put("database-name", "test1");
+          extractorAttributes.put("capture.table", "true");
+          extractorAttributes.put("table-name", "test1");
+          extractorAttributes.put("start-time", "0");
+          extractorAttributes.put("end-time", "300");
+          extractorAttributes.put("user", "root");
+
+          connectorAttributes.put("connector", "iotdb-thrift-connector");
+          connectorAttributes.put("connector.batch.enable", "false");
+          connectorAttributes.put("connector.ip", receiverIp);
+          connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+          final TSStatus status =
+              client.createPipe(
+                  new TCreatePipeReq("p2", connectorAttributes)
+                      .setExtractorAttributes(extractorAttributes)
+                      .setProcessorAttributes(processorAttributes));
+
+          Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
+
+          insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
+          insertResult =
+              insertResult && TableModelUtils.insertData("test1", "test1", 300, 400, senderEnv);
+          if (!insertResult) {
+            return;
+          }
+          TableModelUtils.assertData("test", "test", 0, 301, receiverEnv, handleFailure);
+          TableModelUtils.assertData("test1", "test1", 0, 301, receiverEnv, handleFailure);
+        }
         return;
-      }
-
-      final AtomicInteger leaderPort = new AtomicInteger(-1);
-      final TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      showRegionResp
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                  leaderPort.set(regionInfo.getClientRpcPort());
-                }
-              });
-
-      int leaderIndex = -1;
-      for (int i = 0; i < 3; ++i) {
-        if (senderEnv.getDataNodeWrapper(i).getPort() == leaderPort.get()) {
-          leaderIndex = i;
-          try {
-            senderEnv.shutdownDataNode(i);
-          } catch (final Throwable e) {
-            e.printStackTrace();
-            return;
-          }
-          try {
-            TimeUnit.SECONDS.sleep(1);
-          } catch (final InterruptedException ignored) {
-          }
-          try {
-            senderEnv.startDataNode(i);
-            ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
-          } catch (final Throwable e) {
-            e.printStackTrace();
-            return;
-          }
+      } catch (Exception | Error e) {
+        if (retry < 4) {
+          this.tearDown();
+        } else {
+          throw e;
         }
       }
-      if (leaderIndex == -1) { // ensure the leader is stopped
-        fail();
-      }
-
-      if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
-          senderEnv,
-          senderEnv.getDataNodeWrapper(leaderIndex),
-          Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
-        return;
-      }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.d1",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
-    }
-
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      // Create a new pipe and write new data
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      extractorAttributes.put("extractor.pattern", "root.db.d2");
-
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
-
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d2(time, s1) values (1, 1)", "flush"))) {
-        return;
-      }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.d2",
-          "count(root.db.d2.s1),",
-          Collections.singleton("1,"));
     }
   }
 
@@ -411,6 +421,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -418,7 +435,19 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", "root.db.d1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
+
+      extractorAttributes.put("database-name", "test");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -435,30 +464,30 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      if (!insertResult) {
         return;
       }
-
       try {
         senderEnv.registerNewDataNode(true);
       } catch (final Throwable e) {
         e.printStackTrace();
         return;
       }
+
       final DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
-      if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
-          senderEnv,
-          newDataNode,
-          Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv, newDataNode);
+      insertResult =
+          insertResult
+              && TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv, newDataNode);
+      if (!insertResult) {
         return;
       }
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.d1",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
+
+      TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
     }
 
     try {
@@ -476,7 +505,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", "root.db.d2");
+      extractorAttributes.put("database-name", "test1");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("table-name", "test1");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -493,16 +525,14 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d2(time, s1) values (1, 1)", "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 300, 400, senderEnv);
+      if (!insertResult) {
         return;
       }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.d2",
-          "count(root.db.d2.s1),",
-          Collections.singleton("1,"));
+      TableModelUtils.assertData("test1", "test1", 0, 400, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test", 0, 400, receiverEnv, handleFailure);
     }
   }
 
@@ -519,6 +549,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("database-name", "test1");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("table-name", "test1");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -558,6 +593,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(30, showPipeResult.size());
     }
   }
@@ -568,12 +604,30 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("database-name", "test");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -595,13 +649,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           new Thread(
               () -> {
                 try {
-                  for (int i = 0; i < 100; ++i) {
-                    if (TestUtils.tryExecuteNonQueryWithRetry(
-                        senderEnv,
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
+                  for (int i = 100; i < 200; ++i) {
+                    if (TableModelUtils.insertDataNotThrowError(
+                        "test", "test", i, i + 1, senderEnv)) {
                       succeedNum.incrementAndGet();
+                      Thread.sleep(100);
                     }
-                    Thread.sleep(100);
                   }
                 } catch (final InterruptedException ignored) {
                 }
@@ -614,15 +667,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         return;
       }
       t.join();
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
         return;
       }
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.d1",
-          "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum.get() + ","));
+      TableModelUtils.assertCountData(
+          "test", "test", succeedNum.get() + 100, receiverEnv, handleFailure);
 
       try {
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
@@ -639,12 +689,28 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    boolean insertResult = true;
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+    insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+    if (!insertResult) {
+      return;
+    }
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("database-name", "test");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -662,9 +728,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       int succeedNum = 0;
-      for (int i = 0; i < 100; ++i) {
-        if (TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
+      for (int i = 100; i < 200; ++i) {
+        if (TableModelUtils.insertDataNotThrowError("test", "test", i, i + 1, senderEnv)) {
           succeedNum++;
         }
       }
@@ -676,15 +741,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-        return;
-      }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.d1",
-          "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum + ","));
+      TableModelUtils.assertCountData("test", "test", succeedNum + 100, receiverEnv, handleFailure);
 
       try {
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
@@ -692,74 +749,6 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       } catch (final Throwable e) {
         e.printStackTrace();
       }
-    }
-  }
-
-  @Ignore(
-      "Currently ignore this test because this test intends to test the behaviour when the sender has"
-          + " a temporary node joined and then removed, but in reality it just tears it down. In this"
-          + " circumstance the IT may fail. However, the \"remove\" method is currently not provided thus"
-          + " we ignore this test now.")
-  @Test
-  public void testNewDataNodeFailureParallelToTransferringData() throws Exception {
-    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort = receiverDataNode.getPort();
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-
-      int succeedNum = 0;
-      for (int i = 0; i < 100; ++i) {
-        if (TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000))) {
-          succeedNum++;
-        }
-      }
-
-      try {
-        senderEnv.registerNewDataNode(false);
-        senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-        senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-        senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-        ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
-      } catch (final Throwable e) {
-        e.printStackTrace();
-        return;
-      }
-
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-        return;
-      }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.d1",
-          "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum + ","));
-
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      Assert.assertEquals(1, showPipeResult.size());
     }
   }
 
@@ -769,13 +758,30 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("database-name", "test");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -794,13 +800,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
 
     int succeedNum = 0;
-    for (int i = 0; i < 100; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000))) {
+    for (int i = 100; i < 200; ++i) {
+      if (TableModelUtils.insertDataNotThrowError("test", "test", i, i + 1, senderEnv)) {
         succeedNum++;
       }
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
       return;
     }
 
@@ -811,11 +816,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select count(*) from root.**",
-        "count(root.db.d1.s1),",
-        Collections.singleton(succeedNum + ","));
+    TableModelUtils.assertCountData("test", "test", succeedNum + 100, receiverEnv, handleFailure);
   }
 
   @Test
@@ -828,6 +829,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
     final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("database-name", "test");
+    extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("table-name", "test");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.batch.enable", "false");
@@ -902,6 +908,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -930,6 +937,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
     final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("database-name", "test");
+    extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("table-name", "test");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.batch.enable", "false");
@@ -974,9 +986,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
       showPipeResult =
           client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
     }
   }
@@ -987,16 +1001,19 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    boolean insertResult = true;
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (0, 1)",
-              "insert into root.db.d1(time, s1) values (-1, 2)",
-              "insert into root.db.d1(time, s1) values (1960-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
+
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      insertResult = TableModelUtils.insertData("test", "test", -100, 100, senderEnv);
+      if (!insertResult) {
         return;
       }
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -1004,6 +1021,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor", "iotdb-extractor");
+      extractorAttributes.put("database-name", "test");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
@@ -1021,27 +1042,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("3,"));
+      TableModelUtils.assertData("test", "test", -100, 100, receiverEnv, handleFailure);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              // Test the correctness of insertRowsNode transmission
-              "insert into root.db.d1(time, s1) values (-122, 3)",
-              "insert into root.db.d1(time, s1) values (-123, 3), (now(), 3)",
-              "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", -200, -100, senderEnv);
+      if (!insertResult) {
         return;
       }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("6,"));
+      TableModelUtils.assertData("test", "test", -200, 100, receiverEnv, handleFailure);
     }
   }
 }

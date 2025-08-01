@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.autocreate;
+package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -28,7 +28,9 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
+import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -37,15 +39,15 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2AutoCreateSchema.class})
-public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
+@Category({MultiClusterIT2DualTableManualBasic.class})
+public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
+
   @Override
   @Before
   public void setUp() {
@@ -75,6 +77,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
         .setDataReplicationFactor(dataRegionReplicationFactor)
+        .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
     receiverEnv
@@ -86,12 +89,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
         .setDataReplicationFactor(dataRegionReplicationFactor)
+        .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
     receiverEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
@@ -172,7 +172,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
+        .setDataReplicationFactor(2)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -181,11 +184,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(1)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment(3, 3);
     receiverEnv.initClusterEnvironment(1, 1);
@@ -193,18 +195,33 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
+    boolean insertResult = true;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
         return;
       }
-
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("database-name", "test");
+      extractorAttributes.put("table-name", "test.*");
+      extractorAttributes.put("inclusion", "data.insert");
+      extractorAttributes.put("mode.streaming", "true");
+      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("mode.strict", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -221,11 +238,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("1,"));
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -237,14 +250,23 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "insert into root.db.d1(time, s1) values (2, 2)")) {
+      TableModelUtils.createDataBaseAndTable(receiverEnv, "test1", "test1");
+      insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, receiverEnv);
+      if (!insertResult) {
         return;
       }
-
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("database-name", "test.*");
+      extractorAttributes.put("table-name", "test.*");
+      extractorAttributes.put("inclusion", "data.insert");
+      extractorAttributes.put("mode.streaming", "true");
+      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("mode.strict", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -261,11 +283,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataEventuallyOnEnv(
-          senderEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
+      TableModelUtils.assertCountData("test1", "test1", 100, senderEnv, handleFailure);
     }
   }
 
@@ -274,18 +292,34 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
         return;
       }
-
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("database-name", "test.*");
+      extractorAttributes.put("table-name", "test.*");
+      extractorAttributes.put("inclusion", "data.insert");
+      extractorAttributes.put("mode.streaming", "true");
+      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("mode.strict", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -302,37 +336,22 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("1,"));
+      TableModelUtils.assertData("test", "test", 0, 100, receiverEnv, handleFailure);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      if (!insertResult) {
         return;
       }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
+      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
+      if (!insertResult) {
         return;
       }
-
-      Thread.sleep(5000);
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
+      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
     }
   }
 
@@ -364,7 +383,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setDataReplicationFactor(1)
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -374,16 +396,22 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(2)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment(1, 1);
     receiverEnv.initClusterEnvironment(1, 3);
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    boolean insertResult = true;
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
       if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
         // Use default port for convenience
@@ -400,30 +428,31 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      // Test mods transfer
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (1, 1)",
-              "insert into root.db.d1(time, s1) values (3, 1)",
-              "flush",
-              "delete from root.db.d1.s1 where time > 2"))) {
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
         return;
       }
-
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", connectorName);
       connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.batch.max-delay-seconds", "1");
+      connectorAttributes.put("connector.batch.size-bytes", "2048");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
-      extractorAttributes.put("source.inclusion", "all");
-      extractorAttributes.put("source.mods.enable", "true");
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("database-name", "test.*");
+      extractorAttributes.put("table-name", "test.*");
+      extractorAttributes.put("inclusion", "data.insert");
+      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("mode.strict", "true");
+      extractorAttributes.put("user", "root");
 
       // Test forced-log mode, in open releases this might be "file"
-      extractorAttributes.put("source.realtime.mode", "forced-log");
+      extractorAttributes.put("realtime.mode", "forced-log");
 
       TSStatus status =
           client.createPipe(
@@ -435,41 +464,19 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("1,"));
-
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      if (!insertResult) {
         return;
       }
+      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(s1) from root.db.d1",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
-
-      // Test metadata
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "create timeseries root.db.d1.s2 with datatype=BOOLEAN,encoding=PLAIN",
-              "create database root.test1"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
+      if (!insertResult) {
         return;
       }
+      TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
-
-      // Test file mode
-      extractorAttributes.put("source.inclusion", "data");
-      extractorAttributes.replace("source.realtime.mode", "file");
+      extractorAttributes.replace("realtime.mode", "file");
 
       status =
           client.createPipe(
@@ -481,16 +488,11 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"))) {
+      insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
+      if (!insertResult) {
         return;
       }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(s1) from root.db.d1",
-          "count(root.db.d1.s1),",
-          Collections.singleton("3,"));
+      TableModelUtils.assertData("test", "test", 0, 400, receiverEnv, handleFailure);
     }
   }
 }
