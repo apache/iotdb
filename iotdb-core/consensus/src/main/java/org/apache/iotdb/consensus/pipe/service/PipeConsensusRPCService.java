@@ -76,7 +76,6 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
                   config.getRpc().getSslKeyStorePassword(),
                   config.getRpc().getSslTrustStorePath(),
                   config.getRpc().getSslTrustStorePassword(),
-                  config.getRpc().getConnectionTimeoutInMs(),
                   ZeroCopyRpcTransportFactory.INSTANCE)
               : new ThriftServiceThread(
                   processor,

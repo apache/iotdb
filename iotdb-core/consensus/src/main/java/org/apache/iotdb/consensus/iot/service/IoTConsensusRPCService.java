@@ -89,7 +89,6 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
                   config.getRpc().getSslKeyStorePassword(),
                   config.getRpc().getSslTrustStorePath(),
                   config.getRpc().getSslTrustStorePassword(),
-                  config.getRpc().getConnectionTimeoutInMs(),
                   ZeroCopyRpcTransportFactory.INSTANCE)
               : new ThriftServiceThread(
                   processor,

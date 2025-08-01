@@ -108,7 +108,6 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
                   commonConfig.getKeyStorePwd(),
                   commonConfig.getTrustStorePath(),
                   commonConfig.getTrustStorePwd(),
-                  config.getConnectionTimeoutInMS(),
                   DeepCopyRpcTransportFactory.INSTANCE)
               : new ThriftServiceThread(
                   processor,

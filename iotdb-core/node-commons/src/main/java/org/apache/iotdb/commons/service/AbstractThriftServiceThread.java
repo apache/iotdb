@@ -192,7 +192,6 @@ public abstract class AbstractThriftServiceThread extends Thread {
       poolServer = new TThreadPoolServer(poolArgs);
       poolServer.setServerEventHandler(serverEventHandler);
     } catch (TTransportException e) {
-      logger.error("init TThreadPoolServer failed", e);
       catchFailedInitialization(e);
     }
   }

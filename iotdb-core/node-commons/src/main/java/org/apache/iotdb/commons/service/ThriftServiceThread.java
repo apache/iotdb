@@ -86,7 +86,7 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         transportFactory);
   }
 
-  /** for synced ThriftServiceThread with ssl enabled */
+  /** for synced ThriftServiceThread with SSL enabled */
   public ThriftServiceThread(
       TProcessor processor,
       String serviceName,
@@ -119,7 +119,7 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         transportFactory);
   }
 
-  /** for synced ThriftServiceThread with ssl enabled */
+  /** for synced ThriftServiceThread with Mutual SSL enabled */
   public ThriftServiceThread(
       TProcessor processor,
       String serviceName,
@@ -134,7 +134,6 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
       String keyStorePwd,
       String trustStorePath,
       String trustStorePwd,
-      int clientTimeout,
       TTransportFactory transportFactory) {
     super(
         processor,
@@ -150,7 +149,7 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         keyStorePwd,
         trustStorePath,
         trustStorePwd,
-        clientTimeout,
+        0,
         transportFactory);
   }
 }
