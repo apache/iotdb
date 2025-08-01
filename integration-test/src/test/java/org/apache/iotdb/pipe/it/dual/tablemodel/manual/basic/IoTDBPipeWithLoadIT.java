@@ -71,6 +71,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setEnforceStrongPassword(false);
     receiverEnv
@@ -80,6 +81,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setEnforceStrongPassword(false);
 

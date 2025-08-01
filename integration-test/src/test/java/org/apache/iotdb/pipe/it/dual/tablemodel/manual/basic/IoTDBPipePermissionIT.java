@@ -85,6 +85,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment();

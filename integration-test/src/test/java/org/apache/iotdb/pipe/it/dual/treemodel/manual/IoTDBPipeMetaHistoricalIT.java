@@ -63,8 +63,9 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
-        .setIsPipeEnableMemoryCheck(false)
-        .setDataNodeMemoryProportion("3:3:1:1:3:1");
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -76,6 +77,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment();

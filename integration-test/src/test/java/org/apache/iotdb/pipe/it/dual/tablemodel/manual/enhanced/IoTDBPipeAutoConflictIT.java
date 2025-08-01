@@ -64,6 +64,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
@@ -73,6 +74,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment();
