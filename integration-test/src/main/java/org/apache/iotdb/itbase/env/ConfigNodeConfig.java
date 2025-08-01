@@ -29,4 +29,6 @@ public interface ConfigNodeConfig {
   ConfigNodeConfig setMetricPrometheusReporterUsername(String username);
 
   ConfigNodeConfig setMetricPrometheusReporterPassword(String password);
+
+  ConfigNodeConfig setLeaderDistributionPolicy(String policy);
 }

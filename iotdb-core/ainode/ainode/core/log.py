@@ -98,13 +98,11 @@ class Logger:
             file_levels = AINODE_LOG_FILE_LEVELS
             if not os.path.exists(log_dir):
                 os.makedirs(log_dir)
-                os.chmod(log_dir, 0o777)
             for file_name in file_names:
                 log_path = log_dir + "/" + file_name
                 if not os.path.exists(log_path):
                     f = open(log_path, mode="w", encoding="utf-8")
                     f.close()
-                    os.chmod(log_path, 0o777)
             self.file_handlers = []
             for l in range(len(file_names)):
                 self.file_handlers.append(

@@ -454,6 +454,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    setProperty("pipe_memory_management_enabled", String.valueOf(pipeMemoryManagementEnabled));
+    return this;
+  }
+
+  @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
     return this;
@@ -558,6 +564,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    setProperty("enforce_strong_password", String.valueOf(enforceStrongPassword));
     return this;
   }
 

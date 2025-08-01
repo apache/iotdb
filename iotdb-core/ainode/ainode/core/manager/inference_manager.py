@@ -310,6 +310,8 @@ class InferenceManager:
                 while not requestQueue.empty():
                     requestQueue.get_nowait()
                 requestQueue.close()
+            for requestPool, _ in pools:
+                requestPool.join(timeout=10)
         while not self._result_queue.empty():
             self._result_queue.get_nowait()
         self._result_queue.close()

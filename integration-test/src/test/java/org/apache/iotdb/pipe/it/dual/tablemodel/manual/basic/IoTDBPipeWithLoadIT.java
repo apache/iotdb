@@ -71,7 +71,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setDnConnectionTimeoutMs(600000)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false).setEnforceStrongPassword(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -79,7 +79,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false).setEnforceStrongPassword(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -448,13 +448,13 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     connectorAttributes.put("connector.ip", receiverIp);
     connectorAttributes.put("connector.port", Integer.toString(receiverPort));
     connectorAttributes.put("connector.user", "user01");
-    connectorAttributes.put("connector.password", "1234");
+    connectorAttributes.put("connector.password", "1234123456789");
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
-        statement.execute("create user user01 '1234'");
+        statement.execute("create user user01 '1234123456789'");
         statement.execute("grant create on any to user user01");
       } catch (final Exception e) {
         fail(e.getMessage());

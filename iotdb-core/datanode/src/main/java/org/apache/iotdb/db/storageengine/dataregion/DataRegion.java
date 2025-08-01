@@ -1979,6 +1979,10 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void waitClosingTsFileProcessorFinished() throws InterruptedException {
     long startTime = System.currentTimeMillis();
+    logger.info(
+        "Start to wait TsFiles to close, seq files: {}, unseq files: {}",
+        closingSequenceTsFileProcessor,
+        closingUnSequenceTsFileProcessor);
     while (!closingSequenceTsFileProcessor.isEmpty()
         || !closingUnSequenceTsFileProcessor.isEmpty()) {
       synchronized (closeStorageGroupCondition) {
@@ -1993,6 +1997,10 @@ public class DataRegion implements IDataRegionForQuery {
             "{} has spent {}s to wait for closing all TsFiles.",
             databaseName + "-" + this.dataRegionId,
             (System.currentTimeMillis() - startTime) / 1000);
+        logger.warn(
+            "Sseq files: {}, unseq files: {}",
+            closingSequenceTsFileProcessor,
+            closingUnSequenceTsFileProcessor);
       }
     }
   }
@@ -2051,6 +2059,7 @@ public class DataRegion implements IDataRegionForQuery {
                 resource.getTsFile().getName());
       }
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
+      logger.info("{} files were closed", closedTsFileResources.size());
     } finally {
       writeUnlock();
     }

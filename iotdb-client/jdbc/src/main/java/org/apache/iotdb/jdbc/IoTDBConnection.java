@@ -584,7 +584,7 @@ public class IoTDBConnection implements Connection {
                   protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
         }
       }
-
+      logger.info(openResp.getStatus().getMessage());
     } catch (TException e) {
       transport.close();
       if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {

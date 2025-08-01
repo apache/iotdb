@@ -46,6 +46,10 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         self._model_manager = ModelManager()
         self._inference_manager = InferenceManager()
 
+    def stop(self) -> None:
+        logger.info("Stopping the RPC service handler of IoTDB-AINode...")
+        self._inference_manager.shutdown()
+
     def stopAINode(self) -> TSStatus:
         self._ainode.stop()
         return get_status(TSStatusCode.SUCCESS_STATUS, "AINode stopped successfully.")

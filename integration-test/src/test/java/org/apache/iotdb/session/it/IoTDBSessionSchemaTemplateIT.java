@@ -398,7 +398,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
                 "root.db.v4.d1.y",
                 "root.db.v4.d1.z"));
 
-    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries")) {
+    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.db.**")) {
       SessionDataSet.DataIterator iterator = dataSet.iterator();
       while (iterator.next()) {
         Assert.assertTrue(expectedSeries.contains(iterator.getString(1)));
@@ -463,7 +463,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
                 "root.db.v4.d2.y",
                 "root.db.v4.d2.z"));
 
-    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries")) {
+    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.db.**")) {
       SessionDataSet.DataIterator iterator = dataSet.iterator();
       while (iterator.next()) {
         Assert.assertTrue(expectedSeries.contains(iterator.getString(1)));

@@ -539,7 +539,8 @@ public abstract class AbstractEnv implements BaseEnv {
       if (statusCode != 0) {
         logger.info("Node {} is not running due to {}", nodeWrapper.getId(), statusCode);
       }
-      if (statusCode == TSStatusCode.PORT_OCCUPIED.getStatusCode()) {
+      if (statusCode == TSStatusCode.PORT_OCCUPIED.getStatusCode() || statusCode == 1) {
+        // the occupation of jmx port may return 1
         try {
           Map<Integer, Long> portOccupationMap =
               EnvUtils.listPortOccupation(

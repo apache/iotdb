@@ -73,7 +73,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setDnConnectionTimeoutMs(600000)
-        .setIsPipeEnableMemoryCheck(false);
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false).setLeaderDistributionPolicy("HASH");
+
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -81,6 +83,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment();
@@ -133,7 +136,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (1, 10)",
               "insert into root.db2.d1 (time, at1) values (1, 20)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -168,7 +172,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (2, 11)",
               "insert into root.db2.d1 (time, at1) values (2, 21)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -192,7 +197,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db*.**",
           "count(root.db1.d1.at1),count(root.db2.d1.at1),",
           Collections.singleton("2,2,"),
           handleFailure);
@@ -224,7 +229,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d2 (time, at1) values (1, 20)",
               "insert into root.db.d3 (time, at1) values (1, 30)",
               "insert into root.db.d4 (time, at1) values (1, 40)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -307,7 +313,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"))) {
+              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"),
+          null)) {
         return;
       }
 
@@ -325,13 +332,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       }
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time <= 1",
+          "select count(*) from root.db.** where time <= 1",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("1,0,1,"),
           handleFailure);
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time >= 2",
+          "select count(*) from root.db.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("2,1,0,"),
           handleFailure);
@@ -368,7 +375,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -384,7 +392,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);
@@ -421,7 +430,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("2,"),
           handleFailure);
@@ -439,7 +448,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("2,2,"),
           handleFailure);
@@ -473,7 +482,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (6, 6), (7, 7), (8, 8), (9, 9), (10, 10)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -512,7 +522,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"),
           handleFailure);
@@ -525,7 +535,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db.d3 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
       TableModelUtils.createDataBaseAndTable(senderEnv, "test3", "test");
@@ -535,7 +546,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       }
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"),
           handleFailure);
@@ -549,7 +560,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db.d4 (time, at1)"
                   + " values (6, 6), (7, 7), (8, 8), (9, 9), (10, 10)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -560,7 +572,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       }
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"),
           600,
@@ -593,7 +605,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -638,7 +651,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"),
           handleFailure);
@@ -658,7 +671,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("3,3,"),
           handleFailure);
@@ -702,7 +715,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d1 (time, at1, at2)" + " values (1, 1, 2), (2, 3, 4)",
               // TsFile 2, not extracted because pattern not overlapped
               "insert into root.db1.d1 (time, at1, at2)" + " values (1, 1, 2), (2, 3, 4)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -710,8 +724,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
           senderEnv,
           Arrays.asList(
               // TsFile 3, not extracted because time range not overlapped
-              "insert into root.db.d1 (time, at1, at2)" + " values (3, 1, 2), (4, 3, 4)",
-              "flush"))) {
+              "insert into root.db.d1 (time, at1, at2)" + " values (3, 1, 2), (4, 3, 4)", "flush"),
+          null)) {
         return;
       }
 
@@ -721,7 +735,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);
@@ -756,7 +771,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** group by level=0",
+          "select count(*) from root.db.** group by level=0",
           "count(root.*.*.*),",
           Collections.singleton("4,"),
           handleFailure);
@@ -816,8 +831,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1 (time, at1, at2)" + " values (1, 1, 2), (3, 3, 4)",
-              "flush"))) {
+              "insert into root.db.d1 (time, at1, at2)" + " values (1, 1, 2), (3, 3, 4)", "flush"),
+          null)) {
         return;
       }
 
@@ -830,7 +845,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5, 1), (16, 3)",
               "insert into root.db.d1 (time, at1, at2)" + " values (5, 1, 2), (6, 3, 4)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -980,6 +996,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton(count + ","));
+        receiverEnv,
+        "count timeseries root.db.**",
+        "count(timeseries),",
+        Collections.singleton(count + ","));
   }
 }

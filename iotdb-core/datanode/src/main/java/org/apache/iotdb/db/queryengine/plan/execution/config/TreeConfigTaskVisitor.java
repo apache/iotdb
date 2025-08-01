@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
@@ -109,6 +111,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Dr
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -195,6 +198,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 
 import org.apache.tsfile.exception.NotImplementedException;
 
@@ -294,7 +298,19 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitAuthor(AuthorStatement statement, MPPQueryContext context) {
+    if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
+      visitUpdateUser(statement);
+    }
     return new AuthorizerTask(statement);
+  }
+
+  private void visitUpdateUser(AuthorStatement statement) {
+    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
+    if (user == null) {
+      throw new SemanticException("User " + statement.getUserName() + " not found");
+    }
+    statement.setPassWord(user.getPassword());
+    DataNodeAuthUtils.verifyPasswordReuse(statement.getUserName(), statement.getNewPassword());
   }
 
   @Override

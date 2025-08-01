@@ -136,17 +136,6 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
         String.valueOf(connector.getCreationTime()));
     // Metrics related to IoTDB connector
     metricService.createAutoGauge(
-        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        connector,
-        PipeSinkSubtask::getBatchSize,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
-    metricService.createAutoGauge(
         Metric.PIPE_TOTAL_UNCOMPRESSED_SIZE.toString(),
         MetricLevel.IMPORTANT,
         connector,
@@ -263,6 +252,14 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
             Tag.CREATION_TIME.toString(),
             String.valueOf(connector.getCreationTime()));
     connector.setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
+
+    Histogram eventSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString());
+    connector.setEventSizeHistogram(eventSizeHistogram);
   }
 
   @Override
@@ -334,15 +331,6 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
     // Metrics related to IoTDB connector
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_TOTAL_UNCOMPRESSED_SIZE.toString(),
@@ -440,6 +428,12 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
         connector.getAttributeSortedString(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
+
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString());
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////

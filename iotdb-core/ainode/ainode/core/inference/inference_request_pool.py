@@ -175,18 +175,10 @@ class InferenceRequestPool(mp.Process):
         execute_daemon.start()
         for thread in self._threads:
             thread.join()
+        logger.info(
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool exited cleanly."
+        )
 
     def stop(self):
         self._stop_event.set()
-        logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Stopping and releasing resources."
-        )
-        try:
-            del self.model
-            if "cuda" in str(self.device):
-                torch.cuda.empty_cache()
-            gc.collect()
-        except Exception as e:
-            logger.warning(
-                f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Failed to clean up: {e}"
-            )
+        logger.debug(f"[Inference][Pool-{self.pool_id}] stop() called")

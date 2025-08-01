@@ -32,6 +32,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
@@ -40,6 +42,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 
 // only one input source is supported now
 public class TableFunctionLeafOperator implements ProcessOperator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableFunctionLeafOperator.class);
 
   private final OperatorContext operatorContext;
   private final TsBlockBuilder blockBuilder;
@@ -76,6 +79,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
     try {
       processor.process(columnBuilders);
     } catch (Exception e) {
+      LOGGER.warn("Exception happened when executing UDTF: ", e);
       throw new IoTDBRuntimeException(
           e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
     }
@@ -103,6 +107,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
     try {
       processor.beforeDestroy();
     } catch (Exception e) {
+      LOGGER.warn("Exception happened when executing UDTF: ", e);
       throw new IoTDBRuntimeException(
           e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
     }

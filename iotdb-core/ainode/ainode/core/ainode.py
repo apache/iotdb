@@ -64,7 +64,6 @@ def _check_path_permission():
     if not os.path.exists(system_path):
         try:
             os.makedirs(system_path)
-            os.chmod(system_path, 0o777)
         except PermissionError as e:
             logger.error(e)
             raise e
@@ -159,6 +158,7 @@ class AINode:
     def stop(self):
         if not self._stop_event.is_set():
             self._stop_event.set()
+            self._rpc_handler.stop()
             if self._rpc_service:
                 self._rpc_service.stop()
                 self._rpc_service.join(1)
