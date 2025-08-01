@@ -73,7 +73,8 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
 
   @Override
   protected TsFileSequenceReader getFileReader(TsFileResource resource) throws IOException {
-    return FileReaderManager.getInstance().get(resource.getTsFilePath(), true);
+    return FileReaderManager.getInstance()
+        .get(resource.getTsFilePath(), resource.getTsFileID(), true);
   }
 
   @Override
