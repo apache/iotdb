@@ -275,21 +275,22 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
         if (logger.isDebugEnabled()) {
           logger.debug("Failed to drain dummy channel", e);
         }
+        if (channel == null || !channel.isActive()) {
+          throw new TTransportException(TTransportException.END_OF_FILE, "Connection reset");
+        }
       }
       // Trigger OP_READ on dummy by writing dummy byte
-      if (dummyServerAccepted != null) {
-        ByteBuffer dummyByte = ByteBuffer.wrap(new byte[1]);
-        dummyServerAccepted.write(dummyByte);
-      }
+      ByteBuffer dummyByte = ByteBuffer.wrap(new byte[1]);
+      dummyServerAccepted.write(dummyByte);
       // Wakeup selector if needed
       if (selector != null) {
         selector.wakeup();
       }
 
       return available;
-    } catch (Exception e) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("ByteBuffer read failed: {}", e.getMessage());
+    } catch (Throwable e) {
+      if (channel == null || !channel.isActive()) {
+        throw new TTransportException(TTransportException.END_OF_FILE, "Connection reset");
       }
       throw new TTransportException(TTransportException.UNKNOWN, "Read failed", e);
     } finally {
@@ -356,12 +357,12 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                   }
                 });
         return remaining;
-      } catch (Exception e) {
+      } catch (Throwable e) {
         byteBuf.release();
-        if (logger.isDebugEnabled()) {
-          logger.debug("ByteBuffer write failed: {}", e.getMessage());
+        if (channel == null || !channel.isActive()) {
+          throw new TTransportException(TTransportException.END_OF_FILE, "Broken pipe");
         }
-        throw new TTransportException(TTransportException.UNKNOWN, "Write failed", e);
+        throw new TTransportException(TTransportException.UNKNOWN, e);
       }
     }
   }
@@ -597,8 +598,14 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
         logger.debug("Channel inactive: {}", ctx.channel().remoteAddress());
       }
       synchronized (lock) {
-        connected.set(false);
-        connecting.set(false);
+        if (dummyServerAccepted != null) {
+          dummyServerAccepted.close();
+          dummyServerAccepted = null;
+        }
+        if (channel != null) {
+          channel.close();
+          channel = null;
+        }
       }
       super.channelInactive(ctx);
     }
