@@ -28,8 +28,8 @@ from logging.handlers import TimedRotatingFileHandler
 from ainode.core.constant import (
     AINODE_LOG_DIR,
     AINODE_LOG_FILE_LEVELS,
+    DEFAULT_LOG_LEVEL,
     LOG_FILE_TYPE,
-    STD_LEVEL,
 )
 
 
@@ -39,6 +39,7 @@ class BaseLogger:
 
     Args:
         log_file_name_prefix: the prefix of the log file name, it is used to distinguish different processes.
+        log_dir: log directory, default is AINODE_HOME/logs.
 
     logger_format: log format
     logger: global logger with custom format and level
@@ -47,7 +48,7 @@ class BaseLogger:
     _lock: process lock for logger. This is just a precaution, we currently do not have multiprocessing
     """
 
-    def __init__(self, log_file_name_prefix: str):
+    def __init__(self, log_file_name_prefix: str, log_dir=AINODE_LOG_DIR):
         self.logger_format = logging.Formatter(
             fmt="%(asctime)s %(levelname)s [%(process)d:%(processName)s] "
             "%(filename)s:%(funcName)s:%(lineno)d - %(message)s",
@@ -58,9 +59,9 @@ class BaseLogger:
 
         self.logger = logging.getLogger(str(random.random()))
         self.logger.handlers.clear()
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(DEFAULT_LOG_LEVEL)
         self.console_handler = logging.StreamHandler(sys.stdout)
-        self.console_handler.setLevel(STD_LEVEL)
+        self.console_handler.setLevel(DEFAULT_LOG_LEVEL)
         self.console_handler.setFormatter(self.logger_format)
         self.logger.addHandler(self.console_handler)
 
@@ -68,7 +69,11 @@ class BaseLogger:
         for i in range(len(LOG_FILE_TYPE)):
             file_name = log_file_name_prefix + LOG_FILE_TYPE[i] + ".log"
             # create log file if not exist
-            file_path = os.path.join(AINODE_LOG_DIR, f"{file_name}")
+            os.makedirs(log_dir, exist_ok=True)
+            file_path = os.path.join(log_dir, f"{file_name}")
+            if not os.path.exists(file_path):
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write("")
             # create handler
             file_level = AINODE_LOG_FILE_LEVELS[i]
             file_handler = TimedRotatingFileHandler(

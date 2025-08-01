@@ -71,7 +71,7 @@ AINODE_LOG_FILE_NAMES = [
     "log_ainode_error.log",
 ]
 AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
-STD_LEVEL = logging.INFO
+DEFAULT_LOG_LEVEL = logging.INFO
 INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = (
     "log_inference_rank_{}_"  # example: log_inference_rank_0_all.log
 )
