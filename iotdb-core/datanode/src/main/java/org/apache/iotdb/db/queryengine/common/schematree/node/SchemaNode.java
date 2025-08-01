@@ -21,13 +21,15 @@ package org.apache.iotdb.db.queryengine.common.schematree.node;
 
 import org.apache.iotdb.commons.schema.tree.ITreeNode;
 
+import org.apache.tsfile.utils.Accountable;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 
-public abstract class SchemaNode implements ITreeNode {
+public abstract class SchemaNode implements ITreeNode, Accountable {
 
   public static final byte SCHEMA_INTERNAL_NODE = 0;
   public static final byte SCHEMA_ENTITY_NODE = 1;
@@ -80,4 +82,6 @@ public abstract class SchemaNode implements ITreeNode {
   public abstract byte getType();
 
   public abstract void serialize(OutputStream outputStream) throws IOException;
+
+  public abstract void serializeNodeOwnContent(OutputStream outputStream) throws IOException;
 }

@@ -25,6 +25,8 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -39,8 +41,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Template implements Serializable {
+public class Template implements Serializable, Accountable {
 
+  private static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(Template.class);
   private int id;
   private String name;
   private boolean isDirectAligned;
@@ -225,5 +228,15 @@ public class Template implements Serializable {
   @Override
   public int hashCode() {
     return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + RamUsageEstimator.sizeOf(name)
+        + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+            schemaMap,
+            RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY);
   }
 }

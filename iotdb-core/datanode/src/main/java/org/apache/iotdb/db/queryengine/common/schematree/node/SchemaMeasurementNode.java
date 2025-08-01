@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.common.schematree.node;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -34,6 +35,9 @@ import java.util.Map;
 
 public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSchemaInfo {
 
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SchemaMeasurementNode.class);
+
   private String alias;
   private IMeasurementSchema schema;
   private Map<String, String> tagMap;
@@ -42,6 +46,22 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
   public SchemaMeasurementNode(String name, IMeasurementSchema schema) {
     super(name);
     this.schema = schema;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + RamUsageEstimator.sizeOf(name)
+        + RamUsageEstimator.sizeOf(alias)
+        + schema.ramBytesUsed()
+        + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+            tagMap,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY)
+        + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+            attributeMap,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
   }
 
   public String getAlias() {
@@ -143,6 +163,10 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
+    serializeNodeOwnContent(outputStream);
+  }
+
+  public void serializeNodeOwnContent(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(getType(), outputStream);
     ReadWriteIOUtils.write(name, outputStream);
     ReadWriteIOUtils.write(alias, outputStream);
