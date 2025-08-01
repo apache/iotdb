@@ -316,6 +316,7 @@ class ModelStorage(object):
                 model_dir = os.path.join(self._model_dir, f"{model_id}")
                 model_file_type = get_model_file_type(model_dir)
                 if model_file_type == ModelFileType.SAFETENSORS:
+                    # TODO: Support this function
                     raise UnsupportedError("SAFETENSORS format")
                 else:
                     model_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_PT)
