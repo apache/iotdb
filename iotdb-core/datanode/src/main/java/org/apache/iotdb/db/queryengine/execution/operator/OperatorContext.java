@@ -45,12 +45,12 @@ import java.util.concurrent.TimeUnit;
 public class OperatorContext implements Accountable {
 
   private static Duration maxRunTime =
-      new Duration(
-          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
-          TimeUnit.MILLISECONDS);
+          new Duration(
+                  IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+                  TimeUnit.MILLISECONDS);
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(OperatorContext.class);
+          RamUsageEstimator.shallowSizeOfInstance(OperatorContext.class);
 
   private final int operatorId;
   // It seems it's never used.
@@ -69,7 +69,7 @@ public class OperatorContext implements Accountable {
   private long estimatedMemorySize;
 
   public OperatorContext(
-      int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
+          int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
@@ -78,10 +78,10 @@ public class OperatorContext implements Accountable {
 
   @TestOnly
   public OperatorContext(
-      int operatorId,
-      PlanNodeId planNodeId,
-      String operatorType,
-      FragmentInstanceContext fragmentInstanceContext) {
+          int operatorId,
+          PlanNodeId planNodeId,
+          String operatorType,
+          FragmentInstanceContext fragmentInstanceContext) {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
@@ -200,7 +200,7 @@ public class OperatorContext implements Accountable {
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + RamUsageEstimator.sizeOf(operatorType)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(planNodeId);
+            + RamUsageEstimator.sizeOf(operatorType)
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(planNodeId);
   }
 }

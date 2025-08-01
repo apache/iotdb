@@ -23,8 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.node.MNodeType;
-import org.apache.iotdb.db.auth.LbacOperationClassifier;
-import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -38,8 +36,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.List;
@@ -50,8 +46,6 @@ import java.util.stream.Collectors;
 import static java.util.Objects.requireNonNull;
 
 public class NodeManageMemoryMergeOperator implements ProcessOperator {
-  private static final Logger LOGGER = LoggerFactory.getLogger(NodeManageMemoryMergeOperator.class);
-
   private final OperatorContext operatorContext;
   private final Set<TSchemaNode> data;
   private final Set<String> nameSet;
@@ -60,22 +54,22 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   private final List<TSDataType> outputDataTypes;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+          TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(NodeManageMemoryMergeOperator.class);
+          RamUsageEstimator.shallowSizeOfInstance(NodeManageMemoryMergeOperator.class);
 
   public NodeManageMemoryMergeOperator(
-      OperatorContext operatorContext, Set<TSchemaNode> data, Operator child) {
+          OperatorContext operatorContext, Set<TSchemaNode> data, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.data = data;
     nameSet = data.stream().map(TSchemaNode::getNodeName).collect(Collectors.toSet());
     this.child = requireNonNull(child, "child operator is null");
     isReadingMemory = true;
     this.outputDataTypes =
-        ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
+            ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
+                    .map(ColumnHeader::getColumnType)
+                    .collect(Collectors.toList());
   }
 
   @Override
@@ -102,9 +96,9 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
       Set<TSchemaNode> nodePaths = new HashSet<>();
       for (int i = 0; i < block.getPositionCount(); i++) {
         TSchemaNode schemaNode =
-            new TSchemaNode(
-                block.getColumn(0).getBinary(i).toString(),
-                Byte.parseByte(block.getColumn(1).getBinary(i).toString()));
+                new TSchemaNode(
+                        block.getColumn(0).getBinary(i).toString(),
+                        Byte.parseByte(block.getColumn(1).getBinary(i).toString()));
         if (!nameSet.contains(schemaNode.getNodeName())) {
           nodePaths.add(schemaNode);
           nameSet.add(schemaNode.getNodeName());
@@ -118,112 +112,29 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     // sort by node type
     Set<TSchemaNode> sortSet =
-        new TreeSet<>(
-            (o1, o2) -> {
-              if (o1.getNodeType() == o2.getNodeType()) {
-                return o1.getNodeName().compareTo(o2.getNodeName());
-              }
-              return o1.getNodeType() - o2.getNodeType();
-            });
-
-    // Apply RBAC and LBAC filtering to nodes
-    String userName = getCurrentUserName();
-    for (TSchemaNode node : nodePaths) {
-      if (hasPermissionForNode(userName, node)) {
-        sortSet.add(node);
-      }
-    }
-
+            new TreeSet<>(
+                    (o1, o2) -> {
+                      if (o1.getNodeType() == o2.getNodeType()) {
+                        return o1.getNodeName().compareTo(o2.getNodeName());
+                      }
+                      return o1.getNodeType() - o2.getNodeType();
+                    });
+    sortSet.addAll(nodePaths);
     sortSet.forEach(
-        node -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder
-              .getColumnBuilder(0)
-              .writeBinary(new Binary(node.getNodeName(), TSFileConfig.STRING_CHARSET));
-          tsBlockBuilder
-              .getColumnBuilder(1)
-              .writeBinary(
-                  new Binary(
-                      MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName(),
-                      TSFileConfig.STRING_CHARSET));
-          tsBlockBuilder.declarePosition();
-        });
+            node -> {
+              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+              tsBlockBuilder
+                      .getColumnBuilder(0)
+                      .writeBinary(new Binary(node.getNodeName(), TSFileConfig.STRING_CHARSET));
+              tsBlockBuilder
+                      .getColumnBuilder(1)
+                      .writeBinary(
+                              new Binary(
+                                      MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName(),
+                                      TSFileConfig.STRING_CHARSET));
+              tsBlockBuilder.declarePosition();
+            });
     return tsBlockBuilder.build();
-  }
-
-  /**
-   * Check if user has permission to access the node Only performs LBAC check since RBAC is handled
-   * by Statement layer through authorityScope
-   */
-  private boolean hasPermissionForNode(String userName, TSchemaNode node) {
-    try {
-      LOGGER.info("=== NODE PERMISSION CHECK START ===");
-      LOGGER.info("User: {}, Node: {}", userName, node.getNodeName());
-
-      // Extract database path from node name
-      String databasePath = extractDatabasePathFromNodeName(node.getNodeName());
-      LOGGER.info("Extracted database path: {}", databasePath);
-
-      if (databasePath == null) {
-        // If we can't extract database path, allow access (or apply default policy)
-        LOGGER.info("Cannot extract database path, allowing access");
-        return true;
-      }
-
-      // Only perform LBAC check since RBAC is handled by Statement layer
-      if (LbacPermissionChecker.isLbacEnabled()) {
-        LOGGER.info("LBAC is enabled, performing LBAC check");
-        if (!LbacPermissionChecker.checkLbacPermissionForDatabase(
-            userName, databasePath, LbacOperationClassifier.OperationType.READ)) {
-          LOGGER.warn(
-              "User {} denied LBAC access to node {} in database {}",
-              userName,
-              node.getNodeName(),
-              databasePath);
-          return false;
-        }
-        LOGGER.info("LBAC check passed");
-      } else {
-        LOGGER.info("LBAC is disabled, skipping LBAC check");
-      }
-
-      LOGGER.info("All permission checks passed for node: {}", node.getNodeName());
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn("Error checking permission for node {}: {}", node.getNodeName(), e.getMessage());
-      // In case of error, deny access for security
-      return false;
-    }
-  }
-
-  /** Extract database path from node name For example: "root.database.device" -> "root.database" */
-  private String extractDatabasePathFromNodeName(String nodeName) {
-    if (nodeName == null || !nodeName.startsWith("root.")) {
-      return null;
-    }
-
-    String[] parts = nodeName.split("\\.");
-    if (parts.length >= 2) {
-      return parts[0] + "." + parts[1]; // root.database
-    }
-
-    return null;
-  }
-
-  /** Get current user name from operator context */
-  private String getCurrentUserName() {
-    try {
-      // Try to get user from session context
-      // This is a simplified implementation - actual implementation may vary
-      return operatorContext
-          .getDriverContext()
-          .getFragmentInstanceContext()
-          .getSessionInfo()
-          .getUserName();
-    } catch (Exception e) {
-      LOGGER.warn("Failed to get current user name, using 'unknown': {}", e.getMessage());
-      return "unknown";
-    }
   }
 
   @Override
@@ -243,8 +154,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    // todo calculate the result based on all the scan node; currently, this is
-    // shadowed by
+    // todo calculate the result based on all the scan node; currently, this is shadowed by
     // schemaQueryMergeNode
     return Math.max(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, child.calculateMaxPeekMemory());
   }
@@ -262,7 +172,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child);
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child);
   }
 }
