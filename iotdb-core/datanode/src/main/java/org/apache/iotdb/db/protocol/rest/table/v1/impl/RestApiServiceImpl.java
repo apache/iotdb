@@ -123,7 +123,7 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     long startTime = System.nanoTime();
     try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       statement = createStatement(sql, clientSession, relationSqlParser);
       Response resp = validateStatement(statement, true);
       if (resp != null) {
@@ -154,7 +154,7 @@ public class RestApiServiceImpl extends RestApiService {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);
       insertTabletStatement =
           StatementConstructionHandler.constructInsertTabletStatement(insertTabletRequest);
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       clientSession.setDatabaseName(insertTabletRequest.getDatabase());
       clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
       queryId = SESSION_MANAGER.requestQueryId();
@@ -196,7 +196,7 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     long startTime = System.nanoTime();
     try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       statement = createStatement(sql, clientSession, relationSqlParser);
       Response resp = validateStatement(statement, false);
       if (resp != null) {
