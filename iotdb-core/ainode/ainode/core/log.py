@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+from ainode.core.constant import AINODE_LOG_FILE_NAME_PREFIX
 from ainode.core.logger.base_logger import BaseLogger
 from ainode.core.util.decorator import singleton
 

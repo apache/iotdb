@@ -62,6 +62,8 @@ AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs"
 
 # AINode log
+LOG_FILE_TYPE = ["all", "info", "warning", "error"]
+AINODE_LOG_FILE_NAME_PREFIX = "log_ainode_"
 AINODE_LOG_FILE_NAMES = [
     "log_ainode_all.log",
     "log_ainode_info.log",
@@ -70,7 +72,8 @@ AINODE_LOG_FILE_NAMES = [
 ]
 AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
 STD_LEVEL = logging.INFO
-AINODE_INFERENCE_LOG_DIR_TEMPLATE = "log_inference_rank_{}"
+# example: log_inference_rank_0_all.log
+INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = "log_inference_rank_{}_"
 
 # AINode model management
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"

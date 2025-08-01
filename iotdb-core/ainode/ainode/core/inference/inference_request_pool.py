@@ -26,7 +26,7 @@ import torch
 import torch.multiprocessing as mp
 from transformers import PretrainedConfig
 
-from ainode.core.constant import AINODE_INFERENCE_LOG_DIR_TEMPLATE
+from ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
 from ainode.core.logger.base_logger import BaseLogger
 from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
