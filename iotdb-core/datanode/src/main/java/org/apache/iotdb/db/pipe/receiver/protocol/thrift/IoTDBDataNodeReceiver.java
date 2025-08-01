@@ -905,7 +905,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           "Password has expired, please use \"ALTER USER\" to change to a new one");
     }
 
-    return AuthorityChecker.checkUser(username, password);
+    final TSStatus status = AuthorityChecker.checkUser(username, password);
+    if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final IClientSession session = SessionManager.getInstance().getCurrSessionAndUpdateIdleTime();
+      if (session != null) {
+        session.setLogin(true);
+      }
+    }
+
+    return status;
   }
 
   private TSStatus executeStatementForTableModel(
