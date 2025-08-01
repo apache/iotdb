@@ -772,7 +772,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected TSStatus login() {
-    final IClientSession session = SessionManager.getInstance().getCurrSession();
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
 
     if (session != null && !session.isLogin()) {
       final BasicOpenSessionResp openSessionResp =
