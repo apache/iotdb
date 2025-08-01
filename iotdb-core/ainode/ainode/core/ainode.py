@@ -64,7 +64,6 @@ def _check_path_permission():
     if not os.path.exists(system_path):
         try:
             os.makedirs(system_path)
-            os.chmod(system_path, 0o777)
         except PermissionError as e:
             logger.error(e)
             raise e
