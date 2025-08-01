@@ -70,6 +70,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setEnforceStrongPassword(false);
     receiverEnv
         .getConfig()
@@ -77,11 +80,10 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setEnforceStrongPassword(false);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();

@@ -76,7 +76,6 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
-
     receiverEnv
         .getConfig()
         .getCommonConfig()
