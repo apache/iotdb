@@ -32,6 +32,9 @@ from ainode.core.constant import (
     AINODE_CONF_POM_FILE_NAME,
     AINODE_INFERENCE_BATCH_INTERVAL_IN_MS,
     AINODE_INFERENCE_MAX_PREDICT_LENGTH,
+    AINODE_INFERENCE_MEMORY_USAGE_RATIO,
+    AINODE_INFERENCE_MODEL_MEM_USAGE_MAP,
+    AINODE_INFERENCE_WEIGHT_OVERHEAD_RATIO,
     AINODE_LOG_DIR,
     AINODE_MODELS_DIR,
     AINODE_ROOT_CONF_DIRECTORY_NAME,
@@ -76,7 +79,15 @@ class AINodeConfig(object):
         self._ain_inference_max_predict_length: int = (
             AINODE_INFERENCE_MAX_PREDICT_LENGTH
         )
-
+        self._ain_inference_model_mem_usage_map: dict[str, int] = (
+            AINODE_INFERENCE_MODEL_MEM_USAGE_MAP
+        )
+        self._ain_inference_memory_usage_ratio: float = (
+            AINODE_INFERENCE_MEMORY_USAGE_RATIO
+        )
+        self._ain_inference_weight_overhead_ratio: float = (
+            AINODE_INFERENCE_WEIGHT_OVERHEAD_RATIO
+        )
         # log directory
         self._ain_logs_dir: str = AINODE_LOG_DIR
 
@@ -151,6 +162,30 @@ class AINodeConfig(object):
         self, ain_inference_max_predict_length: int
     ) -> None:
         self._ain_inference_max_predict_length = ain_inference_max_predict_length
+
+    def get_ain_inference_model_mem_usage_map(self) -> dict[str, int]:
+        return self._ain_inference_model_mem_usage_map
+
+    def set_ain_inference_model_mem_usage_map(
+        self, ain_inference_model_mem_usage_map: dict[str, int]
+    ) -> None:
+        self._ain_inference_model_mem_usage_map = ain_inference_model_mem_usage_map
+
+    def get_ain_inference_memory_usage_ratio(self) -> float:
+        return self._ain_inference_memory_usage_ratio
+
+    def set_ain_inference_memory_usage_ratio(
+        self, ain_inference_memory_usage_ratio: float
+    ) -> None:
+        self._ain_inference_memory_usage_ratio = ain_inference_memory_usage_ratio
+
+    def get_ain_inference_weight_overhead_ratio(self) -> float:
+        return self._ain_inference_weight_overhead_ratio
+
+    def set_ain_inference_weight_overhead_ratio(
+        self, ain_inference_weight_overhead_ratio: float
+    ) -> None:
+        self._ain_inference_weight_overhead_ratio = ain_inference_weight_overhead_ratio
 
     def get_ain_logs_dir(self) -> str:
         return self._ain_logs_dir
@@ -292,6 +327,21 @@ class AINodeDescriptor(object):
             if "ain_inference_batch_interval_in_ms" in config_keys:
                 self._config.set_ain_inference_batch_interval_in_ms(
                     int(file_configs["ain_inference_batch_interval_in_ms"])
+                )
+
+            if "ain_inference_model_mem_usage_map" in config_keys:
+                self._config.set_ain_inference_model_mem_usage_map(
+                    eval(file_configs["ain_inference_model_mem_usage_map"])
+                )
+
+            if "ain_inference_memory_usage_ratio" in config_keys:
+                self._config.set_ain_inference_memory_usage_ratio(
+                    float(file_configs["ain_inference_memory_usage_ratio"])
+                )
+
+            if "ain_inference_weight_overhead_ratio" in config_keys:
+                self._config.set_ain_inference_weight_overhead_ratio(
+                    float(file_configs["ain_inference_weight_overhead_ratio"])
                 )
 
             if "ain_models_dir" in config_keys:
