@@ -69,9 +69,17 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
 
     // Set timestamp precision to nanosecond
     senderEnv.getConfig().getCommonConfig().setTimestampPrecision("ns");
-    senderEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv.getConfig().getCommonConfig().setTimestampPrecision("ns");
-    receiverEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
   }
 
   @Test

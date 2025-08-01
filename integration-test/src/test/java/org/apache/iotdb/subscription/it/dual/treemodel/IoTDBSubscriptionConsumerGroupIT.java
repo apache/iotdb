@@ -118,11 +118,19 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   protected void setUpConfig() {
     super.setUpConfig();
 
-    senderEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // Enable air gap receiver
     receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
   }
 
   @Override
