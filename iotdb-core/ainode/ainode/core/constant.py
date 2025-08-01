@@ -72,8 +72,9 @@ AINODE_LOG_FILE_NAMES = [
 ]
 AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
 STD_LEVEL = logging.INFO
-# example: log_inference_rank_0_all.log
-INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = "log_inference_rank_{}_"
+INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = (
+    "log_inference_rank_{}_"  # example: log_inference_rank_0_all.log
+)
 
 # AINode model management
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"

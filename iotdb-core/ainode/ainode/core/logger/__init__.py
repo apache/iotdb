@@ -15,14 +15,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from ainode.core.constant import AINODE_LOG_FILE_NAME_PREFIX
-from ainode.core.logger.base_logger import BaseLogger
-from ainode.core.util.decorator import singleton
-
-
-# TODO: This class should be removed in the next PR
-@singleton
-class Logger(BaseLogger):
-
-    def __init__(self, log_file_name_prefix: str = AINODE_LOG_FILE_NAME_PREFIX):
-        super().__init__(log_file_name_prefix=log_file_name_prefix)

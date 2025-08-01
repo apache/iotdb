@@ -26,11 +26,10 @@ import torch
 import torch.multiprocessing as mp
 from transformers import PretrainedConfig
 
-from ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
-from ainode.core.logger.base_logger import BaseLogger
 from ainode.core.config import AINodeDescriptor
+from ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
 from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
-from ainode.core.logger.base_logger import BaseLogger
+from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 
 
@@ -62,7 +61,9 @@ class InferenceRequestPool(mp.Process):
         self._model_manager = None
         # TODO: Assign device immediately when the pool is created
         self.device = None
-        self.logger = BaseLogger(INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device))
+        self.logger = Logger(
+            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
+        )
 
         self._threads = []
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
@@ -124,7 +125,6 @@ class InferenceRequestPool(mp.Process):
             self._activate_requests()
 
     def _step(self):
-        self.logger.info("_step")
         requests = self._scheduler.schedule_step()
         # TODO: We need a batcher to accelerate the concurrent inference
         for request in requests:

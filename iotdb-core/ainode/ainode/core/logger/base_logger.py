@@ -28,20 +28,30 @@ from logging.handlers import TimedRotatingFileHandler
 from ainode.core.constant import (
     AINODE_LOG_DIR,
     AINODE_LOG_FILE_LEVELS,
-    STD_LEVEL, LOG_FILE_TYPE,
+    LOG_FILE_TYPE,
+    STD_LEVEL,
 )
 
 
 class BaseLogger:
+    """Logger is a singleton, it will be initialized when AINodeDescriptor is inited for the first time.
+        You can just use Logger() to get it anywhere.
 
-    def __init__(
-            self,
-            log_file_name_prefix: str
-    ):
+    Args:
+        log_file_name_prefix: the prefix of the log file name, it is used to distinguish different processes.
+
+    logger_format: log format
+    logger: global logger with custom format and level
+    file_handlers: file handlers for different levels
+    console_handler: console handler for stdout
+    _lock: process lock for logger. This is just a precaution, we currently do not have multiprocessing
+    """
+
+    def __init__(self, log_file_name_prefix: str):
         self.logger_format = logging.Formatter(
-            fmt="%(asctime)s %(levelname)s [%(process)d:%(processName)s] " \
-                "%(filename)s:%(funcName)s:%(lineno)d - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            fmt="%(asctime)s %(levelname)s [%(process)d:%(processName)s] "
+            "%(filename)s:%(funcName)s:%(lineno)d - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
         self._lock = threading.Lock()
@@ -67,21 +77,27 @@ class BaseLogger:
                 interval=1,
                 encoding="utf-8",
             )
+
             # set renamer
-            def universal_namer(default_name: str, internal_file_name: str = file_name) -> str:
+            def universal_namer(
+                default_name: str, internal_file_name: str = file_name
+            ) -> str:
                 # to avoid outer variable late binding
                 base, ext = os.path.splitext(internal_file_name)
                 log_dir = os.path.dirname(default_name)
-                suffix = default_name.rsplit(".", 1)[-1]     # e.g. 2025-08-01_13-45
-                digits = re.sub(r"[-_]", "", suffix)         # 去掉 - _
+                suffix = default_name.rsplit(".", 1)[-1]  # e.g. 2025-08-01_13-45
+                digits = re.sub(r"[-_]", "", suffix)
                 return os.path.join(log_dir, f"{base}-{digits}{ext}.gz")
+
             file_handler.namer = universal_namer
+
             # set gzip
             def gzip_rotator(src: str, dst: str):
                 with open(src, "rb") as f_in, gzip.open(dst, "wb") as f_out:
                     shutil.copyfileobj(f_in, f_out)
                 # delete the old .log file
                 os.remove(src)
+
             file_handler.rotator = gzip_rotator
             # other settings
             file_handler.setLevel(file_level)
@@ -91,10 +107,17 @@ class BaseLogger:
         self.info(f"Logger init successfully.")
 
     # interfaces
-    def debug(self, *msg):   self._write(self.logger.debug,   *msg)
-    def info(self, *msg):    self._write(self.logger.info,    *msg)
-    def warning(self, *msg): self._write(self.logger.warning, *msg)
-    def error(self, *msg):   self._write(self.logger.error,   *msg)
+    def debug(self, *msg):
+        self._write(self.logger.debug, *msg)
+
+    def info(self, *msg):
+        self._write(self.logger.info, *msg)
+
+    def warning(self, *msg):
+        self._write(self.logger.warning, *msg)
+
+    def error(self, *msg):
+        self._write(self.logger.error, *msg)
 
     def _write(self, function, *msg):
         with self._lock:
