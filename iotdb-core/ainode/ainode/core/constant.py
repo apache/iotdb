@@ -74,8 +74,8 @@ STD_LEVEL = logging.INFO
 # AINode model management
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
 MODEL_CONFIG_FILE_IN_JSON = "config.json"
-DEFAULT_MODEL_FILE_NAME = "model.pt"
-DEFAULT_CONFIG_FILE_NAME = "config.yaml"
+MODEL_WEIGHTS_FILE_IN_PT = "model.pt"
+MODEL_CONFIG_FILE_IN_YAML = "config.yaml"
 DEFAULT_CHUNK_SIZE = 8192
 
 
