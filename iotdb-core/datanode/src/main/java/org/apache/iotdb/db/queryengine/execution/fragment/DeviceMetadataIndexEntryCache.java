@@ -27,8 +27,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.tsfile.exception.TsFileRuntimeException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.query.DeviceMetadataIndexEntriesQueryResult;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,22 +36,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
 public class DeviceMetadataIndexEntryCache {
   private static final long MAX_CACHED_SIZE = 32 * 1024 * 1024;
   private final FragmentInstanceContext context;
   private TreeMap<IDeviceID, Integer> deviceIndexMap;
-  private final Map<String, long[]> deviceMetadataIndexNodeOffsetsCache = new ConcurrentHashMap<>();
+  private final Map<String, DeviceMetadataIndexEntriesQueryResult>
+      deviceMetadataIndexNodeOffsetsCache = new ConcurrentHashMap<>();
   private List<IDeviceID> sortedDevices;
   private int[] deviceIdxArr;
-  private final AtomicInteger cachedFileNum;
-  private LongConsumer ioSizeRecorder;
+  private final AtomicLong reservedMemory;
+  private final LongConsumer ioSizeRecorder;
 
   public DeviceMetadataIndexEntryCache(FragmentInstanceContext context) {
     this.context = context;
-    this.cachedFileNum = new AtomicInteger(0);
+    this.reservedMemory = new AtomicLong(0);
     this.ioSizeRecorder =
         context.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
   }
@@ -82,40 +83,48 @@ public class DeviceMetadataIndexEntryCache {
       return new Pair<>(null, true);
     }
     // not cached
-    long[] resourceCache = loadOffsetsToCache(filePath);
+    DeviceMetadataIndexEntriesQueryResult resourceCache = loadOffsetsToCache(filePath);
     if (resourceCache == null) {
       return new Pair<>(null, true);
     }
     int indexAfterSort = deviceIdxArr[deviceIndex];
-    long startOffset = resourceCache[2 * indexAfterSort];
+    long[] result = resourceCache.getDeviceMetadataIndexNodeOffset(indexAfterSort);
     // the device does not exist in the file
-    if (startOffset < 0) {
+    if (result == null) {
       if (!ignoreNotExists) {
         throw new IOException("Device {" + device + "} is not in tsFileMetaData of " + filePath);
       }
       return new Pair<>(null, false);
     }
-    long endOffset = resourceCache[2 * indexAfterSort + 1];
-    return new Pair<>(new long[] {startOffset, endOffset}, true);
+    return new Pair<>(result, true);
   }
 
-  private long[] loadOffsetsToCache(String filePath) throws IOException {
+  private DeviceMetadataIndexEntriesQueryResult loadOffsetsToCache(String filePath)
+      throws IOException {
     TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
     IDeviceID firstDevice = getSortedDevices().get(0);
     return deviceMetadataIndexNodeOffsetsCache.computeIfAbsent(
         filePath,
         k -> {
-          if (!reserveMemory()) {
+          if (reservedMemory.get() >= MAX_CACHED_SIZE) {
             return null;
           }
+          DeviceMetadataIndexEntriesQueryResult result;
           try {
-            return reader.getDeviceMetadataIndexNodeOffsets(
-                firstDevice.isTableModel() ? firstDevice.getTableName() : null,
-                sortedDevices,
-                ioSizeRecorder);
+            result =
+                reader.getDeviceMetadataIndexNodeOffsets(
+                    firstDevice.isTableModel() ? firstDevice.getTableName() : null,
+                    sortedDevices,
+                    ioSizeRecorder);
+            long memCost = result.ramBytesUsed();
+            context.getMemoryReservationContext().reserveMemoryCumulatively(memCost);
+            reservedMemory.addAndGet(memCost);
           } catch (IOException e) {
             throw new TsFileRuntimeException(e);
+          } catch (MemoryNotEnoughException ignored) {
+            return null;
           }
+          return result;
         });
   }
 
@@ -135,31 +144,5 @@ public class DeviceMetadataIndexEntryCache {
       deviceIdxArr[entry.getValue()] = i++;
     }
     deviceIndexMap = null;
-  }
-
-  private boolean reserveMemory() {
-    long costOfOneFile = RamUsageEstimator.sizeOfLongArray(sortedDevices.size());
-    int currentNum = cachedFileNum.get();
-    boolean memoryReserved = false;
-    while (true) {
-      if (costOfOneFile * (currentNum + 1) > MAX_CACHED_SIZE) {
-        if (memoryReserved) {
-          context.getMemoryReservationContext().releaseMemoryCumulatively(costOfOneFile);
-        }
-        return false;
-      }
-      try {
-        if (!memoryReserved) {
-          context.getMemoryReservationContext().reserveMemoryCumulatively(costOfOneFile);
-          memoryReserved = true;
-        }
-      } catch (MemoryNotEnoughException ignored) {
-        return false;
-      }
-      if (cachedFileNum.compareAndSet(currentNum, currentNum + 1)) {
-        return true;
-      }
-      currentNum = cachedFileNum.get();
-    }
   }
 }
