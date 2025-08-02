@@ -139,7 +139,7 @@ public class SessionManager implements SessionManagerMBean {
    * @return the timestamp when the password will expire. Long.MAX if the password never expires.
    *     Null if the password history cannot be found.
    */
-  private Long checkPasswordExpiration(String username, String password) {
+  public Long checkPasswordExpiration(String username, String password) {
     // check password expiration
     long passwordExpirationDays =
         CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
