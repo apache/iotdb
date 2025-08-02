@@ -22,10 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -245,5 +248,13 @@ public class RelationalInsertRowNode extends InsertRowNode {
     }
     TableDeviceSchemaCache.getInstance()
         .updateLastCacheIfExists(databaseName, getDeviceID(), rawMeasurements, timeValuePairs);
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    IWritableMemChunkGroup writableMemChunkGroup = memTable.getWritableMemChunkGroup(getDeviceID());
+    if (writableMemChunkGroup != null) {
+      writableMemChunkGroup.checkDataType(this);
+    }
   }
 }

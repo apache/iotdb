@@ -61,6 +61,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -370,7 +371,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
                       expectedValues,
                       tablet.getTimestamps());
                 } catch (Exception e) {
-                  fail();
+                  e.printStackTrace();
+                  fail(e.getMessage());
                 }
               });
       senderSession.close();
@@ -413,12 +415,18 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
     int index = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
+      System.out.println("QueryResult: " + record.toString());
+      System.out.println("Expected: " + timestamps[index] + "-" + values.get(index));
       List<Field> fields = record.getFields();
 
       assertEquals(record.getTimestamp(), timestamps[index]);
       List<Object> rowValues = values.get(index++);
       for (int i = 0; i < fields.size(); i++) {
         Field field = fields.get(i);
+        if (field.getDataType() == null) {
+          assertNull(rowValues.get(i));
+          continue;
+        }
         switch (field.getDataType()) {
           case INT64:
           case TIMESTAMP:
