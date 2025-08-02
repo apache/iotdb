@@ -97,6 +97,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
         resource,
         (AlignedFullPath) seriesPath,
+        deviceIndexInFI,
         context,
         scanOptions.getGlobalTimeFilter(),
         isSeq,

@@ -122,7 +122,7 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
 
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource((QueryDataSource) dataSource);
+    seriesScanUtil.initQueryDataSource((QueryDataSource) dataSource, getCurrentDeviceIndex());
     resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
