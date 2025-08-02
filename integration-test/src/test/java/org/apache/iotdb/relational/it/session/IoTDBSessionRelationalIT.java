@@ -1282,6 +1282,40 @@ public class IoTDBSessionRelationalIT {
     }
   }
 
+  @Test
+  public void insertWrongFieldNumTest() throws IoTDBConnectionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "create table wrong_field_num (s1 int32, s2 int32, s3 int32)");
+      session.executeNonQueryStatement(
+          "insert into wrong_field_num(s1, s2, s3, time) values (1, 2, 3)");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertEquals("701: TimeColumnIndex out of bound: 3-3", e.getMessage());
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "insert into wrong_field_num(s1, s2, time, s3) values (1, 2, 3)");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "701: Inconsistent numbers of non-time column names and values: 3-2", e.getMessage());
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "insert into wrong_field_num(s1, s2, time) values (1, 2, 3, 4)");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "701: Inconsistent numbers of non-time column names and values: 2-3", e.getMessage());
+    }
+  }
+
   private void testOneCastWithTablet(
       TSDataType from, TSDataType to, int testNum, boolean partialInsert)
       throws IoTDBConnectionException, StatementExecutionException {
