@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
@@ -74,7 +75,8 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
 
   private Optional<TSStatus> tryExecute(final Statement statement, final String databaseName) {
     try {
-      if (Objects.isNull(databaseName)) {
+      if (Objects.isNull(databaseName)
+          || !PipeConfig.getInstance().isPipeReceiverLoadConversionEnabled()) {
         LOGGER.warn(
             "Database name is unexpectedly null for statement: {}. Skip data type conversion.",
             statement);
