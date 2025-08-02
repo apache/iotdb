@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
@@ -52,6 +53,23 @@ public class TNonblockingSocketWrapper {
   public static TNonblockingSocket wrap(SocketChannel socketChannel) throws IOException {
     try {
       return new TNonblockingSocket(socketChannel);
+    } catch (TTransportException e) {
+      // never happen
+      return null;
+    }
+  }
+
+  public static TNonblockingTransport wrap(
+      String host,
+      int port,
+      int timeout,
+      String keyStorePath,
+      String keyStorePwd,
+      String trustStorePath,
+      String trustStorePwd) {
+    try {
+      return new NettyTNonBlockingTransport(
+          host, port, timeout, keyStorePath, keyStorePwd, trustStorePath, trustStorePwd);
     } catch (TTransportException e) {
       // never happen
       return null;
