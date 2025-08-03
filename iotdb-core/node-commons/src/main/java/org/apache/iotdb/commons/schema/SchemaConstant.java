@@ -90,7 +90,7 @@ public class SchemaConstant {
   public static final int ALL_TEMPLATE = -2;
 
   public static final byte INTERNAL_MNODE_TYPE = 0;
-  public static final byte STORAGE_GROUP_MNODE_TYPE = 1;
+  public static final byte DATABASE_MNODE_TYPE = 1;
   public static final byte MEASUREMENT_MNODE_TYPE = 2;
   public static final byte ENTITY_MNODE_TYPE = 3;
   public static final byte STORAGE_GROUP_ENTITY_MNODE_TYPE = 4;
@@ -119,7 +119,7 @@ public class SchemaConstant {
     switch (type) {
       case INTERNAL_MNODE_TYPE:
         return INTERNAL_MNODE_TYPE_NAME;
-      case STORAGE_GROUP_MNODE_TYPE:
+      case DATABASE_MNODE_TYPE:
         return STORAGE_GROUP_MNODE_TYPE_NAME;
       case MEASUREMENT_MNODE_TYPE:
         return MEASUREMENT_MNODE_TYPE_NAME;
@@ -137,6 +137,6 @@ public class SchemaConstant {
   }
 
   public static boolean isStorageGroupType(byte type) {
-    return type == STORAGE_GROUP_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
+    return type == DATABASE_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
   }
 }
