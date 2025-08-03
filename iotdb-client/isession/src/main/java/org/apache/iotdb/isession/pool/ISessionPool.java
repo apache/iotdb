@@ -24,6 +24,7 @@ import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
@@ -485,6 +486,9 @@ public interface ISessionPool {
   SessionDataSetWrapper executeLastDataQueryForOneDevice(
       String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSetWrapper executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException;
 
   SessionDataSetWrapper executeAggregationQuery(
       List<String> paths, List<TAggregationType> aggregations)
