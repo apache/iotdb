@@ -60,11 +60,7 @@ class InferenceRequestPool(mp.Process):
         self.pool_kwargs = pool_kwargs
         self.model = None
         self._model_manager = None
-        # TODO: Assign device immediately when the pool is created
         self.device = None
-        self.logger = Logger(
-            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
-        )
         self.ready_event = ready_event
 
         self._threads = []
@@ -172,6 +168,9 @@ class InferenceRequestPool(mp.Process):
     def run(self):
         self._model_manager = ModelManager()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.logger = Logger(
+            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
+        )
         self._scheduler.device = self.device
         self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
         self.ready_event.set()
@@ -196,4 +195,3 @@ class InferenceRequestPool(mp.Process):
 
     def stop(self):
         self._stop_event.set()
-        self.logger.info(f"[Inference][Pool-{self.pool_id}] stop() called")
