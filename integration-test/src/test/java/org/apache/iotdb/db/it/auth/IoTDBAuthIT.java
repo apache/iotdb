@@ -237,11 +237,11 @@ public class IoTDBAuthIT {
       Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
       userCon.close();
 
-      adminStmt.execute("ALTER USER tempuser SET PASSWORD '67'");
+      adminStmt.execute("ALTER USER tempuser SET PASSWORD 'newpw1234567'");
 
       boolean caught = false;
       try {
-        userCon = EnvFactory.getEnv().getConnection("tempuser", "67");
+        userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw1234567");
       } catch (SQLException e) {
         caught = true;
       } finally {
