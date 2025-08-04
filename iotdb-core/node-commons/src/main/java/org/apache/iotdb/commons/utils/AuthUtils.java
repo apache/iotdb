@@ -53,7 +53,7 @@ public class AuthUtils {
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   private static final int NAME_MIN_LENGTH = 4;
   private static final int NAME_MAX_LENGTH = 32;
-  private static final int PASSWORD_MIN_LENGTH = 12;
+  private static final int PASSWORD_MIN_LENGTH = 4;
   private static final int PASSWORD_MAX_LENGTH = 32;
 
   // match number, character, and !@#$%^*()_+-=
