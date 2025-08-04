@@ -448,6 +448,7 @@ std::string IoTDBRpcDataSet::getStringByTsBlockColumnIndexAndDataType(int32_t in
         return std::to_string(curTsBlock_->getColumn(index)->getDouble(tsBlockIndex_));
     case TSDataType::TEXT:
     case TSDataType::STRING:
+    case TSDataType::OBJECT:
     case TSDataType::BLOB: {
         auto binary = curTsBlock_->getColumn(index)->getBinary(tsBlockIndex_);
         return binary->getStringValue();

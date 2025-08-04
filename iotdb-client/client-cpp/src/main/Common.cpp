@@ -89,6 +89,7 @@ TSDataType::TSDataType getDataTypeByStr(const std::string& typeStr) {
     if (typeStr == "DATE") return TSDataType::DATE;
     if (typeStr == "BLOB") return TSDataType::BLOB;
     if (typeStr == "STRING") return TSDataType::STRING;
+    if (typeStr == "OBJECT") return TSDataType::OBJECT;
     return TSDataType::UNKNOWN;
 }
 
