@@ -772,15 +772,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected TSStatus login() {
-    final BasicOpenSessionResp openSessionResp =
-        SESSION_MANAGER.login(
-            SESSION_MANAGER.getCurrSession(),
-            username,
-            password,
-            ZoneId.systemDefault().toString(),
-            SessionManager.CURRENT_RPC_VERSION,
-            IoTDBConstant.ClientVersion.V_1_0);
-    return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+
+    if (session != null && !session.isLogin()) {
+      final BasicOpenSessionResp openSessionResp =
+          SESSION_MANAGER.login(
+              session,
+              username,
+              password,
+              ZoneId.systemDefault().toString(),
+              SessionManager.CURRENT_RPC_VERSION,
+              IoTDBConstant.ClientVersion.V_1_0);
+      return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.message);
+    }
+
+    return AuthorityChecker.checkUser(username, password);
   }
 
   @Override
