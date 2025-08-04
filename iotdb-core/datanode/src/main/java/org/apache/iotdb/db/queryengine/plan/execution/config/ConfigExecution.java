@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -186,6 +187,17 @@ public class ConfigExecution implements IQueryExecution {
             : new ConfigTaskResult(TSStatusCode.representOf(errorCode));
 
     taskFuture.set(result);
+  }
+
+  private boolean isUserException(final TSStatus status) {
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      return status.getSubStatus().stream()
+          .allMatch(
+              s ->
+                  s.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                      || userExceptionCodes.contains(s.getCode()));
+    }
+    return userExceptionCodes.contains(status.getCode());
   }
 
   @Override
