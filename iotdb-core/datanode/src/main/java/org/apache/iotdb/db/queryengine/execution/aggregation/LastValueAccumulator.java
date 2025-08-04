@@ -118,17 +118,21 @@ public class LastValueAccumulator implements Accumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
+        updateIntLastValue(
+            ((Number) statistics.getLastValue()).intValue(), statistics.getEndTime());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongLastValue((long) statistics.getLastValue(), statistics.getEndTime());
+        updateLongLastValue(
+            ((Number) statistics.getLastValue()).longValue(), statistics.getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics.getLastValue(), statistics.getEndTime());
+        updateFloatLastValue(
+            ((Number) statistics.getLastValue()).floatValue(), statistics.getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics.getLastValue(), statistics.getEndTime());
+        updateDoubleLastValue(
+            ((Number) statistics.getLastValue()).doubleValue(), statistics.getEndTime());
         break;
       case TEXT:
       case BLOB:

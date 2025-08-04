@@ -235,10 +235,12 @@ public class LastAccumulator implements TableAccumulator {
             ((Number) statistics[0].getLastValue()).longValue(), statistics[0].getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateFloatLastValue(
+            ((Number) statistics[0].getLastValue()).floatValue(), statistics[0].getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateDoubleLastValue(
+            ((Number) statistics[0].getLastValue()).doubleValue(), statistics[0].getEndTime());
         break;
       case TEXT:
       case BLOB:

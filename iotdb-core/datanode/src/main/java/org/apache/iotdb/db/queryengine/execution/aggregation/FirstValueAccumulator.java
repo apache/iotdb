@@ -118,17 +118,21 @@ public class FirstValueAccumulator implements Accumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntFirstValue((int) statistics.getFirstValue(), statistics.getStartTime());
+        updateIntFirstValue(
+            ((Number) statistics.getFirstValue()).intValue(), statistics.getStartTime());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongFirstValue((long) statistics.getFirstValue(), statistics.getStartTime());
+        updateLongFirstValue(
+            ((Number) statistics.getFirstValue()).longValue(), statistics.getStartTime());
         break;
       case FLOAT:
-        updateFloatFirstValue((float) statistics.getFirstValue(), statistics.getStartTime());
+        updateFloatFirstValue(
+            ((Number) statistics.getFirstValue()).floatValue(), statistics.getStartTime());
         break;
       case DOUBLE:
-        updateDoubleFirstValue((double) statistics.getFirstValue(), statistics.getStartTime());
+        updateDoubleFirstValue(
+            ((Number) statistics.getFirstValue()).doubleValue(), statistics.getStartTime());
         break;
       case TEXT:
       case BLOB:

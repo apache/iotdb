@@ -35,24 +35,39 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ColumnSchema;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -72,6 +87,9 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBAlterColumnTypeIT {
+
+  private static final Logger log = LoggerFactory.getLogger(IoTDBAlterColumnTypeIT.class);
+  private static long timeout = -1;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -946,10 +964,10 @@ public class IoTDBAlterColumnTypeIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement("select count(*) from view1 where battery = 'b1'");
-      Assert.assertTrue(sessionDataSet.hasNext());
+      assertTrue(sessionDataSet.hasNext());
       RowRecord record = sessionDataSet.next();
-      Assert.assertEquals(1, record.getField(0).getLongV());
-      Assert.assertFalse(sessionDataSet.hasNext());
+      assertEquals(1, record.getField(0).getLongV());
+      assertFalse(sessionDataSet.hasNext());
       sessionDataSet.close();
 
       sessionDataSet = session.executeQueryStatement("select * from view1");
@@ -959,7 +977,7 @@ public class IoTDBAlterColumnTypeIT {
         count++;
       }
       sessionDataSet.close();
-      Assert.assertEquals(8, count);
+      assertEquals(8, count);
 
       // alter the type to "to"
       TSDataType from = TSDataType.FLOAT;
@@ -996,6 +1014,288 @@ public class IoTDBAlterColumnTypeIT {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("DELETE TIMESERIES root.db.battery.**");
+    }
+  }
+
+  @Test
+  public void testLoadAndAccumulator()
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"enable_seq_space_compaction\"=\"false\"");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      if (!session.checkTimeseriesExists("root.sg1.d1.s1")) {
+        session.createTimeseries(
+            "root.sg1.d1.s1", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY);
+      }
+      if (!session.checkTimeseriesExists("root.sg1.d1.s2")) {
+        session.createTimeseries(
+            "root.sg1.d1.s2", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY);
+      }
+
+      Double firstValue = null;
+
+      // file1-file3 s1=DOUBLE
+
+      // file1-file3
+      List<File> filesToLoad = new ArrayList<>();
+      for (int i = 1; i <= 3; i++) {
+        File file = new File("target", "f" + i + ".tsfile");
+        List<String> columnNames = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+        List<String> columnTypes = Arrays.asList("DOUBLE", "DOUBLE");
+
+        if (file.exists()) {
+          Files.delete(file.toPath());
+        }
+
+        try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
+          // device -> column indices in columnNames
+          Map<String, List<Integer>> deviceColumnIndices = new HashMap<>();
+          Set<String> alignedDevices = new HashSet<>();
+          Map<String, List<IMeasurementSchema>> deviceSchemaMap = new LinkedHashMap<>();
+          //          deviceSchemaMap.put("root.sg1.d1", new ArrayList<>());
+
+          collectSchemas(
+              session,
+              columnNames,
+              columnTypes,
+              deviceSchemaMap,
+              alignedDevices,
+              deviceColumnIndices);
+
+          List<Tablet> tabletList = constructTablets(deviceSchemaMap, alignedDevices, tsFileWriter);
+
+          if (!tabletList.isEmpty()) {
+            long timestamp = i;
+            double dataValue = new Random(10).nextDouble();
+            if (firstValue == null) {
+              firstValue = dataValue;
+            }
+            writeWithTablets(
+                timestamp,
+                dataValue,
+                TSDataType.DOUBLE,
+                tabletList,
+                alignedDevices,
+                tsFileWriter,
+                deviceColumnIndices);
+            tsFileWriter.flush();
+          } else {
+            fail("No tablets to write");
+          }
+          tsFileWriter.close();
+        }
+
+        filesToLoad.add(file);
+      }
+
+      // load file1-file3 into IoTDB
+      for (File f : filesToLoad) {
+        session.executeNonQueryStatement("LOAD '" + f.getAbsolutePath() + "'");
+      }
+
+      // check load result
+      SessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.sg1.d1");
+      RowRecord rec;
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertFalse(dataSet.hasNext());
+
+      // file4-file6 s1=INT32
+
+      // file4-file6
+      for (int i = 4; i <= 6; i++) {
+        File file = new File("target", "f" + i + ".tsfile");
+        List<String> columnNames = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+        List<String> columnTypes = Arrays.asList("DOUBLE", "DOUBLE");
+
+        if (file.exists()) {
+          Files.delete(file.toPath());
+        }
+
+        try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
+          // device -> column indices in columnNames
+          Map<String, List<Integer>> deviceColumnIndices = new HashMap<>();
+          Set<String> alignedDevices = new HashSet<>();
+          Map<String, List<IMeasurementSchema>> deviceSchemaMap = new LinkedHashMap<>();
+
+          collectSchemas(
+              session,
+              columnNames,
+              columnTypes,
+              deviceSchemaMap,
+              alignedDevices,
+              deviceColumnIndices);
+
+          List<Tablet> tabletList = constructTablets(deviceSchemaMap, alignedDevices, tsFileWriter);
+
+          if (!tabletList.isEmpty()) {
+            long timestamp = i;
+            writeWithTablets(
+                timestamp,
+                new Random(10).nextInt(),
+                TSDataType.INT32,
+                tabletList,
+                alignedDevices,
+                tsFileWriter,
+                deviceColumnIndices);
+            tsFileWriter.flush();
+          } else {
+            fail("No tablets to write");
+          }
+          tsFileWriter.close();
+        }
+
+        filesToLoad.add(file);
+      }
+
+      // check load result
+      dataSet = session.executeQueryStatement("select count(s1) from root.sg1.d1");
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertFalse(dataSet.hasNext());
+
+      dataSet = session.executeQueryStatement("select first_value(s1) from root.sg1.d1");
+      rec = dataSet.next();
+      assertEquals(firstValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0);
+      assertFalse(dataSet.hasNext());
+
+      // clear data
+      filesToLoad.forEach(File::delete);
+      filesToLoad.clear();
+      session.executeNonQueryStatement("DELETE TIMESERIES root.sg1.d1.s1");
+    }
+  }
+
+  private static void writeWithTablets(
+      long timestamp,
+      Object dataValue,
+      TSDataType tsDataType,
+      List<Tablet> tabletList,
+      Set<String> alignedDevices,
+      TsFileWriter tsFileWriter,
+      Map<String, List<Integer>> deviceColumnIndices)
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    RowRecord rowRecord = new RowRecord(timestamp);
+    rowRecord.addField(dataValue, tsDataType);
+    rowRecord.addField(dataValue, tsDataType);
+    List<Field> fields = rowRecord.getFields();
+
+    for (Tablet tablet : tabletList) {
+      String deviceId = tablet.getDeviceId();
+      List<Integer> columnIndices = deviceColumnIndices.get(deviceId);
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
+      List<IMeasurementSchema> schemas = tablet.getSchemas();
+
+      for (int i = 0, columnIndicesSize = columnIndices.size(); i < columnIndicesSize; i++) {
+        Integer columnIndex = columnIndices.get(i);
+        IMeasurementSchema measurementSchema = schemas.get(i);
+        //        Object value = fields.get(columnIndex -
+        // 1).getObjectValue(measurementSchema.getType());
+        Object value = fields.get(columnIndex).getObjectValue(measurementSchema.getType());
+        tablet.addValue(measurementSchema.getMeasurementName(), rowIndex, value);
+      }
+
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+        writeToTsFile(alignedDevices, tsFileWriter, tablet);
+        tablet.reset();
+      }
+    }
+
+    for (Tablet tablet : tabletList) {
+      if (tablet.getRowSize() != 0) {
+        writeToTsFile(alignedDevices, tsFileWriter, tablet);
+      }
+    }
+  }
+
+  private static void writeToTsFile(
+      Set<String> deviceFilterSet, TsFileWriter tsFileWriter, Tablet tablet)
+      throws IOException, WriteProcessException {
+    if (deviceFilterSet.contains(tablet.getDeviceId())) {
+      tsFileWriter.writeAligned(tablet);
+    } else {
+      tsFileWriter.writeTree(tablet);
+    }
+  }
+
+  private static List<Tablet> constructTablets(
+      Map<String, List<IMeasurementSchema>> deviceSchemaMap,
+      Set<String> alignedDevices,
+      TsFileWriter tsFileWriter)
+      throws WriteProcessException {
+    List<Tablet> tabletList = new ArrayList<>(deviceSchemaMap.size());
+    for (Map.Entry<String, List<IMeasurementSchema>> stringListEntry : deviceSchemaMap.entrySet()) {
+      String deviceId = stringListEntry.getKey();
+      List<IMeasurementSchema> schemaList = stringListEntry.getValue();
+      Tablet tablet = new Tablet(deviceId, schemaList);
+      tablet.initBitMaps();
+      Path path = new Path(tablet.getDeviceId());
+      if (alignedDevices.contains(tablet.getDeviceId())) {
+        tsFileWriter.registerAlignedTimeseries(path, schemaList);
+      } else {
+        tsFileWriter.registerTimeseries(path, schemaList);
+      }
+      tabletList.add(tablet);
+    }
+    return tabletList;
+  }
+
+  protected static TSDataType getType(String typeStr) {
+    try {
+      return TSDataType.valueOf(typeStr);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private static void collectSchemas(
+      ISession session,
+      List<String> columnNames,
+      List<String> columnTypes,
+      Map<String, List<IMeasurementSchema>> deviceSchemaMap,
+      Set<String> alignedDevices,
+      Map<String, List<Integer>> deviceColumnIndices)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < columnNames.size(); i++) {
+      String column = columnNames.get(i);
+      if (!column.startsWith("root.")) {
+        continue;
+      }
+      TSDataType tsDataType = getType(columnTypes.get(i));
+      Path path = new Path(column, true);
+      String deviceId = path.getDeviceString();
+      // query whether the device is aligned or not
+      try (SessionDataSet deviceDataSet =
+          session.executeQueryStatement("show devices " + deviceId, timeout)) {
+        List<Field> deviceList = deviceDataSet.next().getFields();
+        if (deviceList.size() > 1 && "true".equals(deviceList.get(1).getStringValue())) {
+          alignedDevices.add(deviceId);
+        }
+      }
+
+      // query timeseries metadata
+      MeasurementSchema measurementSchema =
+          new MeasurementSchema(path.getMeasurement(), tsDataType);
+      List<Field> seriesList =
+          session.executeQueryStatement("show timeseries " + column, timeout).next().getFields();
+      measurementSchema.setEncoding(TSEncoding.valueOf(seriesList.get(4).getStringValue()));
+      measurementSchema.setCompressionType(
+          CompressionType.valueOf(seriesList.get(5).getStringValue()));
+
+      deviceSchemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
+      deviceColumnIndices.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(i);
     }
   }
 }
