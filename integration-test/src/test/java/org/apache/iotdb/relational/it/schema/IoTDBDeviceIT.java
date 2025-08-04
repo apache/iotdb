@@ -226,6 +226,9 @@ public class IoTDBDeviceIT {
             e.getMessage());
       }
 
+      // Test filter with no effect
+      statement.execute("update table0 set model = null where model = 'A' and model = 'B'");
+
       // Test null
       statement.execute("update table0 set model = null where model <> substring(device_id, 1, 1)");
       TestUtils.assertResultSetEqual(
@@ -248,6 +251,9 @@ public class IoTDBDeviceIT {
           "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('2', '5', '3', 'A', 37.6, 111.1)");
       TestUtils.assertResultSetSize(
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
+
+      // Test delete devices with no effect
+      statement.execute("delete devices from table0 where region_id = '1' and region_id = '2'");
 
       // Test delete devices
       statement.execute("delete devices from table0 where region_id = '1' and plant_id = '木兰'");

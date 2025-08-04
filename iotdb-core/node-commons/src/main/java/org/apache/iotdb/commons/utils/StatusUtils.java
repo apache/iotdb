@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.ExitUtils;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -58,7 +60,6 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.WAL_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
     NEED_RETRY.add(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
-    NEED_RETRY.add(TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode());
     NEED_RETRY.add(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
@@ -66,6 +67,8 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode());
     NEED_RETRY.add(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
     NEED_RETRY.add(TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
   /**
@@ -241,5 +244,21 @@ public class StatusUtils {
   private static boolean needRetryHelperForSingleStatus(int statusCode) {
     return NEED_RETRY.contains(statusCode)
         || (COMMON_CONFIG.isRetryForUnknownErrors() && UNKNOWN_ERRORS.contains(statusCode));
+  }
+
+  public static boolean isUnknownError(int statusCode) {
+    return UNKNOWN_ERRORS.contains(statusCode);
+  }
+
+  public static int retrieveExitStatusCode(Throwable e) {
+    if (e instanceof ExitUtils.ExitException && e.getCause() != null) {
+      e = e.getCause();
+    }
+    if (e.getMessage().contains("because Could not create ServerSocket")
+        || e.getMessage().contains("Failed to bind to address")
+        || e.getMessage().contains("Address already in use: bind")) {
+      return TSStatusCode.PORT_OCCUPIED.getStatusCode();
+    }
+    return -1;
   }
 }

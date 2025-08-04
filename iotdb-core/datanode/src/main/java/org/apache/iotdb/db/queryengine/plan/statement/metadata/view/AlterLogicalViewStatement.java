@@ -70,7 +70,7 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
     if (sourcePathList != null) {
       status =
           AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathListPermission(
+              AuthorityChecker.checkFullPathOrPatternListPermission(
                   userName, sourcePathList, PrivilegeType.READ_SCHEMA),
               sourcePathList,
               PrivilegeType.READ_SCHEMA);
@@ -79,7 +79,7 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
       sourcePathList = queryStatement.getPaths();
       status =
           AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkPatternPermission(
+              AuthorityChecker.checkFullPathOrPatternListPermission(
                   userName, sourcePathList, PrivilegeType.READ_SCHEMA),
               sourcePathList,
               PrivilegeType.READ_SCHEMA);
@@ -87,7 +87,7 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathListPermission(
+          AuthorityChecker.checkFullPathOrPatternListPermission(
               userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA),
           getTargetPathList(),
           PrivilegeType.WRITE_SCHEMA);

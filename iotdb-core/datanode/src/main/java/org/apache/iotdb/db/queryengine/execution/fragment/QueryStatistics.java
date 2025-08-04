@@ -54,7 +54,9 @@ public class QueryStatistics {
   private final AtomicLong loadTimeSeriesMetadataAlignedMemUnSeqTime = new AtomicLong(0);
 
   private final AtomicLong loadTimeSeriesMetadataFromCacheCount = new AtomicLong(0);
+  private final AtomicLong loadTimeSeriesMetadataFromCacheTime = new AtomicLong(0);
   private final AtomicLong loadTimeSeriesMetadataFromDiskCount = new AtomicLong(0);
+  private final AtomicLong loadTimeSeriesMetadataFromDiskTime = new AtomicLong(0);
   private final AtomicLong loadTimeSeriesMetadataActualIOSize = new AtomicLong(0);
 
   // statistics for count and time of construct chunk readers(disk io and decompress)
@@ -274,8 +276,16 @@ public class QueryStatistics {
     return loadTimeSeriesMetadataFromCacheCount;
   }
 
+  public AtomicLong getLoadTimeSeriesMetadataFromCacheTime() {
+    return loadTimeSeriesMetadataFromCacheTime;
+  }
+
   public AtomicLong getLoadTimeSeriesMetadataFromDiskCount() {
     return loadTimeSeriesMetadataFromDiskCount;
+  }
+
+  public AtomicLong getLoadTimeSeriesMetadataFromDiskTime() {
+    return loadTimeSeriesMetadataFromDiskTime;
   }
 
   public TQueryStatistics toThrift() {

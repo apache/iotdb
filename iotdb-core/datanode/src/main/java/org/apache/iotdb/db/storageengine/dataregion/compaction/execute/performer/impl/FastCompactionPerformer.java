@@ -39,6 +39,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastInnerCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCrossSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -61,6 +65,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -372,5 +377,15 @@ public class FastCompactionPerformer
     return !seqFiles.isEmpty()
         ? seqFiles.get(0).getDatabaseName()
         : unseqFiles.get(0).getDatabaseName();
+  }
+
+  @Override
+  public Optional<AbstractInnerSpaceEstimator> getInnerSpaceEstimator() {
+    return Optional.of(new FastCompactionInnerCompactionEstimator());
+  }
+
+  @Override
+  public Optional<AbstractCrossSpaceEstimator> getCrossSpaceEstimator() {
+    return Optional.of(new FastCrossSpaceCompactionEstimator());
   }
 }

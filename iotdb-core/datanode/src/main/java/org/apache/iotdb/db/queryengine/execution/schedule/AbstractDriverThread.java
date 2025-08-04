@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -31,6 +31,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.time.format.DateTimeParseException;
+
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 /** An abstract executor for {@link DriverTask}. */
 public abstract class AbstractDriverThread extends Thread implements Closeable {
@@ -82,9 +85,18 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
             Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
             if (rootCause instanceof IoTDBRuntimeException) {
               next.setAbortCause(rootCause);
+            } else if (rootCause instanceof IoTDBException) {
+              next.setAbortCause(rootCause);
+            } else if (rootCause instanceof DateTimeParseException) {
+              next.setAbortCause(
+                  new IoTDBRuntimeException(
+                      rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true));
             } else {
-              logger.warn("[ExecuteFailed]", e);
-              next.setAbortCause(getAbortCause(e, next.getDriverTaskId().getFullId()));
+              logger.warn("[ExecuteFailed]", rootCause);
+              next.setAbortCause(
+                  new DriverTaskAbortedException(
+                      next.getDriverTaskId().getFullId(),
+                      DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED));
             }
             scheduler.toAborted(next);
           }
@@ -120,14 +132,5 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
   @Override
   public void close() throws IOException {
     closed = true;
-  }
-
-  private Throwable getAbortCause(final Exception e, String fullId) {
-    Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
-    if (rootCause instanceof MemoryNotEnoughException) {
-      return rootCause;
-    }
-    return new DriverTaskAbortedException(
-        fullId, DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
   }
 }

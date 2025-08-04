@@ -69,7 +69,7 @@ public class AssignUniqueIdOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    TsBlock tsBlock = child.next();
+    TsBlock tsBlock = child.nextWithTimer();
     if (tsBlock == null || tsBlock.isEmpty()) {
       return null;
     }

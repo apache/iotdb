@@ -19,9 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -47,6 +59,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -54,18 +72,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.ALL_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.BEIJING_A1_DEVICE_ENTRY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHANGHAI_SHENZHEN_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHENZHEN_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertJoinNodeEquals;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertMergeSortNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertNodeMatches;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.buildSymbols;
@@ -74,8 +91,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
@@ -88,6 +107,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Comparison
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class JoinTest {
   Analysis analysis;
@@ -125,6 +145,32 @@ public class JoinTest {
             + "FROM table1 t1 JOIN table1 t2 USING(time) OFFSET 3 LIMIT 6");
   }
 
+  /*
+   * IdentitySinkNode-210
+   *   └──OutputNode-12
+   *       └──OffsetNode-8
+   *           └──LimitNode-9
+   *               └──JoinNode-7
+   *                   ├──ExchangeNode-197: [SourceAddress:192.0.11.1/test_query.2.0/205]
+   *                   └──ExchangeNode-201: [SourceAddress:192.0.11.1/test_query.6.0/209]
+   *
+   * IdentitySinkNode-205
+   *   └──MergeSortNode-149
+   *       ├──ExchangeNode-194: [SourceAddress:192.0.12.1/test_query.3.0/202]
+   *       ├──ExchangeNode-195: [SourceAddress:192.0.11.1/test_query.4.0/203]
+   *       └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.5.0/204]
+   *
+   * IdentitySinkNode-209
+   *   └──MergeSortNode-156
+   *       ├──ExchangeNode-198: [SourceAddress:192.0.12.1/test_query.7.0/206]
+   *       ├──ExchangeNode-199: [SourceAddress:192.0.11.1/test_query.8.0/207]
+   *       └──ExchangeNode-200: [SourceAddress:192.0.10.1/test_query.9.0/208]
+   *
+   * IdentitySinkNode-204
+   *   └──SortNode-152
+   *       └──DeviceTableScanNode-147
+   * ...
+   */
   private void assertInnerJoinTest1(String sql) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     SymbolAllocator symbolAllocator = new SymbolAllocator();
@@ -161,6 +207,7 @@ public class JoinTest {
         (DeviceTableScanNode) getChildrenNode(rightSortNode, 1);
     assertTableScan(rightDeviceTableScanNode, ALL_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
 
+    // Before ExchangeNode logic optimize
     /*
      * IdentitySinkNode-178
      *   └──OutputNode-12
@@ -194,33 +241,55 @@ public class JoinTest {
      *   └──SortNode-154
      *       └──DeviceTableScanNode-150
      */
+
+    // After ExchangeNode logic optimize
+    /*
+     * IdentitySinkNode-210
+     *   └──OutputNode-12
+     *       └──OffsetNode-8
+     *           └──LimitNode-9
+     *               └──JoinNode-7
+     *                   ├──ExchangeNode-197: [SourceAddress:192.0.11.1/test_query.2.0/205]
+     *                   └──ExchangeNode-201: [SourceAddress:192.0.11.1/test_query.6.0/209]
+     *
+     * IdentitySinkNode-205
+     *   └──MergeSortNode-149
+     *       ├──ExchangeNode-194: [SourceAddress:192.0.12.1/test_query.3.0/202]
+     *       ├──ExchangeNode-195: [SourceAddress:192.0.11.1/test_query.4.0/203]
+     *       └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.5.0/204]
+     *
+     * IdentitySinkNode-209
+     *   └──MergeSortNode-156
+     *       ├──ExchangeNode-198: [SourceAddress:192.0.12.1/test_query.7.0/206]
+     *       ├──ExchangeNode-199: [SourceAddress:192.0.11.1/test_query.8.0/207]
+     *       └──ExchangeNode-200: [SourceAddress:192.0.10.1/test_query.9.0/208]
+     *
+     * IdentitySinkNode-204
+     *   └──SortNode-152
+     *       └──DeviceTableScanNode-147
+     * ...
+     */
+
     distributedQueryPlan =
         new TableDistributedPlanner(
                 analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
             .plan();
-    assertEquals(5, distributedQueryPlan.getFragments().size());
-    IdentitySinkNode identitySinkNode =
+    assertEquals(9, distributedQueryPlan.getFragments().size());
+    identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
     assertTrue(getChildrenNode(outputNode, 3) instanceof JoinNode);
     joinNode = (JoinNode) getChildrenNode(outputNode, 3);
-    assertTrue(joinNode.getLeftChild() instanceof MergeSortNode);
-    MergeSortNode mergeSortNode = (MergeSortNode) joinNode.getLeftChild();
-    assertMergeSortNode(mergeSortNode);
-    leftSortNode = (SortNode) mergeSortNode.getChildren().get(1);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(leftSortNode, 1);
-    assertTableScan(
-        deviceTableScanNode, SHANGHAI_SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
+    assertTrue(joinNode.getLeftChild() instanceof ExchangeNode);
+    assertTrue(joinNode.getRightChild() instanceof ExchangeNode);
 
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
-    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof SortNode);
-    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof DeviceTableScanNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 2);
-    assertTableScan(deviceTableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
+    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof MergeSortNode);
+    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ExchangeNode);
 
     identitySinkNode =
-        (IdentitySinkNode) distributedQueryPlan.getFragments().get(3).getPlanNodeTree();
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(6).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 1) instanceof SortNode);
     assertTrue(getChildrenNode(identitySinkNode, 2) instanceof DeviceTableScanNode);
     deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 2);
@@ -320,6 +389,7 @@ public class JoinTest {
     assertTableScan(
         rightDeviceTableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
 
+    // Before ExchangeNode optimize
     /*
      * IdentitySinkNode-197
      *   └──OutputNode-21
@@ -344,18 +414,18 @@ public class JoinTest {
         new TableDistributedPlanner(
                 analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
             .plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(5, distributedQueryPlan.getFragments().size());
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 5) instanceof JoinNode);
     joinNode = (JoinNode) getChildrenNode(identitySinkNode, 5);
     assertTrue(joinNode.getLeftChild() instanceof ExchangeNode);
-    assertTrue(joinNode.getRightChild() instanceof MergeSortNode);
-    mergeSortNode = (MergeSortNode) joinNode.getRightChild();
-    assertNodeMatches(
-        mergeSortNode, MergeSortNode.class, SortNode.class, DeviceTableScanNode.class);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(mergeSortNode, 2);
-    assertTableScan(deviceTableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
+    assertTrue(joinNode.getRightChild() instanceof ExchangeNode);
+
+    mergeSortNode =
+        (MergeSortNode)
+            distributedQueryPlan.getFragments().get(2).getPlanNodeTree().getChildren().get(0);
+    assertNodeMatches(mergeSortNode, MergeSortNode.class, ExchangeNode.class);
 
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
@@ -549,6 +619,22 @@ public class JoinTest {
                     builder.left(sort(tableScan1)).right(sort(tableScan2)).ignoreEquiCriteria())));
   }
 
+  @Test
+  public void aggregationTableScanWithJoinTest() {
+    PlanTester planTester = new PlanTester();
+    sql =
+        "select * from ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where tag1='Beijing' and tag2='A1' group by date_bin(1ms,time)) t0 "
+            + "join ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where tag1='Beijing' and tag2='A1' group by date_bin(1ms,time)) t1 "
+            + "on t0.date = t1.date";
+    logicalQueryPlan = planTester.createPlan(sql);
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(1), aggregationTableScan());
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(2), aggregationTableScan());
+  }
+
   @Ignore
   @Test
   public void otherInnerJoinTests() {
@@ -573,17 +659,292 @@ public class JoinTest {
         false);
   }
 
-  // ========== unsupported test ===============
   @Test
-  public void unsupportedJoinTest() {
-    // LEFT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 LEFT JOIN table1 t2 ON t1.time=t2.time",
-        "LEFT JOIN is not supported, only support INNER JOIN in current version");
+  public void testJoinSortProperties() {
+    // FULL JOIN
+    PlanTester planTester = new PlanTester();
+    sql =
+        "select * from table1 t1 "
+            + "full join table1 t2 using (time, s1)"
+            + "full join table1 t3 using (time, s1)";
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(
+            project(
+                join(
+                    sort(
+                        project(
+                            join(
+                                sort(tableScan("testdb.table1")),
+                                sort(tableScan("testdb.table1"))))),
+                    sort(tableScan("testdb.table1"))))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(project(join(exchange(), exchange()))));
+
+    // the sort node above JoinNode has been eliminated
+    assertPlan(planTester.getFragmentPlan(1), project(join(exchange(), exchange())));
+
+    assertPlan(planTester.getFragmentPlan(2), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(4), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(5), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(6), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(7), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(8), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(9), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(10), mergeSort(exchange(), exchange(), exchange()));
+
+    // LEFT
+    sql =
+        "select * from table1 t1 "
+            + "left join table1 t2 using (time, s1)"
+            + "left join table1 t3 using (time, s1)";
+    assertLeftOrInner(planTester);
+
+    // INNER JOIN
+    sql =
+        "select * from table1 t1 "
+            + "inner join table1 t2 using (time, s1)"
+            + "inner join table1 t3 using (time, s1)";
+    assertLeftOrInner(planTester);
 
     // RIGHT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 RIGHT JOIN table1 t2 ON t1.time=t2.time",
-        "RIGHT JOIN is not supported, only support INNER JOIN in current version");
+    sql =
+        "select * from table1 t1 "
+            + "right join table1 t2 using (time, s1)"
+            + "right join table1 t3 using (time, s1)";
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(
+            join(
+                sort(tableScan("testdb.table1")),
+                sort(join(sort(tableScan("testdb.table1")), sort(tableScan("testdb.table1")))))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(join(exchange(), exchange())));
+
+    assertPlan(planTester.getFragmentPlan(1), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(4), sort(tableScan("testdb.table1")));
+
+    // the sort node above JoinNode has been eliminated
+    assertPlan(planTester.getFragmentPlan(5), join(exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(6), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(10), mergeSort(exchange(), exchange(), exchange()));
+  }
+
+  private void assertLeftOrInner(PlanTester planTester) {
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(
+            join(
+                sort(join(sort(tableScan("testdb.table1")), sort(tableScan("testdb.table1")))),
+                sort(tableScan("testdb.table1")))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(join(exchange(), exchange())));
+
+    // the sort node above JoinNode has been eliminated
+    assertPlan(planTester.getFragmentPlan(1), join(exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(2), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(4), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(5), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(6), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(7), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(8), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(9), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(10), mergeSort(exchange(), exchange(), exchange()));
+  }
+
+  @Test
+  public void joinSortEliminationTest() {
+    PlanTester planTester = new PlanTester();
+    sql = "select * from table1 t1 " + "left join table1 t2 using (tag1, tag2, tag3, time)";
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(join(sort(tableScan("testdb.table1")), sort(tableScan("testdb.table1")))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(join(exchange(), exchange())));
+
+    assertPlan(planTester.getFragmentPlan(1), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(2), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(3), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(4), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(5), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(6), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(7), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(8), tableScan("testdb.table1"));
+
+    sql = "select * from table1 t1 " + "full join table1 t2 using (tag1, tag2, tag3, time)";
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(project(join(sort(tableScan("testdb.table1")), sort(tableScan("testdb.table1"))))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(project(join(exchange(), exchange()))));
+
+    assertPlan(planTester.getFragmentPlan(1), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(2), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(3), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(4), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(5), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(6), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(7), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(8), tableScan("testdb.table1"));
+  }
+
+  @Test
+  // case: lines of result are more than Integer.MAX_VALUE
+  public void crossJoinLargeDataTest() {
+    // lines = 46341
+    int lines = ((int) Math.sqrt(Integer.MAX_VALUE)) + 1;
+    try (SimpleNestedLoopCrossJoinOperator aggregationOperator =
+        genSimpleNestedLoopCrossJoinOperator(lines)) {
+      ListenableFuture<?> listenableFuture = aggregationOperator.isBlocked();
+      listenableFuture.get();
+      long count = 0;
+      while (!aggregationOperator.isFinished() && aggregationOperator.hasNext()) {
+        TsBlock tsBlock = aggregationOperator.next();
+        if (tsBlock != null) {
+          count += tsBlock.getPositionCount();
+        }
+        listenableFuture = aggregationOperator.isBlocked();
+        listenableFuture.get();
+      }
+      assertEquals((long) lines * lines, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private SimpleNestedLoopCrossJoinOperator genSimpleNestedLoopCrossJoinOperator(int lines) {
+
+    // Construct operator tree
+    QueryId queryId = new QueryId("stub_query");
+
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(
+            instanceId,
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                1, "SimpleNestedLoopCrossJoinOperator-test-instance-notification"));
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    driverContext.addOperatorContext(
+        1, new PlanNodeId("1"), TableScanOperator.class.getSimpleName());
+    driverContext.addOperatorContext(
+        2, new PlanNodeId("2"), TableScanOperator.class.getSimpleName());
+    driverContext.addOperatorContext(
+        3, new PlanNodeId("3"), SimpleNestedLoopCrossJoinOperator.class.getSimpleName());
+    return new SimpleNestedLoopCrossJoinOperator(
+        driverContext.getOperatorContexts().get(2),
+        genChildOperator(driverContext.getOperatorContexts().get(0), lines),
+        genChildOperator(driverContext.getOperatorContexts().get(1), lines),
+        new int[0],
+        new int[1],
+        Collections.singletonList(TSDataType.TIMESTAMP));
+  }
+
+  private Operator genChildOperator(OperatorContext operatorContext, int lines) {
+    return new Operator() {
+      boolean finished = false;
+
+      @Override
+      public OperatorContext getOperatorContext() {
+        return operatorContext;
+      }
+
+      @Override
+      public TsBlock next() {
+        TsBlockBuilder builder =
+            new TsBlockBuilder(Collections.singletonList(TSDataType.TIMESTAMP));
+        ColumnBuilder columnBuilder = builder.getValueColumnBuilders()[0];
+        for (int i = 0; i < lines; i++) {
+          columnBuilder.writeLong(1);
+        }
+        builder.declarePositions(lines);
+        TsBlock result =
+            builder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+        finished = true;
+        return result;
+      }
+
+      @Override
+      public boolean hasNext() throws Exception {
+        return !finished;
+      }
+
+      @Override
+      public void close() throws Exception {}
+
+      @Override
+      public boolean isFinished() throws Exception {
+        return finished;
+      }
+
+      @Override
+      public long calculateMaxPeekMemory() {
+        return 0;
+      }
+
+      @Override
+      public long calculateMaxReturnSize() {
+        return 0;
+      }
+
+      @Override
+      public long calculateRetainedSizeAfterCallingNext() {
+        return 0;
+      }
+
+      @Override
+      public long ramBytesUsed() {
+        return 0;
+      }
+    };
   }
 }

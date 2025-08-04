@@ -602,6 +602,18 @@ struct TShowVariablesResp {
   2: optional TClusterParameters clusterParameters
 }
 
+// Show confignodes
+struct TDataNodeInfo4InformationSchema {
+  1: required i32 dataNodeId
+  2: required i32 dataRegionNum
+  3: required i32 schemaRegionNum
+  4: required string rpcAddress
+  5: required i32 rpcPort
+  6: required i32 mppPort
+  7: required i32 dataConsensusPort
+  8: required i32 schemaConsensusPort
+}
+
 // Show datanodes
 struct TDataNodeInfo {
   1: required i32 dataNodeId
@@ -613,11 +625,16 @@ struct TDataNodeInfo {
   7: optional i32 cpuCoreNum
 }
 
-struct TAINodeInfo{
+struct TAINodeInfo {
   1: required i32 aiNodeId
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+}
+
+struct TShowDataNodes4InformationSchemaResp {
+  1: required common.TSStatus status
+  2: optional list<TDataNodeInfo4InformationSchema> dataNodesInfoList
 }
 
 struct TShowDataNodesResp {
@@ -642,6 +659,18 @@ struct TConfigNodeInfo {
 struct TShowConfigNodesResp {
   1: required common.TSStatus status
   2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
+// Show confignodes for information schema
+struct TConfigNodeInfo4InformationSchema {
+  1: required i32 configNodeId
+  2: required i32 consensusPort
+  5: required string roleType
+}
+
+struct TShowConfigNodes4InformationSchemaResp {
+  1: required common.TSStatus status
+  2: optional list<TConfigNodeInfo4InformationSchema> configNodesInfoList
 }
 
 // Show Database
@@ -692,6 +721,7 @@ struct TRegionInfo {
   10: optional i64 createTime
   11: optional string internalAddress
   12: optional i64 tsFileSize
+  13: optional i64 rawDataSize
 }
 
 struct TShowRegionResp {
@@ -888,10 +918,12 @@ struct TCreateTopicReq {
 struct TDropTopicReq {
     1: required string topicName
     2: optional bool ifExistsCondition
+    3: optional bool isTableModel
 }
 
 struct TShowTopicReq {
     1: optional string topicName
+    2: optional bool isTableModel
 }
 
 struct TShowTopicResp {
@@ -933,16 +965,19 @@ struct TSubscribeReq {
     1: required string consumerId
     2: required string consumerGroupId
     3: required set<string> topicNames
+    4: optional bool isTableModel
 }
 
 struct TUnsubscribeReq {
     1: required string consumerId
     2: required string consumerGroupId
     3: required set<string> topicNames
+    4: optional bool isTableModel
 }
 
 struct TShowSubscriptionReq {
     1: optional string topicName
+    2: optional bool isTableModel
 }
 
 struct TShowSubscriptionResp {
@@ -954,6 +989,13 @@ struct TShowSubscriptionInfo {
     1: required string topicName
     2: required string consumerGroupId
     3: required set<string> consumerIds
+    4: optional i64 creationTime
+}
+
+struct TDropSubscriptionReq {
+    1: required string subsciptionId
+    2: optional bool ifExistsCondition
+    3: optional bool isTableModel
 }
 
 struct TGetAllSubscriptionInfoResp {
@@ -1022,7 +1064,10 @@ struct TShowModelReq {
 
 struct TShowModelResp {
   1: required common.TSStatus status
-  2: required list<binary> modelInfoList
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
 }
 
 struct TGetModelInfoReq {
@@ -1033,6 +1078,33 @@ struct TGetModelInfoResp {
   1: required common.TSStatus status
   2: optional binary modelInfo
   3: optional common.TEndPoint aiNodeAddress
+}
+
+struct TUpdateModelInfoReq {
+    1: required string modelId
+    2: required i32 modelStatus
+    3: optional string attributes
+    4: optional list<i32> aiNodeIds
+    5: optional i32 inputLength
+    6: optional i32 outputLength
+}
+
+struct TDataSchemaForTable{
+    1: required string targetSql
+}
+
+struct TDataSchemaForTree{
+    1: required list<string> path
+}
+
+struct TCreateTrainingReq {
+    1: required string modelId
+    2: required bool isTableModel
+    3: required string existingModelId
+    4: optional TDataSchemaForTable dataSchemaForTable
+    5: optional TDataSchemaForTree dataSchemaForTree
+    6: optional map<string, string> parameters
+    7: optional list<list<i64>> timeRanges
 }
 
 // ====================================================
@@ -1101,7 +1173,7 @@ struct TAINodeRestartResp{
 }
 
 struct TAINodeRemoveReq{
-  1: required common.TAINodeLocation aiNodeLocation
+  1: optional common.TAINodeLocation aiNodeLocation
 }
 
 // ====================================================
@@ -1113,7 +1185,7 @@ enum TTestOperation {
 }
 
 // ====================================================
-// Table
+// Table Or View
 // ====================================================
 
 struct TAlterOrDropTableReq {
@@ -1122,6 +1194,7 @@ struct TAlterOrDropTableReq {
     3: required string queryId
     4: required byte operationType
     5: required binary updateInfo
+    6: optional bool isView
 }
 
 struct TDeleteTableDeviceReq {
@@ -1175,6 +1248,12 @@ struct TTableInfo {
    2: required string TTL
    3: optional i32 state
    4: optional string comment
+   5: optional i32 type
+}
+
+struct TCreateTableViewReq {
+    1: required binary tableInfo
+    2: required bool replace
 }
 
 service IConfigNodeRPCService {
@@ -1266,7 +1345,7 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-   * Set a new Databse, all fields in TDatabaseSchema can be customized
+   * Set a new Database, all fields in TDatabaseSchema can be customized
    * while the undefined fields will automatically use default values
    *
    * @return SUCCESS_STATUS if the new Database set successfully
@@ -1433,6 +1512,8 @@ service IConfigNodeRPCService {
 
   TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
 
+  TPermissionInfoResp getUser(string userName);
+
 
 
   // ======================================================
@@ -1481,8 +1562,8 @@ service IConfigNodeRPCService {
    */
   common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 
-  /** Stop the specific ConfigNode */
-  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
+  /** Stop the specific ConfigNode and clear data */
+  common.TSStatus stopAndClearConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /** The ConfigNode-leader will ping other ConfigNodes periodically */
   TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
@@ -1665,8 +1746,14 @@ service IConfigNodeRPCService {
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()
 
+  /** Show cluster DataNodes' information for information schema */
+  TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema()
+
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster ConfigNodes' information for information schema */
+  TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema()
 
   /** Show cluster Databases' information */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req)
@@ -1824,8 +1911,11 @@ service IConfigNodeRPCService {
   /** Create subscription */
   common.TSStatus createSubscription(TSubscribeReq req)
 
-  /** Close subscription */
+  /** Close subscription by consumer */
   common.TSStatus dropSubscription(TUnsubscribeReq req)
+
+  /** Close subscription by session */
+  common.TSStatus dropSubscriptionById(TDropSubscriptionReq req)
 
   /** Show Subscription on topic name, if name is empty, show all subscriptions */
   TShowSubscriptionResp showSubscription(TShowSubscriptionReq req)
@@ -1899,6 +1989,10 @@ service IConfigNodeRPCService {
    */
   TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
+
+  common.TSStatus createTraining(TCreateTrainingReq req)
+
   // ======================================================
   // Quota
   // ======================================================
@@ -1920,8 +2014,11 @@ service IConfigNodeRPCService {
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
 
+  /** Push heartbeat in shutdown */
+  common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
+
   // ======================================================
-  // Table
+  // Table Or View
   // ======================================================
 
   common.TSStatus createTable(binary tableInfo)
@@ -1939,5 +2036,9 @@ service IConfigNodeRPCService {
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
+
+  // Table view
+
+  common.TSStatus createTableView(TCreateTableViewReq req)
 }
 

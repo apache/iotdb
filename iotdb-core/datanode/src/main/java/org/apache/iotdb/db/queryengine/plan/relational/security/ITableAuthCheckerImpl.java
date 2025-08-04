@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -110,6 +111,23 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(result.getMessage());
     }
+  }
+
+  @Override
+  public boolean checkTablePrivilege4Pipe(
+      final String userName, final QualifiedObjectName tableName) {
+    return AuthorityChecker.SUPER_USER.equals(userName)
+        || AuthorityChecker.getTSStatus(
+                    AuthorityChecker.checkTablePermission(
+                        userName,
+                        tableName.getDatabaseName(),
+                        tableName.getObjectName(),
+                        PrivilegeType.SELECT),
+                    PrivilegeType.SELECT,
+                    tableName.getDatabaseName(),
+                    tableName.getObjectName())
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   @Override

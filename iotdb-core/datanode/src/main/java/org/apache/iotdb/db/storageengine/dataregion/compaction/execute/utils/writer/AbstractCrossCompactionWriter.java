@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -38,6 +39,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWriter {
 
@@ -53,6 +55,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   // device end time in each source seq file
   protected final long[] currentDeviceEndTime;
+  protected final boolean[] isCurrentDeviceExistedInSourceSeqFiles;
 
   // whether each target file is empty or not
   protected final boolean[] isEmptyFile;
@@ -69,6 +72,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];
+    isCurrentDeviceExistedInSourceSeqFiles = new boolean[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
     long memorySizeForEachWriter =
@@ -192,7 +196,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     boolean hasFlushedCurrentChunk = false;
     // If timestamp is later than the current source seq tsfile, then flush chunk writer and move to
     // next file
-    while (timestamp > currentDeviceEndTime[fileIndex]
+    while ((timestamp > currentDeviceEndTime[fileIndex]
+            || !isCurrentDeviceExistedInSourceSeqFiles[fileIndex])
         && fileIndex != seqTsFileResources.size() - 1) {
       if (!hasFlushedCurrentChunk) {
         // Flush chunk to current file before moving target file index
@@ -206,15 +211,15 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   private void checkIsDeviceExistAndGetDeviceEndTime() throws IOException {
     int fileIndex = 0;
     while (fileIndex < seqTsFileResources.size()) {
-      if (seqTsFileResources.get(fileIndex).getTimeIndexType() == 1) {
+      ITimeIndex timeIndex = seqTsFileResources.get(fileIndex).getTimeIndex();
+      if (timeIndex.getTimeIndexType() != ITimeIndex.FILE_TIME_INDEX_TYPE) {
         // the timeIndexType of resource is deviceTimeIndex
-        int finalFileIndex = fileIndex;
-        seqTsFileResources
-            .get(fileIndex)
-            .getEndTime(deviceId)
-            .ifPresent(endTime -> currentDeviceEndTime[finalFileIndex] = endTime);
+        Optional<Long> endTime = timeIndex.getEndTime(deviceId);
+        currentDeviceEndTime[fileIndex] = endTime.orElse(Long.MIN_VALUE);
+        isCurrentDeviceExistedInSourceSeqFiles[fileIndex] = endTime.isPresent();
       } else {
         long endTime = Long.MIN_VALUE;
+        boolean isDeviceExist = false;
         // Fast compaction get reader from cache map, while read point compaction get reader from
         // FileReaderManager
         Map<String, TimeseriesMetadata> deviceMetadataMap =
@@ -222,11 +227,13 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
           long tmpStartTime = entry.getValue().getStatistics().getStartTime();
           long tmpEndTime = entry.getValue().getStatistics().getEndTime();
-          if (tmpEndTime >= tmpStartTime && endTime < tmpEndTime) {
+          if (tmpEndTime >= tmpStartTime && endTime <= tmpEndTime) {
             endTime = tmpEndTime;
+            isDeviceExist = true;
           }
         }
-        currentDeviceEndTime[fileIndex] = endTime;
+        currentDeviceEndTime[fileIndex] = isDeviceExist ? endTime : Long.MIN_VALUE;
+        isCurrentDeviceExistedInSourceSeqFiles[fileIndex] = isDeviceExist;
       }
 
       fileIndex++;

@@ -79,7 +79,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -90,6 +91,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.realtime.mode", "log");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");
@@ -112,13 +114,14 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.vehicle.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,"))),
           handleFailure);
@@ -129,20 +132,25 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testSinkTabletFormat() throws Exception {
-    testSinkFormat("tablet");
+    testSinkFormat("tablet", false);
   }
 
   @Test
   public void testSinkTsFileFormat() throws Exception {
-    testSinkFormat("tsfile");
+    testSinkFormat("tsfile", false);
+  }
+
+  @Test
+  public void testTsFileFormatAndAsyncLoad() throws Exception {
+    testSinkFormat("tsfile", true);
   }
 
   @Test
   public void testSinkHybridFormat() throws Exception {
-    testSinkFormat("hybrid");
+    testSinkFormat("hybrid", false);
   }
 
-  private void testSinkFormat(final String format) throws Exception {
+  private void testSinkFormat(final String format, final boolean isAsyncLoad) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -161,7 +169,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -171,12 +180,14 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.format", format);
+      connectorAttributes.put("connector.load-tsfile-strategy", isAsyncLoad ? "async" : "sync");
       connectorAttributes.put("connector.realtime-first", "false");
 
       Assert.assertEquals(
@@ -195,7 +206,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -203,7 +215,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.vehicle.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))),
           handleFailure);
@@ -227,7 +239,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
               "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -238,7 +251,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.vehicle.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(
               new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,", "3,1.0,", "4,1.0,"))),
@@ -261,11 +274,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("forwarding-pipe-requests", "false");
       extractorAttributes.put("extractor.database-name", "test.*");
       extractorAttributes.put("extractor.table-name", "test.*");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "rename-database-processor");
       processorAttributes.put("processor.new-db-name", "Test1");
 
       connectorAttributes.put("connector", "write-back-sink");
+      connectorAttributes.put("user", "root");
 
       final TSStatus status =
           client.createPipe(
@@ -280,7 +295,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -365,7 +381,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -377,6 +394,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("capture.tree", "true");
       extractorAttributes.put("extractor.database-name", "test.*");
       extractorAttributes.put("extractor.table-name", "test.*");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -398,7 +416,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -406,7 +425,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.vehicle.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))),
           handleFailure);
@@ -416,13 +435,14 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
               "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.vehicle.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(
               new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,", "3,1.0,", "4,1.0,"))),
@@ -718,7 +738,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -734,6 +755,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.realtime.mode", "batch");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("sink", "iotdb-thrift-sink");
       connectorAttributes.put("sink.batch.enable", "false");
@@ -760,7 +782,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "create timeSeries root.vehicle.d0.s1 int32",
               "insert into root.vehicle.d0(time, s1) values (2, 1)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -771,7 +794,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.vehicle.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))));
 

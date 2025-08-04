@@ -25,11 +25,14 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -39,10 +42,12 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.impl.pipe.util.PipeExternalSourceLoadBalancer;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -53,6 +58,8 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -60,8 +67,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -136,7 +146,96 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
+    checkAndEnrichSourceAuthentication(env, createPipeRequest.getExtractorAttributes());
+    checkAndEnrichSinkAuthentication(env, createPipeRequest.getConnectorAttributes());
+
     return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
+  }
+
+  public static void checkAndEnrichSourceAuthentication(
+      final ConfigNodeProcedureEnv env, final Map<String, String> extractorAttributes) {
+    if (Objects.isNull(extractorAttributes)) {
+      return;
+    }
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+
+    if (extractorParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY)
+        || extractorParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USER_KEY)
+        || extractorParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY)
+        || extractorParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
+      final String hashedPassword =
+          env.getConfigManager()
+              .getPermissionManager()
+              .login4Pipe(
+                  extractorParameters.getStringByKeys(
+                      PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+                      PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+                      PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+                      PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY),
+                  extractorParameters.getStringByKeys(
+                      PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+                      PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+      if (Objects.isNull(hashedPassword)) {
+        throw new PipeException("Authentication failed.");
+      }
+      extractorParameters.addOrReplaceEquivalentAttributes(
+          new PipeParameters(
+              Collections.singletonMap(
+                  PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
+    }
+  }
+
+  public static void checkAndEnrichSinkAuthentication(
+      final ConfigNodeProcedureEnv env, final Map<String, String> connectorAttributes) {
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+
+    final String pluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
+      return;
+    }
+
+    if (connectorParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USER_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
+      final String hashedPassword =
+          env.getConfigManager()
+              .getPermissionManager()
+              .login4Pipe(
+                  connectorParameters.getStringByKeys(
+                      PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+                      PipeSinkConstant.SINK_IOTDB_USER_KEY,
+                      PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                      PipeSinkConstant.SINK_IOTDB_USERNAME_KEY),
+                  connectorParameters.getStringByKeys(
+                      PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+                      PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY));
+      if (Objects.isNull(hashedPassword)) {
+        throw new PipeException("Authentication failed.");
+      }
+      connectorParameters.addOrReplaceEquivalentAttributes(
+          new PipeParameters(
+              Collections.singletonMap(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, hashedPassword)));
+    }
   }
 
   @Override
@@ -172,6 +271,31 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           new PipeTaskMeta(
               new RecoverProgressIndex(senderDataNodeId, new SimpleProgressIndex(0, 0)),
               senderDataNodeId));
+    } else if (pipeStaticMeta.isSourceExternal()) {
+      // external source
+      final PipeExternalSourceLoadBalancer loadBalancer =
+          new PipeExternalSourceLoadBalancer(
+              pipeStaticMeta
+                  .getExtractorParameters()
+                  .getStringOrDefault(
+                      Arrays.asList(
+                          PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                          PipeSourceConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                      PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+      final int parallelism =
+          pipeStaticMeta
+              .getExtractorParameters()
+              .getIntOrDefault(
+                  Arrays.asList(
+                      EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),
+                  EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
+      loadBalancer
+          .balance(parallelism, pipeStaticMeta, env.getConfigManager())
+          .forEach(
+              (taskIndex, leaderNodeId) -> {
+                consensusGroupIdToTaskMetaMap.put(
+                    taskIndex, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, leaderNodeId));
+              });
     } else {
       // data regions & schema regions
       env.getConfigManager()

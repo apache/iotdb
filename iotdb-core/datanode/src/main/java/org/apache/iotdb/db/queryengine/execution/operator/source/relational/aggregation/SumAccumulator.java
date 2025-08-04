@@ -51,7 +51,7 @@ public class SumAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of Sum should be one column");
+    checkArgument(arguments.length == 1, "argument of SUM should be one column");
     switch (argumentDataType) {
       case INT32:
         addIntInput(arguments[0], mask);
@@ -73,13 +73,13 @@ public class SumAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation Sum : %s", argumentDataType));
+            String.format("Unsupported data type in SUM Aggregation: %s", argumentDataType));
     }
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "argument of Sum should be one column");
+    checkArgument(arguments.length == 1, "argument of SUM should be one column");
     switch (argumentDataType) {
       case INT32:
         removeIntInput(arguments[0]);
@@ -101,7 +101,7 @@ public class SumAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation Sum : %s", argumentDataType));
+            String.format("Unsupported data type in SUM Aggregation: %s", argumentDataType));
     }
   }
 

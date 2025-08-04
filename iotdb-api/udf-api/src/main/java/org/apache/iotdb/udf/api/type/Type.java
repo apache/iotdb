@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.udf.api.type;
 
+import org.apache.tsfile.utils.Binary;
+
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+
 /** A substitution class for TsDataType in UDF APIs. */
 public enum Type {
   /* BOOLEAN */
@@ -59,5 +65,47 @@ public enum Type {
 
   public byte getType() {
     return dataType;
+  }
+
+  public static Type valueOf(byte type) {
+    for (Type t : Type.values()) {
+      if (t.dataType == type) {
+        return t;
+      }
+    }
+    throw new IllegalArgumentException("Unsupported type: " + type);
+  }
+
+  public boolean checkObjectType(Object o) {
+    switch (this) {
+      case BOOLEAN:
+        return o instanceof Boolean;
+      case INT32:
+        return o instanceof Integer;
+      case INT64:
+      case TIMESTAMP:
+        return o instanceof Long;
+      case FLOAT:
+        return o instanceof Float;
+      case DOUBLE:
+        return o instanceof Double;
+      case DATE:
+        return o instanceof LocalDate;
+      case BLOB:
+        return o instanceof Binary;
+      case STRING:
+      case TEXT:
+        return o instanceof String;
+      default:
+        return false;
+    }
+  }
+
+  public static List<Type> allTypes() {
+    return Arrays.asList(BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, DATE, BLOB, STRING);
+  }
+
+  public static List<Type> numericTypes() {
+    return Arrays.asList(INT32, INT64, FLOAT, DOUBLE);
   }
 }

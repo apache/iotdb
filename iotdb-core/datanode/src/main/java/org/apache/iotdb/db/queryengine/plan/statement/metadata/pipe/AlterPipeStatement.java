@@ -37,6 +37,7 @@ import java.util.Map;
 public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private String userName;
   private boolean ifExistsCondition;
   private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
@@ -86,6 +87,10 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     return isTableModel;
   }
 
+  public String getUserName() {
+    return userName;
+  }
+
   public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
   }
@@ -120,6 +125,10 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   public void setTableModel(final boolean tableModel) {
     this.isTableModel = tableModel;
+  }
+
+  public void setUserName(String userName) {
+    this.userName = userName;
   }
 
   @Override

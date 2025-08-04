@@ -133,8 +133,9 @@ public class SingleDistinctAggregationToGroupBy implements Rule<AggregationNode>
                     ImmutableMap.of(),
                     singleGroupingSet(
                         ImmutableList.<Symbol>builder()
-                            .addAll(aggregation.getGroupingKeys())
+                            // make sure date_bin is in the last of GroupingKeys
                             .addAll(symbols)
+                            .addAll(aggregation.getGroupingKeys())
                             .build())))
             .setAggregations(
                 // remove DISTINCT flag from function calls

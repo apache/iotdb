@@ -97,6 +97,10 @@ public class JlineUtils {
               + "-"
               + username.hashCode();
       builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
+      // Set the maximum number of history records in the history file to 1,000 lines.
+      builder.variable(LineReader.HISTORY_FILE_SIZE, 1_000);
+      // Set the maximum number of history records in memory to 1,000 lines.
+      builder.variable(LineReader.HISTORY_SIZE, 1_000);
     }
 
     // TODO: since the lexer doesn't produce tokens for quotation marks, disable the highlighter to
@@ -113,6 +117,18 @@ public class JlineUtils {
     org.jline.reader.impl.DefaultParser parser = new org.jline.reader.impl.DefaultParser();
     builder.parser(parser);
     LineReader lineReader = builder.build();
+
+    try {
+      // Load the history file, if loading fails, purge the history file.
+      lineReader.getHistory().attach(lineReader);
+      lineReader.getHistory().load();
+    } catch (Exception e) {
+      try {
+        lineReader.getHistory().purge();
+      } catch (Exception ex) {
+        // Ignore
+      }
+    }
     if (OSUtils.IS_WINDOWS) {
       // If enabled cursor remains in begin parenthesis (gitbash).
       lineReader.setVariable(LineReader.BLINK_MATCHING_PAREN, 0);

@@ -83,7 +83,7 @@ public class StartClientScriptIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            sbinPath + File.separator + "start-cli.bat",
+            sbinPath + File.separator + "windows" + File.separator + "start-cli.bat",
             "-h",
             ip,
             "-p",
@@ -103,7 +103,7 @@ public class StartClientScriptIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            sbinPath + File.separator + "start-cli.bat",
+            sbinPath + File.separator + "windows" + File.separator + "start-cli.bat",
             "-h",
             ip,
             "-p",

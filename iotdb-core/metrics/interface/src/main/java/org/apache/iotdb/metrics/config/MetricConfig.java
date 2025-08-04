@@ -29,7 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -48,6 +50,10 @@ public class MetricConfig {
 
   /** The export port for prometheus to get metrics. */
   private Integer prometheusReporterPort = 9091;
+
+  private String prometheusReporterUsername = "";
+
+  private String prometheusReporterPassword = "";
 
   /** The iotdb config for iotdb reporter to push metric data. */
   private final IoTDBReporterConfig iotdbReporterConfig = new IoTDBReporterConfig();
@@ -127,6 +133,36 @@ public class MetricConfig {
     this.prometheusReporterPort = prometheusReporterPort;
   }
 
+  public boolean prometheusNeedAuth() {
+    return prometheusReporterUsername != null && !prometheusReporterUsername.isEmpty();
+  }
+
+  public String getPrometheusReporterUsername() {
+    return prometheusReporterUsername;
+  }
+
+  public String getDecodedPrometheusReporterUsername() {
+    return new String(
+        Base64.getDecoder().decode(prometheusReporterUsername), StandardCharsets.UTF_8);
+  }
+
+  public void setPrometheusReporterUsername(String prometheusReporterUsername) {
+    this.prometheusReporterUsername = prometheusReporterUsername;
+  }
+
+  public String getPrometheusReporterPassword() {
+    return prometheusReporterPassword;
+  }
+
+  public String getDecodedPrometheusReporterPassword() {
+    return new String(
+        Base64.getDecoder().decode(prometheusReporterPassword), StandardCharsets.UTF_8);
+  }
+
+  public void setPrometheusReporterPassword(String prometheusReporterPassword) {
+    this.prometheusReporterPassword = prometheusReporterPassword;
+  }
+
   public IoTDBReporterConfig getIoTDBReporterConfig() {
     return iotdbReporterConfig;
   }
@@ -181,6 +217,8 @@ public class MetricConfig {
     metricLevel = newMetricConfig.getMetricLevel();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
+    prometheusReporterUsername = newMetricConfig.getPrometheusReporterUsername();
+    prometheusReporterPassword = newMetricConfig.getPrometheusReporterPassword();
     internalReporterType = newMetricConfig.getInternalReportType();
 
     iotdbReporterConfig.copy(newMetricConfig.getIoTDBReporterConfig());

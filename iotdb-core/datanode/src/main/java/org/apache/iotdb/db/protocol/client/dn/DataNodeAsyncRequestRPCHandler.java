@@ -68,18 +68,24 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
     final Map<Integer, TDataNodeLocation> nodeLocationMap = context.getNodeLocationMap();
     final Map<Integer, ?> responseMap = context.getResponseMap();
     final CountDownLatch countDownLatch = context.getCountDownLatch();
+    final boolean keepSilent;
     switch (requestType) {
       case TEST_CONNECTION:
+        keepSilent = true;
+        break;
       case UPDATE_ATTRIBUTE:
-        return new AsyncTSStatusRPCHandler(
-            requestType,
-            requestId,
-            targetDataNode,
-            nodeLocationMap,
-            (Map<Integer, TSStatus>) responseMap,
-            countDownLatch);
+        keepSilent = false;
+        break;
       default:
         throw new UnsupportedOperationException("request type is not supported: " + requestType);
     }
+    return new AsyncTSStatusRPCHandler(
+        requestType,
+        requestId,
+        targetDataNode,
+        nodeLocationMap,
+        (Map<Integer, TSStatus>) responseMap,
+        countDownLatch,
+        keepSilent);
   }
 }

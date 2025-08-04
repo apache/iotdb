@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager.load.cache;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -32,12 +34,15 @@ import java.util.stream.Stream;
 public class RegionGroupCacheTest {
 
   private static final String DATABASE = "root.db";
+  private static final TConsensusGroupId GROUP_ID =
+      new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
 
   @Test
   public void getRegionStatusTest() {
     long currentTime = System.nanoTime();
     RegionGroupCache regionGroupCache =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2, 3, 4).collect(Collectors.toSet()), false);
+        new RegionGroupCache(
+            DATABASE, GROUP_ID, Stream.of(0, 1, 2, 3, 4).collect(Collectors.toSet()), false);
     regionGroupCache.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.cacheHeartbeatSample(
@@ -66,7 +71,8 @@ public class RegionGroupCacheTest {
   public void weakConsistencyRegionGroupStatusTest() {
     long currentTime = System.nanoTime();
     RegionGroupCache regionGroupCache =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()), false);
+        new RegionGroupCache(
+            DATABASE, GROUP_ID, Stream.of(0, 1, 2).collect(Collectors.toSet()), false);
     regionGroupCache.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.cacheHeartbeatSample(
@@ -102,7 +108,8 @@ public class RegionGroupCacheTest {
   public void strongConsistencyRegionGroupStatusTest() {
     long currentTime = System.nanoTime();
     RegionGroupCache regionGroupCache =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()), true);
+        new RegionGroupCache(
+            DATABASE, GROUP_ID, Stream.of(0, 1, 2).collect(Collectors.toSet()), true);
     regionGroupCache.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.cacheHeartbeatSample(
@@ -137,7 +144,7 @@ public class RegionGroupCacheTest {
   public void migrateRegionRegionGroupStatusTest() {
     long currentTime = System.nanoTime();
     RegionGroupCache regionGroupCache =
-        new RegionGroupCache(DATABASE, Stream.of(0).collect(Collectors.toSet()), true);
+        new RegionGroupCache(DATABASE, GROUP_ID, Stream.of(0).collect(Collectors.toSet()), true);
     regionGroupCache.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.updateCurrentStatistics();
@@ -145,7 +152,7 @@ public class RegionGroupCacheTest {
         RegionGroupStatus.Running, regionGroupCache.getCurrentStatistics().getRegionGroupStatus());
 
     regionGroupCache =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1).collect(Collectors.toSet()), true);
+        new RegionGroupCache(DATABASE, GROUP_ID, Stream.of(0, 1).collect(Collectors.toSet()), true);
     regionGroupCache.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.cacheHeartbeatSample(
@@ -155,7 +162,7 @@ public class RegionGroupCacheTest {
         RegionGroupStatus.Running, regionGroupCache.getCurrentStatistics().getRegionGroupStatus());
 
     regionGroupCache =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1).collect(Collectors.toSet()), true);
+        new RegionGroupCache(DATABASE, GROUP_ID, Stream.of(0, 1).collect(Collectors.toSet()), true);
     regionGroupCache.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.cacheHeartbeatSample(

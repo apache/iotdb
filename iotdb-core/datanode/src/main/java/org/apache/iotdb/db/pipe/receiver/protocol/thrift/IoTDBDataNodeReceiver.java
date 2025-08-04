@@ -22,46 +22,27 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferSliceReqHandler;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.RetryUtils;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReqV2;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
@@ -72,6 +53,25 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVi
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTableStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReqV2;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -93,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -108,7 +109,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -170,14 +170,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
-  private final SqlParser relationalSqlParser = new SqlParser();
-
-  private static final Set<String> ALREADY_CREATED_DATABASES = ConcurrentHashMap.newKeySet();
+  private static final Set<String> ALREADY_CREATED_TABLE_MODEL_DATABASES =
+      ConcurrentHashMap.newKeySet();
+  private final SqlParser tableSqlParser = new SqlParser();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
-  private long lastSuccessfulLoginTime = Long.MIN_VALUE;
+
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+
+  private PipeMemoryBlock allocatedMemoryBlock;
 
   static {
     try {
@@ -205,6 +206,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case HANDSHAKE_DATANODE_V1:
             {
               try {
+                if (PipeConfig.getInstance().isPipeEnableMemoryCheck()
+                    && PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
+                        < PipeConfig.getInstance().getPipeMinimumReceiverMemory()) {
+                  return new TPipeTransferResp(
+                      RpcUtils.getStatus(
+                          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
+                          "The receiver memory is not enough to handle the handshake request from datanode."));
+                }
                 return handleTransferHandshakeV1(
                     PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
               } finally {
@@ -215,6 +224,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case HANDSHAKE_DATANODE_V2:
             {
               try {
+                if (PipeConfig.getInstance().isPipeEnableMemoryCheck()
+                    && PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
+                        < PipeConfig.getInstance().getPipeMinimumReceiverMemory()) {
+                  return new TPipeTransferResp(
+                      RpcUtils.getStatus(
+                          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
+                          "The receiver memory is not enough to handle the handshake request from datanode."));
+                }
                 return handleTransferHandshakeV2(
                     PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
               } finally {
@@ -470,10 +487,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             Stream.of(
                     statementPair.getLeft().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndAddRedirectInfo(statementPair.getLeft()),
+                        : executeBatchStatementAndAddRedirectInfo(statementPair.getLeft()),
                     statementPair.getRight().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndAddRedirectInfo(statementPair.getRight()))
+                        : executeBatchStatementAndAddRedirectInfo(statementPair.getRight()))
                 .collect(Collectors.toList())));
   }
 
@@ -483,7 +500,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         PipeReceiverStatusHandler.getPriorStatus(
             (statementSet.isEmpty()
                     ? Stream.of(RpcUtils.SUCCESS_STATUS)
-                    : statementSet.stream().map(this::executeStatementAndAddRedirectInfo))
+                    : statementSet.stream().map(this::executeBatchStatementAndAddRedirectInfo))
                 .collect(Collectors.toList())));
   }
 
@@ -493,33 +510,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus tryLogin() {
-    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (clientSession == null
-        || !clientSession.isLogin()
-        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
-            && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
-      final TSStatus status =
-          SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
-              username,
-              password,
-              ZoneId.systemDefault().toString(),
-              SessionManager.CURRENT_RPC_VERSION,
-              IoTDBConstant.ClientVersion.V_1_0);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        lastSuccessfulLoginTime = System.currentTimeMillis();
-      }
-      return status;
-    }
-    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  protected boolean shouldLogin() {
+    // The idle time is updated per request
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    return clientSession == null || !clientSession.isLogin() || super.shouldLogin();
   }
 
   @Override
   protected String getReceiverFileBaseDir() throws DiskSpaceInsufficientException {
     // Get next receiver file base dir by folder manager
     return Objects.isNull(folderManager) ? null : folderManager.getNextFolder();
+  }
+
+  @Override
+  protected void markFileBaseDirStateAbnormal(String dir) {
+    folderManager.updateFolderState(dir, FolderManager.FolderState.ABNORMAL);
   }
 
   @Override
@@ -560,30 +565,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    if (Objects.nonNull(dataBaseName)) {
-      throw new PipeException(
-          "Async load tsfile does not support table model tsfile. Given database name: "
-              + dataBaseName);
-    }
-
-    final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
-    if (Objects.isNull(loadActiveListeningPipeDir)) {
+    if (!ActiveLoadUtil.loadFilesToActiveDir(dataBaseName, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");
-    }
-
-    for (final String absolutePath : absolutePaths) {
-      if (absolutePath == null) {
-        continue;
-      }
-      final File sourceFile = new File(absolutePath);
-      if (!Objects.equals(
-          loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
-              return null;
-            });
-      }
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -744,8 +727,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
    * request. So for each sub-status which needs to redirect, we record the device path using the
    * message field.
    */
-  private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
-    final TSStatus result = executeStatementAndClassifyExceptions(statement);
+  private TSStatus executeBatchStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
+    final TSStatus result = executeStatementAndClassifyExceptions(statement, 5);
 
     if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && result.getSubStatusSize() > 0) {
@@ -781,7 +764,48 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatementAndClassifyExceptions(final Statement statement) {
+    return executeStatementAndClassifyExceptions(statement, 1);
+  }
+
+  private TSStatus executeStatementAndClassifyExceptions(
+      final Statement statement, final int tryCount) {
+    long estimatedMemory = 0L;
+    final double pipeReceiverActualToEstimatedMemoryRatio =
+        PIPE_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
     try {
+      if (statement instanceof InsertBaseStatement) {
+        estimatedMemory = ((InsertBaseStatement) statement).ramBytesUsed();
+        for (int i = 0; i < tryCount; ++i) {
+          try {
+            allocatedMemoryBlock =
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocate(
+                        (long) (estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio));
+            break;
+          } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+            if (i == tryCount - 1) {
+              final String message =
+                  String.format(
+                      "Temporarily out of memory when executing statement %s, Requested memory: %s, "
+                          + "used memory: %s, free memory: %s, total non-floating memory: %s",
+                      statement,
+                      estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio,
+                      PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
+                      PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
+                      PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes());
+              if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Receiver id = {}: {}", receiverId.get(), message, e);
+              }
+              return new TSStatus(
+                      TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+                  .setMessage(message);
+            } else {
+              Thread.sleep(100L * (i + 1));
+            }
+          }
+        }
+      }
+
       final TSStatus result =
           executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -802,6 +826,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           statement,
           e);
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
+    } finally {
+      if (Objects.nonNull(allocatedMemoryBlock)) {
+        allocatedMemoryBlock.close();
+        allocatedMemoryBlock = null;
+      }
     }
   }
 
@@ -810,32 +839,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     if (statement == null) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
-    }
-
-    // Permission check
-    TSStatus permissionCheckStatus;
-    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-    if (clientSession == null
-        || !clientSession.isLogin()
-        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
-            && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
-      permissionCheckStatus = login();
-      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return permissionCheckStatus;
-      }
-      clientSession = SESSION_MANAGER.getCurrSession();
-    }
-    permissionCheckStatus = AuthorityChecker.checkAuthority(statement, clientSession);
-    if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
-          receiverId.get(),
-          statement.getType().name(),
-          username,
-          permissionCheckStatus);
-      return RpcUtils.getStatus(
-          permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
     }
 
     // Judge which model the statement belongs to
@@ -855,6 +858,30 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     } else {
       isTableModelStatement = false;
       databaseName = null;
+    }
+
+    // Permission check
+    final TSStatus loginStatus = loginIfNecessary();
+    if (loginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return loginStatus;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+
+    // For table model, the authority check is done in inner execution. No need to check here
+    if (!isTableModelStatement) {
+      final TSStatus permissionCheckStatus =
+          AuthorityChecker.checkAuthority(statement, clientSession);
+      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+            receiverId.get(),
+            statement.getType().name(),
+            username,
+            permissionCheckStatus);
+        return RpcUtils.getStatus(
+            permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
+      }
     }
 
     // Real execution of the statement
@@ -879,25 +906,30 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : status;
   }
 
-  private TSStatus login() {
-    final BasicOpenSessionResp openSessionResp =
-        SESSION_MANAGER.login(
-            SESSION_MANAGER.getCurrSession(),
-            username,
-            password,
-            ZoneId.systemDefault().toString(),
-            SessionManager.CURRENT_RPC_VERSION,
-            IoTDBConstant.ClientVersion.V_1_0);
-    if (openSessionResp.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to open session, username = {}, response = {}.",
-          receiverId.get(),
-          username,
-          openSessionResp);
+  @Override
+  protected TSStatus login() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+
+    if (session != null && !session.isLogin()) {
+      final BasicOpenSessionResp openSessionResp =
+          SESSION_MANAGER.login(
+              session,
+              username,
+              password,
+              ZoneId.systemDefault().toString(),
+              SessionManager.CURRENT_RPC_VERSION,
+              IoTDBConstant.ClientVersion.V_1_0);
       return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     }
-    lastSuccessfulLoginTime = System.currentTimeMillis();
-    return RpcUtils.SUCCESS_STATUS;
+
+    Long timeToExpire = SESSION_MANAGER.checkPasswordExpiration(username, password);
+    if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.ILLEGAL_PASSWORD.getStatusCode(),
+          "Password has expired, please use \"ALTER USER\" to change to a new one");
+    }
+
+    return AuthorityChecker.checkUser(username, password);
   }
 
   private TSStatus executeStatementForTableModel(
@@ -908,7 +940,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return Coordinator.getInstance()
           .executeForTableModel(
               shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
-              relationalSqlParser,
+              tableSqlParser,
               SESSION_MANAGER.getCurrSession(),
               SESSION_MANAGER.requestQueryId(),
               SESSION_MANAGER.getSessionInfoOfPipeReceiver(
@@ -918,7 +950,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
     } catch (final Exception e) {
-      ALREADY_CREATED_DATABASES.remove(databaseName);
+      ALREADY_CREATED_TABLE_MODEL_DATABASES.remove(databaseName);
 
       final Throwable rootCause = getRootCause(e);
       if (rootCause.getMessage() != null
@@ -932,7 +964,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return Coordinator.getInstance()
             .executeForTableModel(
                 shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
-                relationalSqlParser,
+                tableSqlParser,
                 SESSION_MANAGER.getCurrSession(),
                 SESSION_MANAGER.requestQueryId(),
                 SESSION_MANAGER.getSessionInfoOfPipeReceiver(
@@ -949,10 +981,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private void autoCreateDatabaseIfNecessary(final String database) {
-    if (ALREADY_CREATED_DATABASES.contains(database)) {
+    if (ALREADY_CREATED_TABLE_MODEL_DATABASES.contains(database)) {
       return;
     }
 
+    Coordinator.getInstance().getAccessControl().checkCanCreateDatabase(username, database);
     final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 
@@ -976,7 +1009,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throw new PipeException("Auto create database failed because: " + e.getMessage());
     }
 
-    ALREADY_CREATED_DATABASES.add(database);
+    ALREADY_CREATED_TABLE_MODEL_DATABASES.add(database);
   }
 
   private TSStatus executeStatementForTreeModel(final Statement statement) {
@@ -997,24 +1030,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
       final String databaseName) {
     try {
-      // Permission check
-      final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-      if (clientSession == null
-          || !clientSession.isLogin()
-          || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
-              && lastSuccessfulLoginTime
-                  < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
-        final TSStatus result = login();
-        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return result;
-        }
+      final TSStatus status = loginIfNecessary();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       }
 
       final TSStatus result =
           Coordinator.getInstance()
               .executeForTableModel(
                   shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
-                  relationalSqlParser,
+                  tableSqlParser,
                   SESSION_MANAGER.getCurrSession(),
                   SESSION_MANAGER.requestQueryId(),
                   SESSION_MANAGER.getSessionInfoOfPipeReceiver(

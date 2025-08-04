@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -32,9 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
-  private String database;
-  private String tableName;
+public class PipeDeleteDevicesPlan extends AbstractTablePlan {
   private byte[] patternBytes;
   private byte[] filterBytes;
   private byte[] modBytes;
@@ -49,20 +47,10 @@ public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
       final @Nonnull byte[] patternBytes,
       final @Nonnull byte[] filterBytes,
       final @Nonnull byte[] modBytes) {
-    super(ConfigPhysicalPlanType.PipeDeleteDevices);
-    this.database = database;
-    this.tableName = tableName;
+    super(ConfigPhysicalPlanType.PipeDeleteDevices, database, tableName);
     this.patternBytes = patternBytes;
     this.filterBytes = filterBytes;
     this.modBytes = modBytes;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public String getTableName() {
-    return tableName;
   }
 
   public byte[] getPatternBytes() {
@@ -79,9 +67,7 @@ public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(database, stream);
-    ReadWriteIOUtils.write(tableName, stream);
+    super.serializeImpl(stream);
     ReadWriteIOUtils.write(patternBytes.length, stream);
     stream.write(patternBytes);
     ReadWriteIOUtils.write(filterBytes.length, stream);
@@ -92,8 +78,7 @@ public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    this.database = ReadWriteIOUtils.readString(buffer);
-    this.tableName = ReadWriteIOUtils.readString(buffer);
+    super.deserializeImpl(buffer);
     patternBytes = new byte[ReadWriteIOUtils.readInt(buffer)];
     buffer.get(patternBytes);
     filterBytes = new byte[ReadWriteIOUtils.readInt(buffer)];
@@ -104,25 +89,16 @@ public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    final PipeDeleteDevicesPlan that = (PipeDeleteDevicesPlan) obj;
-    return Objects.equals(this.database, that.database)
-        && Objects.equals(this.tableName, that.tableName)
-        && Arrays.equals(this.patternBytes, that.patternBytes)
-        && Arrays.equals(this.filterBytes, that.filterBytes)
-        && Arrays.equals(this.modBytes, that.modBytes);
+    return super.equals(obj)
+        && Arrays.equals(this.patternBytes, ((PipeDeleteDevicesPlan) obj).patternBytes)
+        && Arrays.equals(this.filterBytes, ((PipeDeleteDevicesPlan) obj).filterBytes)
+        && Arrays.equals(this.modBytes, ((PipeDeleteDevicesPlan) obj).modBytes);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        database,
-        tableName,
+        super.hashCode(),
         Arrays.hashCode(patternBytes),
         Arrays.hashCode(filterBytes),
         Arrays.hashCode(modBytes));

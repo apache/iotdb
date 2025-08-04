@@ -74,7 +74,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     receiverEnv
         .getConfig()
@@ -84,11 +87,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment(3, 3, 180);
@@ -123,6 +125,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("extractor", "iotdb-extractor");
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
@@ -198,6 +201,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("start-time", "0");
       extractorAttributes.put("end-time", "199");
       extractorAttributes.put("mode.streaming", realtimeMode);
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
@@ -281,6 +285,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           extractorAttributes.put("table-name", "test");
           extractorAttributes.put("start-time", "0");
           extractorAttributes.put("end-time", "300");
+          extractorAttributes.put("user", "root");
 
           connectorAttributes.put("connector", "iotdb-thrift-connector");
           connectorAttributes.put("connector.batch.enable", "false");
@@ -373,6 +378,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           extractorAttributes.put("table-name", "test1");
           extractorAttributes.put("start-time", "0");
           extractorAttributes.put("end-time", "300");
+          extractorAttributes.put("user", "root");
 
           connectorAttributes.put("connector", "iotdb-thrift-connector");
           connectorAttributes.put("connector.batch.enable", "false");
@@ -441,6 +447,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -501,6 +508,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test1");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test1");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -545,6 +553,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test1");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test1");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -584,6 +593,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(30, showPipeResult.size());
     }
   }
@@ -617,6 +627,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -656,7 +667,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         return;
       }
       t.join();
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
         return;
       }
 
@@ -699,6 +710,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -769,6 +781,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -792,7 +805,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         succeedNum++;
       }
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
       return;
     }
 
@@ -820,6 +833,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("database-name", "test");
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("table-name", "test");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.batch.enable", "false");
@@ -894,6 +908,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -926,6 +941,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("database-name", "test");
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("table-name", "test");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.batch.enable", "false");
@@ -970,9 +986,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
       showPipeResult =
           client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
     }
   }
@@ -1006,6 +1024,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 

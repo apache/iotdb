@@ -135,9 +135,22 @@ public class RegionReadExecutor {
       FragmentInstanceInfo info =
           fragmentInstanceManager.execDataQueryFragmentInstance(
               fragmentInstance, VirtualDataRegion.getInstance());
-      return RegionExecutionResult.create(!info.getState().isFailed(), info.getMessage(), null);
+      if (info == null) {
+        LOGGER.error(RESPONSE_NULL_ERROR_MSG);
+        return RegionExecutionResult.create(false, RESPONSE_NULL_ERROR_MSG, null);
+      } else {
+        RegionExecutionResult resp =
+            RegionExecutionResult.create(!info.getState().isFailed(), info.getMessage(), null);
+        info.getErrorCode()
+            .ifPresent(
+                s -> {
+                  resp.setStatus(s);
+                  resp.setReadNeedRetry(StatusUtils.needRetryHelper(s));
+                });
+        return resp;
+      }
     } catch (Throwable t) {
-      LOGGER.error("Execute FragmentInstance in QueryExecutor failed.", t);
+      LOGGER.warn("Execute FragmentInstance in QueryExecutor failed.", t);
       return RegionExecutionResult.create(
           false, String.format(ERROR_MSG_FORMAT, t.getMessage()), null);
     }

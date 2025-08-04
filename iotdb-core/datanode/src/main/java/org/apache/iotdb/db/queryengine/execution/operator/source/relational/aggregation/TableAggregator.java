@@ -37,7 +37,6 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator.QUERY_EXECUTION_METRICS;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
 
 public class TableAggregator {
   private final TableAccumulator accumulator;
@@ -106,13 +105,7 @@ public class TableAggregator {
   }
 
   public void processStatistics(Statistics[] statistics) {
-    long startTime = System.nanoTime();
-    try {
-      accumulator.addStatistics(statistics);
-    } finally {
-      QUERY_EXECUTION_METRICS.recordExecutionCost(
-          AGGREGATION_FROM_STATISTICS, System.nanoTime() - startTime);
-    }
+    accumulator.addStatistics(statistics);
   }
 
   public boolean hasFinalResult() {

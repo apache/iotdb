@@ -34,10 +34,10 @@ import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongConsumer;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -66,7 +66,8 @@ public class MPPQueryContext {
   // When some DataNode cannot be connected, its endPoint will be put
   // in this list. And the following retry will avoid planning fragment
   // onto this node.
-  private final List<TEndPoint> endPointBlackList;
+  // When dispatch FI fails, this structure may be modified concurrently
+  private final Set<TEndPoint> endPointBlackList;
 
   private final TypeProvider typeProvider = new TypeProvider();
 
@@ -82,11 +83,22 @@ public class MPPQueryContext {
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
 
+  private static final int minSizeToUseSampledTimeseriesOperandMemCost = 100;
+  private double avgTimeseriesOperandMemCost = 0;
+  private int numsOfSampledTimeseriesOperand = 0;
+  // When there is no view in a last query and no device exists in multiple regions,
+  // the updateScanNum process in distributed planning can be skipped.
+  private boolean needUpdateScanNumForLastQuery = false;
+
+  private long reservedMemoryCostForSchemaTree = 0;
+  private boolean releaseSchemaTreeAfterAnalyzing = true;
+  private LongConsumer reserveMemoryForSchemaTreeFunc = null;
+
   private boolean userQuery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
-    this.endPointBlackList = new LinkedList<>();
+    this.endPointBlackList = ConcurrentHashMap.newKeySet();
     this.memoryReservationManager =
         new NotThreadSafeMemoryReservationManager(queryId, this.getClass().getName());
   }
@@ -120,6 +132,34 @@ public class MPPQueryContext {
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
     this.initResultNodeContext();
+  }
+
+  public void setReserveMemoryForSchemaTreeFunc(LongConsumer reserveMemoryForSchemaTreeFunc) {
+    this.reserveMemoryForSchemaTreeFunc = reserveMemoryForSchemaTreeFunc;
+  }
+
+  public void reserveMemoryForSchemaTree(long memoryCost) {
+    if (reserveMemoryForSchemaTreeFunc == null) {
+      return;
+    }
+    reserveMemoryForSchemaTreeFunc.accept(memoryCost);
+    this.reservedMemoryCostForSchemaTree += memoryCost;
+  }
+
+  public void setReleaseSchemaTreeAfterAnalyzing(boolean releaseSchemaTreeAfterAnalyzing) {
+    this.releaseSchemaTreeAfterAnalyzing = releaseSchemaTreeAfterAnalyzing;
+  }
+
+  public boolean releaseSchemaTreeAfterAnalyzing() {
+    return releaseSchemaTreeAfterAnalyzing;
+  }
+
+  public void releaseMemoryForSchemaTree() {
+    if (reservedMemoryCostForSchemaTree <= 0) {
+      return;
+    }
+    this.memoryReservationManager.releaseMemoryCumulatively(reservedMemoryCostForSchemaTree);
+    reservedMemoryCostForSchemaTree = 0;
   }
 
   public void prepareForRetry() {
@@ -171,6 +211,10 @@ public class MPPQueryContext {
     return session;
   }
 
+  public void setSession(SessionInfo session) {
+    this.session = session;
+  }
+
   public long getStartTime() {
     return startTime;
   }
@@ -183,7 +227,7 @@ public class MPPQueryContext {
     this.endPointBlackList.add(endPoint);
   }
 
-  public List<TEndPoint> getEndPointBlackList() {
+  public Set<TEndPoint> getEndPointBlackList() {
     return endPointBlackList;
   }
 
@@ -344,7 +388,29 @@ public class MPPQueryContext {
     this.memoryReservationManager.releaseMemoryCumulatively(bytes);
   }
 
+  public boolean useSampledAvgTimeseriesOperandMemCost() {
+    return numsOfSampledTimeseriesOperand >= minSizeToUseSampledTimeseriesOperandMemCost;
+  }
+
+  public long getAvgTimeseriesOperandMemCost() {
+    return (long) avgTimeseriesOperandMemCost;
+  }
+
+  public void calculateAvgTimeseriesOperandMemCost(long current) {
+    numsOfSampledTimeseriesOperand++;
+    avgTimeseriesOperandMemCost +=
+        (current - avgTimeseriesOperandMemCost) / numsOfSampledTimeseriesOperand;
+  }
+
   // endregion
+
+  public boolean needUpdateScanNumForLastQuery() {
+    return needUpdateScanNumForLastQuery;
+  }
+
+  public void setNeedUpdateScanNumForLastQuery(boolean needUpdateScanNumForLastQuery) {
+    this.needUpdateScanNumForLastQuery = needUpdateScanNumForLastQuery;
+  }
 
   public Optional<String> getDatabaseName() {
     return session.getDatabaseName();
@@ -352,6 +418,10 @@ public class MPPQueryContext {
 
   public boolean isUserQuery() {
     return userQuery;
+  }
+
+  public boolean isQuery() {
+    return queryType != QueryType.WRITE;
   }
 
   public void setUserQuery(boolean userQuery) {

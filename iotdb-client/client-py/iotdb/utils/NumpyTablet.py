@@ -22,7 +22,7 @@ import numpy as np
 from numpy import ndarray
 from typing import List
 
-from iotdb.tsfile.utils.DateUtils import parse_date_to_int
+from iotdb.tsfile.utils.date_utils import parse_date_to_int
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.Tablet import ColumnType

@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -94,6 +95,18 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -151,6 +164,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -172,6 +186,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
@@ -189,6 +204,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -205,6 +221,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateTableViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
@@ -236,6 +253,7 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.Token;
@@ -270,10 +288,15 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.parser.AstBuilder.lowerIdentifier;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_FUNCTION;
@@ -1332,22 +1355,60 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // Create Model =====================================================================
-  public static void validateModelName(String modelName) {
-    if (modelName.length() < 2 || modelName.length() > 64) {
-      throw new SemanticException("Model name should be 2-64 characters");
-    } else if (modelName.startsWith("_")) {
-      throw new SemanticException("Model name should not start with '_'");
-    } else if (!modelName.matches("^[-\\w]*$")) {
-      throw new SemanticException("ModelName can only contain letters, numbers, and underscores");
+  public static void validateModelId(String modelId) {
+    if (modelId.length() < 2 || modelId.length() > 64) {
+      throw new SemanticException("ModelId should be 2-64 characters");
+    } else if (modelId.startsWith("_")) {
+      throw new SemanticException("ModelId should not start with '_'");
+    } else if (!modelId.matches("^[-\\w]*$")) {
+      throw new SemanticException("ModelId can only contain letters, numbers, and underscores");
     }
   }
 
   @Override
   public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
+    if (ctx.uriClause() == null) {
+      String modelId = ctx.modelId.getText();
+      CreateTrainingStatement createTrainingStatement = new CreateTrainingStatement(modelId);
+      if (ctx.hparamPair() != null) {
+        Map<String, String> parameterList = new HashMap<>();
+        for (IoTDBSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
+          parameterList.put(
+              hparamPairContext.hparamKey.getText(), hparamPairContext.hparamValue().getText());
+        }
+        createTrainingStatement.setParameters(parameterList);
+      }
+
+      if (ctx.existingModelId != null) {
+        createTrainingStatement.setExistingModelId(ctx.existingModelId.getText());
+      }
+
+      if (ctx.trainingData() == null) {
+        throw new UnsupportedOperationException("data should not be set for model training");
+      }
+
+      List<PartialPath> targetPath = new ArrayList<>();
+      List<List<Long>> timeRanges = new ArrayList<>();
+      for (IoTDBSqlParser.DataElementContext dataElementContext :
+          ctx.trainingData().dataElement()) {
+        if (dataElementContext.timeRange() != null) {
+          long currentTime = CommonDateTimeUtils.currentTime();
+          long startTime = parseTimeValue(dataElementContext.timeRange().timeValue(0), currentTime);
+          long endTime = parseTimeValue(dataElementContext.timeRange().timeValue(1), currentTime);
+          timeRanges.add(Arrays.asList(startTime, endTime));
+        } else {
+          timeRanges.add(Collections.emptyList());
+        }
+        targetPath.add(parsePrefixPath(dataElementContext.pathPatternElement().prefixPath()));
+      }
+      createTrainingStatement.setTargetTimeRanges(timeRanges);
+      createTrainingStatement.setTargetPathPatterns(targetPath);
+      return createTrainingStatement;
+    }
+    String modelId = ctx.modelId.getText();
+    validateModelId(modelId);
     CreateModelStatement createModelStatement = new CreateModelStatement();
-    String modelName = ctx.modelName.getText();
-    validateModelName(modelName);
-    createModelStatement.setModelName(parseIdentifier(modelName));
+    createModelStatement.setModelId(parseIdentifier(modelId));
     createModelStatement.setUri(parseAndValidateURI(ctx.uriClause()));
     return createModelStatement;
   }
@@ -1363,7 +1424,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitShowModels(IoTDBSqlParser.ShowModelsContext ctx) {
     ShowModelsStatement statement = new ShowModelsStatement();
     if (ctx.modelId != null) {
-      statement.setModelName(parseIdentifier(ctx.modelId.getText()));
+      statement.setModelId(parseIdentifier(ctx.modelId.getText()));
     }
     return statement;
   }
@@ -2059,6 +2120,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           LoadTsFileConfigurator.validateParameters(key, value);
           loadTsFileAttributes.put(key, value);
         }
+        LoadTsFileConfigurator.validateSynonymParameters(loadTsFileAttributes);
 
         loadTsFileStatement.setLoadAttributes(loadTsFileAttributes);
         return loadTsFileStatement;
@@ -3531,9 +3593,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           storageGroups.add(parsePrefixPath(prefixPathContext));
         }
       }
-      showRegionStatement.setStorageGroups(storageGroups);
+      showRegionStatement.setDatabases(storageGroups);
     } else {
-      showRegionStatement.setStorageGroups(null);
+      showRegionStatement.setDatabases(null);
     }
 
     if (ctx.ON() != null) {
@@ -3816,27 +3878,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new DropSchemaTemplateStatement(parseIdentifier(ctx.templateName.getText()));
   }
 
-  public Map<String, String> parseSyncAttributeClauses(
-      IoTDBSqlParser.SyncAttributeClausesContext ctx) {
-
-    Map<String, String> attributes = new HashMap<>();
-
-    List<IoTDBSqlParser.AttributePairContext> attributePairs = ctx.attributePair();
-    if (ctx.attributePair(0) != null) {
-      for (IoTDBSqlParser.AttributePairContext attributePair : attributePairs) {
-        attributes.put(
-            parseAttributeKey(attributePair.attributeKey()).toLowerCase(),
-            parseAttributeValue(attributePair.attributeValue()).toLowerCase());
-      }
-    }
-
-    return attributes;
-  }
-
   // PIPE
 
   @Override
-  public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) {
+  public Statement visitCreatePipe(final IoTDBSqlParser.CreatePipeContext ctx) {
     final CreatePipeStatement createPipeStatement =
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 
@@ -4085,6 +4130,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitDropSubscription(IoTDBSqlParser.DropSubscriptionContext ctx) {
+    final DropSubscriptionStatement dropSubscriptionStatement = new DropSubscriptionStatement();
+
+    if (ctx.subscriptionId != null) {
+      dropSubscriptionStatement.setSubscriptionId(parseIdentifier(ctx.subscriptionId.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in DROP SUBSCRIPTION, please enter subscriptionId.");
+    }
+
+    dropSubscriptionStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
+
+    return dropSubscriptionStatement;
+  }
+
+  @Override
   public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
@@ -4231,6 +4292,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     List<Integer> nodeIds =
         Collections.singletonList(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     return new RemoveDataNodeStatement(nodeIds);
+  }
+
+  @Override
+  public Statement visitRemoveAINode(IoTDBSqlParser.RemoveAINodeContext ctx) {
+    return new RemoveAINodeStatement();
   }
 
   @Override
@@ -4511,7 +4577,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         (QueryStatement)
             StatementGenerator.createStatement(sql.substring(1, sql.length() - 1), zoneId);
 
-    statement.setModelName(parseIdentifier(ctx.modelId.getText()));
+    statement.setModelId(parseIdentifier(ctx.modelId.getText()));
     statement.setHasModelInference(true);
 
     if (ctx.hparamPair() != null) {
@@ -4527,6 +4593,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                 "Window Function(e.g. HEAD, TAIL, COUNT) should be set in value when key is 'WINDOW' in CALL INFERENCE");
           }
           parseWindowFunctionInInference(valueContext.windowFunction(), statement);
+        } else if (paramKey.equalsIgnoreCase("GENERATETIME")) {
+          statement.setGenerateTime(
+              Boolean.parseBoolean(parseAttributeValue(valueContext.attributeValue())));
         } else {
           statement.addInferenceAttribute(
               paramKey, parseAttributeValue(valueContext.attributeValue()));
@@ -4553,6 +4622,136 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               Integer.parseInt(windowContext.step.getText()));
     }
     statement.setInferenceWindow(inferenceWindow);
+  }
+
+  @Override
+  public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
+    if (true) {
+      throw new SemanticException("The 'CreateTableView' is unsupported in tree sql-dialect.");
+    }
+    return new CreateTableViewStatement(
+        new CreateView(
+            null,
+            getQualifiedName(ctx.qualifiedName()),
+            ctx.viewColumnDefinition().stream()
+                .map(this::parseViewColumnDefinition)
+                .collect(Collectors.toList()),
+            null,
+            ctx.comment() == null
+                ? null
+                : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()),
+            Objects.nonNull(ctx.properties())
+                ? ctx.properties().propertyAssignments().property().stream()
+                    .map(this::parseProperty)
+                    .collect(Collectors.toList())
+                : ImmutableList.of(),
+            parsePrefixPath(ctx.prefixPath()),
+            Objects.nonNull(ctx.REPLACE()),
+            Objects.nonNull(ctx.RESTRICT())));
+  }
+
+  public ColumnDefinition parseViewColumnDefinition(
+      final IoTDBSqlParser.ViewColumnDefinitionContext ctx) {
+    final Identifier rawColumnName =
+        new Identifier(parseIdentifier(ctx.identifier().get(0).getText()));
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
+    Identifier originalMeasurement = null;
+
+    if (Objects.nonNull(ctx.FROM())) {
+      originalMeasurement = new Identifier(parseIdentifier(ctx.original_measurement.getText()));
+    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+      originalMeasurement = rawColumnName;
+    }
+
+    return columnCategory == FIELD
+        ? new ViewFieldDefinition(
+            null,
+            columnName,
+            Objects.nonNull(ctx.type())
+                ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
+                : null,
+            null,
+            ctx.comment() == null
+                ? null
+                : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()),
+            originalMeasurement)
+        : new ColumnDefinition(
+            null,
+            columnName,
+            Objects.nonNull(ctx.type())
+                ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
+                : null,
+            columnCategory,
+            null,
+            ctx.comment() == null
+                ? null
+                : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()));
+  }
+
+  public DataType parseGenericType(final IoTDBSqlParser.GenericTypeContext ctx) {
+    return new GenericDataType(
+        new Identifier(parseIdentifier(ctx.identifier().getText())),
+        ctx.typeParameter().stream()
+            .map(this::parseTypeParameter)
+            .map(DataTypeParameter.class::cast)
+            .collect(toImmutableList()));
+  }
+
+  public Node parseTypeParameter(final IoTDBSqlParser.TypeParameterContext ctx) {
+    if (ctx.INTEGER_LITERAL() != null) {
+      return new NumericParameter(ctx.getText());
+    }
+
+    return new TypeParameter(parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type()));
+  }
+
+  private Property parseProperty(final IoTDBSqlParser.PropertyContext ctx) {
+    final Identifier name = new Identifier(parseIdentifier(ctx.identifier().getText()));
+    final IoTDBSqlParser.PropertyValueContext valueContext = ctx.propertyValue();
+    return valueContext instanceof IoTDBSqlParser.DefaultPropertyValueContext
+        ? new Property(name)
+        : new Property(
+            name,
+            parseExpression(
+                ((IoTDBSqlParser.NonDefaultPropertyValueContext) valueContext)
+                    .literalExpression()));
+  }
+
+  private org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression parseExpression(
+      final IoTDBSqlParser.LiteralExpressionContext context) {
+    if (context.STRING_LITERAL() != null) {
+      return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral(
+          parseStringLiteral(context.getText()));
+    } else if (context.INTEGER_LITERAL() != null) {
+      return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral(
+          context.getText());
+    }
+    throw new UnsupportedOperationException("Currently other expressions are not supported");
+  }
+
+  private QualifiedName getQualifiedName(final IoTDBSqlParser.QualifiedNameContext context) {
+    return QualifiedName.of(
+        context.identifier().stream()
+            .map(identifierContext -> new Identifier(parseIdentifier(identifierContext.getText())))
+            .collect(Collectors.toList()));
+  }
+
+  public static TsTableColumnCategory getColumnCategory(final Token category) {
+    if (category == null) {
+      return FIELD;
+    }
+    switch (category.getType()) {
+      case IoTDBSqlParser.TAG:
+        return TAG;
+      case IoTDBSqlParser.TIME:
+        return TIME;
+      case IoTDBSqlParser.FIELD:
+        return FIELD;
+      default:
+        throw new UnsupportedOperationException(
+            "Unsupported ColumnCategory: " + category.getText());
+    }
   }
 
   @Override

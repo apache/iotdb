@@ -38,7 +38,6 @@ public class ResolvedFunction {
   private final FunctionId functionId;
   private final FunctionKind functionKind;
   private final boolean deterministic;
-
   private final FunctionNullability functionNullability;
 
   public ResolvedFunction(

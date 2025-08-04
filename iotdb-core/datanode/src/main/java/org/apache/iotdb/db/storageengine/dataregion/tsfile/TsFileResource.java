@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -56,6 +55,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
@@ -194,16 +194,18 @@ public class TsFileResource implements PersistentResource {
    */
   private TsFileResource originTsFileResource;
 
-  private ProgressIndex maxProgressIndex;
+  private final AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
   /** used to prevent circular replication in PipeConsensus */
-  private boolean isGeneratedByPipeConsensus = false;
+  private volatile boolean isGeneratedByPipeConsensus = false;
 
   /** used to prevent circular replication in Pipe */
-  private boolean isGeneratedByPipe = false;
+  private volatile boolean isGeneratedByPipe = false;
 
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
+
+  private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
   @TestOnly
   public TsFileResource() {
@@ -299,13 +301,14 @@ public class TsFileResource implements PersistentResource {
       ReadWriteIOUtils.write((String) null, outputStream);
     }
 
-    if (maxProgressIndex != null) {
+    if (maxProgressIndex.get() != null) {
       TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
-      maxProgressIndex.serialize(outputStream);
+      maxProgressIndex.get().serialize(outputStream);
     } else {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
 
+    TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
@@ -335,14 +338,17 @@ public class TsFileResource implements PersistentResource {
       while (inputStream.available() > 0) {
         final TsFileResourceBlockType blockType =
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
-        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        switch (blockType) {
+          case PROGRESS_INDEX:
+            maxProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
+            break;
+          case PIPE_MARK:
+            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
+            break;
+          default:
+            break;
         }
-      }
-
-      if (inputStream.available() > 0) {
-        isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
-        isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
       }
     }
   }
@@ -630,10 +636,10 @@ public class TsFileResource implements PersistentResource {
 
   // cannot use FileTimeIndex
   public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex && !definitelyNotContains(deviceId)) {
-      // checked above
-      //noinspection OptionalGetWithoutIsPresent
-      return ascending ? getStartTime(deviceId).get() : getEndTime(deviceId).get();
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return ascending
+          ? timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE)
+          : timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
     } else {
       return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
     }
@@ -641,12 +647,15 @@ public class TsFileResource implements PersistentResource {
 
   // can use FileTimeIndex
   public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
-    if (!definitelyNotContains(deviceId)) {
-      // checked above
-      //noinspection OptionalGetWithoutIsPresent
-      return ascending ? getStartTime(deviceId).get() : getEndTime(deviceId).get();
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      if (ascending) {
+        return timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE);
+      } else {
+        return timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
+      }
     } else {
-      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+      // FileTimeIndex
+      return ascending ? getFileStartTime() : getFileEndTime();
     }
   }
 
@@ -727,7 +736,6 @@ public class TsFileResource implements PersistentResource {
   public void closeWithoutSettingStatus() throws IOException {
     if (exclusiveModFile != null) {
       exclusiveModFile.close();
-      exclusiveModFile = null;
     }
     if (compactionModFile != null) {
       compactionModFile.close();
@@ -996,21 +1004,22 @@ public class TsFileResource implements PersistentResource {
       return false;
     }
 
-    // check above
-    long startTime = getStartTime(deviceId).get();
-    long endTime = isClosed() || !isSeq ? getEndTime(deviceId).get() : Long.MAX_VALUE;
-    if (startTime > endTime) {
-      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
-      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
-      LOGGER.warn(
-          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
-          startTime,
-          this,
-          endTime);
-      return false;
-    }
-
     if (timeFilter != null) {
+      // check above
+      long startTime = getStartTime(deviceId).get();
+      long endTime = isClosed() || !isSeq ? getEndTime(deviceId).get() : Long.MAX_VALUE;
+      if (startTime > endTime) {
+        // startTime > endTime indicates that there is something wrong with this TsFile. Return
+        // false
+        // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+        LOGGER.warn(
+            "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+            startTime,
+            this,
+            endTime);
+        return false;
+      }
+
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
@@ -1377,13 +1386,9 @@ public class TsFileResource implements PersistentResource {
       return;
     }
 
-    maxProgressIndex =
-        (maxProgressIndex == null
-            ? progressIndex
-            : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
-
-    PipeTimePartitionProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
+    if (!maxProgressIndex.compareAndSet(null, progressIndex)) {
+      maxProgressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+    }
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1391,10 +1396,7 @@ public class TsFileResource implements PersistentResource {
       return;
     }
 
-    maxProgressIndex = progressIndex;
-
-    PipeTimePartitionProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
+    maxProgressIndex.set(progressIndex);
   }
 
   @Override
@@ -1411,7 +1413,8 @@ public class TsFileResource implements PersistentResource {
   }
 
   public ProgressIndex getMaxProgressIndex() {
-    return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
+    final ProgressIndex index = maxProgressIndex.get();
+    return index == null ? MinimumProgressIndex.INSTANCE : index;
   }
 
   public boolean isEmpty() {
@@ -1557,5 +1560,13 @@ public class TsFileResource implements PersistentResource {
 
   public void setCompactionModFile(ModificationFile compactionModFile) {
     this.compactionModFile = compactionModFile;
+  }
+
+  public Map<IDeviceID, List<Pair<String, TimeValuePair>>> getLastValues() {
+    return lastValues;
+  }
+
+  public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
+    this.lastValues = lastValues;
   }
 }

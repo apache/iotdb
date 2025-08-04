@@ -1134,17 +1134,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();
-      Assert.assertTrue(resource.getCompactionModFile().exists());
       Assert.assertTrue(resource.anyModFileExists());
       if (i < 2) {
         Assert.assertEquals(3, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else if (i < 3) {
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else {
         Assert.assertEquals(1, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       }
     }
     task.start();
@@ -1157,8 +1153,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     TsFileResource resource =
         TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
     resource.resetModFile();
-    Assert.assertTrue(resource.anyModFileExists());
-    Assert.assertEquals(2, resource.getAllModEntries().size());
+    Assert.assertFalse(resource.anyModFileExists());
     Assert.assertFalse(resource.getCompactionModFile().exists());
   }
 }

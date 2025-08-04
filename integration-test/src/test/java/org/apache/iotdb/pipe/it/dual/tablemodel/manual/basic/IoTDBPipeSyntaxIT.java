@@ -100,6 +100,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
 
       List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       for (final String pipeName : expectedPipeNames) {
         Assert.assertTrue(
             showPipeResult.stream()
@@ -117,6 +118,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       showPipeResult = client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -189,6 +191,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
 
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -262,6 +265,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
 
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(2, showPipeResult.size());
     }
   }
@@ -329,6 +333,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
 
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
@@ -537,6 +542,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
 
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(2, showPipeResult.size());
     }
   }
@@ -564,6 +570,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.mode.strict", "true");
       extractorAttributes.put("extractor.start-time", "1");
       extractorAttributes.put("extractor.end-time", "2");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -595,10 +602,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
 
       List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(3, showPipeResult.size());
 
       showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true).setPipeName("p1")).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p3")));
@@ -609,6 +618,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
           client.showPipe(
                   new TShowPipeReq().setIsTableModel(true).setPipeName("p1").setWhereClause(true))
               .pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p3")));
@@ -699,6 +709,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
 
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
     }
   }

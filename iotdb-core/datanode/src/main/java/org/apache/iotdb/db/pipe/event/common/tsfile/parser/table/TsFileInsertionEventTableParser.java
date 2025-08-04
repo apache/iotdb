@@ -26,6 +26,8 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -43,6 +45,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final long startTime;
   private final long endTime;
   private final TablePattern tablePattern;
+  private final String userName;
 
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
@@ -50,14 +53,17 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final PipeMemoryBlock allocatedMemoryBlockForTableSchemas;
 
   public TsFileInsertionEventTableParser(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final TablePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
+      final String userName,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    super(null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pipeName, creationTime, null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
       this.allocatedMemoryBlockForChunk =
@@ -73,11 +79,24 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.endTime = endTime;
       this.tablePattern = pattern;
 
+      this.userName = userName;
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
     } catch (final Exception e) {
       close();
       throw e;
     }
+  }
+
+  public TsFileInsertionEventTableParser(
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final String userName,
+      final PipeInsertionEvent sourceEvent)
+      throws IOException {
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
   }
 
   @Override
@@ -95,8 +114,9 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                     new TsFileInsertionEventTableParserTabletIterator(
                         tsFileSequenceReader,
                         entry ->
-                            Objects.isNull(tablePattern)
-                                || tablePattern.matchesTable(entry.getKey()),
+                            (Objects.isNull(tablePattern)
+                                    || tablePattern.matchesTable(entry.getKey()))
+                                && hasTablePrivilege(entry.getKey()),
                         allocatedMemoryBlockForTablet,
                         allocatedMemoryBlockForBatchData,
                         allocatedMemoryBlockForChunk,
@@ -114,6 +134,18 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               close();
               throw new PipeException("Error while parsing tsfile insertion event", e);
             }
+          }
+
+          private boolean hasTablePrivilege(final String tableName) {
+            return Objects.isNull(userName)
+                || Objects.isNull(sourceEvent)
+                || Objects.isNull(sourceEvent.getTableModelDatabaseName())
+                || Coordinator.getInstance()
+                    .getAccessControl()
+                    .checkCanSelectFromTable4Pipe(
+                        userName,
+                        new QualifiedObjectName(
+                            sourceEvent.getTableModelDatabaseName(), tableName));
           }
 
           @Override

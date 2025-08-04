@@ -285,6 +285,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
             chunkSizeLowerBoundInCompaction, chunkPointNumLowerBoundInCompaction, true);
     // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then return false
+    // isCurrentDeviceExistedInSourceSeqFiles[fileIndex] should be true when fileIndex !=
+    // targetFileWriters.size() - 1
+    if (!isCurrentDeviceExistedInSourceSeqFiles[fileIndex]
+        && fileIndex != targetFileWriters.size() - 1) {
+      throw new IllegalArgumentException("The device should exist in current seq file");
+    }
     return isUnsealedChunkLargeEnough
         && (chunkMetadata.getEndTime() <= currentDeviceEndTime[fileIndex]
             || fileIndex == targetFileWriters.size() - 1);
@@ -295,6 +301,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
     // unsealed page is too small or page.endTime > file.endTime, then return false
+    // isCurrentDeviceExistedInSourceSeqFiles[fileIndex] should be true when fileIndex !=
+    // targetFileWriters.size() - 1
+    if (!isCurrentDeviceExistedInSourceSeqFiles[fileIndex]
+        && fileIndex != targetFileWriters.size() - 1) {
+      throw new IllegalArgumentException("The device should exist in current seq file");
+    }
     return isUnsealedPageLargeEnough
         && (pageHeader.getEndTime() <= currentDeviceEndTime[fileIndex]
             || fileIndex == targetFileWriters.size() - 1);

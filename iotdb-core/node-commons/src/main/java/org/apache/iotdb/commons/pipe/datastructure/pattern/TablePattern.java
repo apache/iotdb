@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -27,16 +27,16 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_DATABASE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_NAME_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_DATABASE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TABLE_NAME_KEY;
 
 public class TablePattern {
 
@@ -135,13 +135,13 @@ public class TablePattern {
   public static boolean isTableModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
     return sourceParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
+                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
         || sourceParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-                PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY),
             !sourceParameters
                 .getStringOrDefault(
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
@@ -151,7 +151,9 @@ public class TablePattern {
   @Override
   public String toString() {
     return "TablePattern{"
-        + "databasePattern="
+        + "isTableModelDataAllowedToBeCaptured="
+        + isTableModelDataAllowedToBeCaptured
+        + ", databasePattern="
         + databasePattern
         + ", tablePattern="
         + tablePattern

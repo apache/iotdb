@@ -95,7 +95,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", xDataType));
+            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
     }
   }
 
@@ -127,7 +127,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", xDataType));
+            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
     }
 
     return INSTANCE_SIZE + valuesSize + yFirstTimes.sizeOf() + inits.sizeOf() + xNulls.sizeOf();
@@ -163,7 +163,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", xDataType));
+            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
     }
   }
 
@@ -200,7 +200,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", xDataType));
+            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
     }
   }
 
@@ -234,7 +234,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstBy: %s", xDataType));
+            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
     }
   }
 
@@ -244,7 +244,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of FirstBy should be BinaryColumn");
+        "intermediate input and output of FIRST_BY should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -300,7 +300,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Aggregation: %s", xDataType));
+              String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
       }
     }
   }
@@ -309,7 +309,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of FirstBy should be BinaryColumn");
+        "intermediate input and output of FIRST_BY should be BinaryColumn");
 
     if (!inits.get(groupId)) {
       columnBuilder.appendNull();
@@ -353,7 +353,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
           return bytes;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", yDataType));
+              String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
       }
     }
     return bytes;
@@ -379,7 +379,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return 1;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type: %s", xDataType));
+            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
     }
   }
 
@@ -415,7 +415,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstBy: %s", xDataType));
+            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
     }
   }
 

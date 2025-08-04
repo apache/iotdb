@@ -37,7 +37,7 @@ public class StatisticsService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsService.class);
 
-  private static final long HEARTBEAT_INTERVAL =
+  public static final long STATISTICS_UPDATE_INTERVAL =
       ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
 
   private final LoadCache loadCache;
@@ -63,7 +63,7 @@ public class StatisticsService {
                 loadStatisticsExecutor,
                 this::updateLoadStatistics,
                 0,
-                HEARTBEAT_INTERVAL,
+                STATISTICS_UPDATE_INTERVAL,
                 TimeUnit.MILLISECONDS);
         LOGGER.info("LoadStatistics service is started successfully.");
       }

@@ -175,7 +175,7 @@ public class Util {
                 node.getOutputSymbols(),
                 node.getAssignments(),
                 ImmutableList.of(),
-                node.getIdAndAttributeIndexMap(),
+                node.getTagAndAttributeIndexMap(),
                 node.getScanOrder(),
                 node.getTimePredicate().orElse(null),
                 node.getPushDownPredicate(),
@@ -195,7 +195,7 @@ public class Util {
                 node.getOutputSymbols(),
                 node.getAssignments(),
                 ImmutableList.of(),
-                node.getIdAndAttributeIndexMap(),
+                node.getTagAndAttributeIndexMap(),
                 node.getScanOrder(),
                 node.getTimePredicate().orElse(null),
                 node.getPushDownPredicate(),
@@ -231,7 +231,7 @@ public class Util {
     Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
     return new ResolvedFunction(
         new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
-        new FunctionId("noop"),
+        FunctionId.NOOP_FUNCTION_ID,
         FunctionKind.AGGREGATE,
         true,
         FunctionNullability.getAggregationFunctionNullability(argumentTypes.size()));

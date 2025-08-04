@@ -450,6 +450,7 @@ public class RepairDataFileScanUtil {
       List<TsFileResource> resources, boolean printOverlappedDevices) {
     List<TsFileResource> overlapResources = new ArrayList<>();
     Map<IDeviceID, Long> deviceEndTimeMap = new HashMap<>();
+    Map<IDeviceID, TsFileResource> device2PreviousResourceMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       if (resource.getStatus() == TsFileResourceStatus.UNCLOSED
           || resource.getStatus() == TsFileResourceStatus.DELETED) {
@@ -478,9 +479,11 @@ public class RepairDataFileScanUtil {
         if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
           if (printOverlappedDevices) {
             logger.error(
-                "Device {} has overlapped data, start time in current file is {}, end time in previous file is {}",
+                "Device {} has overlapped data, start time in current file {} is {}, end time in previous file {} is {}",
                 device,
+                resource.getTsFile(),
                 deviceStartTimeInCurrentFile,
+                device2PreviousResourceMap.get(device),
                 deviceEndTimeInPreviousFile);
           }
           fileHasOverlap = true;
@@ -491,6 +494,7 @@ public class RepairDataFileScanUtil {
       // update end time map
       if (!fileHasOverlap) {
         for (IDeviceID device : devices) {
+          device2PreviousResourceMap.put(device, resource);
           deviceEndTimeMap.put(device, deviceTimeIndex.getEndTime(device).get());
         }
       }

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
@@ -96,14 +96,16 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
     final List<SubscriptionEvent> events = new ArrayList<>();
     final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
-    final AtomicInteger referenceCount = new AtomicInteger(dbTsFilePairs.size());
-    for (final Pair<String, File> tsFile : dbTsFilePairs) {
+    final AtomicInteger ackReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+    final AtomicInteger cleanReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+    for (final Pair<String, File> pair : dbTsFilePairs) {
       final SubscriptionCommitContext commitContext =
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(this, referenceCount),
-              tsFile.right,
+              new SubscriptionPipeTsFileBatchEvents(this, ackReferenceCount, cleanReferenceCount),
+              pair.right,
+              pair.left,
               commitContext));
     }
     return events;

@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHand
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewFieldDetectionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
@@ -66,6 +67,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
@@ -75,6 +77,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
@@ -96,6 +99,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -257,6 +261,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.updateRegionCache((TRegionRouteReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.NOTIFY_REGION_MIGRATION,
+        (req, client, handler) ->
+            client.notifyRegionMigration(
+                (TNotifyRegionMigrationReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.CHANGE_REGION_LEADER,
         (req, client, handler) ->
             client.changeRegionLeader(
@@ -375,9 +384,18 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.submitTestConnectionTask(
                 (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.SUBMIT_TEST_DN_INTERNAL_CONNECTION_TASK,
+        (req, client, handler) ->
+            client.submitInternalTestConnectionTask(
+                (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INSERT_RECORD,
+        (req, client, handler) ->
+            client.insertRecord((TSInsertRecordReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.UPDATE_TABLE,
         (req, client, handler) ->
@@ -436,6 +454,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.deleteTableDeviceInBlackList(
                 (TTableDeviceDeletionWithPatternOrModReq) req,
                 (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
+        (req, client, handler) ->
+            client.detectTreeDeviceViewFieldType(
+                (TDeviceViewReq) req, (TreeDeviceViewFieldDetectionHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->

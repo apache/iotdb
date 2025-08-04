@@ -84,6 +84,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -151,7 +152,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);
@@ -161,6 +163,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.inclusion.exclusion", "");
 
@@ -224,6 +227,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("extractor.mode", "forced-log");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -286,6 +290,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("mode.streaming", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -347,6 +352,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("extractor.mode", "hybrid");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -404,6 +410,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -474,6 +481,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -522,7 +530,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       t.join();
       client.stopPipe("p1");
       client.startPipe("p1");
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
         return;
       }
       TableModelUtils.assertCountData(
@@ -557,6 +565,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -607,7 +616,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
       return;
     }
 
@@ -625,6 +634,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("forwarding-pipe-requests", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -642,7 +652,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
       return;
     }
 
@@ -665,6 +675,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
       extractorAttributes.put("forwarding-pipe-requests", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -682,7 +693,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
       return;
     }
     insertResult = TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);
@@ -709,7 +720,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testPermission() {
-    createUser(senderEnv, "test", "test123");
+    createUser(senderEnv, "test", "test123123456");
 
     assertTableNonQueryTestFail(
         senderEnv,
@@ -721,35 +732,35 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
             + ")",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
-        "test123",
+        "test123123456",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipe testPipe",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
-        "test123",
+        "test123123456",
         null);
     assertTableTestFail(
         senderEnv,
         "show pipes",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
-        "test123",
+        "test123123456",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
-        "test123",
+        "test123123456",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "stop pipe testPipe",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
-        "test123",
+        "test123123456",
         null);
 
     assertTableNonQueryTestFail(
@@ -757,21 +768,21 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
-        "test123",
+        "test123123456",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipePlugin TestProcessor",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
-        "test123",
+        "test123123456",
         null);
     assertTableTestFail(
         senderEnv,
         "show pipe plugins",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
-        "test123",
+        "test123123456",
         null);
   }
 }

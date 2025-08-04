@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -179,20 +178,33 @@ public class IoTDBFlushQueryTableIT {
   }
 
   @Test
-  @Ignore
   public void testFlushNotExistGroupNoData() {
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.noexist.nodatagroup1");
+      statement.execute("CREATE DATABASE noexist_nodatagroup1");
       try {
-        statement.execute(
-            "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
+        statement.execute("FLUSH noexist_nodatagroup1,notExistGroup1,notExistGroup2");
       } catch (final SQLException sqe) {
-        String expectedMsg =
-            "322: 322: Database root.notExistGroup1,root.notExistGroup2 does not exist";
-        sqe.printStackTrace();
+        String expectedMsg = "Database notExistGroup1,notExistGroup2 does not exist";
         assertTrue(sqe.getMessage().contains(expectedMsg));
       }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testFlushTableAfterDropColumn() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database db1");
+      statement.execute("use db1");
+      statement.execute("create table t2(s1 text field, s2 text field)");
+      statement.execute("insert into t2(time,s2) values(2,'t1')");
+      statement.execute("alter table t2 drop column s2");
+      statement.execute("flush");
+      statement.execute("insert into t2(time,s1) values(2,'t1')");
     } catch (Exception e) {
       fail(e.getMessage());
     }

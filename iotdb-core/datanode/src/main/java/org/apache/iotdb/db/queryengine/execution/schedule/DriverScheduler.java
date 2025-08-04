@@ -578,7 +578,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           if (task.isEndState()) {
             return;
           }
-          logger.warn(
+          logger.info(
               "The task {} is aborted. All other tasks in the same query will be cancelled",
               task.getDriverTaskId());
         } finally {

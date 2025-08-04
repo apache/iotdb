@@ -46,7 +46,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-// @Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBRestartIT {
@@ -264,7 +263,7 @@ public class IoTDBRestartIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**")) {
         assertNotNull(resultSet);
         int cnt = 0;
         assertEquals(3, resultSet.getMetaData().getColumnCount());
@@ -292,7 +291,7 @@ public class IoTDBRestartIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**")) {
         assertNotNull(resultSet);
         int cnt = 0;
         assertEquals(2, resultSet.getMetaData().getColumnCount());
@@ -359,7 +358,7 @@ public class IoTDBRestartIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**")) {
         assertNotNull(resultSet);
         int cnt = 0;
         while (resultSet.next()) {

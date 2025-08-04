@@ -64,7 +64,7 @@ public abstract class DoubleTVList extends TVList {
   }
 
   @Override
-  public DoubleTVList clone() {
+  public synchronized DoubleTVList clone() {
     DoubleTVList cloneList = DoubleTVList.newList();
     cloneAs(cloneList);
     cloneBitMap(cloneList);

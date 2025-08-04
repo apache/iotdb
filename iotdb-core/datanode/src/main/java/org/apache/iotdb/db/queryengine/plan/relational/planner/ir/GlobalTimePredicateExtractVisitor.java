@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
@@ -197,7 +198,8 @@ public class GlobalTimePredicateExtractVisitor
     Expression thirdExpression = node.getMax();
 
     boolean isTimeFilter = false;
-    if (isTimeColumn(firstExpression, context.timeColumnName)) {
+    if (isTimeColumn(firstExpression, context.timeColumnName)
+        || isExtractTimeColumn(firstExpression, context.timeColumnName)) {
       isTimeFilter = checkBetweenConstantSatisfy(secondExpression, thirdExpression);
     }
     // TODO After Constant-Folding introduced
@@ -269,9 +271,19 @@ public class GlobalTimePredicateExtractVisitor
         && ((SymbolReference) e).getName().equalsIgnoreCase(timeColumnName);
   }
 
+  public static boolean isExtractTimeColumn(Expression e, String timeColumnName) {
+    return e instanceof Extract
+        && ((Extract) e).getExpression() instanceof SymbolReference
+        && ((SymbolReference) ((Extract) e).getExpression())
+            .getName()
+            .equalsIgnoreCase(timeColumnName);
+  }
+
   private static boolean checkIsTimeFilter(
       Expression timeExpression, String timeColumnName, Expression valueExpression) {
-    return isTimeColumn(timeExpression, timeColumnName) && valueExpression instanceof LongLiteral;
+    return (isTimeColumn(timeExpression, timeColumnName)
+            || isExtractTimeColumn(timeExpression, timeColumnName))
+        && valueExpression instanceof LongLiteral;
   }
 
   private static boolean checkBetweenConstantSatisfy(Expression e1, Expression e2) {

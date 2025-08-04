@@ -80,7 +80,7 @@ public class ImportDataTestIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "import-data.bat",
+            toolsPath + File.separator + "windows" + File.separator + "import-data.bat",
             "-h",
             ip,
             "-p",

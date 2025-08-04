@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 
 import java.time.ZoneId;
@@ -68,7 +69,7 @@ public class TestUtils {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  public static final Metadata TEST_MATADATA = new TestMatadata();
+  public static final Metadata TEST_MATADATA = new TestMetadata();
   public static final MPPQueryContext QUERY_CONTEXT =
       new MPPQueryContext("only for test", QUERY_ID, SESSION_INFO, null, null);
 
@@ -92,6 +93,31 @@ public class TestUtils {
         deviceTableScanNode.getDeviceEntries().stream()
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
+    assertEquals(ordering, deviceTableScanNode.getScanOrder());
+    assertEquals(pushLimit, deviceTableScanNode.getPushDownLimit());
+    assertEquals(pushOffset, deviceTableScanNode.getPushDownOffset());
+    if (deviceTableScanNode.getPushDownLimit() > 0) {
+      assertEquals(pushLimitToEachDevice, deviceTableScanNode.isPushLimitToEachDevice());
+    }
+    if (!pushDownFilter.isEmpty()) {
+      assert deviceTableScanNode.getPushDownPredicate() != null;
+      assertEquals(pushDownFilter, deviceTableScanNode.getPushDownPredicate().toString());
+    }
+  }
+
+  public static void assertTableScanWithoutEntryOrder(
+      DeviceTableScanNode deviceTableScanNode,
+      List<String> deviceEntries,
+      Ordering ordering,
+      long pushLimit,
+      long pushOffset,
+      boolean pushLimitToEachDevice,
+      String pushDownFilter) {
+    assertEquals(
+        ImmutableSet.copyOf(deviceEntries),
+        deviceTableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toSet()));
     assertEquals(ordering, deviceTableScanNode.getScanOrder());
     assertEquals(pushLimit, deviceTableScanNode.getPushDownLimit());
     assertEquals(pushOffset, deviceTableScanNode.getPushDownOffset());

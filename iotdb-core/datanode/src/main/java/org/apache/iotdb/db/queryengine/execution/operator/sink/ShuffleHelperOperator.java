@@ -102,7 +102,7 @@ public class ShuffleHelperOperator implements Operator {
       needToReturnNull = false;
       return null;
     }
-    return children.get(downStreamChannelIndex.getCurrentIndex()).next();
+    return children.get(downStreamChannelIndex.getCurrentIndex()).nextWithTimer();
   }
 
   @Override

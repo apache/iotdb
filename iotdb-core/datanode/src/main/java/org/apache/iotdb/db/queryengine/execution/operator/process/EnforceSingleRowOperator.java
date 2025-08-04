@@ -55,7 +55,7 @@ public class EnforceSingleRowOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    TsBlock tsBlock = child.next();
+    TsBlock tsBlock = child.nextWithTimer();
     if (tsBlock == null || tsBlock.isEmpty()) {
       return tsBlock;
     }

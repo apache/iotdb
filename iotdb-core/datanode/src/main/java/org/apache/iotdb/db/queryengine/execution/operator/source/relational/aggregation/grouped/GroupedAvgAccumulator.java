@@ -61,7 +61,7 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of Avg should be one column");
+    checkArgument(arguments.length == 1, "argument of AVG should be one column");
     switch (argumentDataType) {
       case INT32:
         addIntInput(groupIds, arguments[0], mask);
@@ -83,7 +83,7 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", argumentDataType));
+            String.format("Unsupported data type in AVG Aggregation: %s", argumentDataType));
     }
   }
 
@@ -93,7 +93,7 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of AVG should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (!argument.isNull(i)) {
@@ -106,7 +106,7 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of AVG should be BinaryColumn");
     if (countValues.get(groupId) == 0) {
       columnBuilder.appendNull();
     } else {

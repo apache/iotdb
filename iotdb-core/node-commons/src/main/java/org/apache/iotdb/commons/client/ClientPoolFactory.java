@@ -131,6 +131,7 @@ public class ClientPoolFactory {
                       .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
@@ -289,6 +290,33 @@ public class ClientPoolFactory {
                   ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxClientNumber())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
+      return clientPool;
+    }
+  }
+
+  public static class AsyncPipeTsFileDataTransferServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
+    @Override
+    public GenericKeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> createClientPool(
+        ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> manager) {
+      final GenericKeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new AsyncPipeDataTransferServiceClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      .setConnectionTimeoutMs(conf.getPipeConnectorTransferTimeoutMs())
+                      .setRpcThriftCompressionEnabled(
+                          conf.isPipeConnectorRPCThriftCompressionEnabled())
+                      .setSelectorNumOfAsyncClientManager(
+                          conf.getPipeAsyncConnectorSelectorNumber())
+                      .build(),
+                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
+              new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
+                  .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxTsFileClientNumber())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()

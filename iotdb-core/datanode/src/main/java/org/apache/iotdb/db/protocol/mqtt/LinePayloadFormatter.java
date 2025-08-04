@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -63,7 +64,7 @@ public class LinePayloadFormatter implements PayloadFormatter {
   }
 
   @Override
-  public List<Message> format(ByteBuf payload) {
+  public List<Message> format(String topic, ByteBuf payload) {
     List<Message> messages = new ArrayList<>();
     if (payload == null) {
       return messages;
@@ -71,6 +72,8 @@ public class LinePayloadFormatter implements PayloadFormatter {
 
     String txt = payload.toString(StandardCharsets.UTF_8);
     String[] lines = txt.split(LINE_BREAK);
+    // '/' previously defined as a database name
+    String database = !topic.contains("/") ? topic : topic.substring(0, topic.indexOf("/"));
     for (String line : lines) {
       if (line.trim().startsWith(WELL)) {
         continue;
@@ -82,6 +85,9 @@ public class LinePayloadFormatter implements PayloadFormatter {
           log.warn("Invalid line protocol format ,line is {}", line);
           continue;
         }
+
+        // Parsing Database Name
+        message.setDatabase((database));
 
         // Parsing Table Names
         message.setTable(matcher.group(TABLE));
@@ -119,6 +125,12 @@ public class LinePayloadFormatter implements PayloadFormatter {
       }
     }
     return messages;
+  }
+
+  @Override
+  @Deprecated
+  public List<Message> format(ByteBuf payload) {
+    throw new NotImplementedException();
   }
 
   private boolean setTags(Matcher matcher, TableMessage message) {

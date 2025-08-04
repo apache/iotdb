@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -46,6 +48,17 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
   private static final String STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO =
       "StorageEngine-Write-TimePartitionInfo";
   private static final String STORAGE_ENGINE_COMPACTION = "StorageEngine-Compaction";
+  private static final String STORAGE_ENGINE_PAM_ALLOCATION = "StorageEngine-PamAllocation";
+  private static final String STORAGE_ENGINE_PAM_RELEASE = "StorageEngine-PamRelease";
+  private static final String STORAGE_ENGINE_PAM_ALLOCATION_FAILURE =
+      "StorageEngine-PamAllocationFailure";
+  private static final String STORAGE_ENGINE_PAM_RELEASE_FAILURE =
+      "StorageEngine-PamReleaseFailure";
+
+  private Counter pamAllocationCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter pamReleaseCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter pamAllocationFailureCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter pamReleaseFailureCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -118,6 +131,47 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
+
+    pamAllocationCounter =
+        metricService.getOrCreateCounter(
+            Metric.PAM_ALLOCATED_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_PAM_ALLOCATION,
+            Tag.TYPE.toString(),
+            GlobalMemoryMetrics.ON_HEAP,
+            Tag.LEVEL.toString(),
+            GlobalMemoryMetrics.LEVELS[2]);
+    pamReleaseCounter =
+        metricService.getOrCreateCounter(
+            Metric.PAM_RELEASED_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_PAM_RELEASE,
+            Tag.TYPE.toString(),
+            GlobalMemoryMetrics.ON_HEAP,
+            Tag.LEVEL.toString(),
+            GlobalMemoryMetrics.LEVELS[2]);
+    pamAllocationFailureCounter =
+        metricService.getOrCreateCounter(
+            Metric.PAM_ALLOCATED_FAILURE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_PAM_ALLOCATION,
+            Tag.TYPE.toString(),
+            GlobalMemoryMetrics.ON_HEAP,
+            Tag.LEVEL.toString(),
+            GlobalMemoryMetrics.LEVELS[2]);
+    pamReleaseFailureCounter =
+        metricService.getOrCreateCounter(
+            Metric.PAM_RELEASED_FAILURE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_PAM_RELEASE,
+            Tag.TYPE.toString(),
+            GlobalMemoryMetrics.ON_HEAP,
+            Tag.LEVEL.toString(),
+            GlobalMemoryMetrics.LEVELS[2]);
   }
 
   private void unbindStorageEngineDividedMetrics(AbstractMetricService metricService) {
@@ -143,6 +197,46 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
                   Tag.LEVEL.toString(),
                   GlobalMemoryMetrics.LEVELS[2]);
             });
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.PAM_ALLOCATED_COUNT.toString(),
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_PAM_ALLOCATION,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.PAM_RELEASED_COUNT.toString(),
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_PAM_RELEASE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.PAM_ALLOCATED_FAILURE_COUNT.toString(),
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_PAM_ALLOCATION_FAILURE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.PAM_RELEASED_FAILURE_COUNT.toString(),
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_PAM_RELEASE_FAILURE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    pamReleaseCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    pamAllocationCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    pamReleaseFailureCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    pamAllocationFailureCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   }
 
   // endregion
@@ -302,6 +396,38 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
                   Tag.LEVEL.toString(),
                   GlobalMemoryMetrics.LEVELS[4]);
             });
+  }
+
+  public void incPamAllocation() {
+    pamAllocationCounter.inc();
+  }
+
+  public void incPamRelease() {
+    pamReleaseCounter.inc();
+  }
+
+  public void incPamAllocationFailure() {
+    pamAllocationFailureCounter.inc();
+  }
+
+  public void incPamReleaseFailure() {
+    pamReleaseFailureCounter.inc();
+  }
+
+  public long getPamAllocation() {
+    return pamAllocationCounter.getCount();
+  }
+
+  public long getPamRelease() {
+    return pamReleaseCounter.getCount();
+  }
+
+  public long getPamAllocationFailure() {
+    return pamAllocationFailureCounter.getCount();
+  }
+
+  public long getPamReleaseFailure() {
+    return pamReleaseFailureCounter.getCount();
   }
 
   // endregion

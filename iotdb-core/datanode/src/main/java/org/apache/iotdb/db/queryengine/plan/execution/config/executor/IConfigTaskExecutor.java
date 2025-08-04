@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -62,7 +63,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -73,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -223,6 +224,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);
 
+  SettableFuture<ConfigTaskResult> dropSubscription(
+      DropSubscriptionStatement dropSubscriptionStatement);
+
   SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement);
 
   SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
@@ -267,6 +271,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> removeConfigNode(
       RemoveConfigNodeStatement removeConfigNodeStatement);
 
+  SettableFuture<ConfigTaskResult> removeAINode(RemoveAINodeStatement removeAINodeStatement);
+
   SettableFuture<ConfigTaskResult> createContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context);
 
@@ -288,13 +294,6 @@ public interface IConfigTaskExecutor {
 
   TThrottleQuotaResp getThrottleQuota();
 
-  SettableFuture<ConfigTaskResult> createModel(
-      CreateModelStatement createModelStatement, MPPQueryContext context);
-
-  SettableFuture<ConfigTaskResult> dropModel(String modelName);
-
-  SettableFuture<ConfigTaskResult> showModels(String modelName);
-
   TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req);
 
   void handlePipeConfigClientExit(String clientId);
@@ -308,7 +307,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);
 
-  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB);
+  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB, final IClientSession session);
 
   SettableFuture<ConfigTaskResult> createDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifNotExists);
@@ -320,7 +319,10 @@ public interface IConfigTaskExecutor {
       final TsTable table, final String database, final boolean ifNotExists);
 
   SettableFuture<ConfigTaskResult> describeTable(
-      final String database, final String tableName, final boolean isDetails);
+      final String database,
+      final String tableName,
+      final boolean isDetails,
+      final Boolean isShowCreateView);
 
   SettableFuture<ConfigTaskResult> showTables(
       final String database, final Predicate<String> canSeenDB, final boolean isDetails);
@@ -332,7 +334,8 @@ public interface IConfigTaskExecutor {
       final String sourceName,
       final String targetName,
       final String queryId,
-      final boolean tableIfExists);
+      final boolean tableIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,
@@ -340,7 +343,8 @@ public interface IConfigTaskExecutor {
       final List<TsTableColumnSchema> columnSchemaList,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableRenameColumn(
       final String database,
@@ -349,7 +353,8 @@ public interface IConfigTaskExecutor {
       final String newName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableDropColumn(
       final String database,
@@ -357,21 +362,24 @@ public interface IConfigTaskExecutor {
       final String columnName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,
       final Map<String, String> properties,
       final String queryId,
-      final boolean ifExists);
+      final boolean ifExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableCommentTable(
       final String database,
       final String tableName,
       final String queryId,
       final boolean ifExists,
-      final String comment);
+      final String comment,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableCommentColumn(
       final String database,
@@ -380,13 +388,21 @@ public interface IConfigTaskExecutor {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
-      final String comment);
+      final String comment,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> dropTable(
-      final String database, final String tableName, final String queryId, final boolean ifExists);
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean ifExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> deleteDevice(
       final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo);
+
+  SettableFuture<ConfigTaskResult> createTableView(
+      final TsTable table, final String database, final boolean replace);
 
   SettableFuture<ConfigTaskResult> showVersion();
 
@@ -399,4 +415,20 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase);
 
   SettableFuture<ConfigTaskResult> showCurrentTimestamp();
+
+  // =============================== AI =========================================
+  SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);
+
+  SettableFuture<ConfigTaskResult> dropModel(String modelId);
+
+  SettableFuture<ConfigTaskResult> showModels(String modelId);
+
+  SettableFuture<ConfigTaskResult> createTraining(
+      String modelId,
+      boolean isTableModel,
+      Map<String, String> parameters,
+      List<List<Long>> timeRanges,
+      String existingModelId,
+      @Nullable String targetSql,
+      @Nullable List<String> pathList);
 }

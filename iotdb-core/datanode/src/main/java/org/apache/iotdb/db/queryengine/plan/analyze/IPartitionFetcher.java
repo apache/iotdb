@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -39,6 +37,11 @@ public interface IPartitionFetcher {
 
   /** Get schema partition without automatically create, used in write and query scenarios. */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
+
+  /** Get schema partition without automatically create, used in write and query scenarios. */
+  default SchemaPartition getSchemaPartition(PathPatternTree patternTree, String username) {
+    return getSchemaPartition(patternTree);
+  }
 
   /**
    * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
@@ -93,8 +96,6 @@ public interface IPartitionFetcher {
 
   /** Update region cache in partition cache when receive request from config node */
   boolean updateRegionCache(TRegionRouteReq req);
-
-  TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId id);
 
   /** Invalid all partition cache */
   void invalidAllCache();

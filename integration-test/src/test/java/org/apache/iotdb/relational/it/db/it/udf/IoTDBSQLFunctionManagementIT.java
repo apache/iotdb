@@ -20,6 +20,7 @@ package org.apache.iotdb.relational.it.db.it.udf;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -53,6 +54,12 @@ public class IoTDBSQLFunctionManagementIT {
       TableBuiltinScalarFunction.getBuiltInScalarFunctionName().size();
   private static final int BUILTIN_AGGREGATE_FUNCTIONS_COUNT =
       TableBuiltinAggregationFunction.values().length;
+  private static final int BUILTIN_TABLE_FUNCTIONS_COUNT =
+      TableBuiltinTableFunction.values().length;
+  private static final int BUILTIN_FUNCTIONS_COUNT =
+      BUILTIN_SCALAR_FUNCTIONS_COUNT
+          + BUILTIN_AGGREGATE_FUNCTIONS_COUNT
+          + BUILTIN_TABLE_FUNCTIONS_COUNT;
 
   private static final String UDF_LIB_PREFIX =
       System.getProperty("user.dir")
@@ -103,8 +110,7 @@ public class IoTDBSQLFunctionManagementIT {
           }
           ++count;
         }
-        Assert.assertEquals(
-            1 + BUILTIN_AGGREGATE_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT, count);
+        Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
       }
       statement.execute("drop function udsf");
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
@@ -121,8 +127,7 @@ public class IoTDBSQLFunctionManagementIT {
           }
           ++count;
         }
-        Assert.assertEquals(
-            BUILTIN_AGGREGATE_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT, count);
+        Assert.assertEquals(BUILTIN_FUNCTIONS_COUNT, count);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -154,8 +159,7 @@ public class IoTDBSQLFunctionManagementIT {
           }
           ++count;
         }
-        Assert.assertEquals(
-            1 + BUILTIN_AGGREGATE_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT, count);
+        Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
       }
       statement.execute("drop function udaf");
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
@@ -172,8 +176,7 @@ public class IoTDBSQLFunctionManagementIT {
           }
           ++count;
         }
-        Assert.assertEquals(
-            BUILTIN_AGGREGATE_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT, count);
+        Assert.assertEquals(BUILTIN_FUNCTIONS_COUNT, count);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -257,8 +260,7 @@ public class IoTDBSQLFunctionManagementIT {
         while (resultSet.next()) {
           ++count;
         }
-        Assert.assertEquals(
-            2 + BUILTIN_AGGREGATE_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT, count);
+        Assert.assertEquals(2 + BUILTIN_FUNCTIONS_COUNT, count);
         assertEquals(4, resultSet.getMetaData().getColumnCount());
       } catch (Exception e) {
         fail();

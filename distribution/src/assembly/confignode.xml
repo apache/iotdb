@@ -38,16 +38,6 @@
     </dependencySets>
     <fileSets>
         <fileSet>
-            <directory>${project.basedir}/../iotdb-core/confignode/src/assembly/resources/sbin</directory>
-            <outputDirectory>sbin</outputDirectory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/sbin</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
             <directory>${project.basedir}/../iotdb-core/confignode/src/assembly/resources/conf</directory>
             <outputDirectory>conf</outputDirectory>
         </fileSet>
@@ -55,11 +45,34 @@
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
         </fileSet>
-        <!--    <fileSet>-->
-        <!--      <directory>${project.basedir}/../confignode/src/assembly/resources/tools</directory>-->
-        <!--      <outputDirectory>tools</outputDirectory>-->
-        <!--      <fileMode>0755</fileMode>-->
-        <!--    </fileSet>-->
+        <fileSet>
+            <directory>${project.basedir}/../scripts/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+            <includes>
+                <include>iotdb-common.*</include>
+                <include>confignode-env.*</include>
+                <include>**/confignode-env.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../scripts/sbin</directory>
+            <outputDirectory>sbin</outputDirectory>
+            <includes>
+                <include>*confignode.*</include>
+                <include>**/*confignode.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../scripts/tools</directory>
+            <outputDirectory>tools</outputDirectory>
+            <includes>
+                <include>*confignode.*</include>
+                <include>**/*confignode.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
     </fileSets>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>

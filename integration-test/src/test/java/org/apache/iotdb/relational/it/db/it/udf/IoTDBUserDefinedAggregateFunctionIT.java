@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBUserDefinedAggregateFunctionIT {
   private static final String DATABASE_NAME = "test";
-  private static final String[] sqls =
+  protected static final String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
@@ -119,8 +119,6 @@ public class IoTDBUserDefinedAggregateFunctionIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
-    SQLFunctionUtils.createUDF(
-        "my_count", "org.apache.iotdb.db.query.udf.example.relational.MyCount");
   }
 
   @AfterClass
@@ -137,7 +135,6 @@ public class IoTDBUserDefinedAggregateFunctionIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
-        System.out.println(sql + ";");
         statement.execute(sql);
       }
     } catch (Exception e) {
@@ -147,6 +144,8 @@ public class IoTDBUserDefinedAggregateFunctionIT {
 
   @Test
   public void testMyCount() {
+    SQLFunctionUtils.createUDF(
+        "my_count", "org.apache.iotdb.db.query.udf.example.relational.MyCount");
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray =
         new String[] {
@@ -449,6 +448,9 @@ public class IoTDBUserDefinedAggregateFunctionIT {
         };
     tableResultSetEqualTest(
         "select my_count(time) from table1", expectedHeader, retArray, DATABASE_NAME);
+    // drop function and invoke
+    dropFunction();
+    tableAssertTestFail("select my_count(time) from table1", "Unknown function", DATABASE_NAME);
   }
 
   @Test
@@ -677,12 +679,12 @@ public class IoTDBUserDefinedAggregateFunctionIT {
         };
 
     tableResultSetEqualTest(
-        "select device_id, first_two_sum(s1, s2, time) as sum from table1 group by device_id",
+        "select device_id, first_two_sum(s1, s2, time) as sum from table1 group by device_id order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select device_id, first_two_sum(s1, s2, s9) as sum from table1 group by device_id",
+        "select device_id, first_two_sum(s1, s2, s9) as sum from table1 group by device_id order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -690,6 +692,8 @@ public class IoTDBUserDefinedAggregateFunctionIT {
 
   @Test
   public void testDistinct() {
+    SQLFunctionUtils.createUDF(
+        "my_count", "org.apache.iotdb.db.query.udf.example.relational.MyCount");
     String[] expectedHeader =
         new String[] {
           "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",

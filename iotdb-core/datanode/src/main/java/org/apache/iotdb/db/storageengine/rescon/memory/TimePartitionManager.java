@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
@@ -125,7 +125,7 @@ public class TimePartitionManager {
         if (timePartitionInfo == null) {
           return;
         }
-        timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize + Long.BYTES);
+        timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize);
         DataRegion dataRegion =
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
         if (dataRegion != null) {
@@ -151,7 +151,7 @@ public class TimePartitionManager {
       if (timePartitionInfoMapForRegion != null) {
         for (TimePartitionInfo timePartitionInfo : timePartitionInfoMapForRegion.values()) {
           if (timePartitionInfo != null) {
-            timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize + Long.BYTES);
+            timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize);
           }
         }
       }

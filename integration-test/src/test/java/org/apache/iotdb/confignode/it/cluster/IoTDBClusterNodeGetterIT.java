@@ -239,7 +239,7 @@ public class IoTDBClusterNodeGetterIT {
       }
 
       // Test stop ConfigNode
-      status = client.stopConfigNode(removedConfigNodeLocation);
+      status = client.stopAndClearConfigNode(removedConfigNodeLocation);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }
@@ -306,7 +306,7 @@ public class IoTDBClusterNodeGetterIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataNodeRemoveResp.getStatus().getCode());
 
       // Waiting for RemoveDataNodeProcedure
-      for (int retry = 0; retry < 10; retry++) {
+      for (int retry = 0; retry < 60; retry++) {
         showDataNodesResp = client.showDataNodes();
         if (showDataNodesResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && showDataNodesResp.getDataNodesInfoListSize() == testDataNodeNum - 1) {
@@ -315,7 +315,7 @@ public class IoTDBClusterNodeGetterIT {
 
         TimeUnit.SECONDS.sleep(1);
       }
-      fail("Remove DataNode failed");
+      fail("Remove DataNode failed, last showDataNodesResp: " + showDataNodesResp);
     }
   }
 }

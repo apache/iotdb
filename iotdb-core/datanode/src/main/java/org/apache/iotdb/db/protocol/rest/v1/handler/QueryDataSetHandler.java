@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -33,6 +34,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
 
 import javax.ws.rs.core.Response;
 
@@ -52,6 +55,7 @@ public class QueryDataSetHandler {
       IQueryExecution queryExecution, Statement statement, int actualRowSizeLimit)
       throws IoTDBException {
     if (statement instanceof ShowStatement
+        || statement instanceof ShowModelsStatement
         || statement instanceof AuthorStatement
         || statement instanceof GetRegionIdStatement) {
       return fillShowPlanDataSet(queryExecution, actualRowSizeLimit);
@@ -89,8 +93,10 @@ public class QueryDataSetHandler {
         new org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet();
 
     DatasetHeader datasetHeader = queryExecution.getDatasetHeader();
+    List<TSDataType> dataTypes = new ArrayList<>();
     int[] targetDataSetIndexToSourceDataSetIndex = new int[datasetHeader.getRespColumns().size()];
     for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
+      dataTypes.add(datasetHeader.getColumnHeaders().get(i).getColumnType());
       targetDataSet.addExpressionsItem(datasetHeader.getRespColumns().get(i));
       targetDataSet.addValuesItem(new ArrayList<>());
       targetDataSetIndexToSourceDataSetIndex[i] =
@@ -98,7 +104,11 @@ public class QueryDataSetHandler {
     }
 
     return fillQueryDataSetWithoutTimestamps(
-        queryExecution, targetDataSetIndexToSourceDataSetIndex, actualRowSizeLimit, targetDataSet);
+        queryExecution,
+        targetDataSetIndexToSourceDataSetIndex,
+        actualRowSizeLimit,
+        targetDataSet,
+        dataTypes);
   }
 
   private static Response fillShowPlanDataSet(
@@ -111,7 +121,11 @@ public class QueryDataSetHandler {
         queryExecution.getDatasetHeader(), targetDataSetIndexToSourceDataSetIndex, targetDataSet);
 
     return fillQueryDataSetWithoutTimestamps(
-        queryExecution, targetDataSetIndexToSourceDataSetIndex, actualRowSizeLimit, targetDataSet);
+        queryExecution,
+        targetDataSetIndexToSourceDataSetIndex,
+        actualRowSizeLimit,
+        targetDataSet,
+        null);
   }
 
   private static void initTargetDatasetOrderByOrderWithSourceDataSet(
@@ -139,6 +153,7 @@ public class QueryDataSetHandler {
     DatasetHeader header = queryExecution.getDatasetHeader();
     List<String> resultColumns = header.getRespColumns();
     Map<String, Integer> headerMap = header.getColumnNameIndexMap();
+    List<TSDataType> dataTypes = header.getRespDataTypes();
     for (String resultColumn : resultColumns) {
       targetDataSet.addExpressionsItem(resultColumn);
       targetDataSet.addValuesItem(new ArrayList<>());
@@ -182,10 +197,7 @@ public class QueryDataSetHandler {
           if (column.isNull(i)) {
             targetDataSetColumn.add(null);
           } else {
-            targetDataSetColumn.add(
-                column.getDataType().equals(TSDataType.TEXT)
-                    ? column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)
-                    : column.getObject(i));
+            addTypedValueToTarget(dataTypes, k, i, targetDataSetColumn, column);
           }
         }
         if (k != columnNum - 1) {
@@ -200,7 +212,8 @@ public class QueryDataSetHandler {
       IQueryExecution queryExecution,
       int[] targetDataSetIndexToSourceDataSetIndex,
       int actualRowSizeLimit,
-      org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet targetDataSet)
+      org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet targetDataSet,
+      List<TSDataType> dataTypes)
       throws IoTDBException {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
@@ -238,10 +251,7 @@ public class QueryDataSetHandler {
           if (column.isNull(i)) {
             targetDataSetColumn.add(null);
           } else {
-            targetDataSetColumn.add(
-                column.getDataType().equals(TSDataType.TEXT)
-                    ? column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)
-                    : column.getObject(i));
+            addTypedValueToTarget(dataTypes, k, i, targetDataSetColumn, column);
           }
         }
         if (k != columnNum - 1) {
@@ -250,6 +260,30 @@ public class QueryDataSetHandler {
       }
     }
     return Response.ok().entity(targetDataSet).build();
+  }
+
+  private static void addTypedValueToTarget(
+      List<TSDataType> dataTypes,
+      int colIndex,
+      int rowIndex,
+      List<Object> targetColumnList,
+      Column column) {
+    String dataTypeName = dataTypes != null ? dataTypes.get(colIndex).name() : null;
+
+    if (TSDataType.TEXT.name().equals(dataTypeName)) {
+      targetColumnList.add(column.getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
+    } else if (TSDataType.DATE.name().equals(dataTypeName)) {
+      int intValue = column.getInt(rowIndex);
+      targetColumnList.add(DateUtils.formatDate(intValue));
+    } else if (TSDataType.BLOB.name().equals(dataTypeName)) {
+      byte[] v = column.getBinary(rowIndex).getValues();
+      targetColumnList.add(BytesUtils.parseBlobByteArrayToString(v));
+    } else {
+      targetColumnList.add(
+          column.getDataType().equals(TSDataType.TEXT)
+              ? column.getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET)
+              : column.getObject(rowIndex));
+    }
   }
 
   public static Response fillGrafanaVariablesResult(

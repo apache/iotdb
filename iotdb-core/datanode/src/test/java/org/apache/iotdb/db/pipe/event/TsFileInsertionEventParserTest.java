@@ -558,11 +558,12 @@ public class TsFileInsertionEventParserTest {
       final long endTime,
       final boolean isQuery,
       final int expectedCount) {
-    PipeTsFileInsertionEvent tsFileInsertionEvent =
+    final PipeTsFileInsertionEvent tsFileInsertionEvent =
         new PipeTsFileInsertionEvent(
             false,
             "",
             new TsFileResource(tsFile),
+            null,
             true,
             false,
             false,
@@ -571,6 +572,8 @@ public class TsFileInsertionEventParserTest {
             null,
             null,
             null,
+            null,
+            true,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     try (final TsFileInsertionEventParser tsFileContainer =

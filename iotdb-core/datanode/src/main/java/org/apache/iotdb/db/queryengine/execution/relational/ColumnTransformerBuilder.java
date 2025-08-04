@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.relational;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -49,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
@@ -71,7 +71,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.TableCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
@@ -107,6 +109,21 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ab
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AcosColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AsinColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AtanColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitCount2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitCountColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseAnd2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseAndColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseLeftShift2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseLeftShiftColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseNotColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseOr2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseOrColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseRightShift2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseRightShiftArithmetic2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseRightShiftArithmeticColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseRightShiftColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseXor2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseXorColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CeilColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Concat2ColumnTransformer;
@@ -121,6 +138,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Di
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWith2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWithColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExpColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExtractTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FloorColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FormatColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrim2ColumnTransformer;
@@ -187,10 +205,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -205,7 +225,7 @@ public class ColumnTransformerBuilder
 
   @Override
   public ColumnTransformer visitExpression(Expression expression, Context context) {
-    throw new IllegalArgumentException(
+    throw new SemanticException(
         String.format(UNSUPPORTED_EXPRESSION, expression.getClass().getSimpleName()));
   }
 
@@ -335,6 +355,27 @@ public class ColumnTransformerBuilder
             node.isSafe()
                 ? new TryCastFunctionColumnTransformer(type, child, context.sessionInfo.getZoneId())
                 : new CastFunctionColumnTransformer(type, child, context.sessionInfo.getZoneId()));
+      }
+    }
+    return getColumnTransformerFromCacheAndAddReferenceCount(node, context);
+  }
+
+  @Override
+  protected ColumnTransformer visitExtract(Extract node, Context context) {
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        appendIdentityColumnTransformer(
+            node,
+            columnTransformer.getType(),
+            getTSDataType(columnTransformer.getType()),
+            context,
+            columnTransformer);
+      } else {
+        ColumnTransformer child = this.process(node.getExpression(), context);
+        context.cache.put(
+            node,
+            new ExtractTransformer(INT64, child, node.getField(), context.sessionInfo.getZoneId()));
       }
     }
     return getColumnTransformerFromCacheAndAddReferenceCount(node, context);
@@ -978,6 +1019,10 @@ public class ColumnTransformerBuilder
       }
       return new FormatColumnTransformer(
           STRING, columnTransformers, context.sessionInfo.getZoneId());
+    } else if (FAIL_FUNCTION_NAME.equalsIgnoreCase(functionName)) {
+      checkArgument(children.size() == 1 && children.get(0) instanceof StringLiteral);
+      return new FailFunctionColumnTransformer(
+          STRING, ((StringLiteral) children.get(0)).getValue());
     } else if (TableBuiltinScalarFunction.GREATEST
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
@@ -992,6 +1037,87 @@ public class ColumnTransformerBuilder
       Type returnType = columnTransformers.get(0).getType();
       return AbstractGreatestLeastColumnTransformer.getLeastColumnTransformer(
           returnType, columnTransformers);
+    } else if (TableBuiltinScalarFunction.BIT_COUNT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isLongLiteral(children.get(1))) {
+        final long bits = ((LongLiteral) children.get(1)).getParsedValue();
+        return new BitCountColumnTransformer(INT64, first, bits);
+      } else {
+        return new BitCount2ColumnTransformer(INT64, first, this.process(children.get(1), context));
+      }
+    } else if (TableBuiltinScalarFunction.BITWISE_AND
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isLongLiteral(children.get(1))) {
+        final long rightValue = ((LongLiteral) children.get(1)).getParsedValue();
+        return new BitwiseAndColumnTransformer(INT64, first, rightValue);
+      } else {
+        return new BitwiseAnd2ColumnTransformer(
+            INT64, first, this.process(children.get(1), context));
+      }
+    } else if (TableBuiltinScalarFunction.BITWISE_NOT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new BitwiseNotColumnTransformer(INT64, first);
+    } else if (TableBuiltinScalarFunction.BITWISE_OR
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isLongLiteral(children.get(1))) {
+        final long rightValue = ((LongLiteral) children.get(1)).getParsedValue();
+        return new BitwiseOrColumnTransformer(INT64, first, rightValue);
+      } else {
+        return new BitwiseOr2ColumnTransformer(
+            INT64, first, this.process(children.get(1), context));
+      }
+    } else if (TableBuiltinScalarFunction.BITWISE_XOR
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isLongLiteral(children.get(1))) {
+        final long rightValue = ((LongLiteral) children.get(1)).getParsedValue();
+        return new BitwiseXorColumnTransformer(INT64, first, rightValue);
+      } else {
+        return new BitwiseXor2ColumnTransformer(
+            INT64, first, this.process(children.get(1), context));
+      }
+    } else if (TableBuiltinScalarFunction.BITWISE_LEFT_SHIFT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isLongLiteral(children.get(1))) {
+        final long rightValue = ((LongLiteral) children.get(1)).getParsedValue();
+        return new BitwiseLeftShiftColumnTransformer(first.getType(), first, rightValue);
+      } else {
+        return new BitwiseLeftShift2ColumnTransformer(
+            first.getType(), first, this.process(children.get(1), context));
+      }
+    } else if (TableBuiltinScalarFunction.BITWISE_RIGHT_SHIFT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isLongLiteral(children.get(1))) {
+        final long rightValue = ((LongLiteral) children.get(1)).getParsedValue();
+        return new BitwiseRightShiftColumnTransformer(first.getType(), first, rightValue);
+      } else {
+        return new BitwiseRightShift2ColumnTransformer(
+            first.getType(), first, this.process(children.get(1), context));
+      }
+    } else if (TableBuiltinScalarFunction.BITWISE_RIGHT_SHIFT_ARITHMETIC
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isLongLiteral(children.get(1))) {
+        final long rightValue = ((LongLiteral) children.get(1)).getParsedValue();
+        return new BitwiseRightShiftArithmeticColumnTransformer(first.getType(), first, rightValue);
+      } else {
+        return new BitwiseRightShiftArithmetic2ColumnTransformer(
+            first.getType(), first, this.process(children.get(1), context));
+      }
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {

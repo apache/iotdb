@@ -19,28 +19,34 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ainode.AINodeClient;
+import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
+import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.commons.model.ModelStatus;
 import org.apache.iotdb.commons.model.ModelType;
 import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
-import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
-import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 public class ModelManager {
@@ -60,12 +66,23 @@ public class ModelManager {
       return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
           .setMessage(String.format("Model name %s already exists", req.modelName));
     }
-    return configManager.getProcedureManager().createModel(req.modelName, req.uri);
+    try {
+      if (req.uri.isEmpty()) {
+        return configManager.getConsensusManager().write(new CreateModelPlan(req.modelName));
+      }
+      return configManager.getProcedureManager().createModel(req.modelName, req.uri);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Unexpected error happened while getting model: ", e);
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
   }
 
   public TSStatus dropModel(TDropModelReq req) {
     if (modelInfo.checkModelType(req.getModelId()) != ModelType.USER_DEFINED) {
-      return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
           .setMessage(String.format("Built-in model %s can't be removed", req.modelId));
     }
     if (!modelInfo.contain(req.modelId)) {
@@ -76,22 +93,37 @@ public class ModelManager {
   }
 
   public TShowModelResp showModel(final TShowModelReq req) {
-    try {
-      final DataSet response = configManager.getConsensusManager().read(new ShowModelPlan(req));
-      return ((ModelTableResp) response).convertToThriftResponse();
-    } catch (final ConsensusException e) {
-      LOGGER.warn(
-          String.format("Unexpected error happened while showing model %s: ", req.getModelId()), e);
-      // consensus layer related errors
-      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
-      return new TShowModelResp(res, Collections.emptyList());
-    } catch (final IOException e) {
-      LOGGER.warn("Fail to get ModelTable", e);
-      return new TShowModelResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
+    List<TAINodeInfo> registeredAINodes =
+        configManager.getNodeManager().getRegisteredAINodeInfoList();
+    if (registeredAINodes.isEmpty()) {
+      return new TShowModelResp()
+          .setStatus(
+              new TSStatus(TSStatusCode.NO_AVAILABLE_AINODE.getStatusCode())
+                  .setMessage("Show models failed due to there is no AINode available"));
+    }
+    TAINodeInfo registeredAINode = registeredAINodes.get(0);
+    TEndPoint targetAINodeEndPoint =
+        new TEndPoint(registeredAINode.getInternalAddress(), registeredAINode.getInternalPort());
+    try (AINodeClient client =
+        AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint)) {
+      TShowModelsReq showModelsReq = new TShowModelsReq();
+      if (req.isSetModelId()) {
+        showModelsReq.setModelId(req.getModelId());
+      }
+      TShowModelsResp resp = client.showModels(showModelsReq);
+      TShowModelResp res =
+          new TShowModelResp().setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      res.setModelIdList(resp.getModelIdList());
+      res.setModelTypeMap(resp.getModelTypeMap());
+      res.setCategoryMap(resp.getCategoryMap());
+      res.setStateMap(resp.getStateMap());
+      return res;
+    } catch (Exception e) {
+      LOGGER.warn("Failed to show models due to", e);
+      return new TShowModelResp()
+          .setStatus(
+              new TSStatus(TSStatusCode.CAN_NOT_CONNECT_AINODE.getStatusCode())
+                  .setMessage(e.getMessage()));
     }
   }
 
@@ -122,6 +154,39 @@ public class ModelManager {
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TGetModelInfoResp(res);
+    }
+  }
+
+  // Currently this method is only used by built-in timer_xl
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
+    if (!modelInfo.contain(req.getModelId())) {
+      return new TSStatus(TSStatusCode.MODEL_NOT_FOUND_ERROR.getStatusCode())
+          .setMessage(String.format("Model %s doesn't exists", req.getModelId()));
+    }
+    try {
+      ModelInformation modelInformation =
+          new ModelInformation(ModelType.USER_DEFINED, req.getModelId());
+      modelInformation.updateStatus(ModelStatus.values()[req.getModelStatus()]);
+      modelInformation.setAttribute(req.getAttributes());
+      modelInformation.setInputColumnSize(1);
+      if (req.isSetOutputLength()) {
+        modelInformation.setOutputLength(req.getOutputLength());
+      }
+      if (req.isSetInputLength()) {
+        modelInformation.setInputLength(req.getInputLength());
+      }
+      UpdateModelInfoPlan updateModelInfoPlan =
+          new UpdateModelInfoPlan(req.getModelId(), modelInformation);
+      if (req.isSetAiNodeIds()) {
+        updateModelInfoPlan.setNodeIds(req.getAiNodeIds());
+      }
+      return configManager.getConsensusManager().write(updateModelInfoPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Unexpected error happened while updating model info: ", e);
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
     }
   }
 

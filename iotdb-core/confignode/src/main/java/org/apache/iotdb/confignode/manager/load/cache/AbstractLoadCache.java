@@ -57,7 +57,7 @@ public abstract class AbstractLoadCache {
                 CONF.getFailureDetectorPhiThreshold(),
                 CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
                 CONF.getHeartbeatIntervalInMs() * 200_000L,
-                60,
+                IFailureDetector.PHI_COLD_START_THRESHOLD,
                 new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
         break;
       case IFailureDetector.FIXED_DETECTOR:

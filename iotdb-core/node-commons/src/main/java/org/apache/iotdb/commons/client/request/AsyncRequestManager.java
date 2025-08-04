@@ -118,6 +118,14 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
       final AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
       final int retryNum,
       final Long timeoutInMs) {
+    sendAsyncRequest(requestContext, retryNum, timeoutInMs, false);
+  }
+
+  public void sendAsyncRequest(
+      final AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
+      final int retryNum,
+      final Long timeoutInMs,
+      final boolean keepSilent) {
     if (requestContext.getRequestIndices().isEmpty()) {
       return;
     }
@@ -155,7 +163,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
       }
     }
 
-    if (!requestContext.getRequestIndices().isEmpty()) {
+    if (!requestContext.getRequestIndices().isEmpty() && !keepSilent) {
       LOGGER.warn(
           "Failed to {} after {} retries, requestIndices: {}",
           requestType,

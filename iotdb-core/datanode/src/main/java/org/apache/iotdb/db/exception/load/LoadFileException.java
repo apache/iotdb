@@ -31,4 +31,8 @@ public class LoadFileException extends IoTDBException {
   public LoadFileException(Exception exception) {
     super(exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
   }
+
+  public LoadFileException(String message, Exception exception) {
+    super(message, exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+  }
 }

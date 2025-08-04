@@ -309,7 +309,9 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
       if (cachedNextRightBlock != null) {
         addRightBlockWithMemoryReservation(cachedNextRightBlock);
         cachedNextRightBlock = null;
-        tryCacheNextRightTsBlock();
+        if (rightChild.isBlocked().isDone()) {
+          tryCacheNextRightTsBlock();
+        }
       } else {
         if (rightChild.hasNextWithTimer()) {
           TsBlock block = rightChild.nextWithTimer();
@@ -323,6 +325,20 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
     } else {
       if (cachedNextRightBlock == null) {
         tryCacheNextRightTsBlock();
+      } else {
+        // if first value of block equals to last value of rightBlockList.get(0), append this block
+        // to
+        // rightBlockList
+        if (equalsTo(
+            cachedNextRightBlock,
+            rightJoinKeyPositions,
+            0,
+            rightBlockList.get(0),
+            rightJoinKeyPositions,
+            rightBlockList.get(0).getPositionCount() - 1)) {
+          addRightBlockWithMemoryReservation(cachedNextRightBlock);
+          cachedNextRightBlock = null;
+        }
       }
     }
   }

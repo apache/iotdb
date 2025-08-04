@@ -331,7 +331,7 @@ public class IoTConsensus implements IConsensus {
       try {
         // step 1: inactive new Peer to prepare for following steps
         logger.info("[IoTConsensus] inactivate new peer: {}", peer);
-        impl.inactivePeer(peer, false);
+        impl.inactivatePeer(peer, false);
 
         // step 2: notify all the other Peers to build the sync connection to newPeer
         logger.info("[IoTConsensus] notify current peers to build sync log...");
@@ -397,7 +397,7 @@ public class IoTConsensus implements IConsensus {
 
       try {
         // let target peer reject new write
-        impl.inactivePeer(peer, true);
+        impl.inactivatePeer(peer, true);
         KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
         // wait its SyncLog to complete
         impl.waitTargetPeerUntilSyncLogCompleted(peer);

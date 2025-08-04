@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -47,16 +47,16 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   public PipeRealtimeEvent(
       final EnrichedEvent event,
       final TsFileEpoch tsFileEpoch,
-      final Map<IDeviceID, String[]> device2Measurements,
-      final TreePattern treePattern,
-      final TablePattern tablePattern) {
+      final Map<IDeviceID, String[]> device2Measurements) {
     this(
         event,
         tsFileEpoch,
         device2Measurements,
         null,
-        treePattern,
-        tablePattern,
+        null,
+        null,
+        null,
+        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -68,6 +68,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
@@ -79,6 +81,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime);
 
@@ -103,7 +107,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     device2Measurements = null;
   }
 
-  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionExtractor extractor) {
+  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionSource extractor) {
     final TsFileEpoch.State state = tsFileEpoch.getState(extractor);
     return state.equals(TsFileEpoch.State.EMPTY) || state.equals(TsFileEpoch.State.USING_TABLET);
   }
@@ -158,6 +162,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public void bindProgressIndex(final ProgressIndex progressIndex) {
+    event.bindProgressIndex(progressIndex);
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
     return event.getProgressIndex();
   }
@@ -199,11 +208,21 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeRealtimeEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime),
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userName,
+            skipIfNoPrivileges,
+            startTime,
+            endTime),
         this.tsFileEpoch,
         // device2Measurements is not used anymore, so it is not copied.
         // If null is not passed, the field will not be GCed and may cause OOM.
@@ -211,6 +230,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime);
   }

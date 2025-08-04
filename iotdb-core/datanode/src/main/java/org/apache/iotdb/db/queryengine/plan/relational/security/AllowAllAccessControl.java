@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 
@@ -69,12 +70,27 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
+  public void checkCanSelectFromDatabase4Pipe(String userName, String databaseName) {
+    // allow anything
+  }
+
+  @Override
+  public boolean checkCanSelectFromTable4Pipe(String userName, QualifiedObjectName tableName) {
+    return true;
+  }
+
+  @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     // allow anything
   }
 
   @Override
   public void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanCreateViewFromTreePath(String userName, PartialPath path) {
     // allow anything
   }
 

@@ -29,6 +29,10 @@ public class SubscriptionConfig {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
+  public boolean getSubscriptionEnabled() {
+    return COMMON_CONFIG.getSubscriptionEnabled();
+  }
+
   public float getSubscriptionCacheMemoryUsagePercentage() {
     return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
   }
@@ -97,6 +101,14 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMaxAllowedEventCountInTabletBatch();
   }
 
+  public long getSubscriptionLogManagerWindowSeconds() {
+    return COMMON_CONFIG.getSubscriptionLogManagerWindowSeconds();
+  }
+
+  public long getSubscriptionLogManagerBaseIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionLogManagerBaseIntervalMs();
+  }
+
   public boolean getSubscriptionPrefetchEnabled() {
     return COMMON_CONFIG.getSubscriptionPrefetchEnabled();
   }
@@ -130,6 +142,8 @@ public class SubscriptionConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info("SubscriptionEnabled: {}", getSubscriptionEnabled());
+
     LOGGER.info(
         "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
     LOGGER.info(
@@ -171,6 +185,10 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionMaxAllowedEventCountInTabletBatch: {}",
         getSubscriptionMaxAllowedEventCountInTabletBatch());
+    LOGGER.info(
+        "SubscriptionLogManagerWindowSeconds: {}", getSubscriptionLogManagerWindowSeconds());
+    LOGGER.info(
+        "SubscriptionLogManagerBaseIntervalMs: {}", getSubscriptionLogManagerBaseIntervalMs());
 
     LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
     LOGGER.info(

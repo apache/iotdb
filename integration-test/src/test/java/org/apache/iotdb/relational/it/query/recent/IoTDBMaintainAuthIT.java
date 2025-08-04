@@ -43,7 +43,7 @@ public class IoTDBMaintainAuthIT {
   private static final String CREATE_USER_FORMAT = "create user %s '%s'";
   private static final String USER_1 = "user1";
   private static final String USER_2 = "user2";
-  private static final String PASSWORD = "password";
+  private static final String PASSWORD = "password123456";
 
   private static final String[] createSqls =
       new String[] {
@@ -53,12 +53,12 @@ public class IoTDBMaintainAuthIT {
         "INSERT INTO table1(time,device_id,s1) values(1, 'd1', 1)",
         String.format(CREATE_USER_FORMAT, USER_1, PASSWORD),
         "GRANT SELECT ON TABLE table1 TO USER " + USER_1,
-        "GRANT SELECT ON information_schema.queries TO USER " + USER_1,
         String.format(CREATE_USER_FORMAT, USER_2, PASSWORD)
       };
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }
@@ -166,22 +166,10 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 12: show queries
-    // user1 with select on information_schema.queries
+    // non-root users can access its own queries
     expectedHeader =
         new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement", "user"};
-    tableAssertTestFail(
-        "SHOW QUERIES",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
-        USER_1,
-        PASSWORD);
-    // user2 without select on information_schema.queries
-    tableAssertTestFail(
-        "SHOW QUERIES",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
-        USER_2,
-        PASSWORD);
+    tableQueryNoVerifyResultTest("show queries", expectedHeader, USER_2, PASSWORD);
 
     // case 13: kill query
     // user2

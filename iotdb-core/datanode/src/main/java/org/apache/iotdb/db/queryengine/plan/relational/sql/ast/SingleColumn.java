@@ -34,6 +34,11 @@ public class SingleColumn extends SelectItem {
   @Nullable private final Identifier alias;
   private final Expression expression;
 
+  // If there is Columns in expression, records the result of expanded
+  private List<Expression> expandedExpressions;
+  // Records the actual output column name of each Expression, used to compute output Scope.
+  private List<String> accordingColumnNames;
+
   public SingleColumn(Expression expression) {
     super(null);
     this.expression = requireNonNull(expression, "expression is null");
@@ -64,6 +69,22 @@ public class SingleColumn extends SelectItem {
 
   public Expression getExpression() {
     return expression;
+  }
+
+  public List<Expression> getExpandedExpressions() {
+    return expandedExpressions;
+  }
+
+  public void setExpandedExpressions(List<Expression> expandedExpressions) {
+    this.expandedExpressions = expandedExpressions;
+  }
+
+  public List<String> getAccordingColumnNames() {
+    return accordingColumnNames;
+  }
+
+  public void setAccordingColumnName(List<String> accordingColumnNames) {
+    this.accordingColumnNames = accordingColumnNames;
   }
 
   @Override

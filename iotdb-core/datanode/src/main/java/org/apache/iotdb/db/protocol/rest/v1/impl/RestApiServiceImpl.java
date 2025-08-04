@@ -41,8 +41,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateTableViewStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -102,21 +105,36 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
 
-      Response response = authorizationHandler.checkAuthority(securityContext, statement);
-      if (response != null) {
-        return response;
-      }
+      final ExecutionResult result;
       queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.executeForTreeModel(
-              statement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
-              sql.getSql(),
-              partitionFetcher,
-              schemaFetcher,
-              config.getQueryTimeoutThreshold(),
-              false);
+      if (statement instanceof CreateTableViewStatement) {
+        result =
+            COORDINATOR.executeForTableModel(
+                ((CreateTableViewStatement) statement).getCreateTableView(),
+                new SqlParser(),
+                SESSION_MANAGER.getCurrSession(),
+                queryId,
+                SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+                sql.getSql(),
+                LocalExecutionPlanner.getInstance().metadata,
+                config.getQueryTimeoutThreshold(),
+                false);
+      } else {
+        Response response = authorizationHandler.checkAuthority(securityContext, statement);
+        if (response != null) {
+          return response;
+        }
+        result =
+            COORDINATOR.executeForTreeModel(
+                statement,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+                sql.getSql(),
+                partitionFetcher,
+                schemaFetcher,
+                config.getQueryTimeoutThreshold(),
+                false);
+      }
       finish = true;
       return Response.ok()
           .entity(

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.I
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
+import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
@@ -42,7 +43,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.file.metadata.statistics.StringStatistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -56,7 +56,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -111,7 +110,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   private boolean allAggregatorsHasFinalResult = false;
 
-  public AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
+  protected AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
 
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
@@ -175,7 +174,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
     if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
       // for device which is not exist
-      deviceEntry = new AlignedDeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
+      deviceEntry = new AlignedDeviceEntry(SeriesScanUtil.EMPTY_DEVICE_ID, new Binary[0]);
     } else {
       deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     }
@@ -194,48 +193,63 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   }
 
   /** Return true if we have the result of this timeRange. */
-  protected boolean calculateAggregationResultForCurrentTimeRange() {
+  protected Optional<Boolean> calculateAggregationResultForCurrentTimeRange() {
     try {
       if (calcFromCachedData()) {
         updateResultTsBlock();
         checkIfAllAggregatorHasFinalResult();
-        return true;
+        return Optional.of(true);
       }
 
       if (readAndCalcFromPage()) {
         updateResultTsBlock();
         checkIfAllAggregatorHasFinalResult();
-        return true;
+        return Optional.of(true);
       }
 
       // only when all the page data has been consumed, we need to read the chunk data
       if (!seriesScanUtil.hasNextPage() && readAndCalcFromChunk()) {
         updateResultTsBlock();
         checkIfAllAggregatorHasFinalResult();
-        return true;
+        return Optional.of(true);
       }
 
       // only when all the page and chunk data has been consumed, we need to read the file data
-      if (!seriesScanUtil.hasNextPage()
-          && !seriesScanUtil.hasNextChunk()
-          && readAndCalcFromFile()) {
-        updateResultTsBlock();
-        checkIfAllAggregatorHasFinalResult();
-        return true;
+      if (!seriesScanUtil.hasNextPage()) {
+        Optional<Boolean> b = seriesScanUtil.hasNextChunk();
+        if (!b.isPresent()) {
+          return b;
+        }
+        if (!b.get() && readAndCalcFromFile()) {
+          updateResultTsBlock();
+          checkIfAllAggregatorHasFinalResult();
+          return Optional.of(true);
+        }
       }
 
       // If the TimeRange is (Long.MIN_VALUE, Long.MAX_VALUE), for Aggregators like countAggregator,
       // we have to consume all the data before we finish the aggregation calculation.
-      if (seriesScanUtil.hasNextPage()
-          || seriesScanUtil.hasNextChunk()
-          || seriesScanUtil.hasNextFile()) {
-        return false;
-      } else {
-        // all data of current device has been consumed
-        updateResultTsBlock();
-        timeIterator.resetCurTimeRange();
-        nextDevice();
+      if (seriesScanUtil.hasNextPage()) {
+        return Optional.of(false);
       }
+      Optional<Boolean> b = seriesScanUtil.hasNextChunk();
+      if (!b.isPresent()) {
+        return b;
+      }
+      if (b.get()) {
+        return Optional.of(false);
+      }
+      b = seriesScanUtil.hasNextFile();
+      if (!b.isPresent()) {
+        return b;
+      }
+      if (b.get()) {
+        return Optional.of(false);
+      }
+      // all data of current device has been consumed
+      updateResultTsBlock();
+      timeIterator.resetCurTimeRange();
+      nextDevice();
 
       if (currentDeviceIndex < deviceCount) {
         // construct AlignedSeriesScanUtil for next device
@@ -247,9 +261,9 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       if (currentDeviceIndex >= deviceCount) {
         // all devices have been consumed
         timeIterator.setFinished();
-        return true;
+        return Optional.of(true);
       } else {
-        return false;
+        return Optional.of(false);
       }
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
@@ -361,10 +375,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
             id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
-            deviceEntries
-                .get(currentDeviceIndex)
-                .getAttributeColumnValues()
-                .get(aggColumnsIndexArray[columnIdx]);
+            deviceEntries.get(currentDeviceIndex)
+                .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
         return getIdOrAttrColumn(inputRegion.getTimeColumn().getPositionCount(), attr);
       case FIELD:
         return inputRegion.getColumn(aggColumnsIndexArray[columnIdx]);
@@ -428,10 +440,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
             timeStatistics, id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
-            deviceEntries
-                .get(currentDeviceIndex)
-                .getAttributeColumnValues()
-                .get(aggColumnsIndexArray[columnIdx]);
+            deviceEntries.get(currentDeviceIndex)
+                .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
         return getStatistics(timeStatistics, attr);
       case FIELD:
         return valueStatistics[aggColumnsIndexArray[columnIdx]];
@@ -457,7 +467,14 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   public boolean readAndCalcFromFile() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
-    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextFile()) {
+    while (System.nanoTime() - start < leftRuntimeOfOneNextCall) {
+      Optional<Boolean> b = seriesScanUtil.hasNextFile();
+      if (!b.isPresent()) {
+        continue;
+      }
+      if (!b.get()) {
+        break;
+      }
       if (canUseStatistics && seriesScanUtil.canUseCurrentFileStatistics()) {
         Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
 
@@ -503,7 +520,14 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   protected boolean readAndCalcFromChunk() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
-    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextChunk()) {
+    while (System.nanoTime() - start < leftRuntimeOfOneNextCall) {
+      Optional<Boolean> b = seriesScanUtil.hasNextChunk();
+      if (!b.isPresent()) {
+        continue;
+      }
+      if (!b.get()) {
+        break;
+      }
       if (canUseStatistics && seriesScanUtil.canUseCurrentChunkStatistics()) {
         Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
 
@@ -656,7 +680,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         }
       } else {
         Binary attribute =
-            deviceEntries.get(deviceIndex).getAttributeColumnValues().get(groupingKeyIndex[i]);
+            deviceEntries.get(deviceIndex).getAttributeColumnValues()[groupingKeyIndex[i]];
         if (attribute == null) {
           columnBuilders[i].appendNull();
         } else {
@@ -672,11 +696,6 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       return false;
     }
 
-    // no aggregation function, just output ids or attributes
-    if (aggregators.isEmpty()) {
-      return false;
-    }
-
     for (TableAggregator aggregator : aggregators) {
       if (!aggregator.hasFinalResult()) {
         return false;
@@ -689,8 +708,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   private void checkIfAllAggregatorHasFinalResult() {
     if (allAggregatorsHasFinalResult
-        && timeIterator.getType()
-            == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+        && (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR
+            || tableAggregators.isEmpty())) {
       nextDevice();
       inputTsBlock = null;
 
@@ -830,6 +849,10 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       this.canUseStatistics = canUseStatistics;
       this.aggregatorInputChannels = aggregatorInputChannels;
       this.timeColumnName = timeColumnName;
+    }
+
+    public OperatorContext getOperatorContext() {
+      return context;
     }
 
     public List<TableAggregator> getTableAggregators() {

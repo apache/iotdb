@@ -17,6 +17,7 @@
  * under the License.
  */
 include "common.thrift"
+include "client.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
 namespace py iotdb.thrift.datanode
 
@@ -50,6 +51,14 @@ struct TRegionMigrateResult {
   2: optional common.TSStatus migrateResult
   3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
   4: required common.TRegionMaintainTaskStatus taskStatus
+}
+
+struct TNotifyRegionMigrationReq {
+  1: required i64 logicalClock
+  2: required i64 timestamp
+  3: optional common.TConsensusGroupId regionId
+  4: optional bool isStart
+  5: required list<common.TConsensusGroupId> currentRegionOperations
 }
 
 struct TCreatePeerReq {
@@ -272,6 +281,10 @@ struct TDataNodeHeartbeatReq {
   9: optional i64 deviceQuotaRemain
   10: optional TDataNodeActivation activation
   11: optional set<common.TEndPoint> configNodeEndPoints
+  12: optional map<i32, common.TDataNodeLocation> dataNodes
+  13: optional map<i32, set<i32>> topology
+  14: required i64 logicalClock
+  15: optional list<common.TConsensusGroupId> currentRegionOperations
 }
 
 struct TDataNodeActivation {
@@ -298,17 +311,11 @@ struct TDataNodeHeartbeatResp {
   14: optional list<bool> pipeCompletedList
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
+  17: optional map<i32, i64> dataRegionRawDataSize
 }
 
 struct TPipeHeartbeatReq {
   1: required i64 heartbeatId
-}
-
-struct TPipeHeartbeatResp {
-  1: required list<binary> pipeMetaList
-  2: optional list<bool> pipeCompletedList
-  3: optional list<i64> pipeRemainingEventCountList
-  4: optional list<double> pipeRemainingTimeList
 }
 
 enum TSchemaLimitLevel{
@@ -329,6 +336,7 @@ struct TUpdateTemplateReq {
 struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
+  3: optional string oldName
 }
 
 struct TInvalidateTableCacheReq {
@@ -384,8 +392,7 @@ struct TLoadCommandReq {
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
-    4: optional binary progressIndex
-    5: optional list<i32> regionIds
+    4: optional map<common.TTimePartitionSlot, binary> timePartition2ProgressIndex
 }
 
 struct TAttributeUpdateReq {
@@ -396,6 +403,19 @@ struct TSchemaRegionAttributeInfo {
   1: required i64 version
   2: required string database
   3: required binary body
+}
+
+struct TDeviceViewReq {
+  1: required list<common.TConsensusGroupId> regionIds
+  2: required list<string> prefixPattern
+  3: required i32 tagNumber
+  4: required bool restrict
+  5: optional set<string> requiredMeasurements
+}
+
+struct TDeviceViewResp {
+  1: required common.TSStatus status
+  2: required map<string, byte> deviewViewFieldTypeMap
 }
 
 struct TLoadResp {
@@ -843,6 +863,11 @@ service IDataNodeRPCService {
    */
   TRegionMigrateResult getRegionMaintainResult(i64 taskId)
 
+    /**
+     * Notify the DataNode of the beginning or ending the migration of the specified RegionGroup
+     */
+    common.TSStatus notifyRegionMigration(TNotifyRegionMigrationReq req)
+
   /**
    * Config node will clean DataNode cache, the Data node will not accept read/write request when disabled
    * @param data node location
@@ -1088,7 +1113,7 @@ service IDataNodeRPCService {
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds
   **/
-  TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
+  common.TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
 
  /**
   * Execute CQ on DataNode
@@ -1166,10 +1191,21 @@ service IDataNodeRPCService {
    */
   common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternOrModReq req)
 
+  /**
+   * Get tree device view info for device view
+   */
+  TDeviceViewResp detectTreeDeviceViewFieldType(TDeviceViewReq req)
+
+
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  common.TTestConnectionResp submitInternalTestConnectionTask(common.TNodeLocations nodeLocations)
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
+
+  /** to write audit log or other events as time series **/
+  common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
 }
 
 service MPPDataExchangeService {

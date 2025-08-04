@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
@@ -49,6 +50,13 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertNodeMatches;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -94,6 +102,7 @@ public class SubQueryTest {
     assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
     assertEquals("(\"s1\" > 1)", deviceTableScanNode.getPushDownPredicate().toString());
 
+    // Before ExchangeNode optimize
     /*
      * IdentitySinkNode-163
      *   └──OutputNode-14
@@ -109,7 +118,7 @@ public class SubQueryTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
@@ -117,11 +126,17 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(outputNode, 2) instanceof TopKNode);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 2);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    projectNode = (ProjectNode) getChildrenNode(topKNode.getChildren().get(1), 1);
+
+    projectNode =
+        (ProjectNode)
+            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 2);
     assertTrue(getChildrenNode(projectNode, 1) instanceof DeviceTableScanNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(projectNode, 1);
+
+    deviceTableScanNode =
+        (DeviceTableScanNode)
+            getChildrenNode(distributedQueryPlan.getFragments().get(2).getPlanNodeTree(), 3);
     assertTableScan(
         deviceTableScanNode,
         Arrays.asList(
@@ -188,6 +203,7 @@ public class SubQueryTest {
     assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
     assertEquals("(\"s1\" > 1)", deviceTableScanNode.getPushDownPredicate().toString());
 
+    // Before ExchangeNode optimize
     /*
      * IdentitySinkNode-199
      *   └──OutputNode-16
@@ -205,7 +221,7 @@ public class SubQueryTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
@@ -215,9 +231,12 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(outputNode, 4) instanceof TopKNode);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 4);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    LimitNode limitNode = (LimitNode) topKNode.getChildren().get(1);
+
+    LimitNode limitNode =
+        (LimitNode)
+            distributedQueryPlan.getFragments().get(2).getPlanNodeTree().getChildren().get(0);
     assertTrue(getChildrenNode(limitNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(limitNode, 2) instanceof DeviceTableScanNode);
     deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(limitNode, 2);
@@ -302,6 +321,7 @@ public class SubQueryTest {
      *                           │       └──DeviceTableScanNode-147
      *                           └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.3.0/198]
      */
+    // Before ExchangeNode optimize
     /*
      * IdentitySinkNode-205
      *   └──OutputNode-16
@@ -320,7 +340,7 @@ public class SubQueryTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
@@ -331,9 +351,12 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(outputNode, 5) instanceof TopKNode);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 5);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    LimitNode limitNode = (LimitNode) topKNode.getChildren().get(1);
+
+    LimitNode limitNode =
+        (LimitNode)
+            distributedQueryPlan.getFragments().get(2).getPlanNodeTree().getChildren().get(0);
     assertTrue(getChildrenNode(limitNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(limitNode, 2) instanceof DeviceTableScanNode);
     deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(limitNode, 2);
@@ -433,7 +456,7 @@ public class SubQueryTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
@@ -448,9 +471,12 @@ public class SubQueryTest {
         TopKNode.class);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 6);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    LimitNode limitNode = (LimitNode) topKNode.getChildren().get(1);
+
+    LimitNode limitNode =
+        (LimitNode)
+            distributedQueryPlan.getFragments().get(2).getPlanNodeTree().getChildren().get(0);
     assertTrue(getChildrenNode(limitNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(limitNode, 2) instanceof DeviceTableScanNode);
     deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(limitNode, 2);
@@ -530,5 +556,21 @@ public class SubQueryTest {
     DeviceTableScanNode deviceTableScanNode =
         (DeviceTableScanNode) getChildrenNode(logicalPlanNode, 2);
     assertTableScan(deviceTableScanNode, ALL_DEVICE_ENTRIES, ASC, 5, 0, false);
+  }
+
+  @Test
+  public void subQueryTest7() {
+    PlanTester planTester = new PlanTester();
+    assertPlan(
+        planTester.createPlan("select count(*) from (select * from table1 order by tag1 limit 1)"),
+        output(aggregation(project(topK(tableScan("testdb.table1"))))));
+
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(aggregation(project(topK(exchange(), exchange(), exchange())))));
+
+    assertPlan(planTester.getFragmentPlan(1), tableScan("testdb.table1"));
+
+    assertEquals(1, ((DeviceTableScanNode) planTester.getFragmentPlan(1)).getPushDownLimit());
   }
 }

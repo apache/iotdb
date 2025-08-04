@@ -51,7 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
@@ -344,7 +344,6 @@ public class AnalyzeUtils {
   private static void validateSchema(final Delete node, final MPPQueryContext queryContext) {
     final String tableName = node.getTable().getName().getSuffix();
     final String databaseName = getDatabaseName(node, queryContext);
-    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     node.setDatabaseName(databaseName);
 
     final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
@@ -352,6 +351,7 @@ public class AnalyzeUtils {
       throw new SemanticException("Table " + tableName + " not found");
     }
 
+    DataNodeTreeViewSchemaUtils.checkTableInWrite(databaseName, table);
     // Maybe set by pipe transfer
     if (Objects.isNull(node.getTableDeletionEntries())) {
       node.setTableDeletionEntries(
@@ -482,7 +482,7 @@ public class AnalyzeUtils {
       throw new SemanticException("Left hand expression is not an identifier: " + leftHandExp);
     }
     String columnName = ((Identifier) leftHandExp).getValue();
-    int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
+    int idColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
           "The column '" + columnName + "' does not exist or is not a tag column");
@@ -553,7 +553,7 @@ public class AnalyzeUtils {
     }
     // id predicate
     String columnName = identifier.getValue();
-    int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
+    int idColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
           "The column '" + columnName + "' does not exist or is not a tag column");

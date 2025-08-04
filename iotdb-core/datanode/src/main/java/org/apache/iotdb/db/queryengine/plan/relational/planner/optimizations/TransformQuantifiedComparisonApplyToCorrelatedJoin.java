@@ -21,10 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
@@ -54,7 +50,6 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -200,13 +195,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
     private ResolvedFunction getResolvedBuiltInAggregateFunction(
         String functionName, List<Type> argumentTypes) {
       // The same as the code in ExpressionAnalyzer
-      Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
-      return new ResolvedFunction(
-          new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
-          new FunctionId("noop"),
-          FunctionKind.AGGREGATE,
-          true,
-          FunctionNullability.getAggregationFunctionNullability(argumentTypes.size()));
+      return Util.getResolvedBuiltInAggregateFunction(metadata, functionName, argumentTypes);
     }
 
     public Expression rewriteUsingBounds(

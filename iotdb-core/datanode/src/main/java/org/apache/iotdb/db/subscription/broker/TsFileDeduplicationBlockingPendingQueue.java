@@ -58,6 +58,16 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
     return filter(inputPendingQueue.waitedPoll());
   }
 
+  @Override
+  public Event peek() {
+    return inputPendingQueue.peek();
+  }
+
+  @Override
+  public void directOffer(final Event event) {
+    inputPendingQueue.directOffer(event);
+  }
+
   private synchronized Event filter(final Event event) { // make it synchronized
     if (Objects.isNull(event)) {
       return null;

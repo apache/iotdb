@@ -82,13 +82,13 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -213,14 +213,11 @@ public class StatementGeneratorTest {
   public void testInsertRelationalTablet() throws IllegalPathException {
     List<String> measurements = Arrays.asList("id1", "attr1", "m1");
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
-    List<Tablet.ColumnCategory> tsfileColumnCategories =
-        Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.ATTRIBUTE,
-            Tablet.ColumnCategory.FIELD);
+    List<ColumnCategory> tsfileColumnCategories =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
     List<TsTableColumnCategory> columnCategories =
         tsfileColumnCategories.stream()
-            .map(TsTableColumnCategory::fromTsFileColumnType)
+            .map(TsTableColumnCategory::fromTsFileColumnCategory)
             .collect(Collectors.toList());
     TSInsertTabletReq req =
         new TSInsertTabletReq(

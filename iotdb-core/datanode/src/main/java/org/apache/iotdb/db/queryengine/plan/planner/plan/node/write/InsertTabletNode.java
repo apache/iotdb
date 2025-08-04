@@ -1285,9 +1285,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return firstAliveLoc;
   }
 
-  public void updateLastCache(String databaseName) {
-    String[] rawMeasurements = getRawMeasurements();
-    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+  public void updateLastCache(final String databaseName) {
+    final String[] rawMeasurements = getRawMeasurements();
+    final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
     for (int i = 0; i < rawMeasurements.length; i++) {
       timeValuePairs[i] = composeLastTimeValuePair(i);
     }
@@ -1299,5 +1299,22 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             timeValuePairs,
             isAligned,
             measurementSchemas);
+  }
+
+  @Override
+  public String toString() {
+    return "InsertTabletNode{"
+        + "targetPath="
+        + targetPath
+        + ", measurements="
+        + Arrays.toString(measurements)
+        + ", rowCount="
+        + rowCount
+        + ", timeRange=[,"
+        + times[0]
+        + ", "
+        + times[times.length - 1]
+        + "]"
+        + '}';
   }
 }

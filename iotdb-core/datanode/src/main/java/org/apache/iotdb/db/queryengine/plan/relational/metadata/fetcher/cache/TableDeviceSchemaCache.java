@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -137,14 +138,9 @@ public class TableDeviceSchemaCache {
 
   // The input deviceId shall have its tailing nulls trimmed
   public Map<String, Binary> getDeviceAttribute(final String database, final IDeviceID deviceId) {
-    readWriteLock.readLock().lock();
-    try {
-      final TableDeviceCacheEntry entry =
-          dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
-      return entry == null ? null : entry.getAttributeMap();
-    } finally {
-      readWriteLock.readLock().unlock();
-    }
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
+    return entry == null ? null : entry.getAttributeMap();
   }
 
   // The input deviceId shall have its tailing nulls trimmed
@@ -265,18 +261,40 @@ public class TableDeviceSchemaCache {
    * @param deviceId {@link IDeviceID}
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
+   * @param invalidateNull when true invalidate cache entries where timeValuePairs[i] == null; when
+   *     false ignore cache entries where timeValuePairs[i] == null
+   */
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final TimeValuePair[] timeValuePairs,
+      boolean invalidateNull) {
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
+        null,
+        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs, invalidateNull),
+        false);
+  }
+
+  /**
+   * Update the last cache in writing or the second push of last cache query. If a measurement is
+   * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
+   * {@code null}. For correctness, this will put the cache lazily and only update the existing last
+   * caches of measurements.
+   *
+   * @param database the device's database, without "root"
+   * @param deviceId {@link IDeviceID}
+   * @param measurements the fetched measurements
+   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
   public void updateLastCacheIfExists(
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
       final TimeValuePair[] timeValuePairs) {
-    dualKeyCache.update(
-        new TableId(database, deviceId.getTableName()),
-        deviceId,
-        null,
-        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs),
-        false);
+    updateLastCacheIfExists(database, deviceId, measurements, timeValuePairs, false);
   }
 
   /**
@@ -369,9 +387,7 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Tree model ///////////////////////////////
 
-  // Shall be accessed through "TreeDeviceSchemaCacheManager"
-
-  void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
+  public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
     final IDeviceID deviceID = devicePath.getIDeviceID();
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
@@ -386,10 +402,13 @@ public class TableDeviceSchemaCache {
         true);
   }
 
-  IDeviceSchema getDeviceSchema(final String[] devicePath) {
-    final IDeviceID deviceID =
+  public IDeviceSchema getDeviceSchema(final String[] devicePath) {
+    return getDeviceSchema(
         IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(devicePath));
+            StringArrayDeviceID.splitDeviceIdString(devicePath)));
+  }
+
+  public IDeviceSchema getDeviceSchema(final IDeviceID deviceID) {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(null, deviceID.getTableName()), deviceID);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
@@ -425,6 +444,11 @@ public class TableDeviceSchemaCache {
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, timeValuePairs),
         Objects.isNull(timeValuePairs));
+  }
+
+  public boolean getLastCache(
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> inputMap) {
+    return dualKeyCache.batchApply(inputMap, TableDeviceCacheEntry::updateInputMap);
   }
 
   // WARNING: This is not guaranteed to affect table model's cache

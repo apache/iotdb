@@ -40,7 +40,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 public class ModificationUtils {
 
@@ -404,16 +403,18 @@ public class ModificationUtils {
   }
 
   public static boolean isDeviceDeletedByMods(
-      Collection<ModEntry> currentModifications, ITimeIndex currentTimeIndex, IDeviceID device)
+      final Collection<ModEntry> currentModifications,
+      final ITimeIndex currentTimeIndex,
+      final IDeviceID device)
       throws IllegalPathException {
-    if (currentTimeIndex == null) {
-      return false;
-    }
-    Optional<Long> startTime = currentTimeIndex.getStartTime(device);
-    Optional<Long> endTime = currentTimeIndex.getEndTime(device);
-    if (startTime.isPresent() && endTime.isPresent()) {
-      return isAllDeletedByMods(currentModifications, device, startTime.get(), endTime.get());
-    }
-    return false;
+    return isAllDeletedByMods(
+        currentModifications,
+        device,
+        Objects.isNull(currentTimeIndex)
+            ? Long.MIN_VALUE
+            : currentTimeIndex.getStartTime(device).orElse(Long.MIN_VALUE),
+        Objects.isNull(currentTimeIndex)
+            ? Long.MAX_VALUE
+            : currentTimeIndex.getEndTime(device).orElse(Long.MAX_VALUE));
   }
 }

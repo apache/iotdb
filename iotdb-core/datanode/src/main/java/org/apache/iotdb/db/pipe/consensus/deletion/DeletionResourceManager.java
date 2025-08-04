@@ -167,6 +167,21 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
+  public void removeDAL() {
+    if (storageDir.exists()) {
+      FileUtils.deleteFileOrDirectory(storageDir);
+      LOGGER.info(
+          "DeletionManager-{}: current DAL dir {} is deleted successfully",
+          dataRegionId,
+          storageDir);
+    } else {
+      LOGGER.info(
+          "DeletionManager-{}: current DAL dir {} is not initialized, no need to delete.",
+          dataRegionId,
+          storageDir);
+    }
+  }
+
   /**
    * This is a hook function, which will be automatically invoked when deletionResource's reference
    * count returns to 0.

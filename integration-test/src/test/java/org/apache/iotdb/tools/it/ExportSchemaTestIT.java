@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -81,12 +82,18 @@ public class ExportSchemaTestIT extends AbstractScriptIT {
   @Override
   protected void testOnWindows() throws IOException {
     prepareSchema();
-    final String[] output = {"Export completely!"};
+    final String[] output = {Constants.EXPORT_COMPLETELY};
     ProcessBuilder builder =
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-schema.bat",
+            toolsPath
+                + File.separator
+                + "windows"
+                + File.separator
+                + "schema"
+                + File.separator
+                + "export-schema.bat",
             "-h",
             ip,
             "-p",
@@ -109,11 +116,11 @@ public class ExportSchemaTestIT extends AbstractScriptIT {
   @Override
   protected void testOnUnix() throws IOException {
     prepareSchema();
-    final String[] output = {"Export completely!"};
+    final String[] output = {Constants.EXPORT_COMPLETELY};
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "export-schema.sh",
+            toolsPath + File.separator + "schema" + File.separator + "export-schema.sh",
             "-h",
             ip,
             "-p",

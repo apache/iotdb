@@ -19,7 +19,7 @@
 
 # docker build context is the root path of the repository
 
-FROM eclipse-temurin:17-jre-noble
+FROM eclipse-temurin:17-jre-focal
 
 ADD distribution/target/apache-iotdb-*-all-bin.zip /
 ADD docker/src/main/DockerCompose/start-1c1d.sh /
@@ -42,7 +42,7 @@ RUN apt update \
   && apt purge --auto-remove -y \
   && apt clean -y \
 RUN dos2unix /iotdb/sbin/start-1c1d.sh
-RUN dos2unix /iotdb/sbin/iotdb-common.sh
+RUN dos2unix /iotdb/sbin/../conf/iotdb-common.sh
 RUN dos2unix /iotdb/sbin/start-confignode.sh
 RUN dos2unix /iotdb/sbin/../conf/confignode-env.sh
 RUN dos2unix /iotdb/sbin/stop-confignode.sh

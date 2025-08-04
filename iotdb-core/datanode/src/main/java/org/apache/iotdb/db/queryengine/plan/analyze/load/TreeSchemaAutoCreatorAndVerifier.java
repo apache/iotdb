@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -100,6 +101,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
   public void setCurrentModificationsAndTimeIndex(
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     schemaCache.setCurrentModificationsAndTimeIndex(resource, reader);
+  }
+
+  public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+    schemaCache.setCurrentTimeIndex(timeIndex);
   }
 
   public void autoCreateAndVerify(
@@ -158,7 +163,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                         new MeasurementPath(device, timeseriesMetadata.getMeasurementId()));
                 status =
                     AuthorityChecker.getTSStatus(
-                        AuthorityChecker.checkFullPathListPermission(
+                        AuthorityChecker.checkFullPathOrPatternListPermission(
                             userName, paths, PrivilegeType.WRITE_DATA),
                         paths,
                         PrivilegeType.WRITE_DATA);
@@ -434,13 +439,12 @@ public class TreeSchemaAutoCreatorAndVerifier {
       // check device schema: is aligned or not
       final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
       final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-      if (isAlignedInTsFile != isAlignedInIoTDB) {
-        throw new LoadAnalyzeException(
-            String.format(
-                "Device %s in TsFile is %s, but in IoTDB is %s.",
-                device,
-                isAlignedInTsFile ? "aligned" : "not aligned",
-                isAlignedInIoTDB ? "aligned" : "not aligned"));
+      if (LOGGER.isDebugEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
+        LOGGER.debug(
+            "Device {} in TsFile is {}, but in IoTDB is {}.",
+            device,
+            isAlignedInTsFile ? "aligned" : "not aligned",
+            isAlignedInIoTDB ? "aligned" : "not aligned");
       }
 
       // check timeseries schema
@@ -458,15 +462,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
         }
 
         // check datatype
-        if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          throw new LoadAnalyzeTypeMismatchException(
-              String.format(
-                  "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
-                  device,
-                  TsFileConstant.PATH_SEPARATOR,
-                  iotdbSchema.getMeasurementName(),
-                  tsFileSchema.getType(),
-                  iotdbSchema.getType()));
+        if (LOGGER.isDebugEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
+          LOGGER.debug(
+              "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
+              device,
+              TsFileConstant.PATH_SEPARATOR,
+              iotdbSchema.getMeasurementName(),
+              tsFileSchema.getType(),
+              iotdbSchema.getType());
         }
 
         // check encoding

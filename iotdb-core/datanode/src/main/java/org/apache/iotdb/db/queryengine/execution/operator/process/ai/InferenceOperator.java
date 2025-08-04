@@ -36,8 +36,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -46,12 +46,9 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -73,13 +70,18 @@ public class InferenceOperator implements ProcessOperator {
 
   private final long maxRetainedSize;
   private final long maxReturnSize;
-  private final List<String> inputColumnNames;
-  private final List<String> targetColumnNames;
+  private final int[] columnIndexes;
   private long totalRow;
   private int resultIndex = 0;
   private List<ByteBuffer> results;
   private final TsBlockSerde serde = new TsBlockSerde();
   private InferenceWindowType windowType = null;
+
+  private final boolean generateTimeColumn;
+  private long maxTimestamp;
+  private long minTimestamp;
+  private long interval;
+  private long currentRowIndex;
 
   public InferenceOperator(
       OperatorContext operatorContext,
@@ -88,6 +90,7 @@ public class InferenceOperator implements ProcessOperator {
       ExecutorService modelInferenceExecutor,
       List<String> targetColumnNames,
       List<String> inputColumnNames,
+      boolean generateTimeColumn,
       long maxRetainedSize,
       long maxReturnSize) {
     this.operatorContext = operatorContext;
@@ -97,8 +100,11 @@ public class InferenceOperator implements ProcessOperator {
         new TsBlockBuilder(
             Arrays.asList(modelInferenceDescriptor.getModelInformation().getInputDataType()));
     this.modelInferenceExecutor = modelInferenceExecutor;
-    this.targetColumnNames = targetColumnNames;
-    this.inputColumnNames = inputColumnNames;
+    this.columnIndexes = new int[inputColumnNames.size()];
+    for (int i = 0; i < inputColumnNames.size(); i++) {
+      columnIndexes[i] = targetColumnNames.indexOf(inputColumnNames.get(i));
+    }
+
     this.maxRetainedSize = maxRetainedSize;
     this.maxReturnSize = maxReturnSize;
     this.totalRow = 0;
@@ -106,6 +112,14 @@ public class InferenceOperator implements ProcessOperator {
     if (modelInferenceDescriptor.getInferenceWindowParameter() != null) {
       windowType = modelInferenceDescriptor.getInferenceWindowParameter().getWindowType();
     }
+
+    if (generateTimeColumn) {
+      this.interval = 0;
+      this.minTimestamp = Long.MAX_VALUE;
+      this.maxTimestamp = Long.MIN_VALUE;
+      this.currentRowIndex = 0;
+    }
+    this.generateTimeColumn = generateTimeColumn;
   }
 
   @Override
@@ -140,6 +154,15 @@ public class InferenceOperator implements ProcessOperator {
     return !finished || (results != null && results.size() != resultIndex);
   }
 
+  private void fillTimeColumn(TsBlock tsBlock) {
+    Column timeColumn = tsBlock.getTimeColumn();
+    long[] time = timeColumn.getLongs();
+    for (int i = 0; i < time.length; i++) {
+      time[i] = maxTimestamp + interval * currentRowIndex;
+      currentRowIndex++;
+    }
+  }
+
   @Override
   public TsBlock next() throws Exception {
     if (inferenceExecutionFuture == null) {
@@ -156,6 +179,9 @@ public class InferenceOperator implements ProcessOperator {
 
       if (results != null && resultIndex != results.size()) {
         TsBlock tsBlock = serde.deserialize(results.get(resultIndex));
+        if (generateTimeColumn) {
+          fillTimeColumn(tsBlock);
+        }
         resultIndex++;
         return tsBlock;
       }
@@ -177,6 +203,9 @@ public class InferenceOperator implements ProcessOperator {
 
         finished = true;
         TsBlock resultTsBlock = serde.deserialize(inferenceResp.inferenceResult.get(0));
+        if (generateTimeColumn) {
+          fillTimeColumn(resultTsBlock);
+        }
         results = inferenceResp.inferenceResult;
         resultIndex++;
         return resultTsBlock;
@@ -194,9 +223,14 @@ public class InferenceOperator implements ProcessOperator {
     ColumnBuilder[] columnBuilders = inputTsBlockBuilder.getValueColumnBuilders();
     totalRow += inputTsBlock.getPositionCount();
     for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
-      timeColumnBuilder.writeLong(inputTsBlock.getTimeByIndex(i));
+      long timestamp = inputTsBlock.getTimeByIndex(i);
+      if (generateTimeColumn) {
+        minTimestamp = Math.min(minTimestamp, timestamp);
+        maxTimestamp = Math.max(maxTimestamp, timestamp);
+      }
+      timeColumnBuilder.writeLong(timestamp);
       for (int columnIndex = 0; columnIndex < inputTsBlock.getValueColumnCount(); columnIndex++) {
-        columnBuilders[columnIndex].write(inputTsBlock.getColumn(columnIndex), i);
+        columnBuilders[columnIndexes[columnIndex]].write(inputTsBlock.getColumn(columnIndex), i);
       }
       inputTsBlockBuilder.declarePosition();
     }
@@ -220,7 +254,8 @@ public class InferenceOperator implements ProcessOperator {
   }
 
   private TsBlock preProcess(TsBlock inputTsBlock) {
-    boolean notBuiltIn = !modelInferenceDescriptor.getModelInformation().isBuiltIn();
+    //    boolean notBuiltIn = !modelInferenceDescriptor.getModelInformation().isBuiltIn();
+    boolean notBuiltIn = false;
     if (windowType == null || windowType == InferenceWindowType.HEAD) {
       if (notBuiltIn
           && totalRow != modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
@@ -259,16 +294,14 @@ public class InferenceOperator implements ProcessOperator {
 
   private void submitInferenceTask() {
 
+    if (generateTimeColumn) {
+      interval = (maxTimestamp - minTimestamp) / totalRow;
+    }
+
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
 
     TsBlock finalInputTsBlock = preProcess(inputTsBlock);
     TWindowParams windowParams = getWindowParams();
-
-    Map<String, Integer> columnNameIndexMap = new HashMap<>();
-
-    for (int i = 0; i < inputColumnNames.size(); i++) {
-      columnNameIndexMap.put(inputColumnNames.get(i), i);
-    }
 
     inferenceExecutionFuture =
         Futures.submit(
@@ -278,11 +311,6 @@ public class InferenceOperator implements ProcessOperator {
                       .borrowClient(modelInferenceDescriptor.getTargetAINode())) {
                 return client.inference(
                     modelInferenceDescriptor.getModelName(),
-                    targetColumnNames,
-                    Arrays.stream(modelInferenceDescriptor.getModelInformation().getInputDataType())
-                        .map(TSDataType::toString)
-                        .collect(Collectors.toList()),
-                    columnNameIndexMap,
                     finalInputTsBlock,
                     modelInferenceDescriptor.getInferenceAttributes(),
                     windowParams);
@@ -327,11 +355,6 @@ public class InferenceOperator implements ProcessOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + inputTsBlockBuilder.getRetainedSizeInBytes()
-        + (inputColumnNames == null
-            ? 0
-            : inputColumnNames.stream().mapToLong(RamUsageEstimator::sizeOf).sum())
-        + (targetColumnNames == null
-            ? 0
-            : targetColumnNames.stream().mapToLong(RamUsageEstimator::sizeOf).sum());
+        + (long) columnIndexes.length * Integer.BYTES;
   }
 }

@@ -104,9 +104,7 @@ public class AlignedMemPageReaderTest {
     MemAlignedPageReader alignedPageReader =
         new MemAlignedPageReader(
             tsBlockSupplier,
-            null,
-            null,
-            null,
+            0,
             Arrays.asList(TSDataType.INT32, TSDataType.INT32),
             chunkMetadata1.getTimeStatistics(),
             valueStatistcsList,
@@ -124,9 +122,7 @@ public class AlignedMemPageReaderTest {
     MemAlignedPageReader alignedPageReader =
         new MemAlignedPageReader(
             tsBlockSupplier,
-            null,
-            null,
-            null,
+            0,
             Arrays.asList(TSDataType.INT32),
             chunkMetadata2.getTimeStatistics(),
             valueStatistcsList,

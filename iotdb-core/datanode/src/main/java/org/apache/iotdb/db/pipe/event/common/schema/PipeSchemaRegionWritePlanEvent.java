@@ -41,7 +41,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
   }
 
   public PipeSchemaRegionWritePlanEvent(final PlanNode planNode, final boolean isGeneratedByPipe) {
-    this(planNode, null, 0, null, null, null, isGeneratedByPipe);
+    this(planNode, null, 0, null, null, null, null, true, isGeneratedByPipe);
   }
 
   public PipeSchemaRegionWritePlanEvent(
@@ -51,8 +51,18 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final boolean isGeneratedByPipe) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, isGeneratedByPipe);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userName,
+        skipIfNoPrivileges,
+        isGeneratedByPipe);
     this.planNode = planNode;
   }
 
@@ -67,6 +77,8 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeSchemaRegionWritePlanEvent(
@@ -76,6 +88,8 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         isGeneratedByPipe);
   }
 

@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -37,7 +38,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -218,12 +218,6 @@ public class StorageEngine implements IService {
               LOGGER.info(
                   "Storage Engine recover cost: {}s.",
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
-
-              PipeDataNodeAgent.runtime()
-                  .registerPeriodicalJob(
-                      "StorageEngine#operateFlush",
-                      () -> operateFlush(new TFlushReq()),
-                      PipeConfig.getInstance().getPipeStorageEngineFlushTimeIntervalMs() / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
@@ -780,6 +774,8 @@ public class StorageEngine implements IService {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
+        region.deleteDALFolderAndClose();
+        PipeDataNodeAgent.receiver().pipeConsensus().releaseReceiverResource(regionId);
         switch (CONFIG.getDataRegionConsensusProtocolClass()) {
           case ConsensusFactory.IOT_CONSENSUS:
           case ConsensusFactory.IOT_CONSENSUS_V2:
@@ -978,13 +974,13 @@ public class StorageEngine implements IService {
       LoadTsFileScheduler.LoadCommand loadCommand,
       String uuid,
       boolean isGeneratedByPipe,
-      ProgressIndex progressIndex) {
+      Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap) {
     TSStatus status = new TSStatus();
 
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, progressIndex)) {
+          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, timePartitionProgressIndexMap)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());

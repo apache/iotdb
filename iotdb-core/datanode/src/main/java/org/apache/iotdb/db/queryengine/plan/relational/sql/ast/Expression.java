@@ -158,6 +158,12 @@ public abstract class Expression extends Node {
       case 28:
         expression = new WhenClause(byteBuffer);
         break;
+      case 31:
+        expression = new Row(byteBuffer);
+        break;
+      case 32:
+        expression = new Extract(byteBuffer);
+        break;
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
     }

@@ -64,6 +64,7 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
 
   @Parameterized.BeforeParam
   public static void before() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     SchemaTestMode schemaTestMode = setUpEnvironment();
     if (schemaTestMode.equals(SchemaTestMode.PBTree)) {
       allocateMemoryForSchemaRegion(10000);
@@ -198,10 +199,10 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
           "count timeseries root.sg.** where time=1",
           new HashSet<>(Collections.singletonList("3,")));
       // 3. Check non-root user
-      statement.execute("CREATE USER user1 'password'");
+      statement.execute("CREATE USER user1 'password123456'");
       statement.execute("GRANT READ_SCHEMA ON root.sg.d0.s1 TO USER user1");
       statement.execute("GRANT READ_SCHEMA ON root.sg.d3.s1 TO USER user1");
-      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
           Statement userStmt = userCon.createStatement()) {
         // 3.1 Without read data permission, result set should be empty
         try (ResultSet resultSet =
@@ -215,7 +216,7 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
       }
       statement.execute("GRANT READ_DATA ON root.sg.d0.s1 TO USER user1");
       statement.execute("GRANT READ_DATA ON root.sg.d3.s1 TO USER user1");
-      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
           Statement userStmt = userCon.createStatement()) {
         // 3.2 With read data permission, result set should not be empty
         expected =
@@ -308,10 +309,10 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
           "count devices root.sg.* where time=1",
           new HashSet<>(Collections.singletonList("1,")));
       // 3. Check non-root user
-      statement.execute("CREATE USER user1 'password'");
+      statement.execute("CREATE USER user1 'password123456'");
       statement.execute("GRANT READ_SCHEMA ON root.sg.d0.s1 TO USER user1");
       statement.execute("GRANT READ_SCHEMA ON root.sg.d3.s1 TO USER user1");
-      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
           Statement userStmt = userCon.createStatement()) {
         // 3.1 Without read data permission, result set should be empty
         try (ResultSet resultSet = userStmt.executeQuery("show devices root.sg.* where time>0")) {
@@ -324,7 +325,7 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
       }
       statement.execute("GRANT READ_DATA ON root.sg.d0.s1 TO USER user1");
       statement.execute("GRANT READ_DATA ON root.sg.d3.s1 TO USER user1");
-      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
           Statement userStmt = userCon.createStatement()) {
         // 3.2 With read data permission, result set should not be empty
         expected =

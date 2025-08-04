@@ -19,9 +19,20 @@
 
 package org.apache.iotdb.db.exception.runtime;
 
-public class IntoProcessException extends RuntimeException {
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public IntoProcessException(String message) {
-    super(message);
+public class IntoProcessException extends IoTDBRuntimeException {
+
+  public IntoProcessException(final String message) {
+    super(message, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+  }
+
+  public IntoProcessException(final String message, int errorCode) {
+    super(message, errorCode);
+  }
+
+  public IntoProcessException(final Throwable cause) {
+    super(cause, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
   }
 }

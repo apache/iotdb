@@ -49,12 +49,15 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 
+import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -90,18 +93,25 @@ public class LoadCache {
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   // Map<NodeId, Map<RegionGroupId, RegionSize>>
   private final Map<Integer, Map<Integer, Long>> regionSizeMap;
+  // Map<NodeId, Map<RegionGroupId, RegionRawSize>>
+  private final Map<Integer, Map<Integer, Long>> regionRawSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
+  private Map<Integer, Set<Integer>> topologyGraph;
+  private final AtomicBoolean topologyUpdated;
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
     this.regionSizeMap = new ConcurrentHashMap<>();
+    this.regionRawSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
+    this.topologyGraph = new HashMap<>();
+    this.topologyUpdated = new AtomicBoolean(false);
   }
 
   public void initHeartbeatCache(final IManager configManager) {
@@ -175,6 +185,7 @@ public class LoadCache {
                       regionGroupId,
                       new RegionGroupCache(
                           database,
+                          regionGroupId,
                           regionReplicaSet.getDataNodeLocations().stream()
                               .map(TDataNodeLocation::getDataNodeId)
                               .collect(Collectors.toSet()),
@@ -287,7 +298,8 @@ public class LoadCache {
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
     boolean isStrongConsistency = CONF.isConsensusGroupStrongConsistency(regionGroupId);
     regionGroupCacheMap.put(
-        regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrongConsistency));
+        regionGroupId,
+        new RegionGroupCache(database, regionGroupId, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
   }
 
@@ -299,7 +311,7 @@ public class LoadCache {
    */
   public void createRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
     Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
-        .ifPresent(cache -> cache.createRegionCache(dataNodeId));
+        .ifPresent(cache -> cache.createRegionCache(dataNodeId, regionGroupId));
   }
 
   /**
@@ -769,6 +781,37 @@ public class LoadCache {
         regionGroupIds);
   }
 
+  public void updateTopology(Map<Integer, Set<Integer>> latestTopology) {
+    if (!latestTopology.equals(topologyGraph)) {
+      LOGGER.info("[Topology] Cluster topology changed, latest: {}", latestTopology);
+      for (int fromId : latestTopology.keySet()) {
+        for (int toId : latestTopology.keySet()) {
+          boolean originReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          boolean newReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          if (originReachable != newReachable) {
+            LOGGER.info(
+                "[Topology] Topology of DataNode {} is now {} to DataNode {}",
+                fromId,
+                newReachable ? "reachable" : "unreachable",
+                toId);
+          }
+        }
+      }
+      topologyGraph = latestTopology;
+      topologyUpdated.set(true);
+    }
+  }
+
+  @Nullable
+  public Map<Integer, Set<Integer>> getTopology() {
+    if (topologyUpdated.compareAndSet(true, false)) {
+      return Collections.unmodifiableMap(topologyGraph);
+    }
+    return null;
+  }
+
   public void updateConfirmedConfigNodeEndPoints(
       int dataNodeId, Set<TEndPoint> configNodeEndPoints) {
     confirmedConfigNodeMap.put(dataNodeId, configNodeEndPoints);
@@ -782,7 +825,15 @@ public class LoadCache {
     this.regionSizeMap.put(dataNodeId, regionSizeMap);
   }
 
+  public void updateRegionRawSizeMap(int dataNodeId, Map<Integer, Long> regionRawSizeMap) {
+    this.regionRawSizeMap.put(dataNodeId, regionRawSizeMap);
+  }
+
   public Map<Integer, Map<Integer, Long>> getRegionSizeMap() {
     return regionSizeMap;
+  }
+
+  public Map<Integer, Map<Integer, Long>> getRegionRawSizeMap() {
+    return regionRawSizeMap;
   }
 }

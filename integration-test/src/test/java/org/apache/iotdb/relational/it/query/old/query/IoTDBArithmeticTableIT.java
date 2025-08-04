@@ -356,6 +356,18 @@ public class IoTDBArithmeticTableIT {
 
     tableAssertTestFail(
         String.format(
+            "select %s + date from table2 where time = 1",
+            DateTimeUtils.correctPrecision(MILLISECONDS_IN_DAY)),
+        "752: Year must be between 1000 and 9999.",
+        "test");
+
+    tableAssertTestFail(
+        String.format("select %s + date from table2 where time = 1", 86400000),
+        "752: Year must be between 1000 and 9999.",
+        "test");
+
+    tableAssertTestFail(
+        String.format(
             "select date - %s from table2 where time = 2",
             DateTimeUtils.correctPrecision(MILLISECONDS_IN_DAY)),
         "752: Year must be between 1000 and 9999.",

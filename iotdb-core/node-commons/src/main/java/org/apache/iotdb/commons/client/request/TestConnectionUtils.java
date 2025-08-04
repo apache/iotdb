@@ -67,7 +67,8 @@ public class TestConnectionUtils {
         .forEach(
             (nodeId, status) -> {
               TEndPoint endPoint = getEndPoint.apply(anotherNodeLocationMap.get(nodeId));
-              TServiceProvider serviceProvider = new TServiceProvider(endPoint, serviceType);
+              TServiceProvider serviceProvider =
+                  new TServiceProvider(endPoint, serviceType, nodeId);
               TTestConnectionResult result = new TTestConnectionResult();
               result.setSender(sender);
               result.setServiceProvider(serviceProvider);

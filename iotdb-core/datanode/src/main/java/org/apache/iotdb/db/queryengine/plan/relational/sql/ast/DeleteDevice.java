@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
@@ -31,11 +33,13 @@ import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
@@ -64,13 +68,27 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
   // Used for data deletion
   private List<TableDeletionEntry> modEntries;
+  private boolean mayDeleteDevice;
 
   public DeleteDevice(final NodeLocation location, final Table table, final Expression where) {
     super(location, table, where);
   }
 
+  @Override
+  public boolean parseRawExpression(
+      final Map<String, List<DeviceEntry>> entries,
+      final TsTable tableInstance,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
+    return mayDeleteDevice =
+        super.parseRawExpression(entries, tableInstance, attributeColumns, context);
+  }
+
+  public boolean isMayDeleteDevice() {
+    return mayDeleteDevice;
+  }
+
   public void parseModEntries(final TsTable table) {
-    // TODO: Fallback to precise devices if modEnries parsing failure encountered
     modEntries = AnalyzeUtils.parseExpressions2ModEntries(where, table);
   }
 
@@ -84,8 +102,8 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   public void serializePatternInfo(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(getIdDeterminedFilterList().size(), stream);
-    for (final List<SchemaFilter> filterList : idDeterminedFilterList) {
+    ReadWriteIOUtils.write(getTagDeterminedFilterList().size(), stream);
+    for (final List<SchemaFilter> filterList : tagDeterminedFilterList) {
       ReadWriteIOUtils.write(filterList.size(), stream);
       for (final SchemaFilter filter : filterList) {
         SchemaFilter.serialize(filter, stream);
@@ -95,9 +113,9 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
   public void serializeFilterInfo(final DataOutputStream stream, final SessionInfo sessionInfo)
       throws IOException {
-    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
-    if (idFuzzyPredicate != null) {
-      Expression.serialize(idFuzzyPredicate, stream);
+    ReadWriteIOUtils.write(tagFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
+    if (tagFuzzyPredicate != null) {
+      Expression.serialize(tagFuzzyPredicate, stream);
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
@@ -138,12 +156,15 @@ public class DeleteDevice extends AbstractTraverseDevice {
       }
     }
 
-    return TableDeviceQuerySource.getDevicePatternList(database, tableName, idDeterminedFilterList);
+    return TableDeviceQuerySource.getDevicePatternList(
+        database,
+        DataNodeTableCache.getInstance().getTable(database, tableName),
+        idDeterminedFilterList);
   }
 
   public static DeviceBlackListConstructor constructDevicePredicateUpdater(
       final String database,
-      final String tableName,
+      final TsTable table,
       final byte[] filterInfo,
       final BiFunction<Integer, String, Binary> attributeProvider,
       final MemSchemaRegionStatistics regionStatistics) {
@@ -155,9 +176,9 @@ public class DeleteDevice extends AbstractTraverseDevice {
     }
 
     final int size = ReadWriteIOUtils.readInt(buffer);
-    final List<ColumnHeader> columnHeaderList = new ArrayList<>(size);
+    final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      columnHeaderList.add(ColumnHeader.deserialize(buffer));
+      columnSchemaList.add(table.getColumnSchema(ColumnHeader.deserialize(buffer).getColumnName()));
     }
 
     SessionInfo sessionInfo = null;
@@ -167,7 +188,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
     final AtomicInteger valueColumnIndex = new AtomicInteger(0);
     final Map<Symbol, List<InputLocation>> inputLocations =
-        columnHeaderList.stream()
+        columnSchemaList.stream()
             .collect(
                 Collectors.toMap(
                     columnHeader -> new Symbol(columnHeader.getColumnName()),
@@ -177,11 +198,11 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
     final TypeProvider mockTypeProvider =
         new TypeProvider(
-            columnHeaderList.stream()
+            columnSchemaList.stream()
                 .collect(
                     Collectors.toMap(
                         columnHeader -> new Symbol(columnHeader.getColumnName()),
-                        columnHeader -> TypeFactory.getType(columnHeader.getColumnType()))));
+                        columnHeader -> TypeFactory.getType(columnHeader.getDataType()))));
     final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
     // records LeafColumnTransformer of filter
@@ -212,11 +233,12 @@ public class DeleteDevice extends AbstractTraverseDevice {
     return new DeviceBlackListConstructor(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
-        database,
-        tableName,
-        columnHeaderList,
+        table.getTableName(),
+        columnSchemaList,
         attributeProvider,
-        regionStatistics);
+        regionStatistics,
+        database,
+        table);
   }
 
   @Override

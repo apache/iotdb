@@ -30,11 +30,11 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showRegionColumnHeaders;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
@@ -107,6 +108,44 @@ public class IoTDBInsertTableIT {
       statement.execute("insert into sg1(tag1,time,s1) values('d1',604800001,2)");
       statement.execute("flush");
     } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowRegion() {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table sg2 (tag1 string tag, s1 int32 field)");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',1,2)");
+      statement.execute("flush");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',2,2)");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',604800001,2)");
+      statement.execute("flush");
+
+      // Test show regions in table model
+      try (final ResultSet resultSet = statement.executeQuery("show regions")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showRegionColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showRegionColumnHeaders.size(); i++) {
+          assertEquals(
+              showRegionColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        assertTrue(resultSet.next());
+      }
+
+      try (final ResultSet resultSet = statement.executeQuery("show regions from test")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showRegionColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showRegionColumnHeaders.size(); i++) {
+          assertEquals(
+              showRegionColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        assertTrue(resultSet.next());
+      }
+    } catch (final Exception e) {
       fail(e.getMessage());
     }
   }

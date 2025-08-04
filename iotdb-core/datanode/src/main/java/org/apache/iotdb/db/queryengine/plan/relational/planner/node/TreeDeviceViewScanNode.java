@@ -47,10 +47,10 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       String treeDBName,
       Map<String, String> measurementColumnNameMap) {
-    super(id, qualifiedObjectName, outputSymbols, assignments, idAndAttributeIndexMap);
+    super(id, qualifiedObjectName, outputSymbols, assignments, tagAndAttributeIndexMap);
     this.treeDBName = treeDBName;
     this.measurementColumnNameMap = measurementColumnNameMap;
   }
@@ -61,7 +61,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
       Expression pushDownPredicate,
@@ -77,7 +77,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -90,6 +90,10 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
   }
 
   public TreeDeviceViewScanNode() {}
+
+  public void setTreeDBName(String treeDBName) {
+    this.treeDBName = treeDBName;
+  }
 
   public String getTreeDBName() {
     return treeDBName;
@@ -112,7 +116,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,

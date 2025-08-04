@@ -45,6 +45,8 @@ public class LoadTsFileConfigurator {
         validateOnSuccessParam(value);
         break;
       case DATABASE_NAME_KEY:
+      case DATABASE_KEY:
+      case TABLET_CONVERSION_THRESHOLD_KEY:
         break;
       case CONVERT_ON_TYPE_MISMATCH_KEY:
         validateConvertOnTypeMismatchParam(value);
@@ -52,8 +54,22 @@ public class LoadTsFileConfigurator {
       case VERIFY_KEY:
         validateVerifyParam(value);
         break;
+      case ASYNC_LOAD_KEY:
+        validateAsyncLoadParam(value);
+        break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
+    }
+  }
+
+  public static void validateSynonymParameters(final Map<String, String> parameters) {
+    if (parameters.containsKey(DATABASE_KEY) && parameters.containsKey(DATABASE_NAME_KEY)) {
+      throw new SemanticException(
+          "The parameter key '"
+              + DATABASE_KEY
+              + "' and '"
+              + DATABASE_NAME_KEY
+              + "' cannot co-exist.");
     }
   }
 
@@ -86,9 +102,13 @@ public class LoadTsFileConfigurator {
   }
 
   public static final String DATABASE_NAME_KEY = "database-name";
+  public static final String DATABASE_KEY = "database";
 
   public static @Nullable String parseDatabaseName(final Map<String, String> loadAttributes) {
-    final String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    if (Objects.isNull(databaseName)) {
+      databaseName = loadAttributes.get(DATABASE_KEY);
+    }
     return Objects.nonNull(databaseName) ? databaseName.toLowerCase(Locale.ENGLISH) : null;
   }
 
@@ -133,6 +153,19 @@ public class LoadTsFileConfigurator {
             CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE)));
   }
 
+  public static final String TABLET_CONVERSION_THRESHOLD_KEY = "tablet-conversion-threshold";
+
+  public static long parseOrGetDefaultTabletConversionThresholdBytes(
+      final Map<String, String> loadAttributes) {
+    return Long.parseLong(
+        loadAttributes.getOrDefault(
+            TABLET_CONVERSION_THRESHOLD_KEY,
+            String.valueOf(
+                IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getLoadTabletConversionThresholdBytes())));
+  }
+
   public static final String VERIFY_KEY = "verify";
   private static final boolean VERIFY_DEFAULT_VALUE = true;
 
@@ -148,6 +181,23 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
+  }
+
+  public static final String ASYNC_LOAD_KEY = "async";
+  private static final boolean ASYNC_LOAD_DEFAULT_VALUE = false;
+
+  public static void validateAsyncLoadParam(final String asyncLoad) {
+    if (!"true".equalsIgnoreCase(asyncLoad) && !"false".equalsIgnoreCase(asyncLoad)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              ASYNC_LOAD_KEY, asyncLoad));
+    }
+  }
+
+  public static boolean parseOrGetDefaultAsyncLoad(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
   }
 
   private LoadTsFileConfigurator() {

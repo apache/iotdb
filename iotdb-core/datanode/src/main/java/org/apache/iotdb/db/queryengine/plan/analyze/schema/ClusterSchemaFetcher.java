@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -53,7 +54,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
-
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
@@ -193,7 +193,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     schemaCache.takeReadLock();
     try {
       final Pair<Template, PartialPath> templateSetInfo =
@@ -232,7 +232,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     schemaCache.takeReadLock();
     try {
 
@@ -276,7 +276,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     schemaCache.takeReadLock();
     try {
       final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
@@ -311,7 +311,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       if (!config.isAutoCreateSchemaEnabled()) {
-        return schemaTree;
+        // disable auto-create for non-system series
+        indexOfDevicesWithMissingMeasurements.removeIf(
+            i -> !devicePathList.get(i).startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
+        if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
+          return schemaTree;
+        }
       }
 
       // Auto create the still missing schema and merge them into schemaTree

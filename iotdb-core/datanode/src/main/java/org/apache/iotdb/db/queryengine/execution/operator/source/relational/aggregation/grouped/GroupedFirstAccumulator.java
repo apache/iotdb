@@ -85,7 +85,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -117,7 +117,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
 
     return INSTANCE_SIZE + valuesSize;
@@ -125,6 +125,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
 
   @Override
   public void setGroupCount(long groupCount) {
+    minTimes.ensureCapacity(groupCount);
     switch (seriesDataType) {
       case INT32:
       case DATE:
@@ -150,7 +151,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -182,7 +183,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -192,7 +193,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of First should be BinaryColumn");
+        "intermediate input and output of FIRST should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (argument.isNull(i)) {
@@ -236,7 +237,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -245,7 +246,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of First should be BinaryColumn");
+        "intermediate input and output of FIRST should be BinaryColumn");
     if (minTimes.get(groupId) == Long.MAX_VALUE) {
       columnBuilder.appendNull();
     } else {
@@ -283,7 +284,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -319,7 +320,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -371,7 +372,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return bytes;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type: %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 

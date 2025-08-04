@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -128,7 +127,5 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       LOGGER.warn("Failed to drop consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to drop consensus pipe", e);
     }
-    // Release corresponding receiver's resource
-    PipeDataNodeAgent.receiver().pipeConsensus().handleDropPipeConsensusTask(pipeName);
   }
 }

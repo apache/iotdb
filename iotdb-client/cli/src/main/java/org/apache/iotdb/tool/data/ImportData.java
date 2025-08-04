@@ -294,7 +294,7 @@ public class ImportData extends AbstractDataTool {
     }
     try {
       isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
-      if (!sqlDialectTree && isRemoteLoad) {
+      if (!sqlDialectTree && isRemoteLoad && Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
         ioTPrinter.println(
             "host: " + host + " is remote load,only local load is supported in table model");
       }
@@ -328,6 +328,12 @@ public class ImportData extends AbstractDataTool {
       }
       successOperation = ImportTsFileOperation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
       failOperation = ImportTsFileOperation.getOperation(onFail, isFailDirEqualsSourceDir);
+    }
+    if (!sqlDialectTree
+        && Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)
+        && StringUtils.isBlank(table)) {
+      ioTPrinter.println("Invalid args: Required values for option table not provided.");
+      System.exit(Constants.CODE_ERROR);
     }
   }
 

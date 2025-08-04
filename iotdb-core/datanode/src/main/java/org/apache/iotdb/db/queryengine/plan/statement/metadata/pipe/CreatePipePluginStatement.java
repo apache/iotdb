@@ -40,6 +40,8 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
   private final String className;
   private final String uriString;
 
+  private boolean isTableModel = false;
+
   public CreatePipePluginStatement(
       String pluginName, boolean ifNotExistsCondition, String className, String uriString) {
     super();
@@ -48,6 +50,14 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
     this.ifNotExistsCondition = ifNotExistsCondition;
     this.className = className;
     this.uriString = uriString;
+  }
+
+  public void markIsTableModel(final boolean isTableModel) {
+    this.isTableModel = isTableModel;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public String getPluginName() {

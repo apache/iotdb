@@ -40,6 +40,13 @@ public class IoTDBRuntimeException extends RuntimeException {
     this.isUserException = isUserException;
   }
 
+  public IoTDBRuntimeException(
+      String message, int errorCode, Throwable cause, boolean isUserException) {
+    super(message, cause);
+    this.errorCode = errorCode;
+    this.isUserException = isUserException;
+  }
+
   public IoTDBRuntimeException(String message, Throwable cause, int errorCode) {
     super(message, cause);
     this.errorCode = errorCode;

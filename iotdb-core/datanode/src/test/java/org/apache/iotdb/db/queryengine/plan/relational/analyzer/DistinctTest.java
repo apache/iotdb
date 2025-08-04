@@ -162,13 +162,15 @@ public class DistinctTest {
                         "count_0",
                         distinctAggregationFunction("count", ImmutableList.of("s2"))),
                     SINGLE,
-                    mergeSort(
-                        exchange(),
-                        tableScan(
-                            "testdb.table1",
-                            ImmutableList.of("tag1", "s1", "s2"),
-                            ImmutableSet.of("s1", "s2", "tag1")),
-                        exchange())))));
+                    mergeSort(exchange(), exchange(), exchange())))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          tableScan(
+              "testdb.table1",
+              ImmutableList.of("tag1", "s1", "s2"),
+              ImmutableSet.of("s1", "s2", "tag1")));
+    }
 
     logicalQueryPlan =
         planTester.createPlan(
@@ -201,13 +203,15 @@ public class DistinctTest {
                         "count_0",
                         distinctAggregationFunction("count", ImmutableList.of("s2"))),
                     SINGLE,
-                    collect(
-                        exchange(),
-                        tableScan(
-                            "testdb.table1",
-                            ImmutableList.of("s1", "s2", "s3"),
-                            ImmutableSet.of("s1", "s2", "s3")),
-                        exchange())))));
+                    collect(exchange(), exchange(), exchange())))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          tableScan(
+              "testdb.table1",
+              ImmutableList.of("s1", "s2", "s3"),
+              ImmutableSet.of("s1", "s2", "s3")));
+    }
   }
 
   @Test
@@ -317,12 +321,14 @@ public class DistinctTest {
                     markDistinct(
                         "s1$distinct",
                         ImmutableList.of("tag1", "tag2", "s1"),
-                        mergeSort(
-                            exchange(),
-                            tableScan(
-                                "testdb.table1",
-                                ImmutableList.of("tag1", "tag2", "s1", "s2"),
-                                ImmutableSet.of("tag1", "tag2", "s1", "s2")),
-                            exchange()))))));
+                        mergeSort(exchange(), exchange(), exchange()))))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          tableScan(
+              "testdb.table1",
+              ImmutableList.of("tag1", "tag2", "s1", "s2"),
+              ImmutableSet.of("tag1", "tag2", "s1", "s2")));
+    }
   }
 }

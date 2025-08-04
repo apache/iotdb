@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
@@ -215,5 +216,21 @@ public class SeriesReaderTestUtil {
     }
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+  }
+
+  static void assertWithHasNext(SeriesScanHasNextSupplier supplier, boolean value)
+      throws IOException {
+    while (true) {
+      Optional<Boolean> b = supplier.get();
+      if (!b.isPresent()) {
+        continue;
+      }
+      Assert.assertEquals(b.get(), value);
+      break;
+    }
+  }
+
+  interface SeriesScanHasNextSupplier {
+    Optional<Boolean> get() throws IOException;
   }
 }

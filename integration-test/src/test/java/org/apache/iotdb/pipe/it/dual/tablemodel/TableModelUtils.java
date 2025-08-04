@@ -26,6 +26,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.RpcUtils;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -100,11 +101,11 @@ public class TableModelUtils {
   public static boolean insertData(
       final String dataBaseName,
       final String tableName,
-      final int start,
-      final int end,
+      final int startInclusive,
+      final int endExclusive,
       final BaseEnv baseEnv) {
-    List<String> list = new ArrayList<>(end - start + 1);
-    for (int i = start; i < end; ++i) {
+    List<String> list = new ArrayList<>(endExclusive - startInclusive + 1);
+    for (int i = startInclusive; i < endExclusive; ++i) {
       list.add(
           String.format(
               "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
@@ -112,7 +113,7 @@ public class TableModelUtils {
     }
     list.add("flush");
     return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   public static boolean insertData(
@@ -163,7 +164,7 @@ public class TableModelUtils {
               i));
     }
     return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   public static boolean insertDataNotThrowError(
@@ -180,7 +181,7 @@ public class TableModelUtils {
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   public static boolean insertData(
@@ -246,7 +247,7 @@ public class TableModelUtils {
     list.add(
         String.format("delete from %s where time >= %s and time <= %s", tableName, start, end));
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null)) {
       fail();
     }
   }
@@ -400,6 +401,12 @@ public class TableModelUtils {
     return true;
   }
 
+  public static void assertCountDataAlwaysOnEnv(
+      final String database, final String table, final int count, final BaseEnv baseEnv) {
+    TestUtils.assertDataAlwaysOnEnv(
+        baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);
+  }
+
   public static void assertCountData(
       final String database, final String table, final int count, final BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
@@ -478,20 +485,20 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,
@@ -560,20 +567,20 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,
@@ -650,20 +657,20 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,
@@ -742,20 +749,20 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,
@@ -804,6 +811,9 @@ public class TableModelUtils {
       final ResultSet resultSet = statement.executeQuery("show pipes");
       int count = 0;
       while (resultSet.next()) {
+        if (resultSet.getString("ID").startsWith("__consensus")) {
+          continue;
+        }
         count++;
       }
       return count;

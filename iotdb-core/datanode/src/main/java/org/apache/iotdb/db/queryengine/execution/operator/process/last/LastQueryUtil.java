@@ -36,6 +36,8 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGt;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,6 +65,38 @@ public class LastQueryUtil {
 
   public static Binary getTimeSeries(TsBlock tsBlock, int index) {
     return tsBlock.getColumn(0).getBinary(index);
+  }
+
+  public static void appendLastValueRespectBlob(
+      TsBlockBuilder builder,
+      long lastTime,
+      String fullPath,
+      TsPrimitiveType lastValue,
+      String dataType) {
+    appendLastValue(
+        builder,
+        lastTime,
+        fullPath,
+        dataType.equals(TSDataType.BLOB.name())
+            ? BytesUtils.parseBlobByteArrayToString(lastValue.getBinary().getValues())
+            : lastValue.getStringValue(),
+        dataType);
+  }
+
+  public static void appendLastValueRespectBlob(
+      TsBlockBuilder builder,
+      long lastTime,
+      Binary fullPath,
+      TsPrimitiveType lastValue,
+      String dataType) {
+    appendLastValue(
+        builder,
+        lastTime,
+        fullPath,
+        dataType.equals(TSDataType.BLOB.name())
+            ? BytesUtils.parseBlobByteArrayToString(lastValue.getBinary().getValues())
+            : lastValue.getStringValue(),
+        dataType);
   }
 
   public static void appendLastValue(

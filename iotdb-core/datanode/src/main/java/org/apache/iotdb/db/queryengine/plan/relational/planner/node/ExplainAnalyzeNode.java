@@ -37,6 +37,7 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   private final long queryId;
   private final long timeout;
   private final Symbol outputSymbol;
+  private final List<Symbol> childPermittedOutputs;
 
   public ExplainAnalyzeNode(
       PlanNodeId id,
@@ -44,17 +45,20 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
       boolean verbose,
       long queryId,
       long timeout,
-      Symbol outputSymbol) {
+      Symbol outputSymbol,
+      List<Symbol> childPermittedOutputs) {
     super(id, child);
     this.verbose = verbose;
     this.timeout = timeout;
     this.queryId = queryId;
     this.outputSymbol = outputSymbol;
+    this.childPermittedOutputs = childPermittedOutputs;
   }
 
   @Override
   public PlanNode clone() {
-    return new ExplainAnalyzeNode(getPlanNodeId(), child, verbose, queryId, timeout, outputSymbol);
+    return new ExplainAnalyzeNode(
+        getPlanNodeId(), child, verbose, queryId, timeout, outputSymbol, childPermittedOutputs);
   }
 
   @Override
@@ -72,10 +76,20 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     return Collections.singletonList(outputSymbol);
   }
 
+  public List<Symbol> getChildPermittedOutputs() {
+    return childPermittedOutputs;
+  }
+
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     return new org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode(
-        getPlanNodeId(), newChildren.get(0), verbose, queryId, timeout, outputSymbol);
+        getPlanNodeId(),
+        newChildren.get(0),
+        verbose,
+        queryId,
+        timeout,
+        outputSymbol,
+        childPermittedOutputs);
   }
 
   // ExplainAnalyze should be at the same region as Coordinator all the time. Therefore, there will

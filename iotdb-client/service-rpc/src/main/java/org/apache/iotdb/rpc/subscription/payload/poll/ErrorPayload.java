@@ -28,6 +28,10 @@ import java.util.Objects;
 
 public class ErrorPayload implements SubscriptionPollPayload {
 
+  private static final String OUTDATED_ERROR_MSG = "outdated subscription event";
+  public static final ErrorPayload OUTDATED_ERROR_PAYLOAD =
+      new ErrorPayload(OUTDATED_ERROR_MSG, false);
+
   /** The error message describing the issue. */
   private transient String errorMessage;
 

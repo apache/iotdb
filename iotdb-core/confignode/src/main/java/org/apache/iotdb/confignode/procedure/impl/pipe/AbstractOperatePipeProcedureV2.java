@@ -26,15 +26,13 @@ import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMet
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -223,7 +221,7 @@ public abstract class AbstractOperatePipeProcedureV2
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",
@@ -428,12 +426,20 @@ public abstract class AbstractOperatePipeProcedureV2
    * @return Error messages for the given pipe after pushing pipe meta
    */
   public static String parsePushPipeMetaExceptionForPipe(
-      String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
+      final String pipeName, final Map<Integer, TPushPipeMetaResp> respMap) {
     final StringBuilder exceptionMessageBuilder = new StringBuilder();
 
-    for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
-      int dataNodeId = respEntry.getKey();
-      TPushPipeMetaResp resp = respEntry.getValue();
+    for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+      final int dataNodeId = respEntry.getKey();
+      final TPushPipeMetaResp resp = respEntry.getValue();
+
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()) {
+        exceptionMessageBuilder.append(
+            String.format(
+                "DataNodeId: %s, Message: Timeout to wait for lock while processing pushPipeMeta on dataNodes.",
+                dataNodeId));
+        continue;
+      }
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         if (!resp.isSetExceptionMessages()) {
@@ -444,7 +450,7 @@ public abstract class AbstractOperatePipeProcedureV2
           continue;
         }
 
-        AtomicBoolean hasException = new AtomicBoolean(false);
+        final AtomicBoolean hasException = new AtomicBoolean(false);
 
         resp.getExceptionMessages()
             .forEach(
@@ -520,6 +526,10 @@ public abstract class AbstractOperatePipeProcedureV2
         .entrySet()
         .removeIf(
             consensusGroupId2TaskMeta -> {
+              if (originalPipeMeta.getStaticMeta().isSourceExternal()) {
+                // should keep the external source tasks
+                return false;
+              }
               final String database;
               try {
                 database =

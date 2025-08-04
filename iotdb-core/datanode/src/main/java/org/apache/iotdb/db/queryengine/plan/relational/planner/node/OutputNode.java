@@ -46,6 +46,8 @@ public class OutputNode extends SingleChildProcessNode {
   // column name = symbol
   private final List<Symbol> outputSymbols;
 
+  public static final String COLUMN_NAME_PREFIX = "_col";
+
   public OutputNode(
       PlanNodeId id, PlanNode child, List<String> columnNames, List<Symbol> outputSymbols) {
     super(id, child);

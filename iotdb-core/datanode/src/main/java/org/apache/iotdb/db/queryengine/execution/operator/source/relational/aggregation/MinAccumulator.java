@@ -54,7 +54,7 @@ public class MinAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of Min should be one column");
+    checkArgument(arguments.length == 1, "argument of MIN should be one column");
 
     switch (seriesDataType) {
       case INT32:
@@ -81,7 +81,7 @@ public class MinAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
     }
   }
 
@@ -117,7 +117,7 @@ public class MinAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -154,7 +154,7 @@ public class MinAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
     }
   }
 
@@ -189,7 +189,7 @@ public class MinAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
     }
   }
 
@@ -209,10 +209,8 @@ public class MinAccumulator implements TableAccumulator {
         updateIntMinValue((int) statistics[0].getMinValue());
         break;
       case INT64:
-        updateLongMinValue((long) statistics[0].getMinValue());
-        break;
       case TIMESTAMP:
-        updateLongMinValue(statistics[0].getStartTime());
+        updateLongMinValue((long) statistics[0].getMinValue());
         break;
       case FLOAT:
         updateFloatMinValue((float) statistics[0].getMinValue());
@@ -230,7 +228,7 @@ public class MinAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
     }
   }
 

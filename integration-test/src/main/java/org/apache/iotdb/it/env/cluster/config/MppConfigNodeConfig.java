@@ -55,4 +55,22 @@ public class MppConfigNodeConfig extends MppBaseConfig implements ConfigNodeConf
     properties.setProperty("cn_metric_reporter_list", String.join(",", metricReporterTypes));
     return this;
   }
+
+  @Override
+  public ConfigNodeConfig setMetricPrometheusReporterUsername(String username) {
+    properties.setProperty("metric_prometheus_reporter_username", username);
+    return this;
+  }
+
+  @Override
+  public ConfigNodeConfig setMetricPrometheusReporterPassword(String password) {
+    properties.setProperty("metric_prometheus_reporter_password", password);
+    return this;
+  }
+
+  @Override
+  public ConfigNodeConfig setLeaderDistributionPolicy(String policy) {
+    properties.setProperty("leader_distribution_policy", policy);
+    return this;
+  }
 }

@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -52,6 +51,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -765,7 +765,7 @@ public class AbstractCompactionTest {
     File file = resource.getTsFile();
     String[] fileInfo = file.getPath().split(FILE_NAME_SEPARATOR);
     fileInfo[1] = String.valueOf(version);
-    String newFileName = StringUtil.join(fileInfo, FILE_NAME_SEPARATOR);
+    String newFileName = StringUtils.join(fileInfo, FILE_NAME_SEPARATOR);
     file.renameTo(new File(newFileName));
 
     resource.setVersion(version);

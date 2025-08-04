@@ -76,6 +76,7 @@ public class IoTDBNullIdQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
@@ -507,9 +508,9 @@ public class IoTDBNullIdQueryIT {
 
   @Test
   public void setSqlDialectTest() throws SQLException {
-    createUser("tempuser", "temppw");
+    createUser("tempuser", "temppw123456");
 
-    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
         Statement userStmt = userCon.createStatement()) {
       assertCurrentSqlDialect(true, userStmt);
 
@@ -520,6 +521,18 @@ public class IoTDBNullIdQueryIT {
       // set Table to Tree
       userStmt.execute("set sql_dialect=tree");
       assertCurrentSqlDialect(true, userStmt);
+    }
+  }
+
+  @Test
+  public void setSqlDialectContextCleanTest() throws SQLException {
+    try (Connection userCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement userStmt = userCon.createStatement()) {
+      userStmt.execute("create database test1");
+      userStmt.execute("use test1");
+      userStmt.execute("set sql_dialect=tree");
+      assertCurrentSqlDialect(true, userStmt);
+      userStmt.execute("insert into root.db(time,s1) values (0,1), (1, 3), (2,5)");
     }
   }
 

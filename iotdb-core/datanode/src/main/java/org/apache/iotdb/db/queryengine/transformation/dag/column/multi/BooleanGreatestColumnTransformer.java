@@ -37,7 +37,7 @@ public class BooleanGreatestColumnTransformer extends AbstractGreatestLeastColum
         if (column.getBoolean(index)) {
           // find max value true
           returnType.writeBoolean(builder, true);
-          break;
+          return;
         }
       }
     }

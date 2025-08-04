@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -64,6 +65,8 @@ public abstract class EnrichedEvent implements Event {
   // Used in IoTConsensusV2
   protected long replicateIndexForIoTV2 = NO_COMMIT_ID;
   protected int rebootTimes = 0;
+  public static final long INITIAL_RETRY_INTERVAL_FOR_IOTV2 = 500L;
+  protected long retryInterval = INITIAL_RETRY_INTERVAL_FOR_IOTV2;
 
   protected final TreePattern treePattern;
   protected final TablePattern tablePattern;
@@ -76,6 +79,8 @@ public abstract class EnrichedEvent implements Event {
 
   protected volatile boolean shouldReportOnCommit = true;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
+  protected String userName;
+  protected boolean skipIfNoPrivileges;
 
   protected EnrichedEvent(
       final String pipeName,
@@ -83,6 +88,8 @@ public abstract class EnrichedEvent implements Event {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     referenceCount = new AtomicInteger(0);
@@ -93,6 +100,8 @@ public abstract class EnrichedEvent implements Event {
     this.pipeTaskMeta = pipeTaskMeta;
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
+    this.userName = userName;
+    this.skipIfNoPrivileges = skipIfNoPrivileges;
     this.startTime = startTime;
     this.endTime = endTime;
 
@@ -193,15 +202,15 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (referenceCount.get() == 1) {
+      if (!shouldReport) {
+        shouldReportOnCommit = false;
+      }
       // We assume that this function will not throw any exceptions.
       if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
             "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
-      }
-      if (!shouldReport) {
-        shouldReportOnCommit = false;
       }
       PipeEventCommitManager.getInstance().commit(this, committerKey);
     }
@@ -340,6 +349,14 @@ public abstract class EnrichedEvent implements Event {
     return tablePattern;
   }
 
+  public String getUserName() {
+    return userName;
+  }
+
+  public boolean isSkipIfNoPrivileges() {
+    return skipIfNoPrivileges;
+  }
+
   public final long getStartTime() {
     return startTime;
   }
@@ -378,6 +395,8 @@ public abstract class EnrichedEvent implements Event {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime);
 
@@ -390,6 +409,10 @@ public abstract class EnrichedEvent implements Event {
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;
+  }
+
+  public void throwIfNoPrivilege() throws Exception {
+    // Do nothing by default
   }
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
@@ -409,12 +432,32 @@ public abstract class EnrichedEvent implements Event {
     return rebootTimes;
   }
 
+  public long getRetryInterval() {
+    return this.retryInterval;
+  }
+
+  public void setRetryInterval(final long retryInterval) {
+    this.retryInterval = retryInterval;
+  }
+
   public CommitterKey getCommitterKey() {
     return committerKey;
   }
 
+  public boolean hasMultipleCommitIds() {
+    return false;
+  }
+
   public long getCommitId() {
     return commitId;
+  }
+
+  public List<EnrichedEvent> getDummyEventsForCommitIds() {
+    return Collections.emptyList();
+  }
+
+  public List<Long> getCommitIds() {
+    return Collections.singletonList(commitId);
   }
 
   public long getReplicateIndexForIoTV2() {
@@ -486,6 +529,10 @@ public abstract class EnrichedEvent implements Event {
         + isTimeParsed
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
+        + ", userName="
+        + userName
+        + ", skipIfNoPrivileges="
+        + skipIfNoPrivileges
         + '}';
   }
 
@@ -517,6 +564,10 @@ public abstract class EnrichedEvent implements Event {
         + isTimeParsed
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
+        + ", userName="
+        + userName
+        + ", skipIfNoPrivileges="
+        + skipIfNoPrivileges
         + '}';
   }
 }

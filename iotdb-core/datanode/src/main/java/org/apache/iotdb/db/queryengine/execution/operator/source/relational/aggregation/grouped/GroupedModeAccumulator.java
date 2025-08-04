@@ -109,7 +109,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of Mode should be BinaryColumn");
+        "intermediate input and output of MODE should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -125,7 +125,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Mode should be BinaryColumn");
+        "intermediate input and output of MODE should be BinaryColumn");
 
     columnBuilder.writeBinary(new Binary(serializeCountMap(groupId)));
   }
@@ -589,7 +589,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
     if (size > MAP_SIZE_THRESHOLD) {
       throw new RuntimeException(
           String.format(
-              "distinct values has exceeded the threshold %s when calculate Mode in one group",
+              "distinct values has exceeded the threshold %s when calculate MODE in one group",
               MAP_SIZE_THRESHOLD));
     }
   }
