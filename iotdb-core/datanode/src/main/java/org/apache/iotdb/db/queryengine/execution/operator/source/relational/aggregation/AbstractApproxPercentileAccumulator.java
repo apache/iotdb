@@ -23,7 +23,10 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.ByteBuffer;
 
 public abstract class AbstractApproxPercentileAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
@@ -83,7 +86,13 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
   public void addIntermediate(Column argument) {
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (!argument.isNull(i)) {
-        TDigest other = TDigest.fromByteArray(argument.getBinary(i).getValues());
+        byte[] data = argument.getBinary(i).getValues();
+        // Read percentage from the first 8 bytes and TDigest from the rest
+        ByteBuffer buffer = ByteBuffer.wrap(data);
+        this.percentage = ReadWriteIOUtils.readDouble(buffer);
+        byte[] tDigestData = new byte[data.length - 8];
+        buffer.get(tDigestData);
+        TDigest other = TDigest.fromByteArray(tDigestData);
         tDigest.add(other);
       }
     }
@@ -91,7 +100,12 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
 
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
-    columnBuilder.writeBinary(new Binary(tDigest.toByteArray()));
+    byte[] tDigestData = tDigest.toByteArray();
+    // Create a buffer with space for percentage (8 bytes) + TDigest data
+    ByteBuffer buffer = ByteBuffer.allocate(8 + tDigestData.length);
+    ReadWriteIOUtils.write(percentage, buffer);
+    buffer.put(tDigestData);
+    columnBuilder.writeBinary(new Binary(buffer.array()));
   }
 
   @Override

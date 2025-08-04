@@ -24,7 +24,10 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.ByteBuffer;
 
 public abstract class AbstractGroupedApproxPercentileAccumulator implements GroupedAccumulator {
 
@@ -86,7 +89,12 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
     for (int i = 0; i < groupIds.length; i++) {
       int groupId = groupIds[i];
       if (!argument.isNull(i)) {
-        TDigest other = TDigest.fromByteArray(argument.getBinary(i).getValues());
+        byte[] data = argument.getBinary(i).getValues();
+        ByteBuffer buffer = ByteBuffer.wrap(data);
+        this.percentage = ReadWriteIOUtils.readDouble(buffer);
+        byte[] tDigestData = new byte[data.length - 8];
+        buffer.get(tDigestData);
+        TDigest other = TDigest.fromByteArray(tDigestData);
         array.get(groupId).add(other);
       }
     }
@@ -94,7 +102,11 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
-    columnBuilder.writeBinary(new Binary(array.get(groupId).toByteArray()));
+    byte[] tDigestData = array.get(groupId).toByteArray();
+    ByteBuffer buffer = ByteBuffer.allocate(8 + tDigestData.length);
+    ReadWriteIOUtils.write(percentage, buffer);
+    buffer.put(tDigestData);
+    columnBuilder.writeBinary(new Binary(buffer.array()));
   }
 
   @Override

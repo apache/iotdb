@@ -14,6 +14,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.Serializable;
@@ -281,6 +283,9 @@ public class TDigest implements Serializable {
       int[] incomingOrder,
       int incomingCount,
       double compression) {
+    if (incomingCount == 0) {
+      return;
+    }
     initializeFirstCentroid(incomingMean, incomingWeight, incomingOrder);
 
     double wSoFar = 0;
@@ -509,7 +514,7 @@ public class TDigest implements Serializable {
    */
   public double quantile(double q) {
     if (q < 0 || q > 1) {
-      throw new IllegalArgumentException("q should be in [0,1], got " + q);
+      throw new SemanticException("q should be in [0,1], got " + q);
     }
     mergeNewValues();
 

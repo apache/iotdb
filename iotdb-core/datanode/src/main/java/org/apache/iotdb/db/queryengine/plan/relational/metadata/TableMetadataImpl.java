@@ -670,19 +670,36 @@ public class TableMetadataImpl implements Metadata {
         }
         break;
       case SqlConstant.APPROX_PERCENTILE:
-        if (argumentTypes.size() != 2 && argumentTypes.size() != 3) {
+        int argumentSize = argumentTypes.size();
+        if (argumentSize != 2 && argumentSize != 3) {
           throw new SemanticException(
               String.format(
                   "Aggregation functions [%s] should only have two or three arguments",
                   functionName));
         }
-        if ((argumentTypes.size() == 2 && !isDecimalType(argumentTypes.get(1)))
-            || (argumentTypes.size() == 3 && !isDecimalType(argumentTypes.get(2)))) {
+
+        Type valueColumnType = argumentTypes.get(0);
+        if (!isNumericType(valueColumnType)) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should have percentage as decimal type",
+                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
                   functionName));
         }
+
+        // Validate percentage and weight parameters
+        boolean hasInvalidTypes =
+            (argumentSize == 2 && !isDecimalType(argumentTypes.get(1)))
+                || (argumentSize == 3
+                    && (!isIntegerNumber(argumentTypes.get(1))
+                        || !isDecimalType(argumentTypes.get(2))));
+
+        if (hasInvalidTypes) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have weight as integer type and percentage as decimal type",
+                  functionName));
+        }
+
         break;
       case SqlConstant.COUNT:
         break;
