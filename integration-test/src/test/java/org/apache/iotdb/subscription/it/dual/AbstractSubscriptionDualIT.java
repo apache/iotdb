@@ -59,8 +59,16 @@ public abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT 
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
-    senderEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
-    receiverEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
   }
 
   @Override
