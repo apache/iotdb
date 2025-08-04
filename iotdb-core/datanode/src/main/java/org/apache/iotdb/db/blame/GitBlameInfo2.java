@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.blame;
 
 import org.apache.commons.io.FilenameUtils;
 
