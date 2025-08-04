@@ -130,8 +130,7 @@ public class SetTablePropertiesProcedure
                   this instanceof SetViewPropertiesProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
         return;
       }
       table = result.getRight();
@@ -157,7 +156,7 @@ public class SetTablePropertiesProcedure
                     : new SetTablePropertiesPlan(database, tableName, updatedProperties),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(COMMIT_RELEASE);
     }
@@ -207,7 +206,7 @@ public class SetTablePropertiesProcedure
                 new SetTablePropertiesPlan(database, tableName, originalProperties),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
