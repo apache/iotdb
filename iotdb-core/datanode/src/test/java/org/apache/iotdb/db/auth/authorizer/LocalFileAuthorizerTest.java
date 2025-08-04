@@ -37,6 +37,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class LocalFileAuthorizerTest {
@@ -231,6 +232,11 @@ public class LocalFileAuthorizerTest {
     authorizer.createUser(userName, password);
     authorizer.updateUserPassword(userName, "newPassword123456");
     Assert.assertTrue(authorizer.login(userName, "newPassword123456"));
+    assertThrows(
+        AuthException.class,
+        () -> {
+          authorizer.updateUserPassword(userName, "short-pw");
+        });
   }
 
   @Test

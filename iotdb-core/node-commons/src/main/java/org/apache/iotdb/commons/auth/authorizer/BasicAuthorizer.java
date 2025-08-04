@@ -120,7 +120,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
       try {
-        userManager.updateUserPassword(username, password);
+        updateUserPassword(username, password);
       } catch (AuthException ignore) {
         // Old password invalid under current policy (ignored)
       }
@@ -145,7 +145,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
       try {
-        userManager.updateUserPassword(username, password);
+        updateUserPassword(username, password);
       } catch (AuthException ignore) {
         // Old password invalid under current policy (ignored)
       }
