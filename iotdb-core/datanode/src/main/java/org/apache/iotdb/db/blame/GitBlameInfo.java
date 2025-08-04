@@ -43,8 +43,8 @@ import java.util.stream.Collectors;
 
 public class GitBlameInfo {
   public static void main(String[] args) throws IOException {
-    final String timechoDBPath = "C:\\Users\\13361\\Documents\\GitHub\\timechodb\\";
-    final String tsFilePath = "C:\\Users\\13361\\Documents\\GitHub\\tsfile\\";
+    final String timechoDBPath = "C:/Users/13361/Documents/GitHub/timechodb/";
+    final String tsFilePath = "C:/Users/13361/Documents/GitHub/tsfile/";
 
     final Map<String, List<String>> inclusionPathMap = new HashMap<>();
     inclusionPathMap.put("IoTDB总", Collections.singletonList(""));
@@ -53,192 +53,195 @@ public class GitBlameInfo {
     inclusionPathMap.put(
         "流处理插件",
         Arrays.asList(
-            "iotdb-api\\pipe-api\\src\\main\\java\\org\\apache\\iotdb\\pipe",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\pipe\\processor",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\pipe\\connector",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\pipe\\extractor"));
+            "iotdb-api/pipe-api/src/main/java/org/apache/iotdb/pipe",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/processor",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/sink",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/source"));
     inclusionPathMap.put(
         "元数据管理",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\schemaengine",
-            "iotdb-protocol\\thrift-influxdb",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\exception",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\protocol\\influxdb"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/schemaengine",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/exception"));
     inclusionPathMap.put(
         "数据订阅",
         Collections.singletonList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\subscription"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/subscription"));
     inclusionPathMap.put(
         "流处理框架",
         Collections.singletonList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\pipe\\agent"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/agent"));
     inclusionPathMap.put(
         "数据同步",
         Collections.singletonList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\pipe"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe"));
     inclusionPathMap.put(
         "权限管理",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\auth",
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\manager\\PermissionManager.java",
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\persistence\\AuthorInfo.java",
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\consensus\\request\\read\\auth",
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\consensus\\request\\write\\auth",
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\consensus\\response\\auth"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/auth",
+            "iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/manager/PermissionManager.java",
+            "iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/persistence/AuthorInfo.java",
+            "iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/consensus/request/write/auth",
+            "iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/consensus/response/auth"));
     inclusionPathMap.put(
         "命令行工具",
         Arrays.asList(
-            "iotdb-client\\cli\\src\\main",
-            "iotdb-client\\cli\\src\\assembly",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\tools"));
+            "iotdb-client/cli/src/main",
+            "iotdb-client/cli/src/assembly",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/tools"));
     inclusionPathMap.put(
         "Java原生接口",
         Arrays.asList(
-            "iotdb-client\\isession\\src\\main",
-            "iotdb-client\\service-rpc\\src\\main",
-            "iotdb-client\\session\\src\\main",
-            "timecho-isession\\src\\main",
-            "timecho-session\\src\\main"));
-    inclusionPathMap.put("JDBC", Collections.singletonList("iotdb-client\\jdbc\\src\\main"));
+            "iotdb-client/isession/src/main",
+            "iotdb-client/service-rpc/src/main",
+            "iotdb-client/session/src/main",
+            "timecho-isession/src/main",
+            "timecho-session/src/main"));
+    inclusionPathMap.put("JDBC", Collections.singletonList("iotdb-client/jdbc/src/main"));
     inclusionPathMap.put(
         "负载均衡管理",
         Arrays.asList(
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\manager\\node",
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\manager\\partition",
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\manager\\load"));
+            "iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/manager/node",
+            "iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/manager/partition",
+            "iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/manager/load"));
     inclusionPathMap.put(
         "RESTAPI",
         Arrays.asList(
-            "iotdb-protocol\\openapi",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\protocol\\rest"));
+            "iotdb-protocol/openapi",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/rest"));
     inclusionPathMap.put(
         "共识层管理",
         Arrays.asList(
-            "iotdb-core\\consensus\\src\\main",
-            "iotdb-protocol\\thrift-consensus",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\consensus"));
-    inclusionPathMap.put("授权激活", Collections.singletonList("timecho-confignode\\src"));
+            "iotdb-core/consensus/src/main",
+            "iotdb-protocol/thrift-consensus",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/consensus"));
+    inclusionPathMap.put("授权激活", Collections.singletonList("timecho-confignode/src"));
     inclusionPathMap.put(
         "加密通信",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\service\\RPCService.java",
-            "iotdb-core\\node-commons\\src\\main\\java\\org\\apache\\iotdb\\commons\\service\\AbstractThriftServiceThread.java",
-            "iotdb-core\\node-commons\\src\\main\\java\\org\\apache\\iotdb\\commons\\service\\ThriftServiceThread.java",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\protocol\\thrift"));
-    inclusionPathMap.put("白名单管理", Collections.singletonList("timecho-server\\src\\main"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/service/ExternalRPCService.java",
+            "iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/service/AbstractThriftServiceThread.java",
+            "iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/service/ThriftServiceThread.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/thrift"));
+    inclusionPathMap.put("白名单管理", Collections.singletonList("timecho-server/src/main"));
     inclusionPathMap.put(
         "安全审计",
         Collections.singletonList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\audit"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/audit"));
     inclusionPathMap.put(
         "身份鉴别",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\auth\\BasicAuthorityCache.java",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\protocol\\session"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/auth/BasicAuthorityCache.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/session"));
     inclusionPathMap.put(
         "配置管理",
         Arrays.asList(
-            "iotdb-core\\node-commons\\src\\main\\java\\org\\apache\\iotdb\\commons\\conf",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\conf",
-            "iotdb-core\\confignode\\src\\main\\java\\org\\apache\\iotdb\\confignode\\conf",
-            "iotdb-core\\confignode\\src\\assembly",
-            "iotdb-core\\datanode\\src\\assembly"));
+            "iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/conf",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/conf",
+            "iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/conf",
+            "iotdb-core/confignode/src/assembly",
+            "iotdb-core/datanode/src/assembly"));
     inclusionPathMap.put(
         "监控框架",
         Arrays.asList(
-            "iotdb-core\\metrics",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\protocol\\metrics",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\service"));
+            "iotdb-core/metrics",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/service"));
     inclusionPathMap.put(
         "SQL解析",
         Arrays.asList(
-            "iotdb-core\\antlr",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\plan\\statement",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\plan\\analyze",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\plan\\expression"));
+            "iotdb-core/antlr",
+            "iotdb-core/relational-grammar",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/statement",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/analyze",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/expression"));
+    inclusionPathMap.put(
+        "查询优化",
+        Arrays.asList(
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/planner/optimizations",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/optimization"));
     inclusionPathMap.put(
         "查询规划",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\plan\\planner",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\plan\\scheduler",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\plan\\execution",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\plan\\Coordinator.java",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\common",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\QueryIdGenerator.java",
-            "iotdb-api\\udf-api"));
-    inclusionPathMap.put(
-        "查询优化",
-        Collections.singletonList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\plan\\optimization"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/udf",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/scheduler",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/execution",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/Coordinator.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/common",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/QueryIdGenerator.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/ClusterTopology.java",
+            "iotdb-api/udf-api"));
     inclusionPathMap.put(
         "查询执行",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\exception",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\metric",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\statistics",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\transformation",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\memory",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\aggregation",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\exchange",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\executor",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\fragment",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\operator",
-            "iotdb-core\\datanode\\src\\main\\codegen",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\MemoryEstimationHelper.java"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/exception",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/metric",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/statistics",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/transformation",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/memory",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/aggregation",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/executor",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator",
+            "iotdb-core/datanode/src/main/codegen",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/MemoryEstimationHelper.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/relational",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/warnings"));
     inclusionPathMap.put(
         "查询调度",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\schedule",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\driver",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\FutureStateChange.java",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\QueryState.java",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\QueryStateMachine.java",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\queryengine\\execution\\StateMachine.java"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/FutureStateChange.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/QueryState.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/QueryStateMachine.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/StateMachine.java"));
     inclusionPathMap.put(
         "LSM文件整理",
         Collections.singletonList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\dataregion\\compaction"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction"));
     inclusionPathMap.put(
         "写前日志",
         Collections.singletonList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\dataregion\\wal"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/wal"));
     inclusionPathMap.put(
         "文件管理",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\dataregion\\tsfile",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\dataregion\\modification",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\dataregion\\read",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\dataregion\\snapshot",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\load",
-            "object-storage\\src\\main"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/tsfile",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/modification",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/read",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/snapshot",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/load",
+            "object-storage/src/main"));
     inclusionPathMap.put(
         "内存缓冲区",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\utils",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\rescon",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\StorageEngine.java",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\buffer",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\storageengine\\dataregion"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/utils",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/StorageEngine.java",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/buffer",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion"));
     inclusionPathMap.put(
         "集群任务管理",
         Arrays.asList(
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\protocol\\basic",
-            "iotdb-core\\datanode\\src\\main\\java\\org\\apache\\iotdb\\db\\protocol\\client",
-            "iotdb-core\\node-commons\\src\\main",
-            "iotdb-core\\node-commons\\src\\assembly",
-            "iotdb-core\\confignode\\src\\main",
-            "iotdb-protocol\\thrift-confignode"));
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/basic",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/client",
+            "iotdb-core/node-commons/src/main",
+            "iotdb-core/node-commons/src/assembly",
+            "iotdb-core/confignode/src/main",
+            "iotdb-protocol/thrift-confignode"));
     inclusionPathMap.put(
         "TsFile文件格式",
         Arrays.asList(
-            "java\\common\\src\\main\\java\\org\\apache\\tsfile",
-            "java\\tsfile\\src\\main\\java\\org\\apache\\tsfile\\common",
-            "java\\tsfile\\src\\main\\java\\org\\apache\\tsfile\\file",
-            "java\\tsfile\\src\\main\\java\\org\\apache\\tsfile\\fileSystem",
-            "java\\tsfile\\src\\main\\java\\org\\apache\\tsfile\\encoding",
-            "java\\tsfile\\src\\main\\java\\org\\apache\\tsfile\\compress",
-            "java\\tsfile\\src\\main\\java\\org\\apache\\tsfile\\read",
-            "java\\tsfile\\src\\main\\java\\org\\apache\\tsfile\\write"));
+            "java/common/src/main/java/org/apache/tsfile",
+            "java/tsfile/src/main/java/org/apache/tsfile/common",
+            "java/tsfile/src/main/java/org/apache/tsfile/file",
+            "java/tsfile/src/main/java/org/apache/tsfile/fileSystem",
+            "java/tsfile/src/main/java/org/apache/tsfile/encoding",
+            "java/tsfile/src/main/java/org/apache/tsfile/compress",
+            "java/tsfile/src/main/java/org/apache/tsfile/read",
+            "java/tsfile/src/main/java/org/apache/tsfile/write"));
 
     final Map<String, List<String>> exclusionPaths = new HashMap<>();
 
@@ -332,7 +335,7 @@ public class GitBlameInfo {
             put("lancelly", "廖兰宇");
             put("WilliamSong11", "宋子阳");
             put("linxt20", "林欣涛");
-            put("DESKTOP-L0L5GPJ\\jt", "江天");
+            put("DESKTOP-L0L5GPJ/jt", "江天");
             put("YC27", "杨晨");
             put("Rui,Lei", "芮蕾");
             put("V_Galaxy", "丁宇辰");
@@ -370,7 +373,7 @@ public class GitBlameInfo {
     for (final Map.Entry<String, List<String>> entry : inclusionPathMap.entrySet()) {
       System.out.println(entry.getKey());
       final File outPutFile =
-          new File("C:\\Users\\13361\\Downloads\\output\\" + entry.getKey() + ".txt");
+          new File("C:/Users/13361/Downloads/output/" + entry.getKey() + ".txt");
       outPutFile.delete();
       outPutFile.createNewFile();
 
