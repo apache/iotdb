@@ -264,7 +264,6 @@ public abstract class AbstractMemTable implements IMemTable {
   public int insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException {
     try {
-      String[] measurements = insertTabletNode.getMeasurements();
       Object[] values = insertTabletNode.getBitMaps();
       int nullPointsNumber = 0;
       for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
@@ -296,7 +295,6 @@ public abstract class AbstractMemTable implements IMemTable {
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     try {
-      String[] measurements = insertTabletNode.getMeasurements();
       Object[] values = insertTabletNode.getBitMaps();
       int nullPointsNumber = 0;
       for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
