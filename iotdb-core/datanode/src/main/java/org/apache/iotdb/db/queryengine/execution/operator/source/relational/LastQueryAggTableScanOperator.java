@@ -161,6 +161,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
     Optional<Boolean> b = calculateAggregationResultForCurrentTimeRange();
     if (b.isPresent() && b.get()) {
       timeIterator.resetCurTimeRange();
+      outputDeviceIndex++;
     }
   }
 
