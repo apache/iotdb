@@ -314,8 +314,7 @@ public class TableDeviceSchemaCache {
   }
 
   /**
-   * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
-   * "time".
+   * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be "".
    *
    * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId {@link IDeviceID}
