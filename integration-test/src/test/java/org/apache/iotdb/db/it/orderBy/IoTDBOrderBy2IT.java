@@ -37,6 +37,10 @@ public class IoTDBOrderBy2IT extends IoTDBOrderByIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(2048);
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setMaxTsBlockSizeInByte(200);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeCommonConfig()
+        .setQueryMemoryProportion("1:100:200:50:200:400:200:50");
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
