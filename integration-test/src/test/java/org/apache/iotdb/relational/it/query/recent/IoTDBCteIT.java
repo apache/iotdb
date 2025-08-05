@@ -1,0 +1,274 @@
+package org.apache.iotdb.relational.it.query.recent;
+
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Locale;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+@RunWith(IoTDBTestRunner.class)
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
+public class IoTDBCteIT {
+  private static final String DATABASE_NAME = "testdb";
+
+  private static final String[] creationSqls =
+      new String[] {
+        "CREATE DATABASE IF NOT EXISTS testdb",
+        "USE testdb",
+        "CREATE TABLE IF NOT EXISTS testtb(deviceid STRING TAG, voltage FLOAT FIELD)",
+        "INSERT INTO testtb VALUES(1000, 'd1', 100.0)",
+        "INSERT INTO testtb VALUES(2000, 'd1', 200.0)",
+        "INSERT INTO testtb VALUES(1000, 'd2', 300.0)",
+      };
+
+  private static final String dropDbSqls = "DROP DATABASE IF EXISTS testdb";
+
+  @BeforeClass
+  public static void setUpClass() {
+    Locale.setDefault(Locale.ENGLISH);
+
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setPartitionInterval(1000)
+        .setMemtableSizeThreshold(10000);
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() throws SQLException {
+    prepareData();
+  }
+
+  @After
+  public void tearDown() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute(dropDbSqls);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testQuery() {
+    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:01.000Z,d1,100.0,",
+          "1970-01-01T00:00:02.000Z,d1,200.0,",
+          "1970-01-01T00:00:01.000Z,d2,300.0,"
+        };
+    tableResultSetEqualTest(
+        "with cte as (select * from testtb) select * from cte order by deviceid",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"deviceid", "voltage"};
+    retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
+    tableResultSetEqualTest(
+        "with cte as (select deviceid, voltage from testtb) select * from cte order by deviceid",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"deviceid", "avg_voltage"};
+    retArray = new String[] {"d1,150.0,", "d2,300.0,"};
+    tableResultSetEqualTest(
+        "with cte as (select deviceid, avg(voltage) as avg_voltage from testtb group by deviceid) select * from cte order by deviceid",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testPartialColumn() {
+    String[] expectedHeader = new String[] {"id", "v"};
+    String[] retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
+    tableResultSetEqualTest(
+        "with cte(id, v) as (select deviceid, voltage from testtb) select * from cte order by id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "with cte(v) as (select deviceid, voltage from testtb) select * from cte order by id",
+        "701: Column alias list has 1 entries but relation has 2 columns",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testExplain() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE testdb");
+      // explain
+      ResultSet resultSet =
+          statement.executeQuery(
+              "explain with cte as (select * from testtb) select * from cte order by deviceid");
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      assertEquals(metaData.getColumnCount(), 1);
+      assertEquals(metaData.getColumnName(1), "distribution plan");
+
+      // explain analyze
+      resultSet =
+          statement.executeQuery(
+              "explain analyze with cte as (select * from testtb) select * from cte order by deviceid");
+      metaData = resultSet.getMetaData();
+      assertEquals(metaData.getColumnCount(), 1);
+      assertEquals(metaData.getColumnName(1), "Explain Analyze");
+    }
+  }
+
+  @Test
+  public void testMultiReference() {
+    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] retArray = new String[] {"1970-01-01T00:00:01.000Z,d2,300.0,"};
+    tableResultSetEqualTest(
+        "with cte as (select * from testtb) select * from cte where voltage > (select avg(voltage) from cte)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDomain() {
+    String[] expectedHeader = new String[] {"deviceid", "voltage"};
+    String[] retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
+    tableResultSetEqualTest(
+        "with testtb as (select deviceid, voltage from testtb) select * from testtb order by deviceid",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "with testtb as (select voltage from testtb) select * from testtb order by deviceid",
+        "616: Column 'deviceid' cannot be resolved",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testSession() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("use testdb");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("with cte as (select * from testtb) select * from cte");
+
+      assertEquals(dataSet.getColumnNames().size(), 3);
+      assertEquals(dataSet.getColumnNames().get(0), "time");
+      assertEquals(dataSet.getColumnNames().get(1), "deviceid");
+      assertEquals(dataSet.getColumnNames().get(2), "voltage");
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        cnt++;
+      }
+      Assert.assertEquals(3, cnt);
+    }
+  }
+
+  @Test
+  public void testJdbc() throws ClassNotFoundException, SQLException {
+    BaseEnv env = EnvFactory.getEnv();
+    String uri = String.format("jdbc:iotdb://%s:%s?sql_dialect=table", env.getIP(), env.getPort());
+    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    try (Connection connection =
+            DriverManager.getConnection(
+                uri, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+        Statement statement = connection.createStatement()) {
+      statement.executeUpdate("use testdb");
+      ResultSet resultSet =
+          statement.executeQuery("with cte as (select * from testtb) select * from cte");
+
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      assertEquals(metaData.getColumnCount(), 3);
+      assertEquals(metaData.getColumnLabel(1), "time");
+      assertEquals(metaData.getColumnLabel(2), "deviceid");
+      assertEquals(metaData.getColumnLabel(3), "voltage");
+
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(3, cnt);
+    }
+  }
+
+  @Test
+  public void testNest() {
+    String sql1 =
+        "WITH"
+            + " cte1 AS (select deviceid, voltage from testtb where voltage > 200),"
+            + " cte2 AS (SELECT voltage FROM cte1)"
+            + " SELECT * FROM cte2";
+
+    String sql2 =
+        "WITH"
+            + " cte2 AS (SELECT voltage FROM cte1),"
+            + " cte1 AS (select deviceid, voltage from testtb where voltage > 200)"
+            + " SELECT * FROM cte2";
+
+    String[] expectedHeader = new String[] {"voltage"};
+    String[] retArray = new String[] {"300.0,"};
+    tableResultSetEqualTest(sql1, expectedHeader, retArray, DATABASE_NAME);
+
+    tableAssertTestFail(sql2, "550: Table 'testdb.cte1' does not exist.", DATABASE_NAME);
+  }
+
+  @Test
+  public void testRecursive() {
+    String sql =
+        "WITH RECURSIVE t(n) AS ("
+            + " VALUES (1)"
+            + " UNION ALL"
+            + " SELECT n+1 FROM t WHERE n < 100)"
+            + " SELECT sum(n) FROM t";
+
+    tableAssertTestFail(sql, "Union is not supported in current version", DATABASE_NAME);
+  }
+
+  private static void prepareData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+
+      for (String sql : creationSqls) {
+        statement.execute(sql);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+}
