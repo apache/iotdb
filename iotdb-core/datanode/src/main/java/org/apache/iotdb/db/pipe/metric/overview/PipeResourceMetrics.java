@@ -41,6 +41,8 @@ public class PipeResourceMetrics implements IMetricSet {
 
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
 
+  private static final String PIPE_FLOATING_MEMORY = "PipeFloatingMemory";
+
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
