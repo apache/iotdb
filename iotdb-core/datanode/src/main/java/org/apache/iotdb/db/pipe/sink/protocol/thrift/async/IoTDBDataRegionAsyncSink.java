@@ -90,6 +90,12 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LEADER_CACHE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
 
 @TreeModel
 @TableModel
@@ -123,8 +129,6 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final Map<PipeTransferTrackableHandler, PipeTransferTrackableHandler> pendingHandlers =
       new ConcurrentHashMap<>();
-
-  private boolean enableSendTsFileLimit;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -181,11 +185,6 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
     }
-
-    enableSendTsFileLimit =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(SINK_ENABLE_SEND_TSFILE_LIMIT, CONNECTOR_ENABLE_SEND_TSFILE_LIMIT),
-            CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE);
   }
 
   @Override
@@ -709,10 +708,6 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
    */
   public void addFailureEventsToRetryQueue(final Iterable<EnrichedEvent> events) {
     events.forEach(this::addFailureEventToRetryQueue);
-  }
-
-  public boolean isEnableSendTsFileLimit() {
-    return enableSendTsFileLimit;
   }
 
   //////////////////////////// Operations for close ////////////////////////////
