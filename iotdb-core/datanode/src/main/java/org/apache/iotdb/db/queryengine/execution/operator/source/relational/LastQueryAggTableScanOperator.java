@@ -161,7 +161,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
     Optional<Boolean> b = calculateAggregationResultForCurrentTimeRange();
     if (b.isPresent() && b.get()) {
       timeIterator.resetCurTimeRange();
-      outputDeviceIndex++;
     }
   }
 
@@ -638,11 +637,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   protected void updateResultTsBlock() {
     appendAggregationResult();
 
-    if (timeIterator.hasCachedTimeRange()) {
-      if (!needUpdateCache) {
-        return;
-      }
-
+    if (needUpdateCache && timeIterator.hasCachedTimeRange()) {
       if (lastRowCacheResults != null) {
         updateLastCacheUseLastRowIfPossible();
       } else {
