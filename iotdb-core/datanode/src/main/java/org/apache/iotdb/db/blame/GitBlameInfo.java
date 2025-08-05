@@ -351,7 +351,7 @@ public class GitBlameInfo {
             put("lancelly", "廖兰宇");
             put("WilliamSong11", "宋子阳");
             put("linxt20", "林欣涛");
-            put("DESKTOP-L0L5GPJ/jt", "江天");
+            put("DESKTOP-L0L5GPJ\\jt", "江天");
             put("YC27", "杨晨");
             put("Rui,Lei", "芮蕾");
             put("V_Galaxy", "丁宇辰");
