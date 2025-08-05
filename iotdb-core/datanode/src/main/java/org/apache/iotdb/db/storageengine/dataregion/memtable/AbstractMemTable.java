@@ -251,7 +251,9 @@ public abstract class AbstractMemTable implements IMemTable {
         MemUtils.getAlignedRowRecordSize(dataTypes, values, insertRowNode.getColumnCategories());
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
     int pointsInserted =
-        insertRowNode.getMeasurementColumnCnt() - insertRowNode.getFailedMeasurementNumber() - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
+        insertRowNode.getMeasurementColumnCnt()
+            - insertRowNode.getFailedMeasurementNumber()
+            - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
                 ? 0
                 : nullPointsNumber);
     totalPointsNum += pointsInserted;
@@ -274,9 +276,13 @@ public abstract class AbstractMemTable implements IMemTable {
       writeTabletNode(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
       int pointsInserted =
-          (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber() - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
-                  ? 0
-                  : nullPointsNumber))
+          (insertTabletNode.getDataTypes().length
+                  - insertTabletNode.getFailedMeasurementNumber()
+                  - (IoTDBDescriptor.getInstance()
+                          .getConfig()
+                          .isEnableNullValueIncludedInQuatityStats()
+                      ? 0
+                      : nullPointsNumber))
               * (end - start);
       totalPointsNum += pointsInserted;
       return pointsInserted;
@@ -304,9 +310,12 @@ public abstract class AbstractMemTable implements IMemTable {
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
       int pointsInserted =
           (insertTabletNode.getMeasurementColumnCnt()
-                  - insertTabletNode.getFailedMeasurementNumber() - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
-                  ? 0
-                  : nullPointsNumber))
+                  - insertTabletNode.getFailedMeasurementNumber()
+                  - (IoTDBDescriptor.getInstance()
+                          .getConfig()
+                          .isEnableNullValueIncludedInQuatityStats()
+                      ? 0
+                      : nullPointsNumber))
               * (end - start);
       totalPointsNum += pointsInserted;
       return pointsInserted;
