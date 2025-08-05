@@ -341,7 +341,6 @@ public:
             throw std::out_of_range(tmpStr);
         }
 
-        // Validate data type: must be TEXT, STRING, or BLOB
         TSDataType::TSDataType dataType = schemas[schemaId].second;
         if (dataType != TSDataType::OBJECT) {
             throw std::invalid_argument("The data type of schemaId " + std::to_string(schemaId) + " is not OBJECT.");
