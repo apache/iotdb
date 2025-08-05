@@ -435,7 +435,7 @@ public class PipeDescriptor {
     config.setPipeReceiverLoadConversionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
-                "pipe_receiver_conversion_enabled",
+                "pipe_receiver_load_conversion_enabled",
                 String.valueOf(config.isPipeReceiverLoadConversionEnabled()))));
 
     config.setPipeMemoryAllocateMaxRetries(
