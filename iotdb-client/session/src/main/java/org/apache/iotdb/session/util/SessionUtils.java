@@ -363,6 +363,7 @@ public class SessionUtils {
     }
   }
 
+  @SuppressWarnings({"java:S3776", "java:S6541"})
   public static void encodeValue(
       TSDataType dataType,
       Tablet tablet,
@@ -373,111 +374,76 @@ public class SessionUtils {
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) tablet.getValues()[i];
+        int lastNonNullIntValue = 0;
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
-            encoder.encode(intValues[index], outputStream);
-          } else {
-            // use the previous value as the placeholder of nulls to increase encoding performance
-            if (index == 0) {
-              encoder.encode(intValues[index], outputStream);
-            } else {
-              encoder.encode(intValues[index - 1], outputStream);
-            }
+            lastNonNullIntValue = intValues[index];
           }
+          encoder.encode(lastNonNullIntValue, outputStream);
         }
         break;
       case INT64:
       case TIMESTAMP:
         long[] longValues = (long[]) tablet.getValues()[i];
+        long lastNonNullLongValue = 0;
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
-            encoder.encode(longValues[index], outputStream);
-          } else {
-            // use the previous value as the placeholder of nulls to increase encoding performance
-            if (index == 0) {
-              encoder.encode(longValues[index], outputStream);
-            } else {
-              encoder.encode(longValues[index - 1], outputStream);
-            }
+            lastNonNullLongValue = longValues[index];
           }
+          encoder.encode(lastNonNullLongValue, outputStream);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) tablet.getValues()[i];
+        float lastNonNullFloatValue = 0.0f;
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
-            encoder.encode(floatValues[index], outputStream);
-          } else {
-            // use the previous value as the placeholder of nulls to increase encoding performance
-            if (index == 0) {
-              encoder.encode(floatValues[index], outputStream);
-            } else {
-              encoder.encode(floatValues[index - 1], outputStream);
-            }
+            lastNonNullFloatValue = floatValues[index];
           }
+          encoder.encode(lastNonNullFloatValue, outputStream);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) tablet.getValues()[i];
+        double lastNonNullDoubleValue = 0.0;
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
-            encoder.encode(doubleValues[index], outputStream);
-          } else {
-            // use the previous value as the placeholder of nulls to increase encoding performance
-            if (index == 0) {
-              encoder.encode(doubleValues[index], outputStream);
-            } else {
-              encoder.encode(doubleValues[index - 1], outputStream);
-            }
+            lastNonNullDoubleValue = doubleValues[index];
           }
+          encoder.encode(lastNonNullDoubleValue, outputStream);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) tablet.getValues()[i];
+        boolean lastNonNullBooleanValue = false;
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
-            encoder.encode(boolValues[index], outputStream);
-          } else {
-            // use the previous value as the placeholder of nulls to increase encoding performance
-            if (index == 0) {
-              encoder.encode(boolValues[index], outputStream);
-            } else {
-              encoder.encode(boolValues[index - 1], outputStream);
-            }
+            lastNonNullBooleanValue = boolValues[index];
           }
+          encoder.encode(lastNonNullBooleanValue, outputStream);
         }
         break;
       case TEXT:
       case STRING:
       case BLOB:
         Binary[] binaryValues = (Binary[]) tablet.getValues()[i];
+        Binary lastNonNullBinaryValue = Binary.EMPTY_VALUE;
         for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            encoder.encode(binaryValues[index], outputStream);
-          } else {
-            // use the previous value as the placeholder of nulls to increase encoding performance
-            if (index == 0) {
-              encoder.encode(Binary.EMPTY_VALUE, outputStream);
-            } else {
-              encoder.encode(binaryValues[index - 1], outputStream);
-            }
+          if (!tablet.isNull(index, i) && binaryValues[index] != null) {
+            lastNonNullBinaryValue = binaryValues[index];
           }
+          encoder.encode(lastNonNullBinaryValue, outputStream);
         }
         break;
       case DATE:
         LocalDate[] dateValues = (LocalDate[]) tablet.getValues()[i];
+        int lastNonNullDateValue = EMPTY_DATE_INT;
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
-            encoder.encode(DateUtils.parseDateExpressionToInt(dateValues[index]), outputStream);
-          } else {
-            // use the previous value as the placeholder of nulls to increase encoding performance
-            if (index == 0) {
-              encoder.encode(EMPTY_DATE_INT, outputStream);
-            } else {
-              encoder.encode(
-                  DateUtils.parseDateExpressionToInt(dateValues[index - 1]), outputStream);
-            }
+            lastNonNullDateValue = DateUtils.parseDateExpressionToInt(dateValues[index]);
           }
+          // use the previous value as the placeholder of nulls to increase encoding performance
+          encoder.encode(lastNonNullDateValue, outputStream);
         }
         break;
       default:

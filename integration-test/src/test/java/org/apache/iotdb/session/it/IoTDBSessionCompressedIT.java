@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -43,16 +44,13 @@ import org.junit.Test;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class IoTDBSessionCompressedIT {
 
-  private static ITableSession session1;
-  private static ITableSession session2;
-  private static ITableSession session3;
-  private static ITableSession session4;
-  private static ITableSession session5;
+  private static List<ITableSession> sessions;
 
   @BeforeClass
   public static void setUpClass() throws IoTDBConnectionException {
@@ -62,8 +60,7 @@ public class IoTDBSessionCompressedIT {
         EnvFactory.getEnv().getDataNodeWrapperList().stream()
             .map(DataNodeWrapper::getIpAndPortString)
             .collect(Collectors.toList());
-    //    List<String> nodeUrls = Collections.singletonList("127.0.0.1:6667");
-    session1 =
+    ITableSession session1 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
@@ -83,7 +80,7 @@ public class IoTDBSessionCompressedIT {
             .withDateEncoding(TSEncoding.PLAIN)
             .withTimeStampEncoding(TSEncoding.PLAIN)
             .build();
-    session2 =
+    ITableSession session2 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
@@ -103,7 +100,7 @@ public class IoTDBSessionCompressedIT {
             .withDateEncoding(TSEncoding.PLAIN)
             .withTimeStampEncoding(TSEncoding.SPRINTZ)
             .build();
-    session3 =
+    ITableSession session3 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
@@ -123,7 +120,7 @@ public class IoTDBSessionCompressedIT {
             .withDateEncoding(TSEncoding.RLE)
             .withTimeStampEncoding(TSEncoding.RLE)
             .build();
-    session4 =
+    ITableSession session4 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
@@ -143,7 +140,7 @@ public class IoTDBSessionCompressedIT {
             .withDateEncoding(TSEncoding.RLE)
             .withTimeStampEncoding(TSEncoding.ZIGZAG)
             .build();
-    session5 =
+    ITableSession session5 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
@@ -153,26 +150,55 @@ public class IoTDBSessionCompressedIT {
             .enableAutoFetch(false)
             .enableCompaction(false)
             .build();
+    sessions = Arrays.asList(session1, session2, session3, session4, session5);
   }
 
   @AfterClass
   public static void tearDownClass() throws IoTDBConnectionException {
-    if (session1 != null) {
-      session1.close();
-    }
-    if (session2 != null) {
-      session2.close();
-    }
-    if (session3 != null) {
-      session3.close();
-    }
-    if (session4 != null) {
-      session4.close();
-    }
-    if (session5 != null) {
-      session5.close();
+    for (ITableSession session : sessions) {
+      session.close();
     }
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testAllNullColumn() throws IoTDBConnectionException, StatementExecutionException {
+    Tablet tablet =
+        new Tablet(
+            "t1",
+            Arrays.asList("tag1", "attr1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.DATE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD),
+            100);
+    for (int i = 0; i < 10; i++) {
+      tablet.addTimestamp(i, i);
+      tablet.addValue("tag1", i, "d1");
+      tablet.addValue("attr1", i, "blue");
+    }
+    for (ITableSession session : sessions) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");
+      session.executeNonQueryStatement("USE test");
+      session.insert(tablet);
+    }
+  }
+
+  @Test
+  public void testAllNull() throws IoTDBConnectionException, StatementExecutionException {
+    Tablet tablet =
+        new Tablet(
+            "t1",
+            Arrays.asList("tag1", "attr1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.DATE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD),
+            100);
+    for (int i = 0; i < 10; i++) {
+      tablet.addTimestamp(i, i);
+    }
+    for (ITableSession session : sessions) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");
+      session.executeNonQueryStatement("USE test");
+      session.insert(tablet);
+    }
   }
 
   @Test
@@ -273,91 +299,36 @@ public class IoTDBSessionCompressedIT {
     String tableName = "table_13";
     Tablet tablet = new Tablet(tableName, schemas, timestamp, values, partBitMap, 4);
 
-    session1.executeNonQueryStatement("create database IF NOT EXISTS dbTest_0");
-    session1.executeNonQueryStatement("use dbTest_0");
-    session2.executeNonQueryStatement("use dbTest_0");
-    session3.executeNonQueryStatement("use dbTest_0");
-    session4.executeNonQueryStatement("use dbTest_0");
-    session5.executeNonQueryStatement("use dbTest_0");
+    sessions.get(0).executeNonQueryStatement("create database IF NOT EXISTS dbTest_0");
+    for (ITableSession session : sessions) {
+      session.executeNonQueryStatement("use dbTest_0");
+    }
 
     // 1. insert
-    session1.insert(tablet);
-    session2.insert(tablet);
-    session3.insert(tablet);
-    session4.insert(tablet);
-    session5.insert(tablet);
+    for (ITableSession session : sessions) {
+      session.insert(tablet);
+    }
 
     // 2. assert
-    SessionDataSet sessionDataSet1 =
-        session1.executeQueryStatement("select * from dbTest_0." + tableName);
-    SessionDataSet sessionDataSet2 =
-        session2.executeQueryStatement("select * from dbTest_0." + tableName);
-    SessionDataSet sessionDataSet3 =
-        session3.executeQueryStatement("select * from dbTest_0." + tableName);
-    SessionDataSet sessionDataSet4 =
-        session4.executeQueryStatement("select * from dbTest_0." + tableName);
-    SessionDataSet sessionDataSet5 =
-        session5.executeQueryStatement("select * from dbTest_0." + tableName);
-
-    if (sessionDataSet1.hasNext()) {
-      RowRecord next = sessionDataSet1.next();
-      Assert.assertEquals(3L, next.getFields().get(0).getLongV());
-      Assert.assertEquals(1, next.getFields().get(1).getIntV());
-      Assert.assertEquals(1L, next.getFields().get(2).getLongV());
-      Assert.assertEquals(1.1f, next.getFields().get(3).getFloatV(), 0.01);
-      Assert.assertEquals(0.707, next.getFields().get(4).getDoubleV(), 0.01);
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(5).getBinaryV());
-      Assert.assertEquals(true, next.getFields().get(6).getBoolV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(7).getBinaryV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(8).getBinaryV());
-    }
-    if (sessionDataSet2.hasNext()) {
-      RowRecord next = sessionDataSet2.next();
-      Assert.assertEquals(3L, next.getFields().get(0).getLongV());
-      Assert.assertEquals(1, next.getFields().get(1).getIntV());
-      Assert.assertEquals(1L, next.getFields().get(2).getLongV());
-      Assert.assertEquals(1.1f, next.getFields().get(3).getFloatV(), 0.01);
-      Assert.assertEquals(0.707, next.getFields().get(4).getDoubleV(), 0.01);
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(5).getBinaryV());
-      Assert.assertEquals(true, next.getFields().get(6).getBoolV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(7).getBinaryV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(8).getBinaryV());
-    }
-    if (sessionDataSet3.hasNext()) {
-      RowRecord next = sessionDataSet3.next();
-      Assert.assertEquals(3L, next.getFields().get(0).getLongV());
-      Assert.assertEquals(1, next.getFields().get(1).getIntV());
-      Assert.assertEquals(1L, next.getFields().get(2).getLongV());
-      Assert.assertEquals(1.1f, next.getFields().get(3).getFloatV(), 0.01);
-      Assert.assertEquals(0.707, next.getFields().get(4).getDoubleV(), 0.01);
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(5).getBinaryV());
-      Assert.assertEquals(true, next.getFields().get(6).getBoolV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(7).getBinaryV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(8).getBinaryV());
-    }
-    if (sessionDataSet4.hasNext()) {
-      RowRecord next = sessionDataSet4.next();
-      Assert.assertEquals(3L, next.getFields().get(0).getLongV());
-      Assert.assertEquals(1, next.getFields().get(1).getIntV());
-      Assert.assertEquals(1L, next.getFields().get(2).getLongV());
-      Assert.assertEquals(1.1f, next.getFields().get(3).getFloatV(), 0.01);
-      Assert.assertEquals(0.707, next.getFields().get(4).getDoubleV(), 0.01);
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(5).getBinaryV());
-      Assert.assertEquals(true, next.getFields().get(6).getBoolV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(7).getBinaryV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(8).getBinaryV());
-    }
-    if (sessionDataSet5.hasNext()) {
-      RowRecord next = sessionDataSet5.next();
-      Assert.assertEquals(3L, next.getFields().get(0).getLongV());
-      Assert.assertEquals(1, next.getFields().get(1).getIntV());
-      Assert.assertEquals(1L, next.getFields().get(2).getLongV());
-      Assert.assertEquals(1.1f, next.getFields().get(3).getFloatV(), 0.01);
-      Assert.assertEquals(0.707, next.getFields().get(4).getDoubleV(), 0.01);
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(5).getBinaryV());
-      Assert.assertEquals(true, next.getFields().get(6).getBoolV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(7).getBinaryV());
-      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(8).getBinaryV());
+    for (ITableSession session : sessions) {
+      try (SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select * from dbTest_0." + tableName)) {
+        if (sessionDataSet.hasNext()) {
+          RowRecord next = sessionDataSet.next();
+          Assert.assertEquals(3L, next.getFields().get(0).getLongV());
+          Assert.assertEquals(1, next.getFields().get(1).getIntV());
+          Assert.assertEquals(1L, next.getFields().get(2).getLongV());
+          Assert.assertEquals(1.1f, next.getFields().get(3).getFloatV(), 0.01);
+          Assert.assertEquals(0.707, next.getFields().get(4).getDoubleV(), 0.01);
+          Assert.assertEquals(
+              new Binary(new byte[] {(byte) 32}), next.getFields().get(5).getBinaryV());
+          Assert.assertTrue(next.getFields().get(6).getBoolV());
+          Assert.assertEquals(
+              new Binary(new byte[] {(byte) 32}), next.getFields().get(7).getBinaryV());
+          Assert.assertEquals(
+              new Binary(new byte[] {(byte) 32}), next.getFields().get(8).getBinaryV());
+        }
+      }
     }
   }
 }
