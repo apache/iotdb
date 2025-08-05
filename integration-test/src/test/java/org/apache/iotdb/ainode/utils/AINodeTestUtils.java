@@ -32,7 +32,8 @@ import static org.junit.Assert.fail;
 public class AINodeTestUtils {
 
   public static final String EXAMPLE_MODEL_PATH =
-      System.getProperty("user.dir")
+      "file://"
+          + System.getProperty("user.dir")
           + File.separator
           + "src"
           + File.separator
