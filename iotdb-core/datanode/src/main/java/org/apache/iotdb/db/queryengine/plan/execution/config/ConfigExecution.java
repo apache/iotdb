@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -161,12 +162,22 @@ public class ConfigExecution implements IQueryExecution {
 
   private void fail(final Throwable cause) {
     int errorCode = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+    TSStatus status = null;
     if (cause instanceof IoTDBException) {
-      errorCode = ((IoTDBException) cause).getErrorCode();
+      if (Objects.nonNull(((IoTDBException) cause).getStatus())) {
+        status = ((IoTDBException) cause).getStatus();
+      } else {
+        errorCode = ((IoTDBException) cause).getErrorCode();
+      }
     } else if (cause instanceof IoTDBRuntimeException) {
-      errorCode = ((IoTDBRuntimeException) cause).getErrorCode();
+      if (Objects.nonNull(((IoTDBRuntimeException) cause).getStatus())) {
+        status = ((IoTDBRuntimeException) cause).getStatus();
+      } else {
+        errorCode = ((IoTDBRuntimeException) cause).getErrorCode();
+      }
     }
-    if (!userExceptionCodes.contains(errorCode)) {
+    if (Objects.nonNull(status) && isUserException(status)
+        || !userExceptionCodes.contains(errorCode)) {
       LOGGER.warn(
           "Failures happened during running ConfigExecution when executing {}.",
           Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
@@ -179,13 +190,29 @@ public class ConfigExecution implements IQueryExecution {
           errorCode);
     }
     stateMachine.transitionToFailed(cause);
-    final ConfigTaskResult result =
-        cause instanceof StatementExecutionException
-            ? new ConfigTaskResult(
-                TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()))
-            : new ConfigTaskResult(TSStatusCode.representOf(errorCode));
+    final ConfigTaskResult result;
+    if (Objects.nonNull(status)) {
+      result = new ConfigTaskResult(status);
+    } else {
+      result =
+          cause instanceof StatementExecutionException
+              ? new ConfigTaskResult(
+                  TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()))
+              : new ConfigTaskResult(TSStatusCode.representOf(errorCode));
+    }
 
     taskFuture.set(result);
+  }
+
+  private boolean isUserException(final TSStatus status) {
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      return status.getSubStatus().stream()
+          .allMatch(
+              s ->
+                  s.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                      || userExceptionCodes.contains(s.getCode()));
+    }
+    return userExceptionCodes.contains(status.getCode());
   }
 
   @Override
@@ -211,14 +238,17 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public ExecutionResult getStatus() {
     try {
-      ConfigTaskResult taskResult = taskFuture.get();
-      TSStatusCode statusCode = taskResult.getStatusCode();
+      final ConfigTaskResult taskResult = taskFuture.get();
       resultSet = taskResult.getResultSet();
       datasetHeader = taskResult.getResultSetHeader();
-      String message =
+      if (Objects.nonNull(taskResult.getStatus())) {
+        return new ExecutionResult(context.getQueryId(), taskResult.getStatus());
+      }
+      final TSStatusCode statusCode = taskResult.getStatusCode();
+      final String message =
           statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (final InterruptedException | ExecutionException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
