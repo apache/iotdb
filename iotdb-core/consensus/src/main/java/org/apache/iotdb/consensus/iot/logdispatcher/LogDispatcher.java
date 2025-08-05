@@ -69,6 +69,9 @@ public class LogDispatcher {
   private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
   private final AtomicLong logEntriesFromQueue = new AtomicLong(0);
 
+  private static final AtomicLong senderMemSizeSum = new AtomicLong(0);
+  private static final AtomicLong receiverMemSizeSum = new AtomicLong(0);
+
   public LogDispatcher(
       IoTConsensusServerImpl impl,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager) {
@@ -590,5 +593,13 @@ public class LogDispatcher {
               false,
               request.getMemorySize()));
     }
+  }
+
+  public static AtomicLong getReceiverMemSizeSum() {
+    return receiverMemSizeSum;
+  }
+
+  public static AtomicLong getSenderMemSizeSum() {
+    return senderMemSizeSum;
   }
 }
