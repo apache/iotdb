@@ -322,6 +322,58 @@ public:
         }
     }
 
+    // Add a Binary value with extra metadata: [isEOF (1 byte)] + [offset (8 bytes)] + [actual content]
+    void addValue(size_t schemaId, size_t rowIndex, bool isEOF, int64_t offset, const std::vector<uint8_t>& content) {
+        // Check schemaId bounds
+        if (schemaId >= schemas.size()) {
+            char tmpStr[100];
+            sprintf(tmpStr,
+                    "Tablet::addBinaryValueWithMeta(), schemaId >= schemas.size(). schemaId=%ld, schemas.size()=%ld.",
+                    schemaId, schemas.size());
+            throw std::out_of_range(tmpStr);
+        }
+
+        // Check rowIndex bounds
+        if (rowIndex >= rowSize) {
+            char tmpStr[100];
+            sprintf(tmpStr, "Tablet::addBinaryValueWithMeta(), rowIndex >= rowSize. rowIndex=%ld, rowSize=%ld.",
+                    rowIndex, rowSize);
+            throw std::out_of_range(tmpStr);
+        }
+
+        TSDataType::TSDataType dataType = schemas[schemaId].second;
+        if (dataType != TSDataType::OBJECT) {
+            throw std::invalid_argument("The data type of schemaId " + std::to_string(schemaId) + " is not OBJECT.");
+        }
+
+        // Create a byte array of size [1 (isEOF) + 8 (offset) + content size]
+        std::vector<uint8_t> val(content.size() + 9);
+
+        // Write the isEOF flag (1 byte)
+        val[0] = isEOF ? 1 : 0;
+
+        // Write the 8-byte offset in big-endian order
+        for (int i = 0; i < 8; ++i) {
+            val[1 + i] = static_cast<uint8_t>((offset >> (56 - i * 8)) & 0xFF);
+        }
+
+        // Append the content bytes
+        std::copy(content.begin(), content.end(), val.begin() + 9);
+
+        // Cast the value array and assign the Binary data (stored as string)
+        std::string valEncoded = std::string(reinterpret_cast<char*>(val.data()), val.size());
+        safe_cast<string, string>(valEncoded, ((string*)values[schemaId])[rowIndex]);
+    }
+
+    void addValue(const string& schemaName, size_t rowIndex, bool isEOF, int64_t offset,
+                  const std::vector<uint8_t>& content) {
+        if (schemaNameIndex.find(schemaName) == schemaNameIndex.end()) {
+            throw SchemaNotFoundException(string("Schema ") + schemaName + " not found.");
+        }
+        size_t schemaId = schemaNameIndex[schemaName];
+        addValue(schemaId, rowIndex, isEOF, offset, content);
+    }
+
     template <typename T>
     void addValue(const string& schemaName, size_t rowIndex, const T& value) {
         if (schemaNameIndex.find(schemaName) == schemaNameIndex.end()) {
@@ -330,7 +382,6 @@ public:
         size_t schemaId = schemaNameIndex[schemaName];
         addValue(schemaId, rowIndex, value);
     }
-
 
     void* getValue(size_t schemaId, size_t rowIndex, TSDataType::TSDataType dataType) {
         if (schemaId >= schemas.size()) {
@@ -358,6 +409,7 @@ public:
             return &(reinterpret_cast<double*>(values[schemaId])[rowIndex]);
         case TSDataType::BLOB:
         case TSDataType::STRING:
+        case TSDataType::OBJECT:
         case TSDataType::TEXT:
             return &(reinterpret_cast<std::string*>(values[schemaId])[rowIndex]);
         default:
