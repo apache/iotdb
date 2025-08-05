@@ -169,6 +169,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
         // If the state is USING_TABLET, discard the event
         PipeTsFileEpochProgressIndexKeeper.getInstance()
             .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName(), false);
         return;
       case EMPTY:
       case USING_TSFILE:

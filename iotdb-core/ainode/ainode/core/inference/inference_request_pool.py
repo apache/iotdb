@@ -50,6 +50,7 @@ class InferenceRequestPool(mp.Process):
         config: PretrainedConfig,
         request_queue: mp.Queue,
         result_queue: mp.Queue,
+        ready_event,
         **pool_kwargs,
     ):
         super().__init__()
@@ -59,11 +60,8 @@ class InferenceRequestPool(mp.Process):
         self.pool_kwargs = pool_kwargs
         self.model = None
         self._model_manager = None
-        # TODO: Assign device immediately when the pool is created
         self.device = None
-        self.logger = Logger(
-            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
-        )
+        self.ready_event = ready_event
 
         self._threads = []
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
@@ -128,15 +126,25 @@ class InferenceRequestPool(mp.Process):
         requests = self._scheduler.schedule_step()
         # TODO: We need a batcher to accelerate the concurrent inference
         for request in requests:
-            request.inputs = request.inputs.to(self.device)
-            output = self.model.generate(
-                request.inputs,
-                max_new_tokens=request.max_new_tokens,
-                num_samples=10,
-                revin=True,
-            )
-            request.output_tensor = request.output_tensor.to(self.device)
-            request.write_step_output(output[0].mean(dim=0))
+            if self.model_id == "sundial":
+                request.inputs = request.inputs.to(self.device)
+                output = self.model.generate(
+                    request.inputs,
+                    max_new_tokens=request.max_new_tokens,
+                    num_samples=10,
+                    revin=True,
+                )
+                request.output_tensor = request.output_tensor.to(self.device)
+                request.write_step_output(output[0].mean(dim=0))
+            elif self.model_id == "timer_xl":
+                request.inputs = request.inputs.to(self.device)
+                output = self.model.generate(
+                    request.inputs,
+                    max_new_tokens=request.max_new_tokens,
+                    revin=True,
+                )
+                request.output_tensor = request.output_tensor.to(self.device)
+                request.write_step_output(output[0])
             request.inference_pipeline.post_decode()
             if request.is_finished():
                 request.inference_pipeline.post_inference()
@@ -160,8 +168,12 @@ class InferenceRequestPool(mp.Process):
     def run(self):
         self._model_manager = ModelManager()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.logger = Logger(
+            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
+        )
         self._scheduler.device = self.device
         self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
+        self.ready_event.set()
 
         # self._warm_up_and_estimate_memory()
 
@@ -183,4 +195,3 @@ class InferenceRequestPool(mp.Process):
 
     def stop(self):
         self._stop_event.set()
-        self.logger.info(f"[Inference][Pool-{self.pool_id}] stop() called")
