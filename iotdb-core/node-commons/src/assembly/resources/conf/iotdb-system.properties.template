@@ -1054,6 +1054,11 @@ max_allowed_concurrent_queries=1000
 # Datatype: int
 query_thread_count=0
 
+# Max bytes of cached device metadata index entry bytes per FragmentInstance
+# effectiveMode: restart
+# Datatype: int
+max_cached_device_metadata_index_entry_bytes_per_fi=33554432
+
 # How many pipeline drivers will be created for one fragment instance. When <= 0, use CPU core number / 2.
 # effectiveMode: restart
 # Datatype: int

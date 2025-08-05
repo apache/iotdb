@@ -63,6 +63,9 @@ public class DataNodeMemoryConfig {
   private long maxBytesPerFragmentInstance =
       Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001 / queryThreadCount;
 
+  /** Max bytes of cached device metadata index entry bytes per FragmentInstance */
+  private long maxCachedDeviceMetadataIndexEntryBytesPerFI = 32 * 1024 * 1024;
+
   /** The memory manager of on heap */
   private MemoryManager onHeapMemoryManager;
 
@@ -410,6 +413,11 @@ public class DataNodeMemoryConfig {
     setQueryThreadCount(
         Integer.parseInt(
             properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
+    setMaxCachedDeviceMetadataIndexEntryBytesPerFI(
+        Long.parseLong(
+            properties.getProperty(
+                "max_cached_device_metadata_index_entry_bytes_per_fi",
+                Long.toString(getMaxCachedDeviceMetadataIndexEntryBytesPerFI()))));
 
     if (getQueryThreadCount() <= 0) {
       setQueryThreadCount(Runtime.getRuntime().availableProcessors());
@@ -534,6 +542,15 @@ public class DataNodeMemoryConfig {
 
   public void setBufferedArraysMemoryProportion(double bufferedArraysMemoryProportion) {
     this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
+  }
+
+  public long getMaxCachedDeviceMetadataIndexEntryBytesPerFI() {
+    return maxCachedDeviceMetadataIndexEntryBytesPerFI;
+  }
+
+  public void setMaxCachedDeviceMetadataIndexEntryBytesPerFI(
+      long maxCachedDeviceMetadataIndexEntryBytesPerFI) {
+    this.maxCachedDeviceMetadataIndexEntryBytesPerFI = maxCachedDeviceMetadataIndexEntryBytesPerFI;
   }
 
   public double getDevicePathCacheProportion() {

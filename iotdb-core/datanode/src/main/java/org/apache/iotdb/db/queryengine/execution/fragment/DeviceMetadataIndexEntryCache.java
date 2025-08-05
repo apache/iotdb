@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -40,7 +42,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
 public class DeviceMetadataIndexEntryCache {
-  private static final long MAX_CACHED_SIZE = 32 * 1024 * 1024;
+  private static final DataNodeMemoryConfig config =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private final FragmentInstanceContext context;
   private TreeMap<IDeviceID, Integer> deviceIndexMap;
   private final Map<String, DeviceMetadataIndexEntriesQueryResult>
@@ -75,11 +78,15 @@ public class DeviceMetadataIndexEntryCache {
     operator.setDeviceIndexArr(new int[] {idx});
   }
 
+  // Pair.right represents whether the device may exist in the file
   public Pair<long[], Boolean> getCachedDeviceMetadataIndexNodeOffset(
       IDeviceID device, int deviceIndex, String filePath, boolean ignoreNotExists)
       throws IOException {
     // cache is disabled
     if (deviceIndex < 0) {
+      return new Pair<>(null, true);
+    }
+    if (deviceIndexMap != null && deviceIndexMap.size() == 1) {
       return new Pair<>(null, true);
     }
     // not cached
@@ -106,7 +113,7 @@ public class DeviceMetadataIndexEntryCache {
     return deviceMetadataIndexNodeOffsetsCache.computeIfAbsent(
         filePath,
         k -> {
-          if (reservedMemory.get() >= MAX_CACHED_SIZE) {
+          if (reservedMemory.get() >= config.getMaxCachedDeviceMetadataIndexEntryBytesPerFI()) {
             return null;
           }
           DeviceMetadataIndexEntriesQueryResult result;
