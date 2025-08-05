@@ -43,12 +43,12 @@ import java.util.stream.Collectors;
 
 public class GitBlameInfo {
   public static void main(String[] args) throws IOException {
-    final String timechoDBPath = "C:/Users/13361/Documents/GitHub/timechodb/";
-    final String tsFilePath = "C:/Users/13361/Documents/GitHub/tsfile/";
+    final String timechoDBPath = "/Users/jackietien/Desktop/Timecho/安可材料/2_0/源码分类/自研率/timechodb/";
+    final String tsFilePath = "/Users/jackietien/Desktop/Timecho/安可材料/2_0/源码分类/自研率/tsfile/";
 
     final Map<String, List<String>> inclusionPathMap = new HashMap<>();
-    inclusionPathMap.put("IoTDB总", Collections.singletonList(""));
-    inclusionPathMap.put("TsFile总", Collections.singletonList(""));
+    inclusionPathMap.put("IoTDB总", Collections.emptyList());
+    inclusionPathMap.put("TsFile总", Collections.emptyList());
 
     inclusionPathMap.put(
         "流处理插件",
@@ -72,8 +72,7 @@ public class GitBlameInfo {
             "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/agent"));
     inclusionPathMap.put(
         "数据同步",
-        Collections.singletonList(
-            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe"));
+        Collections.singletonList("iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe"));
     inclusionPathMap.put(
         "权限管理",
         Arrays.asList(
@@ -125,8 +124,7 @@ public class GitBlameInfo {
     inclusionPathMap.put("白名单管理", Collections.singletonList("timecho-server/src/main"));
     inclusionPathMap.put(
         "安全审计",
-        Collections.singletonList(
-            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/audit"));
+        Collections.singletonList("iotdb-core/datanode/src/main/java/org/apache/iotdb/db/audit"));
     inclusionPathMap.put(
         "身份鉴别",
         Arrays.asList(
@@ -143,8 +141,7 @@ public class GitBlameInfo {
     inclusionPathMap.put(
         "监控框架",
         Arrays.asList(
-            "iotdb-core/metrics",
-            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/service"));
+            "iotdb-core/metrics", "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/service"));
     inclusionPathMap.put(
         "SQL解析",
         Arrays.asList(
@@ -255,18 +252,29 @@ public class GitBlameInfo {
                             pathList2.stream()
                                 .filter(path2 -> path2.contains(path1) && !name1.equals(name2))
                                 .forEach(
-                                    path2 ->
+                                    path2 -> {
+                                      try {
                                         exclusionPaths
                                             .computeIfAbsent(name1, k -> new ArrayList<>())
-                                            .add(path2.substring(path1.length() + 1))))));
+                                            .add(path2.substring(path1.length() + 1));
+                                      } catch (Exception e) {
+                                        System.out.println("path2: " + path2);
+                                        System.out.println("name1: " + name1);
+                                        System.out.println(pathList2);
+                                        System.out.println(pathList1);
+                                      }
+                                    }))));
 
     final Map<String, String> formal =
         new HashMap<String, String>() {
           {
             put("Jackie Tien", "田原");
+            put("田原", "田原");
             put("Caideyipi", "陈哲涵");
             put("shuwenwei", "舒文炜");
+            put("舒文炜", "舒文炜");
             put("Steve Yurong Su", "苏宇荣");
+            put("苏宇荣", "苏宇荣");
             put("Haonan", "侯昊男");
             put("Beyyes", "曹高飞");
             put("Weihao Li", "李伟豪");
@@ -286,6 +294,7 @@ public class GitBlameInfo {
             put("hunter hou", "侯昊男");
             put("陈 哲涵", "陈哲涵");
             put("旋 王", "王旋");
+            put("王旋", "王旋");
             put("majialin", "马嘉琳");
             put("chang xue", "常雪");
             put("shu wenwei", "舒文炜");
@@ -308,6 +317,15 @@ public class GitBlameInfo {
             put("yufeng liu", "刘雨峰");
             put("Christofer Dutz", "Christofer Dutz");
             put("Steve Yurong", "苏宇荣");
+            put("Hongzhi Gao", "高宏志");
+            put("dependabot[bot]", "侯昊男");
+            put("Yongzao", "陈荣钊");
+            put("YongzaoDan", "陈荣钊");
+            put("CRZbulabula", "陈荣钊");
+            put("陈荣钊", "陈荣钊");
+            put("wenyanshi-123", "史文燕");
+            put("wenyan shi", "史文燕");
+            put("LimJiaWenBrenda", "林嘉纹");
           }
         };
 
@@ -315,7 +333,6 @@ public class GitBlameInfo {
         new HashMap<String, String>() {
           {
             put("Lin Xintao", "林欣涛");
-            put("YongzaoDan", "陈荣钊");
             put("Alima777", "魏祥威");
             put("Caiyin Yang", "杨蔡胤");
             put("ZhangHongYin", "张洪胤");
@@ -324,7 +341,6 @@ public class GitBlameInfo {
             put("Da Rui Lei", "芮蕾");
             put("MarcosZyk", "周钰坤");
             put("Marcos_Zyk", "周钰坤");
-            put("CRZbulabula", "陈荣钊");
             put("Liao Lanyu", "廖兰宇");
             put("江天", "江天");
             put("张凌哲", "张凌哲");
@@ -345,6 +361,8 @@ public class GitBlameInfo {
             put("Li Shuolin", "李烁麟");
             put("YangCaiyin", "杨蔡胤");
             put("Zhenyu Luo", "罗振宇");
+            put("luoluoyuyu", "罗振宇");
+            put("罗振羽", "罗振宇");
             put("Xiangwei Wei", "魏祥威");
             put("RuiLei", "芮蕾");
             put("yuyong", "喻勇");
@@ -361,11 +379,21 @@ public class GitBlameInfo {
             put("马子坤", "马子坤");
             put("Xiangpeng Hu", "胡湘鹏");
             put("Chen YZ", "陈彦泽");
-            put("Yongzao", "陈荣钊");
             put("ZhaoXin", "赵鑫");
             put("liuminghui233", "刘明辉");
             put("choubenson", "周沛辰");
             put("周沛辰", "周沛辰");
+            put("Le Yang", "乐阳");
+            put("FearfulTomcat27", "喻勇");
+            put("libo", "李博");
+            put("GewuNewOne", "谷新豪");
+            put("0xB", "杨晨");
+            put("jintao zhu", "朱锦涛");
+            put("锦涛 朱", "朱锦涛");
+            put("nanxiang xia", "夏楠翔");
+            put("Yang Yuming", "杨钰铭");
+            put("Yangyuming", "杨钰铭");
+            put("spricoder", "杨钰铭");
           }
         };
     formal.putAll(internship);
@@ -373,7 +401,8 @@ public class GitBlameInfo {
     for (final Map.Entry<String, List<String>> entry : inclusionPathMap.entrySet()) {
       System.out.println(entry.getKey());
       final File outPutFile =
-          new File("C:/Users/13361/Downloads/output/" + entry.getKey() + ".txt");
+          new File(
+              "/Users/jackietien/Desktop/Timecho/安可材料/2_0/源码分类/自研率/" + entry.getKey() + ".txt");
       outPutFile.delete();
       outPutFile.createNewFile();
 
@@ -640,20 +669,21 @@ public class GitBlameInfo {
               "Formal total: " + (formalCode.get() + formalComment.get() + formalBlank.get()));
 
           writeFile(writer, "");
-          writeFile(writer, "Formal code: " + employeeCode);
-          writeFile(writer, "Formal comment: " + employeeComment);
-          writeFile(writer, "Formal blank: " + employeeBlank);
+          writeFile(writer, "Employee code: " + employeeCode);
+          writeFile(writer, "Employee comment: " + employeeComment);
+          writeFile(writer, "Employee blank: " + employeeBlank);
           writeFile(
               writer,
-              "Formal total: " + (formalCode.get() + formalComment.get() + formalBlank.get()));
+              "Employee total: "
+                  + (employeeCode.get() + employeeComment.get() + employeeBlank.get()));
 
           writeFile(writer, "");
-          writeFile(writer, "Formal code: " + internCode);
-          writeFile(writer, "Formal comment: " + internComment);
-          writeFile(writer, "Formal blank: " + internBlank);
+          writeFile(writer, "Intern code: " + internCode);
+          writeFile(writer, "Intern comment: " + internComment);
+          writeFile(writer, "Intern blank: " + internBlank);
           writeFile(
               writer,
-              "Formal total: " + (formalCode.get() + formalComment.get() + formalBlank.get()));
+              "Formal total: " + (internCode.get() + internComment.get() + internBlank.get()));
 
           writeFile(writer, "");
           writeFile(writer, "Previous code: " + outdatedCode);
