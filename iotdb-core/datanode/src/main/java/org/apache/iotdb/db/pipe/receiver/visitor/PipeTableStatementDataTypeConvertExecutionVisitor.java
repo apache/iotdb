@@ -75,8 +75,7 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
 
   private Optional<TSStatus> tryExecute(final Statement statement, final String databaseName) {
     try {
-      if (Objects.isNull(databaseName)
-          || !PipeConfig.getInstance().isPipeReceiverLoadConversionEnabled()) {
+      if (Objects.isNull(databaseName)) {
         LOGGER.warn(
             "Database name is unexpectedly null for statement: {}. Skip data type conversion.",
             statement);
@@ -107,6 +106,10 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
       LOGGER.warn(
           "Database name is unexpectedly null for LoadTsFileStatement: {}. Skip data type conversion.",
           loadTsFileStatement);
+      return Optional.empty();
+    }
+
+    if (!PipeConfig.getInstance().isPipeReceiverLoadConversionEnabled()) {
       return Optional.empty();
     }
 
