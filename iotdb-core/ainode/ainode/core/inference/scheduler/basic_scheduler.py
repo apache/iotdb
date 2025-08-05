@@ -66,7 +66,7 @@ class BasicScheduler(AbstractScheduler):
             )
         logger.debug(
             f"[Inference][Device-{self.device}][Pool-{self.pool_id}] "
-            f"Memory used: {used} bytes, Max memory: {self.max_memory_bytes} bytes"
+            f"Memory used: {used/1024**2:.2f} MB, Max memory: {self.max_memory_bytes/1024**2:.2f} MB"
         )
         return used < self.max_memory_bytes
 
