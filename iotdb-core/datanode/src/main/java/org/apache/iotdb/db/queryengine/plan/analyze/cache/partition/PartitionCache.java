@@ -263,8 +263,7 @@ public class PartitionCache {
                           userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
                       PrivilegeType.MANAGE_DATABASE);
               if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                throw new RuntimeException(
-                    new IoTDBException(status.getMessage(), status.getCode()));
+                throw new RuntimeException(new IoTDBException(status));
               }
             }
           } finally {
