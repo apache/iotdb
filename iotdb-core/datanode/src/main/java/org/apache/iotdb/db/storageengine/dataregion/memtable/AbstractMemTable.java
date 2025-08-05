@@ -264,14 +264,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public int insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException {
     try {
-      Object[] values = insertTabletNode.getBitMaps();
-      int nullPointsNumber = 0;
-      for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-        if (values[i] == null) {
-          nullPointsNumber++;
-        }
-      }
-
+      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end);
       writeTabletNode(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
       int pointsInserted =
@@ -295,14 +288,7 @@ public abstract class AbstractMemTable implements IMemTable {
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     try {
-      Object[] values = insertTabletNode.getBitMaps();
-      int nullPointsNumber = 0;
-      for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-        if (values[i] == null) {
-          nullPointsNumber++;
-        }
-      }
-
+      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end);
       writeAlignedTablet(insertTabletNode, start, end, results);
       // TODO-Table: what is the relation between this and TsFileProcessor.checkMemCost
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
@@ -320,6 +306,25 @@ public abstract class AbstractMemTable implements IMemTable {
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
+  }
+
+  private static int computeTabletNullPointsNumber(
+      InsertTabletNode insertTabletNode, int start, int end) {
+    Object[] values = insertTabletNode.getBitMaps();
+    int nullPointsNumber = 0;
+    if (values != null) {
+      for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
+        BitMap bitMap = (BitMap) values[i];
+        if (bitMap != null && !bitMap.isAllUnmarked()) {
+          for (int j = start; j < end; j++) {
+            if (bitMap.isMarked(j)) {
+              nullPointsNumber++;
+            }
+          }
+        }
+      }
+    }
+    return nullPointsNumber;
   }
 
   @Override
