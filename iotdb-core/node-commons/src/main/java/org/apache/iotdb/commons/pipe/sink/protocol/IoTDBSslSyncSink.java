@@ -186,7 +186,6 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
-        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
@@ -255,8 +254,6 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
 
   protected abstract PipeTransferFilePieceReq getTransferMultiFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) throws IOException;
-
-  protected abstract void mayLimitRateAndRecordIO(final long requiredBytes);
 
   @Override
   public void close() {
