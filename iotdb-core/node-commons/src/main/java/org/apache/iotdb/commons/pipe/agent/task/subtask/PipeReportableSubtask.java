@@ -184,25 +184,15 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     submitSelf();
   }
 
-  public void increaseHighPriorityTaskCount() {
-    highPriorityLockTaskCount.incrementAndGet();
-    synchronized (highPriorityLockTaskCount) {
-      highPriorityLockTaskCount.notifyAll();
-    }
-  }
-
-  protected void waitForWithoutHighPriorityTask() {
-    synchronized (highPriorityLockTaskCount) {
-      // The wait operation will release the highPriorityLockTaskCount lock, so there will be
-      // no deadlock.
-      while (highPriorityLockTaskCount.get() > 0) {
-        try {
-          highPriorityLockTaskCount.wait();
-        } catch (final InterruptedException e) {
-          Thread.currentThread().interrupt();
-          LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
-          break;
-        }
+  protected void preScheduleLowPriorityTask(int maxRetries) {
+    while (highPriorityLockTaskCount.get() != 0L && maxRetries-- > 0) {
+      try {
+        // Introduce a short delay to avoid CPU spinning
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
+        break;
       }
     }
   }
@@ -217,20 +207,14 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
   }
 
-  public void decreaseHighPriorityTaskCount() {
-    highPriorityLockTaskCount.decrementAndGet();
+  public void increaseHighPriorityTaskCount() {
+    highPriorityLockTaskCount.incrementAndGet();
+    synchronized (highPriorityLockTaskCount) {
+      highPriorityLockTaskCount.notifyAll();
+    }
   }
 
-  protected void preScheduleLowPriorityTask(int maxRetries) {
-    while (highPriorityLockTaskCount.get() != 0L && maxRetries-- > 0) {
-      try {
-        // Introduce a short delay to avoid CPU spinning
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
-        break;
-      }
-    }
+  public void decreaseHighPriorityTaskCount() {
+    highPriorityLockTaskCount.decrementAndGet();
   }
 }
