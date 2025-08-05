@@ -120,9 +120,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
       try {
-        updateUserPassword(username, password);
+        forceUpdateUserPassword(username, password);
       } catch (AuthException ignore) {
-        // Old password invalid under current policy (ignored)
       }
       return true;
     }
@@ -145,9 +144,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
       try {
-        updateUserPassword(username, password);
+        forceUpdateUserPassword(username, password);
       } catch (AuthException ignore) {
-        // Old password invalid under current policy (ignored)
       }
       return userManager.getEntity(username).getPassword();
     }
@@ -316,7 +314,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void updateUserPassword(String userName, String newPassword) throws AuthException {
-    if (!userManager.updateUserPassword(userName, newPassword)) {
+    if (!userManager.updateUserPassword(userName, newPassword, false)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
+    }
+  }
+
+  private void forceUpdateUserPassword(String userName, String newPassword) throws AuthException {
+    if (!userManager.updateUserPassword(userName, newPassword, true)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
     }

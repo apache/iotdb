@@ -133,13 +133,17 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
   }
 
-  public boolean updateUserPassword(String username, String newPassword) throws AuthException {
+  public boolean updateUserPassword(String username, String newPassword, boolean bypassValidate)
+      throws AuthException {
     if (CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()
         && username.equals(newPassword)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
     }
-    AuthUtils.validatePassword(newPassword);
+
+    if (!bypassValidate) {
+      AuthUtils.validatePassword(newPassword);
+    }
 
     lock.writeLock(username);
     try {
