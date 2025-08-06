@@ -199,6 +199,48 @@ public class TTLCache {
     return maxTTL;
   }
 
+  public boolean dataInDatabaseMayHaveTTL(String database) {
+    String[] nodeNames = database.split("\\.");
+    CacheNode current = ttlCacheTree;
+    for (String nodeName : nodeNames) {
+      if (hasValidTTLOnCurrentLevel(current)) {
+        return true;
+      }
+      if (nodeName.equals("root")) {
+        continue;
+      }
+      current = current.getChild(nodeName);
+      if (current == null) {
+        return false;
+      }
+    }
+
+    if (hasValidTTLOnCurrentLevel(current)) {
+      return true;
+    }
+
+    Queue<CacheNode> queue = new LinkedList<>();
+    queue.add(current);
+    while (!queue.isEmpty()) {
+      current = queue.poll();
+      for (CacheNode child : current.getChildren().values()) {
+        if (child.ttl >= 0 && child.ttl != Long.MAX_VALUE) {
+          return true;
+        }
+        queue.add(child);
+      }
+    }
+    return false;
+  }
+
+  private boolean hasValidTTLOnCurrentLevel(CacheNode current) {
+    if (current.ttl >= 0 && current.ttl != Long.MAX_VALUE) {
+      return true;
+    }
+    CacheNode wildcardChild = current.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    return wildcardChild != null && wildcardChild.ttl >= 0 && wildcardChild.ttl != Long.MAX_VALUE;
+  }
+
   /**
    * @return key is path contains wildcard between each node
    */

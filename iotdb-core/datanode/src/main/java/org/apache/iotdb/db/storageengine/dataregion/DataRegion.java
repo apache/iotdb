@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -42,6 +43,8 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -62,6 +65,7 @@ import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
@@ -201,6 +205,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.commons.utils.PathUtils.isTableModelDatabase;
@@ -2904,9 +2909,12 @@ public class DataRegion implements IDataRegionForQuery {
       // wait until success
       Thread.sleep(500);
     }
-    logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
     try {
+      if (skipCurrentTTLAndModificationCheck()) {
+        return 0;
+      }
+      logger.info("[TTL] {}-{} Start ttl and modification checking.", databaseName, dataRegionId);
       CompactionScheduleContext context = new CompactionScheduleContext();
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
@@ -2940,6 +2948,45 @@ public class DataRegion implements IDataRegionForQuery {
       isCompactionSelecting.set(false);
     }
     return trySubmitCount;
+  }
+
+  private boolean skipCurrentTTLAndModificationCheck() {
+    if (this.databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
+      return true;
+    }
+    for (Long timePartition : getTimePartitions()) {
+      List<TsFileResource> seqFiles = tsFileManager.getTsFileListSnapshot(timePartition, true);
+      List<TsFileResource> unseqFiles = tsFileManager.getTsFileListSnapshot(timePartition, false);
+      boolean modFileExists =
+          Stream.concat(seqFiles.stream(), unseqFiles.stream())
+              .anyMatch(TsFileResource::anyModFileExists);
+      if (modFileExists) {
+        return false;
+      }
+    }
+    boolean isTableModel = isTableModelDatabase(this.databaseName);
+    if (isTableModel) {
+      try (final ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TShowTableResp resp = configNodeClient.showTables(databaseName, false);
+        for (TTableInfo tTableInfo : resp.getTableInfoList()) {
+          String ttl = tTableInfo.getTTL();
+          if (ttl == null || ttl.equals(IoTDBConstant.TTL_INFINITE)) {
+            continue;
+          }
+          long ttlValue = Long.parseLong(ttl);
+          if (ttlValue < 0 || ttlValue == Long.MAX_VALUE) {
+            continue;
+          }
+          return false;
+        }
+        return true;
+      } catch (Exception ignored) {
+        return false;
+      }
+    } else {
+      return !DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL(databaseName);
+    }
   }
 
   protected int[] executeInsertionCompaction(
