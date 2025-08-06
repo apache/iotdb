@@ -81,6 +81,7 @@ public class SeriesScanUtil implements Accountable {
   protected final IFullPath seriesPath;
 
   private final IDeviceID deviceID;
+  protected int deviceIndexInFI = -1;
   protected boolean isAligned = false;
   private final TSDataType dataType;
 
@@ -171,12 +172,17 @@ public class SeriesScanUtil implements Accountable {
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
   }
 
+  public void initQueryDataSource(QueryDataSource dataSource) {
+    initQueryDataSource(dataSource, -1);
+  }
+
   /**
    * Initialize the query data source. This method should be called <b>before any other methods</b>.
    *
    * @param dataSource the query data source
    */
-  public void initQueryDataSource(QueryDataSource dataSource) {
+  public void initQueryDataSource(QueryDataSource dataSource, int currentDeviceIndexInFI) {
+    this.deviceIndexInFI = currentDeviceIndexInFI;
     dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
@@ -1235,6 +1241,7 @@ public class SeriesScanUtil implements Accountable {
     return FileLoaderUtils.loadTimeSeriesMetadata(
         resource,
         (NonAlignedFullPath) seriesPath,
+        deviceIndexInFI,
         context,
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),

@@ -79,6 +79,7 @@ public class FileLoaderUtils {
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       NonAlignedFullPath seriesPath,
+      int deviceIndexInFI,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       Set<String> allSensors,
@@ -101,6 +102,7 @@ public class FileLoaderUtils {
                         resource.getTsFileID(),
                         seriesPath.getDeviceId(),
                         seriesPath.getMeasurement()),
+                    deviceIndexInFI,
                     allSensors,
                     context.ignoreNotExistsDevice()
                         || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
@@ -180,6 +182,7 @@ public class FileLoaderUtils {
   public static AbstractAlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadata(
       TsFileResource resource,
       AlignedFullPath alignedPath,
+      int deviceIndexInFI,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq,
@@ -193,7 +196,12 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows);
+                resource,
+                alignedPath,
+                deviceIndexInFI,
+                context,
+                globalTimeFilter,
+                ignoreAllNullRows);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -256,6 +264,7 @@ public class FileLoaderUtils {
   private static AbstractAlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadataFromDisk(
       TsFileResource resource,
       AlignedFullPath alignedPath,
+      int deviceIndexInFI,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean ignoreAllNullRows)
@@ -277,6 +286,7 @@ public class FileLoaderUtils {
         cache.get(
             filePath,
             new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
+            deviceIndexInFI,
             allSensors,
             context.ignoreNotExistsDevice()
                 || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
@@ -307,6 +317,7 @@ public class FileLoaderUtils {
                   filePath,
                   new TimeSeriesMetadataCacheKey(
                       resource.getTsFileID(), deviceId, valueMeasurement),
+                  deviceIndexInFI,
                   allSensors,
                   context.ignoreNotExistsDevice()
                       || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,

@@ -1085,6 +1085,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(sourceOperator);
 
+    context
+        .getInstanceContext()
+        .getMetadataIndexEntryCache()
+        .addDevices(sourceOperator, node.getDeviceEntries());
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
       DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
       if (deviceEntry == null) {
