@@ -124,7 +124,12 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     }
 
     if (runningTaskCount == 0) {
-      executor.start(subtask.getTaskID());
+      try {
+        subtask.increaseHighPriorityTaskCount();
+        executor.start(subtask.getTaskID());
+      } finally {
+        subtask.decreaseHighPriorityTaskCount();
+      }
     }
 
     runningTaskCount++;

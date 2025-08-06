@@ -222,11 +222,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     // Try to remove the events as much as possible
     inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
 
-    highPriorityLockTaskCount.incrementAndGet();
     try {
-      synchronized (highPriorityLockTaskCount) {
-        highPriorityLockTaskCount.notifyAll();
-      }
+      increaseHighPriorityTaskCount();
 
       // synchronized to use the lastEvent & lastExceptionEvent
       synchronized (this) {
@@ -265,7 +262,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         }
       }
     } finally {
-      highPriorityLockTaskCount.decrementAndGet();
+      decreaseHighPriorityTaskCount();
     }
 
     if (outputPipeConnector instanceof IoTDBConnector) {
