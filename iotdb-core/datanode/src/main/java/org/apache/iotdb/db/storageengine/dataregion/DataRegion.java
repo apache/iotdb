@@ -2985,7 +2985,11 @@ public class DataRegion implements IDataRegionForQuery {
         return false;
       }
     } else {
-      return !DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL(databaseName);
+      try {
+        return !DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL(databaseName);
+      } catch (Exception ignored) {
+        return false;
+      }
     }
   }
 

@@ -305,6 +305,10 @@ public class TTLTest {
     DataNodeTTLCache.getInstance().setTTLForTree("root.test.sg1.d1.**", 500);
     Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.`1.1`.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.`1.1`"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
   }
 
   private NonAlignedFullPath mockMeasurementPath() {

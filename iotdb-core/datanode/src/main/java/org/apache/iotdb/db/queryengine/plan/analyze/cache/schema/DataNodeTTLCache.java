@@ -109,7 +109,7 @@ public class DataNodeTTLCache {
     }
   }
 
-  public boolean dataInDatabaseMayHaveTTL(String db) {
+  public boolean dataInDatabaseMayHaveTTL(String db) throws IllegalPathException {
     lock.readLock().lock();
     try {
       return treeModelTTLCache.dataInDatabaseMayHaveTTL(db);
