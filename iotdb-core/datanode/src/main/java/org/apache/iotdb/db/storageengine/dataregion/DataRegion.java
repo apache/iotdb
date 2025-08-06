@@ -2868,7 +2868,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (!oldTsFileResource.getTsFile().exists()) {
         tsFileManager.remove(oldTsFileResource, oldTsFileResource.isSeq());
       }
-      FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFileID());
       oldTsFileResource.setSettleTsFileCallBack(null);
       SettleService.getINSTANCE().getFilesToBeSettledCount().addAndGet(-1);
     } catch (IOException e) {
