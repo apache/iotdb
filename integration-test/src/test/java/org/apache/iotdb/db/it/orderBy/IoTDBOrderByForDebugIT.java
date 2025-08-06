@@ -107,7 +107,7 @@ public class IoTDBOrderByForDebugIT {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeCommonConfig()
-        .setQueryMemoryProportion("1:100:200:50:200:400:200:50");
+        .setQueryMemoryProportion("1:100:200:50:400:200:200:50");
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
