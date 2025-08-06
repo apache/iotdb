@@ -1041,6 +1041,7 @@ public class IoTDBAlterColumnTypeIT {
       }
 
       Double firstValue = null;
+      Double lastValue = null;
 
       // file1-file3 s1=DOUBLE
 
@@ -1101,6 +1102,10 @@ public class IoTDBAlterColumnTypeIT {
         session.executeNonQueryStatement("LOAD '" + f.getAbsolutePath() + "'");
       }
 
+      // clear data
+      filesToLoad.forEach(File::delete);
+      filesToLoad.clear();
+
       // check load result
       SessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.sg1.d1");
       RowRecord rec;
@@ -1114,7 +1119,7 @@ public class IoTDBAlterColumnTypeIT {
       for (int i = 4; i <= 6; i++) {
         File file = new File("target", "f" + i + ".tsfile");
         List<String> columnNames = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
-        List<String> columnTypes = Arrays.asList("DOUBLE", "DOUBLE");
+        List<String> columnTypes = Arrays.asList("INT32", "INT32");
 
         if (file.exists()) {
           Files.delete(file.toPath());
@@ -1138,9 +1143,11 @@ public class IoTDBAlterColumnTypeIT {
 
           if (!tabletList.isEmpty()) {
             long timestamp = i;
+            int dataValue = new Random(10).nextInt();
+            lastValue = Double.valueOf(dataValue);
             writeWithTablets(
                 timestamp,
-                new Random(10).nextInt(),
+                dataValue,
                 TSDataType.INT32,
                 tabletList,
                 alignedDevices,
@@ -1156,15 +1163,25 @@ public class IoTDBAlterColumnTypeIT {
         filesToLoad.add(file);
       }
 
+      // load file4-file6 into IoTDB
+      for (File f : filesToLoad) {
+        session.executeNonQueryStatement("LOAD '" + f.getAbsolutePath() + "'");
+      }
+
       // check load result
       dataSet = session.executeQueryStatement("select count(s1) from root.sg1.d1");
       rec = dataSet.next();
-      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals(6, rec.getFields().get(0).getLongV());
       assertFalse(dataSet.hasNext());
 
       dataSet = session.executeQueryStatement("select first_value(s1) from root.sg1.d1");
       rec = dataSet.next();
       assertEquals(firstValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0);
+      assertFalse(dataSet.hasNext());
+
+      dataSet = session.executeQueryStatement("select last_value(s1) from root.sg1.d1");
+      rec = dataSet.next();
+      assertEquals(lastValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0);
       assertFalse(dataSet.hasNext());
 
       // clear data
