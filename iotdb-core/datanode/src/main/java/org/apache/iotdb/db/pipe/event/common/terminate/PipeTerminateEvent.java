@@ -125,7 +125,8 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   @Override
   public String toString() {
-    return String.format("PipeTerminateEvent{dataRegionId=%s}", dataRegionId)
+    return String.format(
+            "PipeTerminateEvent{dataRegionId=%s, shouldMark=%s}", dataRegionId, shouldMark)
         + " - "
         + super.toString();
   }
