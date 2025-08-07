@@ -92,7 +92,12 @@ public abstract class PipeTransferTrackableHandler
       clearEventsReferenceCount();
       connector.eliminateHandler(this);
       client.setShouldReturnSelf(true);
-      client.returnSelf();
+      try {
+        client.returnSelf();
+      } catch (final IllegalStateException e) {
+        LOGGER.info(
+            "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+      }
       return false;
     }
     doTransfer(client, req);
