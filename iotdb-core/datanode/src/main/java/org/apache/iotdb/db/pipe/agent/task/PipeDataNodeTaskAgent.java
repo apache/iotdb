@@ -142,7 +142,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           0L,
           TimeUnit.SECONDS,
           new ArrayBlockingQueue<>(
-              IoTDBDescriptor.getInstance().getConfig().getSchemaThreadCount()),
+              IoTDBDescriptor.getInstance().getConfig().getPipeTaskThreadCount()),
           new IoTThreadFactory(ThreadName.PIPE_PARALLEL_EXECUTION_POOL.getName()),
           ThreadName.PIPE_PARALLEL_EXECUTION_POOL.getName(),
           new ThreadPoolExecutor.CallerRunsPolicy());
