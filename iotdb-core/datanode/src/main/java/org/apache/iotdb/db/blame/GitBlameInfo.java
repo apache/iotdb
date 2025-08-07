@@ -51,28 +51,15 @@ public class GitBlameInfo {
     inclusionPathMap.put("TsFile总", Collections.emptyList());
 
     inclusionPathMap.put(
-        "流处理插件",
-        Arrays.asList(
-            "iotdb-api/pipe-api/src/main/java/org/apache/iotdb/pipe",
-            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/processor",
-            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/sink",
-            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/source"));
-    inclusionPathMap.put(
         "元数据管理",
         Arrays.asList(
             "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/schemaengine",
             "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/exception"));
     inclusionPathMap.put(
-        "数据订阅",
-        Collections.singletonList(
-            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/subscription"));
-    inclusionPathMap.put(
-        "流处理框架",
-        Collections.singletonList(
-            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/agent"));
-    inclusionPathMap.put(
         "数据同步",
-        Collections.singletonList("iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe"));
+        Arrays.asList(
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe",
+            "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/subscription"));
     inclusionPathMap.put(
         "权限管理",
         Arrays.asList(
