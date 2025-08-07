@@ -28,16 +28,22 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,7 +118,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
             }
           }
           if (!success) {
-            batchTablets.add(tablet);
+            batchTablets.add(copyTablet(tablet));
           }
         }
         for (final Tablet batchTablet : batchTablets) {
@@ -213,5 +219,87 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     currentBatch.setLeft(currentBatch.getLeft() + tablet.getRowSize());
     currentBatch.getRight().add(tablet);
     return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + 4;
+  }
+
+  private Tablet copyTablet(final Tablet tablet) {
+    final Object[] copiedValues = new Object[tablet.getValues().length];
+    for (int i = 0; i < tablet.getValues().length; i++) {
+      if (tablet.getValues()[i] == null
+          || tablet.getSchemas() == null
+          || tablet.getSchemas().get(i) == null) {
+        continue;
+      }
+      copiedValues[i] = copyValueList(tablet.getValues()[i], tablet.getSchemas().get(i).getType());
+    }
+
+    BitMap[] bitMaps = null;
+    if (tablet.getBitMaps() != null) {
+      bitMaps =
+          Arrays.stream(tablet.getBitMaps())
+              .map(
+                  bitMap -> {
+                    if (bitMap != null) {
+                      final byte[] data = bitMap.getByteArray();
+                      return new BitMap(bitMap.getSize(), Arrays.copyOf(data, data.length));
+                    }
+                    return null;
+                  })
+              .toArray(BitMap[]::new);
+    }
+
+    return new Tablet(
+        tablet.getTableName(),
+        new ArrayList<>(tablet.getSchemas()),
+        new ArrayList<>(tablet.getColumnTypes()),
+        Arrays.copyOf(tablet.getTimestamps(), tablet.getRowSize()),
+        copiedValues,
+        bitMaps,
+        tablet.getRowSize());
+  }
+
+  private Object copyValueList(final Object valueList, final TSDataType dataType) {
+    switch (dataType) {
+      case BOOLEAN:
+        final boolean[] boolValues = (boolean[]) valueList;
+        final boolean[] copiedBoolValues = new boolean[boolValues.length];
+        System.arraycopy(boolValues, 0, copiedBoolValues, 0, boolValues.length);
+        return copiedBoolValues;
+      case INT32:
+        final int[] intValues = (int[]) valueList;
+        final int[] copiedIntValues = new int[intValues.length];
+        System.arraycopy(intValues, 0, copiedIntValues, 0, intValues.length);
+        return copiedIntValues;
+      case DATE:
+        final LocalDate[] dateValues = (LocalDate[]) valueList;
+        final LocalDate[] copiedDateValues = new LocalDate[dateValues.length];
+        System.arraycopy(dateValues, 0, copiedDateValues, 0, dateValues.length);
+        return copiedDateValues;
+      case INT64:
+      case TIMESTAMP:
+        final long[] longValues = (long[]) valueList;
+        final long[] copiedLongValues = new long[longValues.length];
+        System.arraycopy(longValues, 0, copiedLongValues, 0, longValues.length);
+        return copiedLongValues;
+      case FLOAT:
+        final float[] floatValues = (float[]) valueList;
+        final float[] copiedFloatValues = new float[floatValues.length];
+        System.arraycopy(floatValues, 0, copiedFloatValues, 0, floatValues.length);
+        return copiedFloatValues;
+      case DOUBLE:
+        final double[] doubleValues = (double[]) valueList;
+        final double[] copiedDoubleValues = new double[doubleValues.length];
+        System.arraycopy(doubleValues, 0, copiedDoubleValues, 0, doubleValues.length);
+        return copiedDoubleValues;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        final Binary[] binaryValues = (Binary[]) valueList;
+        final Binary[] copiedBinaryValues = new Binary[binaryValues.length];
+        System.arraycopy(binaryValues, 0, copiedBinaryValues, 0, binaryValues.length);
+        return copiedBinaryValues;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType));
+    }
   }
 }
