@@ -458,6 +458,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_linked_tsfile_count",
                 String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
+    config.setPipeReceiverLoadConversionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_receiver_load_conversion_enabled",
+                String.valueOf(config.isPipeReceiverLoadConversionEnabled()))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
