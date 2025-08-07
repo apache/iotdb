@@ -170,14 +170,8 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
             MAX_RETRY_TIMES,
             e);
         try {
-          synchronized (highPriorityLockTaskCount) {
-            // The wait operation will release the highPriorityLockTaskCount lock, so there will be
-            // no deadlock.
-            if (highPriorityLockTaskCount.get() == 0) {
-              highPriorityLockTaskCount.wait(
-                  retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
-            }
-          }
+          sleepIfNoHighPriorityTask(
+              retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",
@@ -252,19 +246,6 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         ((EnrichedEvent) lastExceptionEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastExceptionEvent = null;
-    }
-  }
-
-  private void preScheduleLowPriorityTask(int maxRetries) {
-    while (highPriorityLockTaskCount.get() != 0L && maxRetries-- > 0) {
-      try {
-        // Introduce a short delay to avoid CPU spinning
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
-        break;
-      }
     }
   }
 }

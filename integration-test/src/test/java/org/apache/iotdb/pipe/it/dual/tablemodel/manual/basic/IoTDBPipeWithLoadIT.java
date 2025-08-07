@@ -70,6 +70,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setEnforceStrongPassword(false);
     receiverEnv
         .getConfig()
@@ -77,11 +80,10 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setEnforceStrongPassword(false);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -206,15 +208,13 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       }
 
       Set<String> expectedResSet = new java.util.HashSet<>();
-      expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,null,null,null,null,");
-      expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,null,null,null,null,");
-      expectedResSet.add("1970-01-01T00:00:00.002Z,null,null,null,null,d1,d2,blue,2,");
-      expectedResSet.add("1970-01-01T00:00:00.001Z,null,null,null,null,d1,d2,red,1,");
+      expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,");
+      expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,");
       // make sure data are not transferred
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from t1",
-          "time,tag3,tag4,s3,s4,tag1,tag2,s1,s2,",
+          "time,tag3,tag4,s3,s4,",
           expectedResSet,
           "db",
           handleFailure);

@@ -336,19 +336,15 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             EXTRACTOR_END_TIME_KEY)
         && parameters.hasAnyAttributes(
             EXTRACTOR_HISTORY_ENABLE_KEY,
+            EXTRACTOR_REALTIME_ENABLE_KEY,
             SOURCE_HISTORY_ENABLE_KEY,
-            SOURCE_HISTORY_START_TIME_KEY,
-            EXTRACTOR_HISTORY_START_TIME_KEY,
-            SOURCE_HISTORY_END_TIME_KEY,
-            EXTRACTOR_HISTORY_END_TIME_KEY)) {
+            SOURCE_REALTIME_ENABLE_KEY)) {
       LOGGER.warn(
-          "When {}, {}, {} or {} is specified, specifying {}, {}, {}, {}, {} and {} is invalid.",
+          "When {}, {}, {} or {} is specified, specifying {}, {}, {} and {} is invalid.",
           SOURCE_START_TIME_KEY,
           EXTRACTOR_START_TIME_KEY,
           SOURCE_END_TIME_KEY,
           EXTRACTOR_END_TIME_KEY,
-          SOURCE_HISTORY_ENABLE_KEY,
-          EXTRACTOR_HISTORY_ENABLE_KEY,
           SOURCE_HISTORY_START_TIME_KEY,
           EXTRACTOR_HISTORY_START_TIME_KEY,
           SOURCE_HISTORY_END_TIME_KEY,

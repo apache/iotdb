@@ -39,7 +39,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
@@ -62,6 +64,8 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
     final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+    final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
+        new HashMap<>();
 
     for (final PipeTransferTabletBinaryReqV2 binaryReq : binaryReqs) {
       final InsertBaseStatement statement = binaryReq.constructStatement();
@@ -69,7 +73,22 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         continue;
       }
       if (statement.isWriteToTable()) {
-        statements.add(statement);
+        if (statement instanceof InsertRowStatement) {
+          tableModelDatabaseInsertRowStatementMap
+              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
+              .add((InsertRowStatement) statement);
+        } else if (statement instanceof InsertTabletStatement) {
+          statements.add(statement);
+        } else if (statement instanceof InsertRowsStatement) {
+          tableModelDatabaseInsertRowStatementMap
+              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
+              .addAll(((InsertRowsStatement) statement).getInsertRowStatementList());
+        } else {
+          throw new UnsupportedOperationException(
+              String.format(
+                  "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReqV2.",
+                  binaryReq));
+        }
         continue;
       }
       if (statement instanceof InsertRowStatement) {
@@ -93,7 +112,22 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         continue;
       }
       if (statement.isWriteToTable()) {
-        statements.add(statement);
+        if (statement instanceof InsertRowStatement) {
+          tableModelDatabaseInsertRowStatementMap
+              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
+              .add((InsertRowStatement) statement);
+        } else if (statement instanceof InsertTabletStatement) {
+          statements.add(statement);
+        } else if (statement instanceof InsertRowsStatement) {
+          tableModelDatabaseInsertRowStatementMap
+              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
+              .addAll(((InsertRowsStatement) statement).getInsertRowStatementList());
+        } else {
+          throw new UnsupportedOperationException(
+              String.format(
+                  "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReqV2.",
+                  insertNodeReq));
+        }
         continue;
       }
       if (statement instanceof InsertRowStatement) {
@@ -131,6 +165,16 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     if (!insertMultiTabletsStatement.isEmpty()) {
       statements.add(insertMultiTabletsStatement);
     }
+
+    for (final Map.Entry<String, List<InsertRowStatement>> insertRows :
+        tableModelDatabaseInsertRowStatementMap.entrySet()) {
+      final InsertRowsStatement statement = new InsertRowsStatement();
+      statement.setWriteToTable(true);
+      statement.setDatabaseName(insertRows.getKey());
+      statement.setInsertRowStatementList(insertRows.getValue());
+      statements.add(statement);
+    }
+
     return statements;
   }
 

@@ -163,6 +163,7 @@ public class ColumnHeaderConstant {
   public static final String ROLE = "Role";
   public static final String CREATE_TIME = "CreateTime";
   public static final String TSFILE_SIZE = "TsFileSize";
+  public static final String COMPRESSION_RATIO = "CompressionRatio";
 
   // column names for show datanodes
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
@@ -225,6 +226,7 @@ public class ColumnHeaderConstant {
   public static final String INTERNAL_ADDRESS_TABLE_MODEL = "internal_address";
   public static final String CREATE_TIME_TABLE_MODEL = "create_time";
   public static final String TS_FILE_SIZE_BYTES_TABLE_MODEL = "tsfile_size_bytes";
+  public static final String COMPRESSION_RATIO_TABLE_MODEL = "compression_ratio";
 
   public static final String CREATION_TIME_TABLE_MODEL = "creation_time";
   public static final String PIPE_SOURCE_TABLE_MODEL = "pipe_source";
@@ -430,7 +432,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(ROLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
-          new ColumnHeader(TSFILE_SIZE, TSDataType.TEXT));
+          new ColumnHeader(TSFILE_SIZE, TSDataType.TEXT),
+          new ColumnHeader(COMPRESSION_RATIO, TSDataType.DOUBLE));
 
   public static final List<ColumnHeader> showAINodesColumnHeaders =
       ImmutableList.of(

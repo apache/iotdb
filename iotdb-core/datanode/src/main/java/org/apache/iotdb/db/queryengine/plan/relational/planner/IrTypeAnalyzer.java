@@ -233,10 +233,10 @@ public class IrTypeAnalyzer {
               .map(
                   clause -> {
                     Type operandType = process(clause.getOperand(), context);
-                    checkArgument(
-                        operandType.equals(BOOLEAN),
-                        "When clause operand must be boolean: %s",
-                        operandType);
+                    if (!operandType.equals(BOOLEAN)) {
+                      throw new SemanticException(
+                          String.format("When clause operand must be boolean: %s", operandType));
+                    }
                     return setExpressionType(clause, process(clause.getResult(), context));
                   })
               .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -250,11 +250,12 @@ public class IrTypeAnalyzer {
           .ifPresent(
               defaultValue -> {
                 Type defaultType = process(defaultValue, context);
-                checkArgument(
-                    defaultType.equals(resultType),
-                    "Default result type must be the same as WHEN result types: %s vs %s",
-                    defaultType,
-                    resultType);
+                if (!defaultType.equals(resultType)) {
+                  throw new SemanticException(
+                      String.format(
+                          "Default result type must be the same as WHEN result types: %s vs %s",
+                          defaultType, resultType));
+                }
               });
 
       return setExpressionType(node, resultType);
@@ -269,11 +270,12 @@ public class IrTypeAnalyzer {
               .map(
                   clause -> {
                     Type clauseOperandType = process(clause.getOperand(), context);
-                    checkArgument(
-                        clauseOperandType.equals(operandType),
-                        "WHEN clause operand type must match CASE operand type: %s vs %s",
-                        clauseOperandType,
-                        operandType);
+                    if (!clauseOperandType.equals(operandType)) {
+                      throw new SemanticException(
+                          String.format(
+                              "WHEN clause operand type must match CASE operand type: %s vs %s",
+                              clauseOperandType, operandType));
+                    }
                     return setExpressionType(clause, process(clause.getResult(), context));
                   })
               .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -288,11 +290,12 @@ public class IrTypeAnalyzer {
           .ifPresent(
               defaultValue -> {
                 Type defaultType = process(defaultValue, context);
-                checkArgument(
-                    defaultType.equals(resultType),
-                    "Default result type must be the same as WHEN result types: %s vs %s",
-                    defaultType,
-                    resultType);
+                if (!defaultType.equals(resultType)) {
+                  throw new SemanticException(
+                      String.format(
+                          "Default result type must be the same as WHEN result types: %s vs %s",
+                          defaultType, resultType));
+                }
               });
 
       return setExpressionType(node, resultType);

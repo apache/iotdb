@@ -149,7 +149,7 @@ public class QueryStateMachine {
   public Throwable getFailureException() {
     Throwable throwable = failureException.get();
     if (throwable == null) {
-      return new IoTDBException(getFailureStatus().getMessage(), getFailureStatus().code);
+      return new IoTDBException(getFailureStatus());
     } else {
       return throwable;
     }

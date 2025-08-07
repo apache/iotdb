@@ -478,6 +478,7 @@ public abstract class PipeTaskAgent {
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
     calculateMemoryUsage(
+        pipeMetaFromCoordinator.getStaticMeta(),
         pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
         pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
         pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
@@ -523,6 +524,7 @@ public abstract class PipeTaskAgent {
   }
 
   protected void calculateMemoryUsage(
+      final PipeStaticMeta staticMeta,
       final PipeParameters extractorParameters,
       final PipeParameters processorParameters,
       final PipeParameters connectorParameters) {

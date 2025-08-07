@@ -128,6 +128,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
         createDataPipe(true);
       } else {
         // Send Tablet data to receiver
+        // Write once to create data regions, guarantee that no any tsFiles will be sent
+        executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
         createDataPipe(false);
         // The actual implementation logic of inserting data
         executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
@@ -195,10 +197,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
     String sql =
         String.format(
             "create pipe test"
-                + " with source ('source'='iotdb-source','realtime.mode'='%s')"
+                + " with source ('source'='iotdb-source','realtime.mode'='%s','history.enable'='%s')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
             isTSFile ? "file" : "forced-log",
+            isTSFile,
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");

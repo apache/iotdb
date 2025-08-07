@@ -307,7 +307,8 @@ public class ChunkCache {
       try {
         cacheMiss = true;
         TsFileSequenceReader reader =
-            FileReaderManager.getInstance().get(key.getFilePath(), key.closed, ioSizeRecorder);
+            FileReaderManager.getInstance()
+                .get(key.getFilePath(), key.tsFileID, key.closed, ioSizeRecorder);
         Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader, ioSizeRecorder);
         // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
         chunk.getHeader().setMeasurementID(null);

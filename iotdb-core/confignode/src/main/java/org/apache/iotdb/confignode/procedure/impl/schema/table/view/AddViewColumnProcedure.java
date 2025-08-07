@@ -76,8 +76,7 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
           new TreeDeviceViewFieldDetector(env.getConfigManager(), table, fields2Detect)
               .detectMissingFieldTypes();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
       }
     }
   }

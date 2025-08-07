@@ -104,13 +104,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           throwable.getMessage(),
           throwable);
       try {
-        synchronized (highPriorityLockTaskCount) {
-          // The wait operation will release the highPriorityLockTaskCount lock, so there will be
-          // no deadlock.
-          if (highPriorityLockTaskCount.get() == 0) {
-            highPriorityLockTaskCount.wait(getSleepIntervalBasedOnThrowable(throwable));
-          }
-        }
+        sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
       } catch (final InterruptedException e) {
         LOGGER.warn(
             "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -177,13 +171,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         throwable.getMessage(),
         throwable);
     try {
-      synchronized (highPriorityLockTaskCount) {
-        // The wait operation will release the highPriorityLockTaskCount lock, so there will be
-        // no deadlock.
-        if (highPriorityLockTaskCount.get() == 0) {
-          highPriorityLockTaskCount.wait(getSleepIntervalBasedOnThrowable(throwable));
-        }
-      }
+      sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
     } catch (final InterruptedException e) {
       LOGGER.warn(
           "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -194,5 +182,39 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
 
     submitSelf();
+  }
+
+  protected void preScheduleLowPriorityTask(int maxRetries) {
+    while (highPriorityLockTaskCount.get() != 0L && maxRetries-- > 0) {
+      try {
+        // Introduce a short delay to avoid CPU spinning
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
+        break;
+      }
+    }
+  }
+
+  protected void sleepIfNoHighPriorityTask(long sleepMillis) throws InterruptedException {
+    synchronized (highPriorityLockTaskCount) {
+      // The wait operation will release the highPriorityLockTaskCount lock, so there will be
+      // no deadlock.
+      if (highPriorityLockTaskCount.get() > 0) {
+        highPriorityLockTaskCount.wait(sleepMillis);
+      }
+    }
+  }
+
+  public void increaseHighPriorityTaskCount() {
+    highPriorityLockTaskCount.incrementAndGet();
+    synchronized (highPriorityLockTaskCount) {
+      highPriorityLockTaskCount.notifyAll();
+    }
+  }
+
+  public void decreaseHighPriorityTaskCount() {
+    highPriorityLockTaskCount.decrementAndGet();
   }
 }
