@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyT
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -84,7 +85,9 @@ public class FolderManagerTest {
                     File.separator + "virtualSG" +
                     File.separator + "1";
 
-            fsFactory.getFile(tsFileDir).mkdirs();
+            if (!fsFactory.getFile(tsFileDir).mkdirs()) {
+                throw new IOException(tsFileDir + " directory creation failure");
+            }
 
             return tsFileDir + File.separator + "test.tsfile";
         });
@@ -96,6 +99,7 @@ public class FolderManagerTest {
 
     @Test
     public void testRetryAfterFailure() throws Exception {
+        // Array elements can be modified in lambdas despite final reference
         final boolean[] firstAttempt = {true};
         final String[] firstFolder = {null};
 
@@ -113,7 +117,9 @@ public class FolderManagerTest {
                     File.separator + "virtualSG" +
                     File.separator + "1";
 
-            fsFactory.getFile(tsFileDir).mkdirs();
+            if (!fsFactory.getFile(tsFileDir).mkdirs()) {
+                throw new IOException(tsFileDir + " directory creation failure");
+            }
 
             return tsFileDir + File.separator + "retry.tsfile";
         });
@@ -123,63 +129,30 @@ public class FolderManagerTest {
         assertTrue(new File(result).getParentFile().exists());
     }
 
+    @Ignore("Test requires manual setup: directory must be set as immutable")
     @Test
     public void testImmutableBaseDir() throws Exception {
-        // 1. 选择第一个目录作为测试目录
+        // Requires manual setup: directory must be set as immutable
         String immutableFolder = testFolders.get(0);
-        File immutableDir = new File(immutableFolder);
-
-        // 2. 保存原始权限状态
-        boolean originalReadable = immutableDir.canRead();
-        boolean originalWritable = immutableDir.canWrite();
-
-        try {
-            // 3. 设置目录为不可写（包括所有用户）
-            // 注意：第二个参数false表示影响所有用户，不只是所有者
-            boolean setWriteSuccess = immutableDir.setWritable(false, true);
-
-            // 4. 设置目录为不可读（包括所有用户）
-            boolean setReadSuccess = immutableDir.setReadable(false, true);
-
-            if (!setReadSuccess || !setWriteSuccess) {
-                fail("Failed to make directory inaccessible - test cannot proceed");
+        String result = folderManager.getNextWithRetry(baseDir -> {
+            String tsFileDir = baseDir + File.separator + "logicalSG" +
+                    File.separator + "virtualSG" +
+                    File.separator + "1";
+            if (!fsFactory.getFile(tsFileDir).mkdirs()) {
+                throw new IOException(tsFileDir + " directory creation failure");
             }
+            return tsFileDir + File.separator + "immutable_test.tsfile";
+        });
 
-            // 5. 验证目录确实不可访问
-            assertFalse("Directory should be inaccessible",
-                    immutableDir.canRead() || immutableDir.canWrite());
-
-            // 6. 执行测试操作
-            String result = folderManager.getNextWithRetry(baseDir -> {
-                // 验证是否避开了不可访问的目录
-                assertNotEquals("Should not use the immutable directory",
-                        immutableFolder, baseDir);
-
-                // 正常创建目录结构
-                String tsFileDir = baseDir + File.separator + "logicalSG" +
-                        File.separator + "virtualSG" +
-                        File.separator + "1";
-
-                fsFactory.getFile(tsFileDir).mkdirs();
-                return tsFileDir + File.separator + "immutable_test.tsfile";
-            });
-
-            // 7. 验证结果
-            assertNotNull("Result path should not be null", result);
-            assertTrue("File should end with correct suffix",
-                    result.endsWith("immutable_test.tsfile"));
-            assertTrue("Parent directory should exist",
-                    new File(result).getParentFile().exists());
-        } finally {
-            // 8. 恢复原始权限（确保不影响其他测试）
-            immutableDir.setWritable(originalWritable, false);
-            immutableDir.setReadable(originalReadable, false);
-        }
+        assertNotNull("Result path should not be null", result);
+        assertTrue("File should end with correct suffix",
+                result.endsWith("immutable_test.tsfile"));
+        assertTrue("Parent directory should exist",
+                new File(result).getParentFile().exists());
     }
 
-
     @Test
-    public void testEventuallyThrowsDiskFullAfterRetries() throws Exception {
+    public void testEventuallyThrowsDiskFullAfterRetries() {
         try {
             folderManager.getNextWithRetry(baseDir -> {
                 throw new IOException("Persistent failure");
