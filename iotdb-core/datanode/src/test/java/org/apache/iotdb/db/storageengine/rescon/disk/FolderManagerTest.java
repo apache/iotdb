@@ -1,0 +1,195 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.storageengine.rescon.disk;
+
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
+import static org.junit.Assert.assertNotEquals;
+
+@RunWith(Parameterized.class)
+public class FolderManagerTest {
+
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    private final DirectoryStrategyType strategyType;
+    private FolderManager folderManager;
+    private List<String> testFolders;
+    private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+    public FolderManagerTest(DirectoryStrategyType strategyType) {
+        this.strategyType = strategyType;
+    }
+
+    @Parameterized.Parameters
+    public static Collection<DirectoryStrategyType> strategyTypes() {
+        return Arrays.asList(DirectoryStrategyType.values());
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        File folder1 = tempFolder.newFolder("folder1");
+        File folder2 = tempFolder.newFolder("folder2");
+        File folder3 = tempFolder.newFolder("folder3");
+
+        testFolders = Arrays.asList(
+                folder1.getAbsolutePath(),
+                folder2.getAbsolutePath(),
+                folder3.getAbsolutePath()
+        );
+
+        folderManager = new FolderManager(testFolders, strategyType);
+    }
+
+    @Test
+    public void testSuccessfulDirectoryCreation() throws Exception {
+        String result = folderManager.getNextWithRetry(baseDir -> {
+            String tsFileDir = baseDir + File.separator + "logicalSG" +
+                    File.separator + "virtualSG" +
+                    File.separator + "1";
+
+            fsFactory.getFile(tsFileDir).mkdirs();
+
+            return tsFileDir + File.separator + "test.tsfile";
+        });
+
+        assertNotNull(result);
+        assertTrue(result.endsWith("test.tsfile"));
+        assertTrue(new File(result).getParentFile().exists());
+    }
+
+    @Test
+    public void testRetryAfterFailure() throws Exception {
+        final boolean[] firstAttempt = {true};
+        final String[] firstFolder = {null};
+
+        String result = folderManager.getNextWithRetry(baseDir -> {
+            if (firstAttempt[0]) {
+                firstAttempt[0] = false;
+                firstFolder[0] = baseDir;
+                throw new IOException("Simulated directory creation failure");
+            }
+
+            // Verify we got a different folder on retry
+            assertNotEquals(firstFolder[0], baseDir);
+
+            String tsFileDir = baseDir + File.separator + "logicalSG" +
+                    File.separator + "virtualSG" +
+                    File.separator + "1";
+
+            fsFactory.getFile(tsFileDir).mkdirs();
+
+            return tsFileDir + File.separator + "retry.tsfile";
+        });
+
+        assertNotNull(result);
+        assertTrue(result.endsWith("retry.tsfile"));
+        assertTrue(new File(result).getParentFile().exists());
+    }
+
+    @Test
+    public void testImmutableBaseDir() throws Exception {
+        // 1. 选择第一个目录作为测试目录
+        String immutableFolder = testFolders.get(0);
+        File immutableDir = new File(immutableFolder);
+
+        // 2. 保存原始权限状态
+        boolean originalReadable = immutableDir.canRead();
+        boolean originalWritable = immutableDir.canWrite();
+
+        try {
+            // 3. 设置目录为不可写（包括所有用户）
+            // 注意：第二个参数false表示影响所有用户，不只是所有者
+            boolean setWriteSuccess = immutableDir.setWritable(false, true);
+
+            // 4. 设置目录为不可读（包括所有用户）
+            boolean setReadSuccess = immutableDir.setReadable(false, true);
+
+            if (!setReadSuccess || !setWriteSuccess) {
+                fail("Failed to make directory inaccessible - test cannot proceed");
+            }
+
+            // 5. 验证目录确实不可访问
+            assertFalse("Directory should be inaccessible",
+                    immutableDir.canRead() || immutableDir.canWrite());
+
+            // 6. 执行测试操作
+            String result = folderManager.getNextWithRetry(baseDir -> {
+                // 验证是否避开了不可访问的目录
+                assertNotEquals("Should not use the immutable directory",
+                        immutableFolder, baseDir);
+
+                // 正常创建目录结构
+                String tsFileDir = baseDir + File.separator + "logicalSG" +
+                        File.separator + "virtualSG" +
+                        File.separator + "1";
+
+                fsFactory.getFile(tsFileDir).mkdirs();
+                return tsFileDir + File.separator + "immutable_test.tsfile";
+            });
+
+            // 7. 验证结果
+            assertNotNull("Result path should not be null", result);
+            assertTrue("File should end with correct suffix",
+                    result.endsWith("immutable_test.tsfile"));
+            assertTrue("Parent directory should exist",
+                    new File(result).getParentFile().exists());
+        } finally {
+            // 8. 恢复原始权限（确保不影响其他测试）
+            immutableDir.setWritable(originalWritable, false);
+            immutableDir.setReadable(originalReadable, false);
+        }
+    }
+
+
+    @Test
+    public void testEventuallyThrowsDiskFullAfterRetries() throws Exception {
+        try {
+            folderManager.getNextWithRetry(baseDir -> {
+                throw new IOException("Persistent failure");
+            });
+            fail("Expected DiskSpaceInsufficientException");
+        } catch (DiskSpaceInsufficientException e) {
+            // Expected after all retries fail
+            assertTrue(e.getMessage().contains("Can't get next folder"));
+        } catch (Exception e) {
+            fail("Should have thrown DiskSpaceInsufficientException");
+        }
+    }
+}
