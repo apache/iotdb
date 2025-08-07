@@ -412,4 +412,29 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
     return this;
   }
+
+  @Override
+  public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePath(String keyStorePath) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePath(String trustStorePath) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePwd(String keyStorePwd) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    return this;
+  }
 }

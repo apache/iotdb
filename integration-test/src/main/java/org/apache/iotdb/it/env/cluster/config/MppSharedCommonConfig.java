@@ -594,4 +594,39 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setEnforceStrongPassword(enforceStrongPassword);
     return this;
   }
+
+  @Override
+  public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
+    cnConfig.setEnableInternalSSL(enableInternalSSL);
+    dnConfig.setEnableInternalSSL(enableInternalSSL);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePath(String keyStorePath) {
+    cnConfig.setKeyStorePath(keyStorePath);
+    dnConfig.setKeyStorePath(keyStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePwd(String keyStorePwd) {
+    cnConfig.setKeyStorePwd(keyStorePwd);
+    dnConfig.setKeyStorePwd(keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePath(String trustStorePath) {
+    cnConfig.setTrustStorePath(trustStorePath);
+    dnConfig.setTrustStorePath(trustStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    cnConfig.setTrustStorePwd(trustStorePwd);
+    dnConfig.setTrustStorePwd(trustStorePwd);
+    return this;
+  }
 }
