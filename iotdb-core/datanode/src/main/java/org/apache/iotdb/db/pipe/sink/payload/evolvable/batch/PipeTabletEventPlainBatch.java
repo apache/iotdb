@@ -108,23 +108,28 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       final String databaseName = insertTablets.getKey();
       for (final Map.Entry<String, Pair<Integer, List<Tablet>>> tabletEntry :
           insertTablets.getValue().entrySet()) {
-        final List<Tablet> batchTablets = new ArrayList<>();
+        // needCopyFlag and tablet
+        final List<Pair<Boolean, Tablet>> batchTablets = new ArrayList<>();
         for (final Tablet tablet : tabletEntry.getValue().getRight()) {
           boolean success = false;
-          for (final Tablet batchTablet : batchTablets) {
-            if (batchTablet.append(tablet, tabletEntry.getValue().getLeft())) {
+          for (final Pair<Boolean, Tablet> tabletPair : batchTablets) {
+            if (tabletPair.getLeft()) {
+              tabletPair.setRight(copyTablet(tabletPair.getRight()));
+              tabletPair.setLeft(Boolean.FALSE);
+            }
+            if (tabletPair.getRight().append(tablet, tabletEntry.getValue().getLeft())) {
               success = true;
               break;
             }
           }
           if (!success) {
-            batchTablets.add(copyTablet(tablet));
+            batchTablets.add(new Pair<>(Boolean.TRUE, tablet));
           }
         }
-        for (final Tablet batchTablet : batchTablets) {
+        for (final Pair<Boolean, Tablet> tabletPair : batchTablets) {
           try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
               final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-            batchTablet.serialize(outputStream);
+            tabletPair.getRight().serialize(outputStream);
             ReadWriteIOUtils.write(true, outputStream);
             tabletBuffers.add(
                 ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
