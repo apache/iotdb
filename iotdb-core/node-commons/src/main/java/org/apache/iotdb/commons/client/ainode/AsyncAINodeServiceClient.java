@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
@@ -54,7 +54,7 @@ public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
         property.getProtocolFactory(),
         tClientManager,
         commonConfig.isEnableInternalSSL()
-            ? TNonblockingSocketWrapper.wrap(
+            ? TNonblockingTransportWrapper.wrap(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 property.getConnectionTimeoutMs(),
@@ -62,7 +62,7 @@ public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
                 commonConfig.getKeyStorePwd(),
                 commonConfig.getTrustStorePath(),
                 commonConfig.getTrustStorePwd())
-            : TNonblockingSocketWrapper.wrap(
+            : TNonblockingTransportWrapper.wrap(
                 endPoint.getIp(), endPoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();

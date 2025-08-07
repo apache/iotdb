@@ -64,9 +64,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Thrift's TAsyncClientManager using a dummy local SocketChannel for selector events. Supports
  * SSL/TLS for secure communication.
  */
-public class NettyTNonBlockingTransport extends TNonblockingTransport {
+public class NettyTNonblockingTransport extends TNonblockingTransport {
 
-  private static final Logger logger = LoggerFactory.getLogger(NettyTNonBlockingTransport.class);
+  private static final Logger logger = LoggerFactory.getLogger(NettyTNonblockingTransport.class);
 
   private final String host;
   private final int port;
@@ -94,7 +94,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
   private int dummyPort;
   private Selector selector; // Stored for wakeup if needed
 
-  public NettyTNonBlockingTransport(
+  public NettyTNonblockingTransport(
       String host,
       int port,
       int connectTimeoutMs,
@@ -149,12 +149,11 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                 if (logger.isDebugEnabled()) {
                   logger.debug("Initializing channel for {}:{}", host, port);
                 }
-
                 ChannelPipeline pipeline = ch.pipeline();
                 SslContext sslContext = createSslContext();
                 SslHandler sslHandler = sslContext.newHandler(ch.alloc(), host, port);
                 sslHandler.setHandshakeTimeoutMillis(sslHandshakeTimeoutMs);
-                // set this for avoiding error log on server side
+                // set this for avoiding error log on the server side
                 sslHandler.setCloseNotifyReadTimeoutMillis(100);
 
                 pipeline.addLast("ssl", sslHandler);
@@ -177,7 +176,6 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                             }
                           }
                         });
-
                 pipeline.addLast("handler", new NettyTransportHandler());
               }
             });
@@ -430,7 +428,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
   }
 
   @Override
-  public boolean startConnect() throws IOException {
+  public boolean startConnect() {
     if (connected.get() || connecting.get()) {
       if (logger.isDebugEnabled()) {
         logger.debug("Connection already started or established for {}:{}", host, port);
@@ -450,7 +448,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
     }
 
     try {
-      // Initiate dummy connect, it will pend until accept
+      // Initiate dummy connect, it will pend until acceptance
       dummyClient.connect(new InetSocketAddress("localhost", dummyPort));
 
       // Initiate Netty connect
@@ -611,7 +609,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
       if (logger.isDebugEnabled()) {
         logger.debug("Channel exception: {}", cause.getMessage());
       }

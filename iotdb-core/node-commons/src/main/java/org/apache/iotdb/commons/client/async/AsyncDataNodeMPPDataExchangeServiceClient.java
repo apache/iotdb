@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
@@ -59,7 +59,7 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
         property.getProtocolFactory(),
         tClientManager,
         commonConfig.isEnableInternalSSL()
-            ? TNonblockingSocketWrapper.wrap(
+            ? TNonblockingTransportWrapper.wrap(
                 endpoint.getIp(),
                 endpoint.getPort(),
                 property.getConnectionTimeoutMs(),
@@ -67,7 +67,7 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
                 commonConfig.getKeyStorePwd(),
                 commonConfig.getTrustStorePath(),
                 commonConfig.getTrustStorePwd())
-            : TNonblockingSocketWrapper.wrap(
+            : TNonblockingTransportWrapper.wrap(
                 endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
