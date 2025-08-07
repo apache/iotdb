@@ -57,13 +57,17 @@ public abstract class AbstractPipeDualTreeModelManualIT {
         .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
+
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
@@ -84,7 +88,7 @@ public abstract class AbstractPipeDualTreeModelManualIT {
         .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {
-              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush")) {
+              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush", null)) {
                 return false;
               }
               return env.getDataNodeWrapperList().stream()

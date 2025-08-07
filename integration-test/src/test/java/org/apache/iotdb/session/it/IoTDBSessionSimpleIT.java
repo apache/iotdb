@@ -243,7 +243,7 @@ public class IoTDBSessionSimpleIT {
       expected.add(TSDataType.TEXT.name());
 
       Set<String> actual = new HashSet<>();
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
+      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
       while (dataSet.hasNext()) {
         actual.add(dataSet.next().getFields().get(3).getStringValue());
       }
@@ -1901,7 +1901,7 @@ public class IoTDBSessionSimpleIT {
 
       session.deleteDatabase("root.db");
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES");
+      final SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES root.db");
       assertFalse(dataSet.hasNext());
 
     } catch (Exception e) {

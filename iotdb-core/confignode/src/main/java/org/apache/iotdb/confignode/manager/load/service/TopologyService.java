@@ -266,7 +266,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
           continue;
         }
         if (!reachableTo.contains(from) && !reachableFrom.contains(to)) {
-          LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", from, to);
+          LOGGER.debug("[Topology] Asymmetric network partition from {} to {}", from, to);
         }
       }
     }

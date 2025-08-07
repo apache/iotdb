@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -53,6 +55,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator
 import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
@@ -139,6 +142,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -185,6 +189,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -340,6 +345,9 @@ import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
 
   private final Metadata metadata;
+
+  private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
+      DataNodeDevicePathCache.getInstance();
 
   public TableOperatorGenerator(Metadata metadata) {
     this.metadata = metadata;
@@ -3556,6 +3564,61 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         measurePatternAggregators,
         measureComputationsBuilder.build(),
         labelNames);
+  }
+
+  @Override
+  public Operator visitInto(IntoNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableIntoOperator.class.getSimpleName());
+
+    try {
+      PartialPath targetTable = DEVICE_PATH_CACHE.getPartialPath(node.getTable());
+
+      Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
+      Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
+      List<TSDataType> inputColumnTypes = new ArrayList<>();
+      List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
+
+      List<ColumnSchema> inputColumns = node.getColumns();
+      for (int i = 0; i < inputColumns.size(); i++) {
+        String columnName = inputColumns.get(i).getName();
+        inputLocationMap.put(columnName, new InputLocation(0, i));
+
+        TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
+        if (columnCategory == TIME) {
+          continue;
+        }
+
+        TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
+        tsDataTypeMap.put(columnName, columnType);
+        inputColumnTypes.add(columnType);
+        inputColumnCategories.add(columnCategory);
+      }
+
+      long statementSizePerLine =
+          OperatorGeneratorUtil.calculateStatementSizePerLine(inputColumnTypes);
+
+      return new TableIntoOperator(
+          operatorContext,
+          child,
+          node.getDatabase(),
+          targetTable,
+          inputColumnTypes,
+          inputColumnCategories,
+          inputLocationMap,
+          tsDataTypeMap,
+          true,
+          FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
+          statementSizePerLine);
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException(e);
+    }
   }
 
   private boolean[] checkStatisticAndScanOrder(

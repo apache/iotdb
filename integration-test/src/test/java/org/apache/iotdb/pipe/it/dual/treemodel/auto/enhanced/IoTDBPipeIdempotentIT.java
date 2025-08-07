@@ -68,13 +68,18 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
+
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
@@ -91,7 +96,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -102,7 +107,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)",
         "create timeSeries root.ln.wf01.wt01.status1(status) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("3,"));
   }
@@ -113,7 +118,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "create timeSeries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
         "create timeSeries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -124,7 +129,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "insert into root.ln.wf01.wt01(time, status0) values(now(), false); flush;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -136,7 +141,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 ADD TAGS tag3=v3;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -148,7 +153,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -161,7 +166,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 RENAME attr1 TO newAttr1;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -175,7 +180,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -186,7 +191,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -198,7 +203,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -210,7 +215,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -223,7 +228,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -237,7 +242,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -249,7 +254,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "set schema template t1 to root.sg1"),
         "create timeSeries using device template on root.sg1.d1",
         "create timeSeries using device template on root.sg1.d2",
-        "count timeSeries",
+        "count timeSeries root.sg1.**",
         "count(timeseries),",
         Collections.singleton("6,"));
   }
@@ -267,7 +272,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -278,7 +283,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -289,7 +294,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -300,18 +305,18 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
   public void testCreateUserIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "create user `ln_write_user` 'write_pwd'",
+        "create user `ln_write_user` 'write_pwd123456'",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -322,31 +327,31 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
   public void testGrantRoleToUserIdempotent() throws Exception {
     testIdempotent(
-        Arrays.asList("create user `ln_write_user` 'write_pwd'", "create role `test`"),
+        Arrays.asList("create user `ln_write_user` 'write_pwd123456'", "create role `test`"),
         "grant role test to ln_write_user",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
   public void testRevokeUserIdempotent() throws Exception {
     testIdempotent(
         Arrays.asList(
-            "create user `ln_write_user` 'write_pwd'",
+            "create user `ln_write_user` 'write_pwd123456'",
             "GRANT READ_DATA, WRITE_DATA ON root.t1.** TO USER ln_write_user;"),
         "REVOKE READ_DATA, WRITE_DATA ON root.t1.** FROM USER ln_write_user;",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -357,32 +362,32 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
   public void testRevokeRoleFromUserIdempotent() throws Exception {
     testIdempotent(
         Arrays.asList(
-            "create user `ln_write_user` 'write_pwd'",
+            "create user `ln_write_user` 'write_pwd123456'",
             "create role `test`",
             "grant role test to ln_write_user"),
         "revoke role test from ln_write_user",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
   public void testDropUserIdempotent() throws Exception {
     testIdempotent(
-        Collections.singletonList("create user `ln_write_user` 'write_pwd'"),
+        Collections.singletonList("create user `ln_write_user` 'write_pwd123456'"),
         "drop user `ln_write_user`",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -393,7 +398,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   // Table model
@@ -439,16 +444,17 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, beforeSqlList)) {
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, beforeSqlList, null)) {
       return;
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, testSql)) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, testSql, null)) {
       return;
     }
 
     // Create an idempotent conflict, after sql shall be executed on the same region as testSql
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Arrays.asList(testSql, afterSql))) {
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        senderEnv, Arrays.asList(testSql, afterSql), null)) {
       return;
     }
 

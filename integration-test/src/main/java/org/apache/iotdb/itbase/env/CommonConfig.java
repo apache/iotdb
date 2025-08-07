@@ -146,6 +146,8 @@ public interface CommonConfig {
 
   CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
 
+  CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
+
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
 
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
@@ -181,4 +183,6 @@ public interface CommonConfig {
   default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     return this;
   }
+
+  CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
 }

@@ -307,6 +307,7 @@ public enum PlanNodeType {
   TABLE_GROUP_NODE((short) 1030),
   TABLE_PATTERN_RECOGNITION_NODE((short) 1031),
   TABLE_WINDOW_FUNCTION((short) 1032),
+  TABLE_INTO_NODE((short) 1033),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -689,6 +690,9 @@ public enum PlanNodeType {
         return PatternRecognitionNode.deserialize(buffer);
       case 1032:
         return WindowNode.deserialize(buffer);
+      case 1033:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode.deserialize(
+            buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

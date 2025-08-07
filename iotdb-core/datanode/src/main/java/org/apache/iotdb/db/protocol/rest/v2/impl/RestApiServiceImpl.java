@@ -129,7 +129,7 @@ public class RestApiServiceImpl extends RestApiService {
       }
       // Check cache first
       if (!TableDeviceSchemaCache.getInstance().getLastCache(resultMap)) {
-        IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+        IClientSession clientSession = SESSION_MANAGER.getCurrSession();
         TSLastDataQueryReq tsLastDataQueryReq =
             FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
         statement = StatementGenerator.createStatement(tsLastDataQueryReq);

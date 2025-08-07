@@ -56,7 +56,7 @@ import org.apache.iotdb.commons.model.ModelStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -359,7 +359,7 @@ public class ConfigManager implements IManager {
     NodeInfo nodeInfo = new NodeInfo();
     ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
     PartitionInfo partitionInfo = new PartitionInfo();
-    AuthorInfo authorInfo = new AuthorInfo();
+    AuthorInfo authorInfo = new AuthorInfo(this);
     ProcedureInfo procedureInfo = new ProcedureInfo(this);
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
@@ -1360,6 +1360,23 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
         resp = permissionManager.checkRoleOfUser(username, rolename);
+      } catch (AuthException e) {
+        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
+        resp.setStatus(status);
+        return resp;
+      }
+    } else {
+      resp.setStatus(status);
+    }
+    return resp;
+  }
+
+  public TPermissionInfoResp getUser(String userName) {
+    TSStatus status = confirmLeader();
+    TPermissionInfoResp resp = new TPermissionInfoResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      try {
+        resp = permissionManager.getUser(userName);
       } catch (AuthException e) {
         status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
         resp.setStatus(status);

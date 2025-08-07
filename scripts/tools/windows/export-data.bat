@@ -37,7 +37,7 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
- -DIOTDB_HOME="%IOTDB_HOME%"
+ -DIOTDB_HOME="%IOTDB_HOME%" -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 
 @REM ***** CLASSPATH library setting *****
 set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"

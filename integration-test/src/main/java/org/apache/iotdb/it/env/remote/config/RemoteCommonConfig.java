@@ -329,6 +329,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     return this;
   }
@@ -387,6 +392,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
       int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
     return this;
@@ -398,6 +408,7 @@ public class RemoteCommonConfig implements CommonConfig {
     return this;
   }
 
+  @Override
   public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
     return this;
   }

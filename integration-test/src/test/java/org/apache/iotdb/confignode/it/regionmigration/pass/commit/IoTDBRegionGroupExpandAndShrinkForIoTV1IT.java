@@ -89,7 +89,8 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       Set<Integer> allDataNodeId = getAllDataNodes(statement);
 
       // expect one data region, one schema region
-      Assert.assertEquals(2, regionMap.size());
+      // plus one system data region, one system schema region
+      Assert.assertEquals(4, regionMap.size());
 
       // expand
       for (int selectedRegion : regionMap.keySet()) {

@@ -95,7 +95,7 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
 
       String[] sqls =
           new String[] {
-            "show timeseries",
+            "show timeseries root.db.**",
           };
       Set<String>[] standards =
           new Set[] {
@@ -153,7 +153,7 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
 
       String[] sqls =
           new String[] {
-            "show timeseries",
+            "show timeseries root.db*.**",
           };
       Set<String>[] standards =
           new Set[] {
@@ -216,7 +216,7 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
 
       String[] sqls =
           new String[] {
-            "show timeseries",
+            "show timeseries root.db.**",
           };
       Set<String>[] standards =
           new Set[] {

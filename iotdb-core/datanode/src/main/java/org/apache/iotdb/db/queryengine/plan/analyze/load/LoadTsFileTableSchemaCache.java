@@ -25,7 +25,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
-import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -356,14 +355,14 @@ public class LoadTsFileTableSchemaCache {
         }
       } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
         ColumnSchema realColumn = fieldColumnNameToSchema.get(fileColumn.getName());
-        if (realColumn == null || !fileColumn.getType().equals(realColumn.getType())) {
-          throw new LoadAnalyzeTypeMismatchException(
-              String.format(
-                  "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",
-                  realColumn.getName(),
-                  realSchema.getTableName(),
-                  fileColumn.getType(),
-                  realColumn.getType()));
+        if (LOGGER.isDebugEnabled()
+            && (realColumn == null || !fileColumn.getType().equals(realColumn.getType()))) {
+          LOGGER.debug(
+              "Data type mismatch for column {} in table {}, type in TsFile: {}, type in IoTDB: {}",
+              realColumn.getName(),
+              realSchema.getTableName(),
+              fileColumn.getType(),
+              realColumn.getType());
         }
       }
     }
