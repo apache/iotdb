@@ -174,6 +174,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
@@ -2749,9 +2750,12 @@ public class DataRegion implements IDataRegionForQuery {
       // wait until success
       Thread.sleep(500);
     }
-    logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
     try {
+      if (skipCurrentTTLAndModificationCheck()) {
+        return 0;
+      }
+      logger.info("[TTL] {}-{} Start ttl and modification checking.", databaseName, dataRegionId);
       CompactionScheduleContext context = new CompactionScheduleContext();
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
@@ -2785,6 +2789,27 @@ public class DataRegion implements IDataRegionForQuery {
       isCompactionSelecting.set(false);
     }
     return trySubmitCount;
+  }
+
+  private boolean skipCurrentTTLAndModificationCheck() {
+    if (this.databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
+      return true;
+    }
+    for (Long timePartition : getTimePartitions()) {
+      List<TsFileResource> seqFiles = tsFileManager.getTsFileListSnapshot(timePartition, true);
+      List<TsFileResource> unseqFiles = tsFileManager.getTsFileListSnapshot(timePartition, false);
+      boolean modFileExists =
+          Stream.concat(seqFiles.stream(), unseqFiles.stream())
+              .anyMatch(TsFileResource::modFileExists);
+      if (modFileExists) {
+        return false;
+      }
+    }
+    try {
+      return !DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL(databaseName);
+    } catch (Exception ignored) {
+      return false;
+    }
   }
 
   protected int[] executeInsertionCompaction(
