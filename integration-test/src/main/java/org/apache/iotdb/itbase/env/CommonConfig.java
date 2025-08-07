@@ -185,4 +185,6 @@ public interface CommonConfig {
   }
 
   CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
+
+  CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
 }
