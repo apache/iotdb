@@ -120,6 +120,9 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void close() {
+    if (Objects.isNull(client)) {
+      return;
+    }
     try {
       client.close();
       client.invalidateAll();
