@@ -222,14 +222,16 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   public static Tablet copyTablet(final Tablet tablet) {
-    final Object[] copiedValues = new Object[tablet.getRowSize()];
+    final Object[] copiedValues = new Object[tablet.getValues().length];
     for (int i = 0; i < tablet.getValues().length; i++) {
       if (tablet.getValues()[i] == null
           || tablet.getSchemas() == null
           || tablet.getSchemas().get(i) == null) {
         continue;
       }
-      copiedValues[i] = copyValueList(tablet.getValues()[i], tablet.getSchemas().get(i).getType());
+      copiedValues[i] =
+          copyValueList(
+              tablet.getValues()[i], tablet.getSchemas().get(i).getType(), tablet.getRowSize());
     }
 
     BitMap[] bitMaps = null;
@@ -257,45 +259,46 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         tablet.getRowSize());
   }
 
-  private static Object copyValueList(final Object valueList, final TSDataType dataType) {
+  private static Object copyValueList(
+      final Object valueList, final TSDataType dataType, final int rowSize) {
     switch (dataType) {
       case BOOLEAN:
         final boolean[] boolValues = (boolean[]) valueList;
-        final boolean[] copiedBoolValues = new boolean[boolValues.length];
-        System.arraycopy(boolValues, 0, copiedBoolValues, 0, boolValues.length);
+        final boolean[] copiedBoolValues = new boolean[rowSize];
+        System.arraycopy(boolValues, 0, copiedBoolValues, 0, rowSize);
         return copiedBoolValues;
       case INT32:
         final int[] intValues = (int[]) valueList;
-        final int[] copiedIntValues = new int[intValues.length];
-        System.arraycopy(intValues, 0, copiedIntValues, 0, intValues.length);
+        final int[] copiedIntValues = new int[rowSize];
+        System.arraycopy(intValues, 0, copiedIntValues, 0, rowSize);
         return copiedIntValues;
       case DATE:
         final LocalDate[] dateValues = (LocalDate[]) valueList;
-        final LocalDate[] copiedDateValues = new LocalDate[dateValues.length];
-        System.arraycopy(dateValues, 0, copiedDateValues, 0, dateValues.length);
+        final LocalDate[] copiedDateValues = new LocalDate[rowSize];
+        System.arraycopy(dateValues, 0, copiedDateValues, 0, rowSize);
         return copiedDateValues;
       case INT64:
       case TIMESTAMP:
         final long[] longValues = (long[]) valueList;
-        final long[] copiedLongValues = new long[longValues.length];
-        System.arraycopy(longValues, 0, copiedLongValues, 0, longValues.length);
+        final long[] copiedLongValues = new long[rowSize];
+        System.arraycopy(longValues, 0, copiedLongValues, 0, rowSize);
         return copiedLongValues;
       case FLOAT:
         final float[] floatValues = (float[]) valueList;
-        final float[] copiedFloatValues = new float[floatValues.length];
-        System.arraycopy(floatValues, 0, copiedFloatValues, 0, floatValues.length);
+        final float[] copiedFloatValues = new float[rowSize];
+        System.arraycopy(floatValues, 0, copiedFloatValues, 0, rowSize);
         return copiedFloatValues;
       case DOUBLE:
         final double[] doubleValues = (double[]) valueList;
-        final double[] copiedDoubleValues = new double[doubleValues.length];
-        System.arraycopy(doubleValues, 0, copiedDoubleValues, 0, doubleValues.length);
+        final double[] copiedDoubleValues = new double[rowSize];
+        System.arraycopy(doubleValues, 0, copiedDoubleValues, 0, rowSize);
         return copiedDoubleValues;
       case TEXT:
       case BLOB:
       case STRING:
         final Binary[] binaryValues = (Binary[]) valueList;
-        final Binary[] copiedBinaryValues = new Binary[binaryValues.length];
-        System.arraycopy(binaryValues, 0, copiedBinaryValues, 0, binaryValues.length);
+        final Binary[] copiedBinaryValues = new Binary[rowSize];
+        System.arraycopy(binaryValues, 0, copiedBinaryValues, 0, rowSize);
         return copiedBinaryValues;
       default:
         throw new UnSupportedDataTypeException(
