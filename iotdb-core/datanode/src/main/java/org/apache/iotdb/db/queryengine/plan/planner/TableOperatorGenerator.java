@@ -312,7 +312,9 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_FIRST;
@@ -3105,8 +3107,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       // LAST_VALUES optimize
       lastValuesCacheResults = new ArrayList<>();
       int measurementSize = parameter.getMeasurementColumnNames().size();
+      // When we need last cache of Time column if:
+      // 1. query is group by (we need last cache of Time to help judge if there is no data in
+      // device)
+      // 2. last(time), last(device) or last(attribute) occurs
       boolean needTime =
-          parameter.getTimeColumnName() == null
+          !node.getGroupingKeys().isEmpty()
               || parameter.getTableAggregators().stream()
                   .anyMatch(
                       aggregator ->
@@ -3137,12 +3143,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         boolean allHitCache = true;
         if (lastResult != null) {
           for (TimeValuePair timeValuePair : lastResult) {
-            if (timeValuePair == null
-                || timeValuePair.getValue() == null
-                || (updateTimeFilter != null
-                    && !LastQueryUtil.satisfyFilter(updateTimeFilter, timeValuePair))) {
+            if (timeValuePair == null || timeValuePair.getValue() == null) {
               allHitCache = false;
               break;
+            }
+
+            if (updateTimeFilter != null
+                && !LastQueryUtil.satisfyFilter(
+                    parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
+              if (isFilterGtOrGe(updateTimeFilter)) {
+                // it means there is no data meets Filter
+                timeValuePair.setValue(EMPTY_PRIMITIVE_TYPE);
+              } else {
+                allHitCache = false;
+                break;
+              }
             }
           }
         } else {

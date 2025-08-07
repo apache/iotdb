@@ -126,12 +126,11 @@ public class AccumulatorFactory {
                     inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
     } else if (LAST.getFunctionName().equals(functionName)) {
-      boolean isTimeColumn = isTimeColumn(inputExpressions.get(0), timeColumnName);
       return ascending
-          ? new LastAccumulator(inputDataTypes.get(0), isTimeColumn)
+          ? new LastAccumulator(inputDataTypes.get(0))
           : new LastDescAccumulator(
               inputDataTypes.get(0),
-              isTimeColumn,
+              isTimeColumn(inputExpressions.get(0), timeColumnName),
               isMeasurementColumn(inputExpressions.get(0), measurementColumnNames));
     } else {
       result =
@@ -286,7 +285,7 @@ public class AccumulatorFactory {
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return ascending
-            ? new LastAccumulator(inputDataTypes.get(0), false)
+            ? new LastAccumulator(inputDataTypes.get(0))
             : new LastDescAccumulator(inputDataTypes.get(0), false, false);
       case FIRST:
         return ascending
