@@ -436,23 +436,22 @@ public abstract class AbstractOperatePipeProcedureV2
 
       if (resp.getStatus().getCode()
           == TSStatusCode.PIPE_PUSH_META_NOT_ENOUGH_MEMORY.getStatusCode()) {
-        final AtomicBoolean hasException = new AtomicBoolean(false);
+        exceptionMessageBuilder.append(String.format("DataNodeId: %s,", dataNodeId));
         resp.getExceptionMessages()
             .forEach(
                 message -> {
                   // Ignore the timeStamp for simplicity
                   if (pipeName == null) {
-                    hasException.set(true);
                     enoughMemoryMessageBuilder.append(
                         String.format(
                             "PipeName: %s, Message: %s",
                             message.getPipeName(), message.getMessage()));
                   } else if (pipeName.equals(message.getPipeName())) {
-                    hasException.set(true);
                     enoughMemoryMessageBuilder.append(
-                        String.format("Message: %s", message.getMessage()));
+                        String.format("Message: %s ", message.getMessage()));
                   }
                 });
+        enoughMemoryMessageBuilder.append(".");
         continue;
       }
 
