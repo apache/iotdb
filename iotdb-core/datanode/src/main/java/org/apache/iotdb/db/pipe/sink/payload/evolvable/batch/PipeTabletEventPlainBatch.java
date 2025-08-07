@@ -221,8 +221,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + 4;
   }
 
-  private Tablet copyTablet(final Tablet tablet) {
-    final Object[] copiedValues = new Object[tablet.getValues().length];
+  public static Tablet copyTablet(final Tablet tablet) {
+    final Object[] copiedValues = new Object[tablet.getRowSize()];
     for (int i = 0; i < tablet.getValues().length; i++) {
       if (tablet.getValues()[i] == null
           || tablet.getSchemas() == null
@@ -257,7 +257,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         tablet.getRowSize());
   }
 
-  private Object copyValueList(final Object valueList, final TSDataType dataType) {
+  private static Object copyValueList(final Object valueList, final TSDataType dataType) {
     switch (dataType) {
       case BOOLEAN:
         final boolean[] boolValues = (boolean[]) valueList;
