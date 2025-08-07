@@ -108,8 +108,13 @@ public class TsFileNameGenerator {
                     + File.separator
                     + timePartitionId;
             File targetDir = fsFactory.getFile(tsFileDir);
-            if (!(targetDir.exists() || targetDir.mkdirs())) {
-              throw new IOException(tsFileDir + " directory creation failure");
+            if (!targetDir.exists()) {
+              if (!targetDir.mkdirs() && !targetDir.exists()) {
+                throw new IOException(
+                    "Directory creation failed: "
+                        + tsFileDir
+                        + " (Permission denied or parent not writable)");
+              }
             }
             return tsFileDir
                 + File.separator
