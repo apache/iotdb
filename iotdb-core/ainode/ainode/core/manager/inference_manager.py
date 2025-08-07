@@ -270,7 +270,7 @@ class InferenceManager:
             full_data = deserializer(raw)
             inference_attrs = extract_attrs(req)
 
-            predict_length = inference_attrs.get("predict_length", 96)
+            predict_length = int(inference_attrs.get("predict_length", 96))
             if (
                 predict_length
                 > AINodeDescriptor().get_config().get_ain_inference_max_predict_length()

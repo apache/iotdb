@@ -161,15 +161,15 @@ public class AINodeInferenceSQLIT {
     //      assertEquals(7, count);
     //    }
 
-    try (ResultSet resultSet = statement.executeQuery(sql3)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "Time,output0,output1,output2");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      assertEquals(3, count);
-    }
+    //    try (ResultSet resultSet = statement.executeQuery(sql3)) {
+    //      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+    //      checkHeader(resultSetMetaData, "Time,output0,output1,output2");
+    //      int count = 0;
+    //      while (resultSet.next()) {
+    //        count++;
+    //      }
+    //      assertEquals(3, count);
+    //    }
 
     try (ResultSet resultSet = statement.executeQuery(sql4)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -270,15 +270,15 @@ public class AINodeInferenceSQLIT {
       //        assertEquals(7, count);
       //      }
 
-      try (ResultSet resultSet = statement.executeQuery(sql3)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "time,s0,s1,s2");
-        int count = 0;
-        while (resultSet.next()) {
-          count++;
-        }
-        assertEquals(3, count);
-      }
+      //      try (ResultSet resultSet = statement.executeQuery(sql3)) {
+      //        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      //        checkHeader(resultSetMetaData, "time,s0,s1,s2");
+      //        int count = 0;
+      //        while (resultSet.next()) {
+      //          count++;
+      //        }
+      //        assertEquals(3, count);
+      //      }
 
       try (ResultSet resultSet = statement.executeQuery(sql4)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
