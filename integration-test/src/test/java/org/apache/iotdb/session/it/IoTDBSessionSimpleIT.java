@@ -24,6 +24,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -53,7 +54,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -63,8 +63,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,6 +76,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -214,7 +217,7 @@ public class IoTDBSessionSimpleIT {
       }
       fail();
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("data type of root.sg.d2.s2 is not consistent"));
+      assertTrue(e.getMessage().contains("data type of root.sg.d2.s2 is not consistent"));
     }
   }
 
@@ -713,7 +716,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+      assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
     }
   }
 
@@ -741,7 +744,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s0"));
+      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s0"));
     }
   }
 
@@ -1123,7 +1126,7 @@ public class IoTDBSessionSimpleIT {
           Boolean.TRUE);
       session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values);
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
+      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
     }
   }
 
@@ -1178,7 +1181,7 @@ public class IoTDBSessionSimpleIT {
           Boolean.TRUE);
       session.insertRecords(devices, times, measurements, datatypes, values);
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
+      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
     }
   }
 
@@ -1211,11 +1214,11 @@ public class IoTDBSessionSimpleIT {
         session.insertRecords(devices, times, measurements, datatypes, values);
         fail();
       } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+        assertTrue(e.getMessage().contains("less than ttl time bound"));
       }
       session.executeNonQueryStatement("unset ttl to root.sg.d1");
       SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
-      Assert.assertFalse(dataSet.hasNext());
+      assertFalse(dataSet.hasNext());
     }
   }
 
@@ -1889,14 +1892,14 @@ public class IoTDBSessionSimpleIT {
         session.createDatabase("");
         fail();
       } catch (StatementExecutionException e) {
-        Assert.assertTrue(e.getMessage().contains(" is not a legal path"));
+        assertTrue(e.getMessage().contains(" is not a legal path"));
       }
 
       try {
         session.deleteDatabases(Arrays.asList("root.db", ""));
         fail();
       } catch (StatementExecutionException e) {
-        Assert.assertTrue(e.getMessage().contains(" is not a legal path"));
+        assertTrue(e.getMessage().contains(" is not a legal path"));
       }
 
       session.deleteDatabase("root.db");
@@ -2166,38 +2169,37 @@ public class IoTDBSessionSimpleIT {
       session.insertTablet(tablet);
 
       try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1")) {
-        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        DataIterator iterator = dataSet.iterator();
         int count = 0;
         while (iterator.next()) {
           count++;
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s1"));
-          Assert.assertEquals(1, iterator.getInt("root.sg.d1.s1"));
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s2"));
-          Assert.assertEquals(1L, iterator.getLong("root.sg.d1.s2"));
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s3"));
-          Assert.assertEquals(0, iterator.getFloat("root.sg.d1.s3"), 0.01);
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s4"));
-          Assert.assertEquals(0, iterator.getDouble("root.sg.d1.s4"), 0.01);
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s5"));
-          Assert.assertEquals("text_value", iterator.getString("root.sg.d1.s5"));
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s6"));
+          assertFalse(iterator.isNull("root.sg.d1.s1"));
+          assertEquals(1, iterator.getInt("root.sg.d1.s1"));
+          assertFalse(iterator.isNull("root.sg.d1.s2"));
+          assertEquals(1L, iterator.getLong("root.sg.d1.s2"));
+          assertFalse(iterator.isNull("root.sg.d1.s3"));
+          assertEquals(0, iterator.getFloat("root.sg.d1.s3"), 0.01);
+          assertFalse(iterator.isNull("root.sg.d1.s4"));
+          assertEquals(0, iterator.getDouble("root.sg.d1.s4"), 0.01);
+          assertFalse(iterator.isNull("root.sg.d1.s5"));
+          assertEquals("text_value", iterator.getString("root.sg.d1.s5"));
+          assertFalse(iterator.isNull("root.sg.d1.s6"));
           assertTrue(iterator.getBoolean("root.sg.d1.s6"));
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s7"));
-          Assert.assertEquals(new Timestamp(1), iterator.getTimestamp("root.sg.d1.s7"));
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s8"));
-          Assert.assertEquals(new Binary(new byte[] {1}), iterator.getBlob("root.sg.d1.s8"));
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s9"));
-          Assert.assertEquals("string_value", iterator.getString("root.sg.d1.s9"));
-          Assert.assertFalse(iterator.isNull("root.sg.d1.s10"));
-          Assert.assertEquals(
-              DateUtils.parseIntToLocalDate(20250403), iterator.getDate("root.sg.d1.s10"));
-          Assert.assertTrue(iterator.isNull("root.sg.d1.s11"));
-          Assert.assertNull(iterator.getTimestamp("root.sg.d1.s11"));
+          assertFalse(iterator.isNull("root.sg.d1.s7"));
+          assertEquals(new Timestamp(1), iterator.getTimestamp("root.sg.d1.s7"));
+          assertFalse(iterator.isNull("root.sg.d1.s8"));
+          assertEquals(new Binary(new byte[] {1}), iterator.getBlob("root.sg.d1.s8"));
+          assertFalse(iterator.isNull("root.sg.d1.s9"));
+          assertEquals("string_value", iterator.getString("root.sg.d1.s9"));
+          assertFalse(iterator.isNull("root.sg.d1.s10"));
+          assertEquals(DateUtils.parseIntToLocalDate(20250403), iterator.getDate("root.sg.d1.s10"));
+          assertTrue(iterator.isNull("root.sg.d1.s11"));
+          assertNull(iterator.getTimestamp("root.sg.d1.s11"));
 
-          Assert.assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
-          Assert.assertFalse(iterator.isNull("Time"));
+          assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
+          assertFalse(iterator.isNull("Time"));
         }
-        Assert.assertEquals(tablet.getRowSize(), count);
+        assertEquals(tablet.getRowSize(), count);
       }
     }
   }
@@ -2214,6 +2216,90 @@ public class IoTDBSessionSimpleIT {
                   Collections.singletonList("s1"),
                   Collections.singletonList(TSDataType.INT32),
                   Collections.singletonList(1L)));
+    }
+  }
+
+  @Test
+  public void testAlterDefaultCompression()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<TSDataType> types =
+          Arrays.asList(
+              TSDataType.BOOLEAN,
+              TSDataType.INT32,
+              TSDataType.DATE,
+              TSDataType.INT64,
+              TSDataType.TIMESTAMP,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.TEXT,
+              TSDataType.STRING,
+              TSDataType.BLOB);
+      List<String> measurements =
+          types.stream().map(dataType -> "__" + dataType.toString()).collect(Collectors.toList());
+      List<Object> values =
+          Arrays.asList(
+              false,
+              1,
+              LocalDate.of(1000, 1, 1),
+              1L,
+              1L,
+              1.0f,
+              1.0,
+              new Binary("1".getBytes(StandardCharsets.UTF_8)),
+              new Binary("1".getBytes(StandardCharsets.UTF_8)),
+              new Binary("1".getBytes(StandardCharsets.UTF_8)));
+      String device1 = "root.test.d1";
+      session.insertRecord(device1, 0, measurements, types, values);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d1.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("LZ4", compressionField.getStringValue());
+        }
+      }
+
+      for (TSDataType type : types) {
+        String configName = null;
+        switch (type) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case TEXT:
+          case BOOLEAN:
+            configName = type.name().toLowerCase();
+            break;
+          case STRING:
+          case BLOB:
+            configName = "text";
+            break;
+          case DATE:
+            configName = "int32";
+            break;
+          case TIMESTAMP:
+            configName = "int64";
+            break;
+        }
+        session.executeNonQueryStatement(
+            String.format("SET CONFIGURATION '%s_compressor'='GZIP'", configName));
+      }
+
+      String device2 = "root.test.d1";
+      session.insertRecord(device2, 0, measurements, types, values);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d2.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("GZIP", compressionField.getStringValue());
+        }
+      }
     }
   }
 }
