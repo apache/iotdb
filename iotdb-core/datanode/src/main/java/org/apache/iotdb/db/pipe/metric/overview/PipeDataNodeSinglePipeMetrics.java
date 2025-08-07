@@ -89,7 +89,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeDataNodeRemainingEventAndTimeOperator::getRemainingEvents,
+        PipeDataNodeRemainingEventAndTimeOperator::getRemainingNonHeartbeatEvents,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -403,7 +403,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
-    return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
+    return new Pair<>(operator.getRemainingNonHeartbeatEvents(), operator.getRemainingTime());
   }
 
   //////////////////////////// singleton ////////////////////////////
