@@ -107,7 +107,8 @@ public class TsFileNameGenerator {
                     + virtualStorageGroup
                     + File.separator
                     + timePartitionId;
-            if (!fsFactory.getFile(tsFileDir).mkdirs()) {
+            File targetDir = fsFactory.getFile(tsFileDir);
+            if (!(targetDir.exists() || targetDir.mkdirs())) {
               throw new IOException(tsFileDir + " directory creation failure");
             }
             return tsFileDir

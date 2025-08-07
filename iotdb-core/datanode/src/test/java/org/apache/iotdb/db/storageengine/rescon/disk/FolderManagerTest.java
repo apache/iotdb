@@ -85,7 +85,8 @@ public class FolderManagerTest {
                     File.separator + "virtualSG" +
                     File.separator + "1";
 
-            if (!fsFactory.getFile(tsFileDir).mkdirs()) {
+            File targetDir = fsFactory.getFile(tsFileDir);
+            if (!(targetDir.exists() || targetDir.mkdirs())) {
                 throw new IOException(tsFileDir + " directory creation failure");
             }
 
@@ -117,7 +118,8 @@ public class FolderManagerTest {
                     File.separator + "virtualSG" +
                     File.separator + "1";
 
-            if (!fsFactory.getFile(tsFileDir).mkdirs()) {
+            File targetDir = fsFactory.getFile(tsFileDir);
+            if (!(targetDir.exists() || targetDir.mkdirs())) {
                 throw new IOException(tsFileDir + " directory creation failure");
             }
 
@@ -138,7 +140,8 @@ public class FolderManagerTest {
             String tsFileDir = baseDir + File.separator + "logicalSG" +
                     File.separator + "virtualSG" +
                     File.separator + "1";
-            if (!fsFactory.getFile(tsFileDir).mkdirs()) {
+            File targetDir = fsFactory.getFile(tsFileDir);
+            if (!(targetDir.exists() || targetDir.mkdirs())) {
                 throw new IOException(tsFileDir + " directory creation failure");
             }
             return tsFileDir + File.separator + "immutable_test.tsfile";
