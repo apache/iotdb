@@ -27,7 +27,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.ComparisonFailure;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -2546,8 +2545,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     sql =
         "select level, attr1, device, attr2, last(time),last(device),last(level),last(attr1),last(attr2),"
             + "last_by(time,num),last_by(time,bignum),last_by(time,floatnum) from table0 where time>1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
-   repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
-
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
 
     expectedHeader = new String[] {"_col0", "_col1"};
     retArray = new String[] {"null,null,"};
