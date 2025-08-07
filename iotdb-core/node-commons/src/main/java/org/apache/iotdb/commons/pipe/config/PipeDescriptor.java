@@ -432,6 +432,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_req_decompressed_max_length_in_bytes",
                 String.valueOf(config.getPipeReceiverReqDecompressedMaxLengthInBytes()))));
+    config.setPipeReceiverLoadConversionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_receiver_load_conversion_enabled",
+                String.valueOf(config.isPipeReceiverLoadConversionEnabled()))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
