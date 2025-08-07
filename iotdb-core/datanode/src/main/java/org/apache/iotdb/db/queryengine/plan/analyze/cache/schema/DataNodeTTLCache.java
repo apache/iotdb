@@ -109,6 +109,15 @@ public class DataNodeTTLCache {
     }
   }
 
+  public boolean dataInDatabaseMayHaveTTL(String db) throws IllegalPathException {
+    lock.readLock().lock();
+    try {
+      return treeModelTTLCache.dataInDatabaseMayHaveTTL(db);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   /**
    * Get ttl of one specific path node without time precision conversion. If this node does not set
    * ttl, then return -1.
