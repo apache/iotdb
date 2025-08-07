@@ -448,7 +448,7 @@ public abstract class AbstractOperatePipeProcedureV2
                             message.getPipeName(), message.getMessage()));
                   } else if (pipeName.equals(message.getPipeName())) {
                     enoughMemoryMessageBuilder.append(
-                        String.format("Message: %s ", message.getMessage()));
+                        String.format("Message: %s", message.getMessage()));
                   }
                 });
         enoughMemoryMessageBuilder.append(".");
@@ -501,7 +501,7 @@ public abstract class AbstractOperatePipeProcedureV2
 
     final String enoughMemoryMessage = enoughMemoryMessageBuilder.toString();
     if (!enoughMemoryMessage.isEmpty()) {
-      return enoughMemoryMessage;
+      throw new PipeException(enoughMemoryMessage);
     }
 
     return exceptionMessageBuilder.toString();
