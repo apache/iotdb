@@ -81,6 +81,7 @@ public abstract class PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
 
+  public static final String MESSAGE_PIPE_NOT_ENOUGH_MEMORY = "Not enough memory for pipe.";
   protected static final String MESSAGE_UNKNOWN_PIPE_STATUS = "Unknown pipe status %s for pipe %s";
   protected static final String MESSAGE_UNEXPECTED_PIPE_STATUS = "Unexpected pipe status %s: ";
 

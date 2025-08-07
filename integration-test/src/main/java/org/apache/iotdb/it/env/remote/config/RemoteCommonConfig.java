@@ -412,4 +412,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
     return this;
   }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    return this;
+  }
 }

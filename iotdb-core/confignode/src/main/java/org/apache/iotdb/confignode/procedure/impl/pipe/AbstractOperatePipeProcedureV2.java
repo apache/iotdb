@@ -428,10 +428,32 @@ public abstract class AbstractOperatePipeProcedureV2
   public static String parsePushPipeMetaExceptionForPipe(
       final String pipeName, final Map<Integer, TPushPipeMetaResp> respMap) {
     final StringBuilder exceptionMessageBuilder = new StringBuilder();
+    final StringBuilder enoughMemoryMessageBuilder = new StringBuilder();
 
     for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
       final int dataNodeId = respEntry.getKey();
       final TPushPipeMetaResp resp = respEntry.getValue();
+
+      if (resp.getStatus().getCode()
+          == TSStatusCode.PIPE_PUSH_META_NOT_ENOUGH_MEMORY.getStatusCode()) {
+        exceptionMessageBuilder.append(String.format("DataNodeId: %s,", dataNodeId));
+        resp.getExceptionMessages()
+            .forEach(
+                message -> {
+                  // Ignore the timeStamp for simplicity
+                  if (pipeName == null) {
+                    enoughMemoryMessageBuilder.append(
+                        String.format(
+                            "PipeName: %s, Message: %s",
+                            message.getPipeName(), message.getMessage()));
+                  } else if (pipeName.equals(message.getPipeName())) {
+                    enoughMemoryMessageBuilder.append(
+                        String.format("Message: %s", message.getMessage()));
+                  }
+                });
+        enoughMemoryMessageBuilder.append(".");
+        continue;
+      }
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()) {
         exceptionMessageBuilder.append(
@@ -476,6 +498,12 @@ public abstract class AbstractOperatePipeProcedureV2
         }
       }
     }
+
+    final String enoughMemoryMessage = enoughMemoryMessageBuilder.toString();
+    if (!enoughMemoryMessage.isEmpty()) {
+      throw new PipeException(enoughMemoryMessage);
+    }
+
     return exceptionMessageBuilder.toString();
   }
 
