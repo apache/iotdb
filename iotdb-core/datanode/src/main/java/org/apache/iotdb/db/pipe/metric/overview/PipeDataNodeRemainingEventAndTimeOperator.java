@@ -125,6 +125,7 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
         tsfileEventCount.get()
             + rawTabletEventCount.get()
             + insertNodeEventCount.get()
+            + heartbeatEventCount.get()
             + schemaRegionExtractors.stream()
                 .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
                 .reduce(Long::sum)
