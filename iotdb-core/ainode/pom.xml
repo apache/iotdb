@@ -260,22 +260,6 @@
                             </arguments>
                         </configuration>
                     </execution>
-                    <!-- Refoemat code -->
-                    <!--execution>
-                        <id>python-black</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}${python.exe.bin}</executable>
-                            <arguments>
-                                <argument>-m</argument>
-                                <argument>black</argument>
-                                <argument>.</argument>
-                            </arguments>
-                        </configuration>
-                    </execution-->
                     <execution>
                         <id>python-compile</id>
                         <phase>compile</phase>

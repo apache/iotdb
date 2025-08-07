@@ -62,11 +62,6 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <outputDirectory>venv</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/ainode/venv</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
             <outputDirectory>lib</outputDirectory>
             <directory>${project.basedir}/../iotdb-core/ainode/dist/</directory>
             <fileMode>0755</fileMode>

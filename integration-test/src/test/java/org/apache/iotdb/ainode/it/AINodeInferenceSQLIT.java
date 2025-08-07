@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -90,8 +91,7 @@ public class AINodeInferenceSQLIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  // TODO: We need reconsider call inference before enable this IT
-  //  @Test
+  @Test
   public void callInferenceTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -121,54 +121,55 @@ public class AINodeInferenceSQLIT {
     // SQL4: built-in model inferences single column with given predict_length
     String sql4 =
         "CALL INFERENCE(holtwinters, \"select s0 from root.AI\", predict_length=6, generateTime=true)";
+    // TODO: enable following tests after refactor the CALL INFERENCE
 
-    try (ResultSet resultSet = statement.executeQuery(sql1)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "Time,output0,output1,output2,output3");
-      int count = 0;
-      while (resultSet.next()) {
-        float s0 = resultSet.getFloat(2);
-        float s1 = resultSet.getFloat(3);
-        float s2 = resultSet.getFloat(4);
-        float s3 = resultSet.getFloat(5);
+    //    try (ResultSet resultSet = statement.executeQuery(sql1)) {
+    //      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+    //      checkHeader(resultSetMetaData, "Time,output0,output1,output2,output3");
+    //      int count = 0;
+    //      while (resultSet.next()) {
+    //        float s0 = resultSet.getFloat(2);
+    //        float s1 = resultSet.getFloat(3);
+    //        float s2 = resultSet.getFloat(4);
+    //        float s3 = resultSet.getFloat(5);
+    //
+    //        assertEquals(s0, count + 1.0, 0.0001);
+    //        assertEquals(s1, count + 2.0, 0.0001);
+    //        assertEquals(s2, count + 3.0, 0.0001);
+    //        assertEquals(s3, count + 4.0, 0.0001);
+    //        count++;
+    //      }
+    //      assertEquals(7, count);
+    //    }
+    //
+    //    try (ResultSet resultSet = statement.executeQuery(sql2)) {
+    //      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+    //      checkHeader(resultSetMetaData, "output0,output1,output2");
+    //      int count = 0;
+    //      while (resultSet.next()) {
+    //        float s2 = resultSet.getFloat(1);
+    //        float s0 = resultSet.getFloat(2);
+    //        float s3 = resultSet.getFloat(3);
+    //        float s1 = resultSet.getFloat(4);
+    //
+    //        assertEquals(s0, count + 1.0, 0.0001);
+    //        assertEquals(s1, count + 2.0, 0.0001);
+    //        assertEquals(s2, count + 3.0, 0.0001);
+    //        assertEquals(s3, count + 4.0, 0.0001);
+    //        count++;
+    //      }
+    //      assertEquals(7, count);
+    //    }
 
-        assertEquals(s0, count + 1.0, 0.0001);
-        assertEquals(s1, count + 2.0, 0.0001);
-        assertEquals(s2, count + 3.0, 0.0001);
-        assertEquals(s3, count + 4.0, 0.0001);
-        count++;
-      }
-      assertEquals(7, count);
-    }
-
-    try (ResultSet resultSet = statement.executeQuery(sql2)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "output0,output1,output2");
-      int count = 0;
-      while (resultSet.next()) {
-        float s2 = resultSet.getFloat(1);
-        float s0 = resultSet.getFloat(2);
-        float s3 = resultSet.getFloat(3);
-        float s1 = resultSet.getFloat(4);
-
-        assertEquals(s0, count + 1.0, 0.0001);
-        assertEquals(s1, count + 2.0, 0.0001);
-        assertEquals(s2, count + 3.0, 0.0001);
-        assertEquals(s3, count + 4.0, 0.0001);
-        count++;
-      }
-      assertEquals(7, count);
-    }
-
-    try (ResultSet resultSet = statement.executeQuery(sql3)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "Time,output0,output1,output2");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      assertEquals(3, count);
-    }
+    //    try (ResultSet resultSet = statement.executeQuery(sql3)) {
+    //      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+    //      checkHeader(resultSetMetaData, "Time,output0,output1,output2");
+    //      int count = 0;
+    //      while (resultSet.next()) {
+    //        count++;
+    //      }
+    //      assertEquals(3, count);
+    //    }
 
     try (ResultSet resultSet = statement.executeQuery(sql4)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -181,8 +182,7 @@ public class AINodeInferenceSQLIT {
     }
   }
 
-  // TODO: We need reconsider call inference before enable this IT
-  //  @Test
+  @Test
   public void errorCallInferenceTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -203,18 +203,19 @@ public class AINodeInferenceSQLIT {
     String sql = "CALL INFERENCE(notFound404, \"select s0,s1,s2 from root.AI\", window=head(5))";
     errorTest(statement, sql, "1505: model [notFound404] has not been created.");
     sql = "CALL INFERENCE(identity, \"select s0,s1,s2,s3 from root.AI\", window=head(2))";
-    errorTest(statement, sql, "701: Window output 2 is not equal to input size of model 7");
+    // TODO: enable following tests after refactor the CALL INFERENCE
+    //    errorTest(statement, sql, "701: Window output 2 is not equal to input size of model 7");
     sql = "CALL INFERENCE(identity, \"select s0,s1,s2,s3 from root.AI limit 5\")";
-    errorTest(
-        statement,
-        sql,
-        "301: The number of rows 5 in the input data does not match the model input 7. Try to use LIMIT in SQL or WINDOW in CALL INFERENCE");
+    //    errorTest(
+    //        statement,
+    //        sql,
+    //        "301: The number of rows 5 in the input data does not match the model input 7. Try to
+    // use LIMIT in SQL or WINDOW in CALL INFERENCE");
     sql = "CREATE MODEL 中文 USING URI \"" + EXAMPLE_MODEL_PATH + "\"";
     errorTest(statement, sql, "701: ModelId can only contain letters, numbers, and underscores");
   }
 
-  // TODO: Our function is too bad currently
-  //  @Test
+  @Test
   public void selectForecastTestInTable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -230,57 +231,58 @@ public class AINodeInferenceSQLIT {
       // SQL4: built-in model inferences single column with given predict_length
       String sql4 =
           "SELECT * FROM FORECAST(model_id=>'holtwinters', input=>(SELECT time,s0 FROM root.AI) ORDER BY time, output_length=>6)";
-      try (ResultSet resultSet = statement.executeQuery(sql1)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "time,s0,s1,s2,s3");
-        int count = 0;
-        while (resultSet.next()) {
-          float s0 = resultSet.getFloat(2);
-          float s1 = resultSet.getFloat(3);
-          float s2 = resultSet.getFloat(4);
-          float s3 = resultSet.getFloat(5);
+      // TODO: enable following tests after refactor the FORECAST
+      //      try (ResultSet resultSet = statement.executeQuery(sql1)) {
+      //        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      //        checkHeader(resultSetMetaData, "time,s0,s1,s2,s3");
+      //        int count = 0;
+      //        while (resultSet.next()) {
+      //          float s0 = resultSet.getFloat(2);
+      //          float s1 = resultSet.getFloat(3);
+      //          float s2 = resultSet.getFloat(4);
+      //          float s3 = resultSet.getFloat(5);
+      //
+      //          assertEquals(s0, count + 1.0, 0.0001);
+      //          assertEquals(s1, count + 2.0, 0.0001);
+      //          assertEquals(s2, count + 3.0, 0.0001);
+      //          assertEquals(s3, count + 4.0, 0.0001);
+      //          count++;
+      //        }
+      //        assertEquals(7, count);
+      //      }
+      //
+      //      try (ResultSet resultSet = statement.executeQuery(sql2)) {
+      //        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      //        checkHeader(resultSetMetaData, "time,s2,s0,s3,s1");
+      //        int count = 0;
+      //        while (resultSet.next()) {
+      //          float s2 = resultSet.getFloat(1);
+      //          float s0 = resultSet.getFloat(2);
+      //          float s3 = resultSet.getFloat(3);
+      //          float s1 = resultSet.getFloat(4);
+      //
+      //          assertEquals(s0, count + 1.0, 0.0001);
+      //          assertEquals(s1, count + 2.0, 0.0001);
+      //          assertEquals(s2, count + 3.0, 0.0001);
+      //          assertEquals(s3, count + 4.0, 0.0001);
+      //          count++;
+      //        }
+      //        assertEquals(7, count);
+      //      }
 
-          assertEquals(s0, count + 1.0, 0.0001);
-          assertEquals(s1, count + 2.0, 0.0001);
-          assertEquals(s2, count + 3.0, 0.0001);
-          assertEquals(s3, count + 4.0, 0.0001);
-          count++;
-        }
-        assertEquals(7, count);
-      }
-
-      try (ResultSet resultSet = statement.executeQuery(sql2)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "time,s2,s0,s3,s1");
-        int count = 0;
-        while (resultSet.next()) {
-          float s2 = resultSet.getFloat(1);
-          float s0 = resultSet.getFloat(2);
-          float s3 = resultSet.getFloat(3);
-          float s1 = resultSet.getFloat(4);
-
-          assertEquals(s0, count + 1.0, 0.0001);
-          assertEquals(s1, count + 2.0, 0.0001);
-          assertEquals(s2, count + 3.0, 0.0001);
-          assertEquals(s3, count + 4.0, 0.0001);
-          count++;
-        }
-        assertEquals(7, count);
-      }
-
-      try (ResultSet resultSet = statement.executeQuery(sql3)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "time,output0,output1,output2");
-        int count = 0;
-        while (resultSet.next()) {
-          count++;
-        }
-        assertEquals(3, count);
-      }
+      //      try (ResultSet resultSet = statement.executeQuery(sql3)) {
+      //        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      //        checkHeader(resultSetMetaData, "time,s0,s1,s2");
+      //        int count = 0;
+      //        while (resultSet.next()) {
+      //          count++;
+      //        }
+      //        assertEquals(3, count);
+      //      }
 
       try (ResultSet resultSet = statement.executeQuery(sql4)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "time,output0");
+        checkHeader(resultSetMetaData, "time,s0");
         int count = 0;
         while (resultSet.next()) {
           count++;
