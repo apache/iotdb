@@ -580,7 +580,7 @@ public class AlignedTimeseriesSessionExample {
   }
 
   private static void insertTabletsWithAlignedTimeseriesWithNullValue()
-          throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
 
     List<IMeasurementSchema> schemaList1 = new ArrayList<>();
     schemaList1.add(new MeasurementSchema("s1", TSDataType.INT64));

@@ -424,7 +424,8 @@ public class SessionExample {
     }
   }
 
-  private static void insertTabletWithNullValue() throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertTabletWithNullValue()
+      throws IoTDBConnectionException, StatementExecutionException {
     /*
      * A Tablet example:
      *      device1
