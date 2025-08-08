@@ -413,6 +413,24 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
+  /** Enable the Thrift Client ssl. */
+  private boolean enableThriftClientSSL = false;
+
+  /** Enable the cluster internal connection ssl. */
+  private boolean enableInternalSSL = false;
+
+  /** ssl key Store Path. */
+  private String keyStorePath = "";
+
+  /** ssl key Store password. */
+  private String keyStorePwd = "";
+
+  /** ssl trust Store Path. */
+  private String trustStorePath = "";
+
+  /** ssl trust Store password. */
+  private String trustStorePwd = "";
+
   private boolean enforceStrongPassword = false;
   private long passwordExpirationDays = -1;
   // an old password cannot be reused within the given interval if >= 0.
@@ -2401,6 +2419,54 @@ public class CommonConfig {
 
   public void setTrustedUriPattern(Pattern trustedUriPattern) {
     this.trustedUriPattern = trustedUriPattern;
+  }
+
+  public boolean isEnableThriftClientSSL() {
+    return enableThriftClientSSL;
+  }
+
+  public void setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    this.enableThriftClientSSL = enableThriftClientSSL;
+  }
+
+  public boolean isEnableInternalSSL() {
+    return enableInternalSSL;
+  }
+
+  public void setEnableInternalSSL(boolean enableInternalSSL) {
+    this.enableInternalSSL = enableInternalSSL;
+  }
+
+  public String getKeyStorePath() {
+    return keyStorePath;
+  }
+
+  public void setKeyStorePath(String keyStorePath) {
+    this.keyStorePath = keyStorePath;
+  }
+
+  public String getKeyStorePwd() {
+    return keyStorePwd;
+  }
+
+  public void setKeyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+  }
+
+  public String getTrustStorePath() {
+    return trustStorePath;
+  }
+
+  public void setTrustStorePath(String trustStorePath) {
+    this.trustStorePath = trustStorePath;
+  }
+
+  public String getTrustStorePwd() {
+    return trustStorePwd;
+  }
+
+  public void setTrustStorePwd(String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
   }
 
   public boolean isEnforceStrongPassword() {

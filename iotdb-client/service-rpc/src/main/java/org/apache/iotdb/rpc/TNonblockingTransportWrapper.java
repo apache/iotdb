@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
@@ -29,9 +30,9 @@ import java.nio.channels.SocketChannel;
  * In Thrift 0.14.1, TNonblockingSocket's constructor throws a never-happened exception. So, we
  * screen the exception https://issues.apache.org/jira/browse/THRIFT-5412
  */
-public class TNonblockingSocketWrapper {
+public class TNonblockingTransportWrapper {
 
-  public static TNonblockingSocket wrap(String host, int port) throws IOException {
+  public static TNonblockingTransport wrap(String host, int port) throws IOException {
     try {
       return new TNonblockingSocket(host, port);
     } catch (TTransportException e) {
@@ -40,7 +41,7 @@ public class TNonblockingSocketWrapper {
     }
   }
 
-  public static TNonblockingSocket wrap(String host, int port, int timeout) throws IOException {
+  public static TNonblockingTransport wrap(String host, int port, int timeout) throws IOException {
     try {
       return new TNonblockingSocket(host, port, timeout);
     } catch (TTransportException e) {
@@ -49,7 +50,7 @@ public class TNonblockingSocketWrapper {
     }
   }
 
-  public static TNonblockingSocket wrap(SocketChannel socketChannel) throws IOException {
+  public static TNonblockingTransport wrap(SocketChannel socketChannel) throws IOException {
     try {
       return new TNonblockingSocket(socketChannel);
     } catch (TTransportException e) {
@@ -58,5 +59,22 @@ public class TNonblockingSocketWrapper {
     }
   }
 
-  private TNonblockingSocketWrapper() {}
+  public static TNonblockingTransport wrap(
+      String host,
+      int port,
+      int timeout,
+      String keyStorePath,
+      String keyStorePwd,
+      String trustStorePath,
+      String trustStorePwd) {
+    try {
+      return new NettyTNonblockingTransport(
+          host, port, timeout, keyStorePath, keyStorePwd, trustStorePath, trustStorePwd);
+    } catch (TTransportException e) {
+      // never happen
+      return null;
+    }
+  }
+
+  private TNonblockingTransportWrapper() {}
 }
