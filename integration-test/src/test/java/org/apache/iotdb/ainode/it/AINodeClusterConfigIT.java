@@ -55,7 +55,7 @@ public class AINodeClusterConfigIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  //  @Test
+  @Test
   public void aiNodeRegisterAndRemoveTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
