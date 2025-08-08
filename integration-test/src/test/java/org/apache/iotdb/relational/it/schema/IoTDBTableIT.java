@@ -867,6 +867,14 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("use tree_view_db");
 
+      // Test error message
+      try {
+        statement.execute("alter view view_not_exist add column col from col");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("550: Table 'tree_view_db.view_not_exist' does not exist", e.getMessage());
+      }
+
       // Temporary
       try {
         statement.execute(
