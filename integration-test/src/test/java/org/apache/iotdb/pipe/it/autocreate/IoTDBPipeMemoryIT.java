@@ -52,13 +52,11 @@ public class IoTDBPipeMemoryIT extends AbstractPipeDualAutoIT {
     senderEnv
         .getConfig()
         .getCommonConfig()
-        .setPipeMemoryManagementEnabled(true)
         .setIsPipeEnableMemoryCheck(true)
         .setDatanodeMemoryProportion("1000:1000:1000:1000:1:1000");
     receiverEnv
         .getConfig()
         .getCommonConfig()
-        .setPipeMemoryManagementEnabled(true)
         .setIsPipeEnableMemoryCheck(true)
         .setDatanodeMemoryProportion("1000:1000:1000:1000:1:1000");
   }
