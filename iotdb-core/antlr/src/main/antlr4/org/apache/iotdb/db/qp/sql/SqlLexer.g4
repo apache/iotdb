@@ -506,6 +506,10 @@ AINODES
     : A I N O D E S
     ;
 
+PROCEDURES
+    : P R O C E D U R E S
+    ;
+
 MODEL
     : M O D E L
     ;
