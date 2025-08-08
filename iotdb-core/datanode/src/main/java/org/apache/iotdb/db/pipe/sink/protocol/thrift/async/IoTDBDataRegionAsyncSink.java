@@ -416,8 +416,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     }
   }
 
-  private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler)
-      throws Exception {
+  private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
     transferTsFileCounter.incrementAndGet();
     CompletableFuture<Void> completableFuture =
         CompletableFuture.supplyAsync(
@@ -439,13 +438,20 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     if (PipeConfig.getInstance().isTransferTsFileSync() || !isRealtimeFirst) {
       try {
         completableFuture.get();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.error("Transfer tsfile event asynchronously was interrupted.", e);
-        throw new PipeException("Transfer tsfile event asynchronously was interrupted.", e);
-      } catch (Exception e) {
-        LOGGER.error("Failed to transfer tsfile event asynchronously.", e);
-        throw e;
+      } catch (final Exception e) {
+        if (e instanceof InterruptedException) {
+          Thread.currentThread().interrupt();
+          LOGGER.warn(
+              "Transfer tsfile event {} asynchronously was interrupted.",
+              pipeTransferTsFileHandler.getTsFile(),
+              e);
+        }
+
+        pipeTransferTsFileHandler.onError(e);
+        LOGGER.warn(
+            "Failed to transfer tsfile event {} asynchronously.",
+            pipeTransferTsFileHandler.getTsFile(),
+            e);
       }
     }
   }

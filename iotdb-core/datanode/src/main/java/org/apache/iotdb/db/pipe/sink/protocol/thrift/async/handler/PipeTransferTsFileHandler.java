@@ -87,7 +87,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final AtomicBoolean isSealSignalSent;
 
   private IoTDBDataNodeAsyncClientManager clientManager;
-  private volatile AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncSink connector,
@@ -129,6 +128,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     position = 0;
 
     isSealSignalSent = new AtomicBoolean(false);
+  }
+
+  public File getTsFile() {
+    return tsFile;
   }
 
   public void transfer(
@@ -415,19 +418,16 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     if (connector.isClosed()) {
-      try {
-        client.close();
-        client.invalidateAll();
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
-            client,
-            e.getMessage(),
-            e);
-      }
+      close();
     }
+
     client.setShouldReturnSelf(true);
-    client.returnSelf();
+    try {
+      client.returnSelf();
+    } catch (final IllegalStateException e) {
+      LOGGER.info(
+          "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+    }
     client = null;
   }
 
@@ -454,8 +454,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void close() {
     super.close();
+
     if (memoryBlock != null) {
       memoryBlock.close();
+      memoryBlock = null;
     }
   }
 
