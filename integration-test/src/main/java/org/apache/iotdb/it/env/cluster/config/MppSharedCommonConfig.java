@@ -629,4 +629,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     dnConfig.setTrustStorePwd(trustStorePwd);
     return this;
   }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    dnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    return this;
+  }
 }

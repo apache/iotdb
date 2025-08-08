@@ -437,4 +437,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
     return this;
   }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    return this;
+  }
 }

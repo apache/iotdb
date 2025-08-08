@@ -195,4 +195,6 @@ public interface CommonConfig {
   CommonConfig setTrustStorePath(String trustStorePath);
 
   CommonConfig setTrustStorePwd(String trustStorePwd);
+
+  CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
 }
