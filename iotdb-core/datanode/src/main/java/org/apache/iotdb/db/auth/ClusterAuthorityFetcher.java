@@ -540,10 +540,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       } catch (ClientManagerException | TException e) {
         LOGGER.error(CONNECTERROR);
       }
-      user = cacheUser(permissionInfoResp);
       if (permissionInfoResp != null
           && permissionInfoResp.getStatus().getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        user = cacheUser(permissionInfoResp);
         if (acceptCache) {
           iAuthorCache.putUserCache(userName, user);
         }

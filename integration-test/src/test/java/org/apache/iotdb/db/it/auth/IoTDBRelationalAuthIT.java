@@ -44,6 +44,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBRelationalAuthIT {
@@ -618,6 +620,18 @@ public class IoTDBRelationalAuthIT {
       TestUtils.assertResultSetEqual(set, "Role,", Collections.singleton("!@#$%^*()_+-=3,"));
     } catch (IoTDBSQLException e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void testAlterNonExistingUser() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      try {
+        adminStmt.execute("ALTER USER nonExist SET PASSWORD 'asdfer1124566'");
+      } catch (SQLException e) {
+        assertEquals("701: User nonExist not found", e.getMessage());
+      }
     }
   }
 }
