@@ -50,6 +50,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -57,6 +58,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -108,7 +110,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     setDevicePath(DataNodeDevicePathCache.getInstance().getPartialPath(tablet.getDeviceId()));
     setAligned(isAligned);
     setTimes(tablet.getTimestamps());
-    setColumns(tablet.getValues());
+    setColumns(Arrays.stream(tablet.getValues()).map(this::convertTableColumn).toArray());
     setBitMaps(tablet.getBitMaps());
     setRowCount(tablet.getRowSize());
 
@@ -120,6 +122,15 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
               .map(TsTableColumnCategory::fromTsFileColumnCategory)
               .toArray(TsTableColumnCategory[]::new));
     }
+  }
+
+  private Object convertTableColumn(Object input) {
+    return input instanceof LocalDate[]
+        ? Arrays.stream(((LocalDate[]) input))
+            .map(DateUtils::parseDateExpressionToInt)
+            .mapToInt(Integer::intValue)
+            .toArray()
+        : input;
   }
 
   public InsertTabletStatement(InsertTabletNode node) {
