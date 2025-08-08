@@ -457,8 +457,7 @@ public class QueryExecution implements IQueryExecution {
   private void dealWithException(Throwable t) throws IoTDBException {
     stateMachine.transitionToFailed(t);
     if (stateMachine.getFailureStatus() != null) {
-      throw new IoTDBException(
-          stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+      throw new IoTDBException(stateMachine.getFailureStatus());
     } else if (stateMachine.getFailureException() != null) {
       Throwable rootCause = stateMachine.getFailureException();
       throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
