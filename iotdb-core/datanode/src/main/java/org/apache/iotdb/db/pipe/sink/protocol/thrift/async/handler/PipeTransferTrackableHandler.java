@@ -98,6 +98,7 @@ public abstract class PipeTransferTrackableHandler
         LOGGER.info(
             "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
       }
+      this.client = null;
       return false;
     }
     doTransfer(client, req);
