@@ -53,6 +53,9 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       final long requestMaxBatchSizeInBytes,
       final TriLongConsumer recordMetric) {
     this.maxDelayInMs = maxDelayInMs;
+
+    // limit in buffer size
+    this.maxBatchSizeInBytes = requestMaxBatchSizeInBytes;
     if (recordMetric != null) {
       this.recordMetric = recordMetric;
     } else {
@@ -61,9 +64,6 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
             // do nothing
           };
     }
-
-    // limit in buffer size
-    this.maxBatchSizeInBytes = requestMaxBatchSizeInBytes;
   }
 
   /**
