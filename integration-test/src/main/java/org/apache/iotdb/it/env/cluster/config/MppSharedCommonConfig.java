@@ -533,4 +533,10 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     return this;
   }
+
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    dnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    return this;
+  }
 }
