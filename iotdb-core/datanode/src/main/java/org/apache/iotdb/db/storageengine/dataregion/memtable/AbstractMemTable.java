@@ -268,14 +268,11 @@ public abstract class AbstractMemTable implements IMemTable {
       writeTabletNode(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
       int pointsInserted =
-          (insertTabletNode.getDataTypes().length
-                  - insertTabletNode.getFailedMeasurementNumber()
-                  - (IoTDBDescriptor.getInstance()
-                          .getConfig()
-                          .isEnableNullValueIncludedInQuatityStats()
-                      ? 0
-                      : nullPointsNumber))
-              * (end - start);
+          ((insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
+                  * (end - start))
+              - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
+                  ? 0
+                  : nullPointsNumber);
       totalPointsNum += pointsInserted;
       return pointsInserted;
     } catch (RuntimeException e) {
@@ -293,14 +290,12 @@ public abstract class AbstractMemTable implements IMemTable {
       // TODO-Table: what is the relation between this and TsFileProcessor.checkMemCost
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
       int pointsInserted =
-          (insertTabletNode.getMeasurementColumnCnt()
-                  - insertTabletNode.getFailedMeasurementNumber()
-                  - (IoTDBDescriptor.getInstance()
-                          .getConfig()
-                          .isEnableNullValueIncludedInQuatityStats()
-                      ? 0
-                      : nullPointsNumber))
-              * (end - start);
+          ((insertTabletNode.getMeasurementColumnCnt()
+                      - insertTabletNode.getFailedMeasurementNumber())
+                  * (end - start))
+              - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
+                  ? 0
+                  : nullPointsNumber);
       totalPointsNum += pointsInserted;
       return pointsInserted;
     } catch (RuntimeException e) {

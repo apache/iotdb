@@ -1095,7 +1095,7 @@ public class IoTDBDescriptor {
     conf.setEnableNullValueIncludedInQuatityStats(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enableNullValueIncludedInQuatityStats",
+                "enable_null_value_included_in_quatity_stats",
                 String.valueOf(conf.isEnableNullValueIncludedInQuatityStats()))));
   }
 
@@ -2070,6 +2070,13 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "tvlist_sort_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
+
+      conf.setEnableNullValueIncludedInQuatityStats(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_null_value_included_in_quatity_stats",
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "enable_null_value_included_in_quatity_stats"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
