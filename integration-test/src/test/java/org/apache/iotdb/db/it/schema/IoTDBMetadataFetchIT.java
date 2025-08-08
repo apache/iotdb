@@ -117,9 +117,9 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
             "show timeseries root.ln.wf01.wt01.status", // full seriesPath
             "show timeseries root.ln.**", // prefix seriesPath
             "show timeseries root.ln.*.wt01.*", // seriesPath with stars
-            "show timeseries", // the same as root
+            "show timeseries root.ln*.**", // the same as root
             "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
-            "show timeseries root.** where timeseries contains 'tat'",
+            "show timeseries root.ln*.** where timeseries contains 'tat'",
             "show timeseries root.ln.** where timeseries contains 'wf01.wt01'",
             "show timeseries root.ln.** where dataType=BOOLEAN"
           };
@@ -191,7 +191,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
         final Statement statement = connection.createStatement()) {
       final String[] sqls =
           new String[] {
-            "show databases",
+            "show databases root.ln*.**",
             "show databases root.ln.wf01.**",
             "show databases root.ln.wf01.wt01.status"
           };
@@ -471,7 +471,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showCountTimeSeries() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"COUNT TIMESERIES root.ln.**", "COUNT TIMESERIES"};
+      String[] sqls = new String[] {"COUNT TIMESERIES root.ln.**", "COUNT TIMESERIES root.ln*.**"};
       String[] standards = new String[] {"4,\n", "8,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -566,7 +566,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       String[] sqls =
           new String[] {
             "COUNT DEVICES root.ln.**",
-            "COUNT DEVICES",
+            "COUNT DEVICES root.ln*.**",
             "COUNT DEVICES root.ln.wf01.wt01.temperature"
           };
       String[] standards = new String[] {"2,\n", "4,\n", "0,\n"};
@@ -598,7 +598,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       String[] sqls =
           new String[] {
             "count databases root.ln.**",
-            "count databases",
+            "count databases root.ln*.**",
             "count databases root.ln.wf01.wt01.status"
           };
       String[] standards = new String[] {"2,\n", "4,\n", "0,\n"};
@@ -629,10 +629,10 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.** group by level=1",
-            "COUNT TIMESERIES root.** group by level=3",
-            "COUNT TIMESERIES root.**.status group by level=2",
-            "COUNT TIMESERIES root.** group by level=5"
+            "COUNT TIMESERIES root.ln*.** group by level=1",
+            "COUNT TIMESERIES root.ln*.** group by level=3",
+            "COUNT TIMESERIES root.ln*.**.status group by level=2",
+            "COUNT TIMESERIES root.ln*.** group by level=5"
           };
       Set<String>[] standards =
           new Set[] {
@@ -740,7 +740,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "COUNT NODES root.** level=1",
+            "COUNT NODES root.ln*.** level=1",
             "COUNT NODES root.ln level=1",
             "COUNT NODES root.ln.wf01.** level=1",
             "COUNT NODES root.ln.wf01.* level=2",

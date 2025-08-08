@@ -82,20 +82,31 @@ public class PhiAccrualDetector implements IFailureDetector {
     final Boolean previousAvailability = availibilityCache.getIfPresent(id);
     availibilityCache.put(id, isAvailable);
 
+    // log the status change and dump the heartbeat history for analysis use
     if (Boolean.TRUE.equals(previousAvailability) && !isAvailable) {
-      // log the status change and dump the heartbeat history for analysis use
-      final StringBuilder builder = new StringBuilder();
-      builder.append("[");
-      for (double interval : phiAccrual.heartbeatIntervals) {
-        final long msInterval = (long) interval / 1000_000;
-        builder.append(msInterval).append(", ");
-      }
-      builder.append(phiAccrual.timeElapsedSinceLastHeartbeat / 1000_000);
-      builder.append("]");
-      LOGGER.info(String.format("Node %s Down, heartbeat history (ms): %s", id, builder));
+      final StringBuilder builder = buildRecentHeartbeatHistory(phiAccrual);
+      LOGGER.info(
+          "[PhiAccrualDetector] Topology {} is broken, heartbeat history (ms): {}", id, builder);
     }
-
+    if (Boolean.FALSE.equals(previousAvailability) && isAvailable) {
+      final StringBuilder builder = buildRecentHeartbeatHistory(phiAccrual);
+      LOGGER.info(
+          "[PhiAccrualDetector] Topology {} is recovered, heartbeat history (ms): {}", id, builder);
+    }
     return isAvailable;
+  }
+
+  private StringBuilder buildRecentHeartbeatHistory(PhiAccrual phiAccrual) {
+    // log the status change and dump the heartbeat history for analysis use
+    final StringBuilder builder = new StringBuilder();
+    builder.append("[");
+    for (double interval : phiAccrual.heartbeatIntervals) {
+      final long msInterval = (long) interval / 1000_000;
+      builder.append(msInterval).append(", ");
+    }
+    builder.append(phiAccrual.timeElapsedSinceLastHeartbeat / 1000_000);
+    builder.append("]");
+    return builder;
   }
 
   PhiAccrual create(List<AbstractHeartbeatSample> history) {

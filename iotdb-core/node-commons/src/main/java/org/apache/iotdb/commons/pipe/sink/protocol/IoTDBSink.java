@@ -26,10 +26,11 @@ import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
-import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRPCRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -169,7 +170,7 @@ public abstract class IoTDBSink implements PipeConnector {
   private static final Map<Pair<String, Long>, PipeEndPointRateLimiter>
       PIPE_END_POINT_RATE_LIMITER_MAP = new ConcurrentHashMap<>();
   private double endPointRateLimitBytesPerSecond = -1;
-  private static final GlobalRPCRateLimiter GLOBAL_RATE_LIMITER = new GlobalRPCRateLimiter();
+  private static final GlobalRateLimiter GLOBAL_RATE_LIMITER = new GlobalRateLimiter();
 
   protected boolean isTabletBatchModeEnabled = true;
 
@@ -630,5 +631,25 @@ public abstract class IoTDBSink implements PipeConnector {
 
   public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
+  }
+
+  public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
+    // do nothing by default
+  }
+
+  public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
+    // do nothing by default
+  }
+
+  public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    // do nothing by default
+  }
+
+  public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+    // do nothing by default
+  }
+
+  public void setBatchEventSizeHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+    // do nothing by default
   }
 }

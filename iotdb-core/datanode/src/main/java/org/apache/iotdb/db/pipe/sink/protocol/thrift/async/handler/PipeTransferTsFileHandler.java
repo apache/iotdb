@@ -23,11 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
@@ -89,7 +87,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final AtomicBoolean isSealSignalSent;
 
   private IoTDBDataNodeAsyncClientManager clientManager;
-  private volatile AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncSink connector,
@@ -133,6 +130,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     isSealSignalSent = new AtomicBoolean(false);
   }
 
+  public File getTsFile() {
+    return tsFile;
+  }
+
   public void transfer(
       final IoTDBDataNodeAsyncClientManager clientManager,
       final AsyncPipeDataTransferServiceClient client)
@@ -169,10 +170,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
-    PipeResourceMetrics.getInstance().recordDiskIO(readFileBufferSize);
-    if (connector.isEnableSendTsFileLimit()) {
-      TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
-    }
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {
@@ -421,19 +418,16 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     if (connector.isClosed()) {
-      try {
-        client.close();
-        client.invalidateAll();
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
-            client,
-            e.getMessage(),
-            e);
-      }
+      close();
     }
+
     client.setShouldReturnSelf(true);
-    client.returnSelf();
+    try {
+      client.returnSelf();
+    } catch (final IllegalStateException e) {
+      LOGGER.info(
+          "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+    }
     client = null;
   }
 
@@ -460,8 +454,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void close() {
     super.close();
+
     if (memoryBlock != null) {
       memoryBlock.close();
+      memoryBlock = null;
     }
   }
 

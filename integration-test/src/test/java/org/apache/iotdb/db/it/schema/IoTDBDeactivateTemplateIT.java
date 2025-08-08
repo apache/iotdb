@@ -184,7 +184,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       String[] retArray =
           new String[] {"1,1,1.0,1,1.0,", "2,2,2.0,2,2.0,", "3,3,3.0,3,3.0,", "4,4,4.0,4,4.0,"};
       int cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.**,root.sg2.**")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(5, resultSetMetaData.getColumnCount());
         while (resultSet.next()) {
@@ -199,7 +199,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       }
 
       statement.execute("DEACTIVATE DEVICE TEMPLATE FROM root.**, root.sg1.*");
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.**,root.sg2.**")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
         Assert.assertFalse(resultSet.next());
@@ -267,7 +267,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       }
 
       statement.execute("DEACTIVATE DEVICE TEMPLATE FROM root.**");
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.**,root.sg2.**")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
         Assert.assertFalse(resultSet.next());

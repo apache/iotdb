@@ -76,7 +76,7 @@ public class CNPhysicalPlanGeneratorTest {
   private static final String TEMPLATE_INFO_FILE_NAME = "template_info.bin";
 
   private static void setupAuthorInfo() {
-    authorInfo = new AuthorInfo();
+    authorInfo = new AuthorInfo(null);
     if (!snapshotDir.exists()) {
       snapshotDir.mkdir();
     }
@@ -193,14 +193,14 @@ public class CNPhysicalPlanGeneratorTest {
     final Set<Integer> answerSet = new HashSet<>();
     setupAuthorInfo();
     AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUser);
-    plan.setPassword("password");
+    plan.setPassword("password123456");
     plan.setUserName(userName);
     plan.setPermissions(new HashSet<>());
     plan.setNodeNameList(new ArrayList<>());
     // Create user plan 1
     authorInfo.authorNonQuery(plan);
     plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
-    plan.setPassword(AuthUtils.encryptPassword("password"));
+    plan.setPassword(AuthUtils.encryptPassword("password123456"));
     plan.setUserName(userName);
     plan.setPermissions(new HashSet<>());
     plan.setNodeNameList(new ArrayList<>());

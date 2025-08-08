@@ -31,11 +31,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.eclipse.jetty.util.StringUtil;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -258,7 +258,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   public String toString() {
-    if (StringUtil.isNotBlank(outputViewPath)) {
+    if (StringUtils.isNotBlank(outputViewPath)) {
       return String.format(
           "LastQueryScanNode-%s:[Device: %s, Aligned: %s, Measurements: %s, ViewPath: %s, DataRegion: %s]",
           this.getPlanNodeId(),

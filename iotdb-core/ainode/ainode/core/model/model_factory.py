@@ -15,101 +15,75 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import glob
 import os
 import shutil
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 import yaml
-from requests import Session
-from requests.adapters import HTTPAdapter
 
 from ainode.core.constant import (
-    DEFAULT_CHUNK_SIZE,
-    DEFAULT_CONFIG_FILE_NAME,
-    DEFAULT_MODEL_FILE_NAME,
-    DEFAULT_RECONNECT_TIMEOUT,
-    DEFAULT_RECONNECT_TIMES,
+    MODEL_CONFIG_FILE_IN_YAML,
+    MODEL_WEIGHTS_FILE_IN_PT,
 )
 from ainode.core.exception import BadConfigValueError, InvalidUriError
 from ainode.core.log import Logger
+from ainode.core.model.model_info import ModelFileType
+from ainode.core.model.uri_utils import (
+    UriType,
+    download_file,
+    download_snapshot_from_hf,
+)
 from ainode.core.util.serde import get_data_type_byte_from_str
 from ainode.thrift.ainode.ttypes import TConfigs
-
-HTTP_PREFIX = "http://"
-HTTPS_PREFIX = "https://"
 
 logger = Logger()
 
 
-def _parse_uri(uri):
+def fetch_model_by_uri(
+    uri_type: UriType, uri: str, storage_path: str, model_file_type: ModelFileType
+):
     """
+    Fetch the model files from the specified URI.
+
     Args:
-        uri (str): uri to parse
-    Returns:
-        is_network_path (bool): True if the url is a network path, False otherwise
-        parsed_uri (str): parsed uri to get related file
-    """
-
-    parse_result = urlparse(uri)
-    is_network_path = parse_result.scheme in ("http", "https")
-    if is_network_path:
-        return True, uri
-
-    # handle file:// in uri
-    if parse_result.scheme == "file":
-        uri = uri[7:]
-
-    # handle ~ in uri
-    uri = os.path.expanduser(uri)
-    return False, uri
-
-
-def _download_file(url: str, storage_path: str) -> None:
-    """
-    Args:
-        url: url of file to download
-        storage_path: path to save the file
-    Returns:
-        None
-    """
-    logger.debug(f"download file from {url} to {storage_path}")
-
-    session = Session()
-    adapter = HTTPAdapter(max_retries=DEFAULT_RECONNECT_TIMES)
-    session.mount(HTTP_PREFIX, adapter)
-    session.mount(HTTPS_PREFIX, adapter)
-
-    response = session.get(url, timeout=DEFAULT_RECONNECT_TIMEOUT, stream=True)
-    response.raise_for_status()
-
-    with open(storage_path, "wb") as file:
-        for chunk in response.iter_content(chunk_size=DEFAULT_CHUNK_SIZE):
-            if chunk:
-                file.write(chunk)
-
-    logger.debug(f"download file from {url} to {storage_path} success")
-
-
-def _register_model_from_network(
-    uri: str, model_storage_path: str, config_storage_path: str
-) -> [TConfigs, str]:
-    """
-    Args:
-        uri: network dir path of model to register, where model.pt and config.yaml are required,
-            e.g. https://huggingface.co/user/modelname/resolve/main/
-        model_storage_path: path to save model.pt
-        config_storage_path: path to save config.yaml
-    Returns:
+        uri_type (UriType): type of the URI, either repo, file, http or https
+        uri (str): a network or a local path of the model to be registered
+        storage_path (str): path to save the whole model, including weights, config, codes, etc.
+        model_file_type (ModelFileType): The type of model file, either safetensors or pytorch
+    Returns: TODO: Will be removed in future
         configs: TConfigs
         attributes: str
     """
+    if uri_type == UriType.REPO or uri_type in [UriType.HTTP, UriType.HTTPS]:
+        return _fetch_model_from_network(uri, storage_path, model_file_type)
+    elif uri_type == UriType.FILE:
+        return _fetch_model_from_local(uri, storage_path, model_file_type)
+    else:
+        raise InvalidUriError(f"Invalid URI type: {uri_type}")
+
+
+def _fetch_model_from_network(
+    uri: str, storage_path: str, model_file_type: ModelFileType
+):
+    """
+    Returns: TODO: Will be removed in future
+        configs: TConfigs
+        attributes: str
+    """
+    if model_file_type == ModelFileType.SAFETENSORS:
+        download_snapshot_from_hf(uri, storage_path)
+        return _process_huggingface_files(storage_path)
+
+    # TODO: The following codes might be refactored in future
     # concat uri to get complete url
     uri = uri if uri.endswith("/") else uri + "/"
-    target_model_path = urljoin(uri, DEFAULT_MODEL_FILE_NAME)
-    target_config_path = urljoin(uri, DEFAULT_CONFIG_FILE_NAME)
+    target_model_path = urljoin(uri, MODEL_WEIGHTS_FILE_IN_PT)
+    target_config_path = urljoin(uri, MODEL_CONFIG_FILE_IN_YAML)
 
     # download config file
-    _download_file(target_config_path, config_storage_path)
+    config_storage_path = os.path.join(storage_path, MODEL_CONFIG_FILE_IN_YAML)
+    download_file(target_config_path, config_storage_path)
 
     # read and parse config dict from config.yaml
     with open(config_storage_path, "r", encoding="utf-8") as file:
@@ -117,26 +91,29 @@ def _register_model_from_network(
     configs, attributes = _parse_inference_config(config_dict)
 
     # if config.yaml is correct, download model file
-    _download_file(target_model_path, model_storage_path)
+    model_storage_path = os.path.join(storage_path, MODEL_WEIGHTS_FILE_IN_PT)
+    download_file(target_model_path, model_storage_path)
     return configs, attributes
 
 
-def _register_model_from_local(
-    uri: str, model_storage_path: str, config_storage_path: str
-) -> [TConfigs, str]:
+def _fetch_model_from_local(
+    uri: str, storage_path: str, model_file_type: ModelFileType
+):
     """
-    Args:
-        uri: local dir path of model to register, where model.pt and config.yaml are required,
-            e.g. /Users/admin/Desktop/model
-        model_storage_path: path to save model.pt
-        config_storage_path: path to save config.yaml
-    Returns:
+    Returns: TODO: Will be removed in future
         configs: TConfigs
         attributes: str
     """
+    if model_file_type == ModelFileType.SAFETENSORS:
+        # copy anything in the uri to local_dir
+        for file in os.listdir(uri):
+            shutil.copy(os.path.join(uri, file), storage_path)
+        return _process_huggingface_files(storage_path)
     # concat uri to get complete path
-    target_model_path = os.path.join(uri, DEFAULT_MODEL_FILE_NAME)
-    target_config_path = os.path.join(uri, DEFAULT_CONFIG_FILE_NAME)
+    target_model_path = os.path.join(uri, MODEL_WEIGHTS_FILE_IN_PT)
+    model_storage_path = os.path.join(storage_path, MODEL_WEIGHTS_FILE_IN_PT)
+    target_config_path = os.path.join(uri, MODEL_CONFIG_FILE_IN_YAML)
+    config_storage_path = os.path.join(storage_path, MODEL_CONFIG_FILE_IN_YAML)
 
     # check if file exist
     exist_model_file = os.path.exists(target_model_path)
@@ -146,9 +123,8 @@ def _register_model_from_local(
     attributes = None
     if exist_model_file and exist_config_file:
         # copy config.yaml
-        logger.debug(f"copy file from {target_config_path} to {config_storage_path}")
         shutil.copy(target_config_path, config_storage_path)
-        logger.debug(
+        logger.info(
             f"copy file from {target_config_path} to {config_storage_path} success"
         )
 
@@ -158,9 +134,8 @@ def _register_model_from_local(
         configs, attributes = _parse_inference_config(config_dict)
 
         # if config.yaml is correct, copy model file
-        logger.debug(f"copy file from {target_model_path} to {model_storage_path}")
         shutil.copy(target_model_path, model_storage_path)
-        logger.debug(
+        logger.info(
             f"copy file from {target_model_path} to {model_storage_path} success"
         )
 
@@ -280,12 +255,37 @@ def _parse_inference_config(config_dict):
     )
 
 
-def fetch_model_by_uri(uri: str, model_storage_path: str, config_storage_path: str):
-    is_network_path, uri = _parse_uri(uri)
+def _process_huggingface_files(local_dir: str):
+    """
+    TODO: Currently, we use this function to convert the model config from huggingface, we will refactor this in the future.
+    """
+    config_file = None
+    for config_name in ["config.json", "model_config.json"]:
+        config_path = os.path.join(local_dir, config_name)
+        if os.path.exists(config_path):
+            config_file = config_path
+            break
 
-    if is_network_path:
-        return _register_model_from_network(
-            uri, model_storage_path, config_storage_path
-        )
-    else:
-        return _register_model_from_local(uri, model_storage_path, config_storage_path)
+    if not config_file:
+        raise InvalidUriError(f"No config.json found in {local_dir}")
+
+    safetensors_files = glob.glob(os.path.join(local_dir, "*.safetensors"))
+    if not safetensors_files:
+        raise InvalidUriError(f"No .safetensors files found in {local_dir}")
+
+    simple_config = {
+        "configs": {
+            "input_shape": [96, 1],
+            "output_shape": [96, 1],
+            "input_type": ["float32"],
+            "output_type": ["float32"],
+        },
+        "attributes": {
+            "model_type": "huggingface_model",
+            "source_dir": local_dir,
+            "files": [os.path.basename(f) for f in safetensors_files],
+        },
+    }
+
+    configs, attributes = _parse_inference_config(simple_config)
+    return configs, attributes

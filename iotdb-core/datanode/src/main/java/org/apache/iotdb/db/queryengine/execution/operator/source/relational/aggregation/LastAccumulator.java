@@ -43,20 +43,14 @@ public class LastAccumulator implements TableAccumulator {
   protected TsPrimitiveType lastValue;
   protected long maxTime = Long.MIN_VALUE;
   protected boolean initResult = false;
-  protected boolean isTimeColumn = false;
 
-  public LastAccumulator(TSDataType seriesDataType, boolean isTimeColumn) {
+  public LastAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.isTimeColumn = isTimeColumn;
     lastValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
   public boolean hasInitResult() {
     return this.initResult;
-  }
-
-  public boolean isTimeColumn() {
-    return this.isTimeColumn;
   }
 
   public long getMaxTime() {
@@ -74,7 +68,7 @@ public class LastAccumulator implements TableAccumulator {
 
   @Override
   public TableAccumulator copy() {
-    return new LastAccumulator(seriesDataType, isTimeColumn);
+    return new LastAccumulator(seriesDataType);
   }
 
   @Override

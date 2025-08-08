@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.DiskAlignedChunkHandleImpl;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -44,11 +45,12 @@ public class AlignedChunkOffset extends AbstractChunkOffset {
 
   @Override
   public IChunkHandle generateChunkHandle(
-      String filePath, Statistics<? extends Serializable> statistics) {
+      String filePath, TsFileID tsFileID, Statistics<? extends Serializable> statistics) {
     return new DiskAlignedChunkHandleImpl(
         getDeviceID(),
         getMeasurement(),
         filePath,
+        tsFileID,
         true,
         getOffSet(),
         statistics,

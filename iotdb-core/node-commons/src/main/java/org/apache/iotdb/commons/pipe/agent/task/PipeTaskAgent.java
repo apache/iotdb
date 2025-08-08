@@ -81,6 +81,7 @@ public abstract class PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
 
+  public static final String MESSAGE_PIPE_NOT_ENOUGH_MEMORY = "Not enough memory for pipe.";
   protected static final String MESSAGE_UNKNOWN_PIPE_STATUS = "Unknown pipe status %s for pipe %s";
   protected static final String MESSAGE_UNEXPECTED_PIPE_STATUS = "Unexpected pipe status %s: ";
 
@@ -478,6 +479,7 @@ public abstract class PipeTaskAgent {
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
     calculateMemoryUsage(
+        pipeMetaFromCoordinator.getStaticMeta(),
         pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
         pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
         pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
@@ -523,6 +525,7 @@ public abstract class PipeTaskAgent {
   }
 
   protected void calculateMemoryUsage(
+      final PipeStaticMeta staticMeta,
       final PipeParameters extractorParameters,
       final PipeParameters processorParameters,
       final PipeParameters connectorParameters) {

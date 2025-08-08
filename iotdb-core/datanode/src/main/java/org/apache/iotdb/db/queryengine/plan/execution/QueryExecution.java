@@ -185,7 +185,7 @@ public class QueryExecution implements IQueryExecution {
     doDistributedPlan();
 
     stateMachine.transitionToPlanned();
-    if (context.getQueryType() == QueryType.READ) {
+    if (context.isQuery()) {
       initResultHandle();
     }
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
@@ -464,7 +464,7 @@ public class QueryExecution implements IQueryExecution {
     stateMachine.transitionToFailed(t);
     TSStatus status = stateMachine.getFailureStatus();
     if (status != null) {
-      throw new IoTDBException(status.getMessage(), status.code);
+      throw new IoTDBException(status);
     } else {
       Throwable rootCause = stateMachine.getFailureException();
       if (rootCause != null) {
@@ -647,7 +647,12 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() == QueryType.READ;
+    return context.getQueryType() != QueryType.WRITE;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return context.getQueryType();
   }
 
   @Override

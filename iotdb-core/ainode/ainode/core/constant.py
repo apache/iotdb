@@ -21,6 +21,7 @@ import os
 from enum import Enum
 from typing import List
 
+from ainode.core.model.model_info import BuiltInModelType
 from ainode.thrift.common.ttypes import TEndPoint
 
 AINODE_VERSION_INFO = "UNKNOWN"
@@ -51,6 +52,14 @@ DEFAULT_RECONNECT_TIMES = 3
 # AINode inference configuration
 AINODE_INFERENCE_BATCH_INTERVAL_IN_MS = 15
 AINODE_INFERENCE_MAX_PREDICT_LENGTH = 2880
+AINODE_INFERENCE_MODEL_MEM_USAGE_MAP = {
+    BuiltInModelType.SUNDIAL.value: 1036 * 1024**2,  # 1036 MiB
+    BuiltInModelType.TIMER_XL.value: 856 * 1024**2,  # 856 MiB
+}  # the memory usage of each model in bytes
+AINODE_INFERENCE_MEMORY_USAGE_RATIO = 0.4  # the device space allocated for inference
+AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
+    1.2  # the overhead ratio for inference, used to estimate the pool size
+)
 
 # AINode folder structure
 AINODE_ROOT_DIR = os.path.dirname(
@@ -62,6 +71,8 @@ AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs"
 
 # AINode log
+LOG_FILE_TYPE = ["all", "info", "warning", "error"]
+AINODE_LOG_FILE_NAME_PREFIX = "log_ainode_"
 AINODE_LOG_FILE_NAMES = [
     "log_ainode_all.log",
     "log_ainode_info.log",
@@ -69,13 +80,16 @@ AINODE_LOG_FILE_NAMES = [
     "log_ainode_error.log",
 ]
 AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
-STD_LEVEL = logging.INFO
+DEFAULT_LOG_LEVEL = logging.INFO
+INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = (
+    "log_inference_rank_{}_"  # example: log_inference_rank_0_all.log
+)
 
 # AINode model management
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
 MODEL_CONFIG_FILE_IN_JSON = "config.json"
-DEFAULT_MODEL_FILE_NAME = "model.pt"
-DEFAULT_CONFIG_FILE_NAME = "config.yaml"
+MODEL_WEIGHTS_FILE_IN_PT = "model.pt"
+MODEL_CONFIG_FILE_IN_YAML = "config.yaml"
 DEFAULT_CHUNK_SIZE = 8192
 
 

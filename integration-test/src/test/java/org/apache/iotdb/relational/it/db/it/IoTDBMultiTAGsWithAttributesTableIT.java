@@ -160,6 +160,13 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "insert into tableD(time,device,value) values('2020-01-01 00:00:07.000', 'd2', '1970-01-01 00:00:00.000')"
       };
 
+  private static final String[] sql6 =
+      new String[] {
+        "create table table6(device STRING TAG, s1 INT32 FIELD)",
+        "insert into table6 values(2,'d1',2)",
+        "delete from table6 where time >= 1"
+      };
+
   String[] expectedHeader;
   String[] retArray;
   static String sql;
@@ -184,7 +191,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5)) {
+      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5, sql6)) {
         for (String sql : sqlList) {
           statement.execute(sql);
         }
@@ -2509,6 +2516,49 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),"
             + "last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 where time>1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
     repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+
+    expectedHeader =
+        new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7"};
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,d2,l5,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,"
+        };
+    sql =
+        "select last(time),last(device),last(level),last(attr1),last(attr2),"
+            + "last_by(time,num),last_by(time,bignum),last_by(time,floatnum) from table0 where device='d2' and time>1971-04-26T17:46:40.000";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 2);
+
+    expectedHeader =
+        new String[] {
+          "level", "attr1", "device", "attr2", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11"
+        };
+    retArray =
+        new String[] {
+          "l3,t,d1,a,1971-04-26T17:46:40.020Z,d1,l3,t,a,1971-04-26T17:46:40.020Z,1971-04-26T17:46:40.020Z,1971-04-26T17:46:40.020Z,",
+          "l4,null,d1,null,1971-04-26T18:01:40.000Z,d1,l4,null,null,1971-04-26T18:01:40.000Z,1971-04-26T18:01:40.000Z,1971-04-26T18:01:40.000Z,",
+          "l5,null,d1,null,1971-08-20T11:33:20.000Z,d1,l5,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,",
+          "l3,null,d2,null,1971-04-26T17:46:40.020Z,d2,l3,null,null,1971-04-26T17:46:40.020Z,1971-04-26T17:46:40.020Z,1971-04-26T17:46:40.020Z,",
+          "l4,null,d2,null,1971-04-26T18:01:40.000Z,d2,l4,null,null,1971-04-26T18:01:40.000Z,1971-04-26T18:01:40.000Z,1971-04-26T18:01:40.000Z,",
+          "l5,null,d2,null,1971-08-20T11:33:20.000Z,d2,l5,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,",
+        };
+    sql =
+        "select level, attr1, device, attr2, last(time),last(device),last(level),last(attr1),last(attr2),"
+            + "last_by(time,num),last_by(time,bignum),last_by(time,floatnum) from table0 where time>1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+
+    expectedHeader = new String[] {"_col0", "_col1"};
+    retArray = new String[] {"null,null,"};
+    repeatTest(
+        "select last(time), last(s1) from table6", expectedHeader, retArray, DATABASE_NAME, 3);
+
+    retArray = new String[] {};
+    repeatTest(
+        "select last(time), last(s1) from table6 group by device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME,
+        3);
   }
 
   @Test

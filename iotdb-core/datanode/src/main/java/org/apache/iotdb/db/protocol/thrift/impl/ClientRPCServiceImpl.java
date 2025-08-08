@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesAggregati
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -431,6 +432,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setMoreData(!finished);
           if (quota != null) {
             quota.addReadResult(resp.getQueryResult());
+          }
+          // Should return SUCCESS_MESSAGE for insert into query
+          if (queryExecution.getQueryType() == QueryType.READ_WRITE) {
+            resp.setColumns(null);
           }
         } else {
           finished = true;
@@ -2322,7 +2327,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
-
       req.setMeasurementsList(
           PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 

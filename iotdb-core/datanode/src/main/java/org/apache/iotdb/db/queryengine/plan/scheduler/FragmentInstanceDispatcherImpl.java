@@ -124,7 +124,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   @Override
   public Future<FragInstanceDispatchResult> dispatch(
       SubPlan root, List<FragmentInstance> instances) {
-    if (type == QueryType.READ) {
+    if (isQuery()) {
       return instances.size() == 1 || root == null
           ? dispatchRead(instances)
           : topologicalParallelDispatchRead(root, instances);
@@ -151,11 +151,16 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             instances.get(next.getPlanFragment().getIndexInFragmentInstanceList());
         futures.add(asyncDispatchOneInstance(next, fragmentInstance, queue));
       }
+      FragInstanceDispatchResult failedResult = null;
       for (Future<FragInstanceDispatchResult> future : futures) {
+        // Make sure all executing tasks are finished to avoid concurrency issues
         FragInstanceDispatchResult result = future.get();
-        if (!result.isSuccessful()) {
-          return immediateFuture(result);
+        if (!result.isSuccessful() && failedResult == null) {
+          failedResult = result;
         }
+      }
+      if (failedResult != null) {
+        return immediateFuture(failedResult);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -663,4 +668,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public void abort() {}
+
+  private boolean isQuery() {
+    return type != QueryType.WRITE;
+  }
 }
