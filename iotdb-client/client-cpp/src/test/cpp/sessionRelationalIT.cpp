@@ -199,7 +199,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
             REQUIRE_FALSE(dataIter.getFloatByIndex(5).is_initialized());
             REQUIRE_FALSE(dataIter.getDoubleByIndex(6).is_initialized());
             REQUIRE_FALSE(dataIter.getStringByIndex(7).is_initialized());
-            REQUIRE_FALSE(dataIter.getLongByIndex(8).is_initialized());
+            REQUIRE_FALSE(dataIter.getTimestampByIndex(8).is_initialized());
             REQUIRE_FALSE(dataIter.getDateByIndex(9).is_initialized());
             REQUIRE_FALSE(dataIter.getStringByIndex(10).is_initialized());
             REQUIRE_FALSE(dataIter.getStringByIndex(11).is_initialized());
@@ -211,7 +211,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
             REQUIRE(fabs(dataIter.getFloatByIndex(5).value() - rowNum * 1.1f) < 0.1f);
             REQUIRE(fabs(dataIter.getDoubleByIndex(6).value() - rowNum * 1.1f) < 0.1);
             REQUIRE(dataIter.getStringByIndex(7).value() == "text_" + to_string(rowNum));
-            REQUIRE(dataIter.getLongByIndex(8).value() == static_cast<int64_t>(timestamp));
+            REQUIRE(dataIter.getTimestampByIndex(8).value() == static_cast<int64_t>(timestamp));
             REQUIRE(dataIter.getDateByIndex(9).value() == boost::gregorian::date(2025, 5, 15));
             REQUIRE(dataIter.getStringByIndex(10).value() == "blob_" + to_string(rowNum));
             REQUIRE(dataIter.getStringByIndex(11).value() == "string_" + to_string(rowNum));

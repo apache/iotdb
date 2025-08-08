@@ -462,18 +462,18 @@ std::string IoTDBRpcDataSet::getStringByTsBlockColumnIndexAndDataType(int32_t in
     }
 }
 
-int64_t IoTDBRpcDataSet::getTimestampByIndex(int32_t columnIndex) {
+boost::optional<int64_t> IoTDBRpcDataSet::getTimestampByIndex(int32_t columnIndex) {
     int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
     return getTimestampByTsBlockColumnIndex(index);
 }
 
-int64_t IoTDBRpcDataSet::getTimestamp(const std::string& columnName) {
+boost::optional<int64_t> IoTDBRpcDataSet::getTimestamp(const std::string& columnName) {
     int32_t index = getTsBlockColumnIndexForColumnName(columnName);
     return getTimestampByTsBlockColumnIndex(index);
 }
 
-int64_t IoTDBRpcDataSet::getTimestampByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
-    return getLongByTsBlockColumnIndex(tsBlockColumnIndex).value();
+boost::optional<int64_t> IoTDBRpcDataSet::getTimestampByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+    return getLongByTsBlockColumnIndex(tsBlockColumnIndex);
 }
 
 boost::optional<boost::gregorian::date> IoTDBRpcDataSet::getDateByIndex(int32_t columnIndex) {
