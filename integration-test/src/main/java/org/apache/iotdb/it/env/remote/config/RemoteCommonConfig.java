@@ -392,6 +392,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
     return this;
   }
