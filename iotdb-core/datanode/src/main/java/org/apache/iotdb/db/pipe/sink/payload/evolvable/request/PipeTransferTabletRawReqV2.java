@@ -22,19 +22,14 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
-import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +37,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
@@ -70,35 +64,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
         return new InsertTabletStatement();
       }
 
-      final TSInsertTabletReq request = new TSInsertTabletReq();
-
-      for (final IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.addToMeasurements(measurementSchema.getMeasurementName());
-        request.addToTypes(measurementSchema.getType().ordinal());
-      }
-
-      request.setPrefixPath(tablet.getDeviceId());
-      request.setIsAligned(isAligned);
-      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-      request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.getRowSize());
-
-      // Tree model
-      if (Objects.isNull(dataBaseName)) {
-        request.setMeasurements(
-            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
-        return StatementGenerator.createStatement(request);
-      }
-
-      // Table model
-      request.setWriteToTable(true);
-      request.columnCategories =
-          tablet.getColumnTypes().stream()
-              .map(t -> (byte) t.ordinal())
-              .collect(Collectors.toList());
-      final InsertTabletStatement statement = StatementGenerator.createStatement(request);
-      statement.setDatabaseName(dataBaseName);
-      return statement;
+      return new InsertTabletStatement(tablet, isAligned, dataBaseName);
     } catch (final MetadataException e) {
       LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
       return null;
