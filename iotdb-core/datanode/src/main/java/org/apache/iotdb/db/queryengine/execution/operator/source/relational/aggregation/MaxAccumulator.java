@@ -206,17 +206,17 @@ public class MaxAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntMaxValue((int) statistics[0].getMaxValue());
+        updateIntMaxValue(((Number) statistics[0].getMaxValue()).intValue());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongMaxValue((long) statistics[0].getMaxValue());
+        updateLongMaxValue(((Number) statistics[0].getMaxValue()).longValue());
         break;
       case FLOAT:
-        updateFloatMaxValue((float) statistics[0].getMaxValue());
+        updateFloatMaxValue(((Number) statistics[0].getMaxValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleMaxValue((double) statistics[0].getMaxValue());
+        updateDoubleMaxValue(((Number) statistics[0].getMaxValue()).doubleValue());
         break;
       case TEXT:
       case BLOB:
