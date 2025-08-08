@@ -124,10 +124,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
   }
 
-  private Object convertTableColumn(Object input) {
+  private Object convertTableColumn(final Object input) {
     return input instanceof LocalDate[]
         ? Arrays.stream(((LocalDate[]) input))
-            .map(DateUtils::parseDateExpressionToInt)
+            .map(date -> Objects.nonNull(date) ? DateUtils.parseDateExpressionToInt(date) : null)
             .mapToInt(Integer::intValue)
             .toArray()
         : input;
