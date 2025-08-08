@@ -28,15 +28,18 @@ from torch import nn
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import (
-    DEFAULT_CONFIG_FILE_NAME,
-    DEFAULT_MODEL_FILE_NAME,
     MODEL_CONFIG_FILE_IN_JSON,
+    MODEL_WEIGHTS_FILE_IN_PT,
     TSStatusCode,
 )
-from ainode.core.exception import BuiltInModelDeletionError, ModelNotExistError
+from ainode.core.exception import (
+    BuiltInModelDeletionError,
+    ModelNotExistError,
+    UnsupportedError,
+)
 from ainode.core.log import Logger
 from ainode.core.model.built_in_model_factory import (
-    download_ltsm_if_necessary,
+    download_built_in_ltsm_from_hf_if_necessary,
     fetch_built_in_model,
 )
 from ainode.core.model.model_factory import fetch_model_by_uri
@@ -45,10 +48,13 @@ from ainode.core.model.model_info import (
     BUILT_IN_MACHINE_LEARNING_MODEL_MAP,
     BuiltInModelType,
     ModelCategory,
+    ModelFileType,
     ModelInfo,
     ModelStates,
     get_built_in_model_type,
+    get_model_file_type,
 )
+from ainode.core.model.uri_utils import get_model_register_strategy
 from ainode.core.util.lock import ModelLockPool
 from ainode.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
 from ainode.thrift.common.ttypes import TSStatus
@@ -164,7 +170,7 @@ class ModelStorage(object):
         """
         with self._lock_pool.get_lock(model_id).write_lock():
             local_dir = os.path.join(self._builtin_model_dir, model_id)
-            return download_ltsm_if_necessary(
+            return download_built_in_ltsm_from_hf_if_necessary(
                 get_built_in_model_type(self._model_info_map[model_id].model_type),
                 local_dir,
             )
@@ -205,8 +211,7 @@ class ModelStorage(object):
         """
         Args:
             model_id: id of model to register
-            uri: network dir path or local dir path of model to register, where model.pt and config.yaml are required,
-                e.g. https://huggingface.co/user/modelname/resolve/main/ or /Users/admin/Desktop/model
+            uri: network or local dir path of the model to register
         Returns:
             configs: TConfigs
             attributes: str
@@ -216,8 +221,7 @@ class ModelStorage(object):
             # create storage dir if not exist
             if not os.path.exists(storage_path):
                 os.makedirs(storage_path)
-            model_storage_path = os.path.join(storage_path, DEFAULT_MODEL_FILE_NAME)
-            config_storage_path = os.path.join(storage_path, DEFAULT_CONFIG_FILE_NAME)
+            uri_type, parsed_uri, model_file_type = get_model_register_strategy(uri)
             self._model_info_map[model_id] = ModelInfo(
                 model_id=model_id,
                 model_type="",
@@ -227,7 +231,7 @@ class ModelStorage(object):
             try:
                 # TODO: The uri should be fetched asynchronously
                 configs, attributes = fetch_model_by_uri(
-                    uri, model_storage_path, config_storage_path
+                    uri_type, parsed_uri, storage_path, model_file_type
                 )
                 self._model_info_map[model_id].state = ModelStates.ACTIVE
                 return configs, attributes
@@ -310,24 +314,29 @@ class ModelStorage(object):
             else:
                 # load the user-defined model
                 model_dir = os.path.join(self._model_dir, f"{model_id}")
-                model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
+                model_file_type = get_model_file_type(model_dir)
+                if model_file_type == ModelFileType.SAFETENSORS:
+                    # TODO: Support this function
+                    raise UnsupportedError("SAFETENSORS format")
+                else:
+                    model_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_PT)
 
-                if not os.path.exists(model_path):
-                    raise ModelNotExistError(model_path)
-                model = torch.jit.load(model_path)
-                if (
-                    isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
-                    or not acceleration
-                ):
+                    if not os.path.exists(model_path):
+                        raise ModelNotExistError(model_path)
+                    model = torch.jit.load(model_path)
+                    if (
+                        isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
+                        or not acceleration
+                    ):
+                        return model
+
+                    try:
+                        model = torch.compile(model)
+                    except Exception as e:
+                        logger.warning(
+                            f"acceleration failed, fallback to normal mode: {str(e)}"
+                        )
                     return model
-
-                try:
-                    model = torch.compile(model)
-                except Exception as e:
-                    logger.warning(
-                        f"acceleration failed, fallback to normal mode: {str(e)}"
-                    )
-                return model
 
     def save_model(self, model_id: str, model: nn.Module):
         """
@@ -344,7 +353,7 @@ class ModelStorage(object):
                 # save the user-defined model
                 model_dir = os.path.join(self._model_dir, f"{model_id}")
                 os.makedirs(model_dir, exist_ok=True)
-                model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
+                model_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_PT)
                 try:
                     scripted_model = (
                         model
