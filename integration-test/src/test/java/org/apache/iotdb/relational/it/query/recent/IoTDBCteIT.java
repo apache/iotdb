@@ -260,6 +260,45 @@ public class IoTDBCteIT {
     tableAssertTestFail(sql, "Union is not supported in current version", DATABASE_NAME);
   }
 
+  @Test
+  public void testPrivileges() throws SQLException {
+    Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    Statement adminStmt = adminCon.createStatement();
+    try {
+      adminStmt.execute("CREATE USER tmpuser 'tmppw123456789'");
+      adminStmt.execute("USE testdb");
+      adminStmt.execute("CREATE TABLE IF NOT EXISTS testtb1(deviceid STRING TAG, voltage FLOAT FIELD)");
+      adminStmt.execute("GRANT SELECT ON testdb.testtb TO USER tmpuser");
+
+      try (Connection connection =
+                   EnvFactory.getEnv()
+                           .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
+           Statement statement = connection.createStatement()) {
+        statement.execute("USE testdb");
+        statement.execute("with cte as (select * from testtb) select * from cte");
+      }
+
+      try (Connection connection =
+                   EnvFactory.getEnv()
+                           .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
+           Statement statement = connection.createStatement()) {
+        statement.execute("USE testdb");
+        statement.execute("with cte as (select * from testtb1) select * from testtb");
+        fail("No exception!");
+      } catch (Exception e) {
+        Assert.assertTrue(
+                e.getMessage(),
+                e.getMessage()
+                        .contains(
+                                "803: Access Denied: No permissions for this operation, please add privilege SELECT ON testdb.testtb1"));
+      }
+    } finally {
+      adminStmt.execute("DROP USER tmpuser");
+      adminStmt.execute("DROP TABLE IF EXISTS testtb1");
+    }
+  }
+
+
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
