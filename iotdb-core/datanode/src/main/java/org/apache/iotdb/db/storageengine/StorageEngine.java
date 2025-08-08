@@ -80,6 +80,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -938,7 +939,7 @@ public class StorageEngine implements IService {
 
     try {
       loadTsFileManager.writeToDataRegion(dataRegion, pieceNode, uuid);
-    } catch (IOException e) {
+    } catch (IOException | PageException e) {
       LOGGER.warn(
           "IO error when writing piece node of TsFile {} to DataRegion {}.",
           pieceNode.getTsFile(),
