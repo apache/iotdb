@@ -23,15 +23,46 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 public class LastByDescAccumulator extends LastByAccumulator {
+  private final boolean xIsMeasurementColumn;
+  private final boolean yIsMeasurementColumn;
 
   public LastByDescAccumulator(
-      TSDataType xDataType, TSDataType yDataType, boolean xIsTimeColumn, boolean yIsTimeColumn) {
+      TSDataType xDataType,
+      TSDataType yDataType,
+      boolean xIsTimeColumn,
+      boolean yIsTimeColumn,
+      boolean xIsMeasurementColumn,
+      boolean yIsMeasurementColumn) {
     super(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
+    this.xIsMeasurementColumn = xIsMeasurementColumn;
+    this.yIsMeasurementColumn = yIsMeasurementColumn;
+  }
+
+  public boolean xIsTimeColumn() {
+    return xIsTimeColumn;
+  }
+
+  public boolean yIsTimeColumn() {
+    return this.yIsTimeColumn;
+  }
+
+  public boolean xIsMeasurementColumn() {
+    return xIsMeasurementColumn;
+  }
+
+  public boolean yIsMeasurementColumn() {
+    return yIsMeasurementColumn;
   }
 
   @Override
   public TableAccumulator copy() {
-    return new LastByDescAccumulator(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
+    return new LastByDescAccumulator(
+        xDataType,
+        yDataType,
+        xIsTimeColumn,
+        yIsTimeColumn,
+        xIsMeasurementColumn,
+        yIsMeasurementColumn);
   }
 
   @Override
