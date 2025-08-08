@@ -65,17 +65,17 @@ public class AlignedChunkData implements ChunkData {
 
   protected final TTimePartitionSlot timePartitionSlot;
   protected final IDeviceID device;
-  public List<ChunkHeader> chunkHeaderList;
+  protected List<ChunkHeader> chunkHeaderList;
 
-  public PublicBAOS byteStream;
-  public DataOutputStream stream;
+  protected PublicBAOS byteStream;
+  protected DataOutputStream stream;
   protected List<long[]> timeBatch;
   protected long dataSize;
   protected boolean needDecodeChunk;
   protected List<Integer> pageNumbers;
   protected Queue<Integer> satisfiedLengthQueue;
 
-  public byte[] chunkData;
+  protected byte[] chunkData;
 
   public AlignedChunkData(
       @Nonnull final IDeviceID device,
@@ -144,7 +144,7 @@ public class AlignedChunkData implements ChunkData {
 
   @Override
   public void writeToFileWriter(final TsFileIOWriter writer) throws IOException, PageException {
-    deserializeTsFileData(writer);
+    writeTsFileData(writer);
   }
 
   public void addValueChunk(final ChunkHeader chunkHeader) {
@@ -286,12 +286,12 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
-  protected void deserializeTsFileData(TsFileIOWriter writer) throws IOException, PageException {
+  protected void writeTsFileData(TsFileIOWriter writer) throws IOException, PageException {
     final InputStream stream = new ByteArrayInputStream(chunkData);
     if (needDecodeChunk) {
-      buildChunkWriter(stream, writer);
+      writeChunkToWriter(stream, writer);
     } else {
-      deserializeEntireChunk(stream, writer);
+      writeEntireChunkToWriter(stream, writer);
     }
   }
 
@@ -303,7 +303,7 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
-  private void deserializeEntireChunk(final InputStream stream, final TsFileIOWriter writer)
+  private void writeEntireChunkToWriter(final InputStream stream, final TsFileIOWriter writer)
       throws IOException {
     for (final ChunkHeader chunkHeader : chunkHeaderList) {
       final ByteBuffer chunkData =
@@ -314,7 +314,7 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
-  protected void buildChunkWriter(final InputStream stream, final TsFileIOWriter writer)
+  protected void writeChunkToWriter(final InputStream stream, final TsFileIOWriter writer)
       throws IOException, PageException {
     final List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     IMeasurementSchema timeSchema = null;

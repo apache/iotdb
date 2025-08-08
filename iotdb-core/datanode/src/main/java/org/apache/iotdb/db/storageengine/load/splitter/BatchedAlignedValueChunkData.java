@@ -124,7 +124,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   }
 
   @Override
-  protected void buildChunkWriter(final InputStream stream, final TsFileIOWriter writer)
+  protected void writeChunkToWriter(final InputStream stream, final TsFileIOWriter writer)
       throws IOException, PageException {
     for (int i = 0; i < chunkHeaderList.size(); i++) {
       ChunkHeader chunkHeader = chunkHeaderList.get(i);
