@@ -750,205 +750,203 @@ public class SeriesScanUtil implements Accountable {
 
       firstPageReader = null;
 
-      Column[] valueColumns = tsBlock.getValueColumns();
-      int length = tsBlock.getValueColumnCount();
-      int positionCount = tsBlock.getPositionCount();
-      Column[] newValueColumns = new Column[length];
-      for (int i = 0; i < length; i++) {
-        TSDataType sourceType = valueColumns[i].getDataType();
-        if (valueColumns[i].getDataType() != dataType && valueColumns[i].getDataType().isCompatible(dataType)) {
-          switch (dataType) {
-            case BOOLEAN:
-              if (sourceType == TSDataType.BOOLEAN) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case INT32:
-              if (sourceType == TSDataType.INT32) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case INT64:
-              if (sourceType == TSDataType.INT64) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else if (sourceType == TSDataType.INT32) {
-                newValueColumns[i] = new DoubleColumn(
-                        positionCount,
-                        Optional.of(new boolean[positionCount]),
-                        new double[positionCount]);
+      return getTransferedDataTypeTsBlock(tsBlock);
+    }
+  }
 
-                for (int j = 0; j < valueColumns[i].getInts().length; j++) {
-                  newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-                  if (!valueColumns[i].isNull()[j]) {
-                    newValueColumns[i].getLongs()[j] = ((Number) valueColumns[i].getInts()[j]).longValue();
-                  }
-                }
-                break;
-              } else if (sourceType == TSDataType.TIMESTAMP) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case FLOAT:
-              if (sourceType == TSDataType.FLOAT) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else if (sourceType == TSDataType.INT32) {
-                newValueColumns[i] = new FloatColumn(
-                        positionCount,
-                        Optional.of(new boolean[positionCount]),
-                        new float[positionCount]);
-
-                for (int j = 0; j < valueColumns[i].getInts().length; j++) {
-                  newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-                  if (!valueColumns[i].isNull()[j]) {
-                    newValueColumns[i].getFloats()[j] = ((Number) valueColumns[i].getInts()[j]).floatValue();
-                  }
-                }
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case DOUBLE:
-              if (sourceType == TSDataType.DOUBLE) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else if (sourceType == TSDataType.INT32) {
-                newValueColumns[i] = new DoubleColumn(
-                        positionCount,
-                        Optional.of(new boolean[positionCount]),
-                        new double[positionCount]);
-
-                for (int j = 0; j < valueColumns[i].getInts().length; j++) {
-                  newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-                  if (!valueColumns[i].isNull()[j]) {
-                    newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getInts()[j]).doubleValue();
-                  }
-                }
-                break;
-              } else if (sourceType == TSDataType.INT64) {
-                newValueColumns[i] = new DoubleColumn(
-                        positionCount,
-                        Optional.of(new boolean[positionCount]),
-                        new double[positionCount]);
-
-                for (int j = 0; j < valueColumns[i].getLongs().length; j++) {
-                  newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-                  if (!valueColumns[i].isNull()[j]) {
-                    newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getLongs()[j]).doubleValue();
-                  }
-                }
-                break;
-              } else if (sourceType == TSDataType.FLOAT) {
-                newValueColumns[i] = new DoubleColumn(
-                        positionCount,
-                        Optional.of(new boolean[positionCount]),
-                        new double[positionCount]);
-
-                for (int j = 0; j < valueColumns[i].getFloats().length; j++) {
-                  newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-                  if (!valueColumns[i].isNull()[j]) {
-                    newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getFloats()[j]).doubleValue();
-                  }
-                }
-                break;
-              } else if (sourceType == TSDataType.TIMESTAMP) {
-                newValueColumns[i] = new DoubleColumn(
-                        positionCount,
-                        Optional.of(new boolean[positionCount]),
-                        new double[positionCount]);
-
-                for (int j = 0; j < valueColumns[i].getLongs().length; j++) {
-                  newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-                  if (!valueColumns[i].isNull()[j]) {
-                    newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getLongs()[j]).doubleValue();
-                  }
-                }
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case TEXT:
-              if (sourceType == TSDataType.TEXT || sourceType == TSDataType.STRING) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case TIMESTAMP:
-              if (sourceType == TSDataType.TIMESTAMP) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else if (sourceType == TSDataType.INT32) {
-                newValueColumns[i] = new LongColumn(
-                        positionCount,
-                        Optional.of(new boolean[positionCount]),
-                        new long[positionCount]);
-
-                for (int j = 0; j < valueColumns[i].getInts().length; j++) {
-                  newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-                  if (!valueColumns[i].isNull()[j]) {
-                    newValueColumns[i].getLongs()[j] = ((Number) valueColumns[i].getInts()[j]).longValue();
-                  }
-                }
-                break;
-              } else if (sourceType == TSDataType.INT64) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case DATE:
-              if (sourceType == TSDataType.DATE) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case BLOB:
-              if (sourceType == TSDataType.BLOB
-                      || sourceType == TSDataType.STRING
-                      || sourceType == TSDataType.TEXT) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case STRING:
-              if (sourceType == TSDataType.STRING || sourceType == TSDataType.TEXT) {
-                newValueColumns[i] = valueColumns[i];
-                break;
-              } else {
-                throw new ClassCastException(
-                        String.format("Unsupported cast: from %s to %s", sourceType, dataType));
-              }
-            case VECTOR:
-            case UNKNOWN:
-            default:
-              break;
-          }
-        }
+  private TsBlock getTransferedDataTypeTsBlock(TsBlock tsBlock) {
+    Column[] valueColumns = tsBlock.getValueColumns();
+    int length = tsBlock.getValueColumnCount();
+    boolean isTypeInconsistent = false;
+    for (int i = 0; i < length; i++) {
+      TSDataType finalDataType = isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
+      if (valueColumns[i].getDataType() != finalDataType) {
+        isTypeInconsistent = true;
+        break;
       }
+    }
 
-      tsBlock = new TsBlock(tsBlock.getTimeColumn(), newValueColumns);
-
+    if (!isTypeInconsistent) {
       return tsBlock;
     }
+
+    int positionCount = tsBlock.getPositionCount();
+    Column[] newValueColumns = new Column[length];
+    for (int i = 0; i < length; i++) {
+      TSDataType sourceType = valueColumns[i].getDataType();
+      TSDataType finalDataType = isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
+      if (valueColumns[i].getDataType() != finalDataType && valueColumns[i].getDataType().isCompatible(finalDataType)) {
+        switch (finalDataType) {
+          case BOOLEAN:
+            if (sourceType == TSDataType.BOOLEAN) {
+              newValueColumns[i] = valueColumns[i];
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case INT32:
+            if (sourceType == TSDataType.INT32) {
+              newValueColumns[i] = valueColumns[i];
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case INT64:
+            if (sourceType == TSDataType.INT64) {
+              newValueColumns[i] = valueColumns[i];
+            } else if (sourceType == TSDataType.INT32) {
+              newValueColumns[i] = new DoubleColumn(
+                      positionCount,
+                      Optional.of(new boolean[positionCount]),
+                      new double[positionCount]);
+
+              for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+                newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+                if (!valueColumns[i].isNull()[j]) {
+                  newValueColumns[i].getLongs()[j] = ((Number) valueColumns[i].getInts()[j]).longValue();
+                }
+              }
+            } else if (sourceType == TSDataType.TIMESTAMP) {
+              newValueColumns[i] = valueColumns[i];
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case FLOAT:
+            if (sourceType == TSDataType.FLOAT) {
+              newValueColumns[i] = valueColumns[i];
+            } else if (sourceType == TSDataType.INT32) {
+              newValueColumns[i] = new FloatColumn(
+                      positionCount,
+                      Optional.of(new boolean[positionCount]),
+                      new float[positionCount]);
+
+              for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+                newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+                if (!valueColumns[i].isNull()[j]) {
+                  newValueColumns[i].getFloats()[j] = ((Number) valueColumns[i].getInts()[j]).floatValue();
+                }
+              }
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case DOUBLE:
+            if (sourceType == TSDataType.DOUBLE) {
+              newValueColumns[i] = valueColumns[i];
+            } else if (sourceType == TSDataType.INT32) {
+              newValueColumns[i] = new DoubleColumn(
+                      positionCount,
+                      Optional.of(new boolean[positionCount]),
+                      new double[positionCount]);
+
+              for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+                newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+                if (!valueColumns[i].isNull()[j]) {
+                  newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getInts()[j]).doubleValue();
+                }
+              }
+            } else if (sourceType == TSDataType.INT64) {
+              newValueColumns[i] = new DoubleColumn(
+                      positionCount,
+                      Optional.of(new boolean[positionCount]),
+                      new double[positionCount]);
+
+              for (int j = 0; j < valueColumns[i].getLongs().length; j++) {
+                newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+                if (!valueColumns[i].isNull()[j]) {
+                  newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getLongs()[j]).doubleValue();
+                }
+              }
+            } else if (sourceType == TSDataType.FLOAT) {
+              newValueColumns[i] = new DoubleColumn(
+                      positionCount,
+                      Optional.of(new boolean[positionCount]),
+                      new double[positionCount]);
+
+              for (int j = 0; j < valueColumns[i].getFloats().length; j++) {
+                newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+                if (!valueColumns[i].isNull()[j]) {
+                  newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getFloats()[j]).doubleValue();
+                }
+              }
+            } else if (sourceType == TSDataType.TIMESTAMP) {
+              newValueColumns[i] = new DoubleColumn(
+                      positionCount,
+                      Optional.of(new boolean[positionCount]),
+                      new double[positionCount]);
+
+              for (int j = 0; j < valueColumns[i].getLongs().length; j++) {
+                newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+                if (!valueColumns[i].isNull()[j]) {
+                  newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getLongs()[j]).doubleValue();
+                }
+              }
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case TEXT:
+            if (sourceType == TSDataType.TEXT || sourceType == TSDataType.STRING) {
+              newValueColumns[i] = valueColumns[i];
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case TIMESTAMP:
+            if (sourceType == TSDataType.TIMESTAMP) {
+              newValueColumns[i] = valueColumns[i];
+            } else if (sourceType == TSDataType.INT32) {
+              newValueColumns[i] = new LongColumn(
+                      positionCount,
+                      Optional.of(new boolean[positionCount]),
+                      new long[positionCount]);
+
+              for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+                newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+                if (!valueColumns[i].isNull()[j]) {
+                  newValueColumns[i].getLongs()[j] = ((Number) valueColumns[i].getInts()[j]).longValue();
+                }
+              }
+            } else if (sourceType == TSDataType.INT64) {
+              newValueColumns[i] = valueColumns[i];
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case DATE:
+            if (sourceType == TSDataType.DATE) {
+              newValueColumns[i] = valueColumns[i];
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case BLOB:
+            if (sourceType == TSDataType.BLOB
+                    || sourceType == TSDataType.STRING
+                    || sourceType == TSDataType.TEXT) {
+              newValueColumns[i] = valueColumns[i];
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case STRING:
+            if (sourceType == TSDataType.STRING || sourceType == TSDataType.TEXT) {
+              newValueColumns[i] = valueColumns[i];
+            } else {
+              newValueColumns[i].isNull();
+            }
+            break;
+          case VECTOR:
+          case UNKNOWN:
+          default:
+            break;
+        }
+      }
+    }
+
+    tsBlock = new TsBlock(tsBlock.getTimeColumn(), newValueColumns);
+    return tsBlock;
   }
 
   private TsBlock applyPushDownFilterAndLimitOffset(
