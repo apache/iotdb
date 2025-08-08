@@ -26,11 +26,17 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 public abstract class PipeTransferTrackableHandler
     implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
 
   protected final IoTDBDataRegionAsyncConnector connector;
+  protected volatile AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTrackableHandler(final IoTDBDataRegionAsyncConnector connector) {
     this.connector = connector;
@@ -77,11 +83,22 @@ public abstract class PipeTransferTrackableHandler
   protected boolean tryTransfer(
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
+    if (Objects.isNull(this.client)) {
+      this.client = client;
+    }
     // track handler before checking if connector is closed
     connector.trackHandler(this);
     if (connector.isClosed()) {
       clearEventsReferenceCount();
       connector.eliminateHandler(this);
+      client.setShouldReturnSelf(true);
+      try {
+        client.returnSelf();
+      } catch (final IllegalStateException e) {
+        LOGGER.info(
+            "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+      }
+      this.client = null;
       return false;
     }
     doTransfer(client, req);
@@ -104,6 +121,18 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void close() {
-    // do nothing
+    if (Objects.isNull(client)) {
+      return;
+    }
+    try {
+      client.close();
+      client.invalidateAll();
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
+          client,
+          e.getMessage(),
+          e);
+    }
   }
 }
