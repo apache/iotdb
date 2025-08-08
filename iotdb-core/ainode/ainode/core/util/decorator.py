@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from functools import wraps
+
+
 def singleton(cls):
     instances = {}
 
@@ -24,3 +27,15 @@ def singleton(cls):
         return instances[cls]
 
     return get_instance
+
+
+def synchronized(lock):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            with lock:
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
