@@ -35,13 +35,9 @@ from ainode.core.manager.model_manager import ModelManager
 
 
 class PoolState(Enum):
-    INITIALIZING = 0
-    IDLE = 1
-    BUSY = 2
-    SATURATED = 3
-    SHUTTING_DOWN = 4
-    DEAD = 5
-    UNKNOWN = 6
+    INITIALIZING = "INITIALIZING"
+    RUNNING = "RUNNING"
+    STOPPING = "STOPPING"
 
 
 class InferenceRequestPool(mp.Process):
