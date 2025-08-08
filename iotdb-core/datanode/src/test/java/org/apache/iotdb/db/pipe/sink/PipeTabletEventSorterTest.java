@@ -277,7 +277,7 @@ public class PipeTabletEventSorterTest {
     }
   }
 
-  private Tablet generateTablet(
+  static Tablet generateTablet(
       final String tableName,
       final int deviceIDNum,
       final boolean hasDuplicates,
@@ -389,7 +389,7 @@ public class PipeTabletEventSorterTest {
     return tablet;
   }
 
-  public LocalDate getDate(final int value) {
+  public static LocalDate getDate(final int value) {
     Date date = new Date(value);
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     try {
