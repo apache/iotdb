@@ -739,7 +739,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           .forEach(
               handler -> {
                 handler.clearEventsReferenceCount();
-                eliminateHandler(handler);
+                eliminateHandler(handler, true);
               });
     }
 
@@ -796,7 +796,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     pendingHandlers.put(handler, handler);
   }
 
-  public void eliminateHandler(final PipeTransferTrackableHandler handler) {
+  public void eliminateHandler(
+      final PipeTransferTrackableHandler handler, final boolean closeClient) {
+    if (closeClient) {
+      handler.closeClient();
+    }
     handler.close();
     pendingHandlers.remove(handler);
   }
