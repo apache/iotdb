@@ -46,7 +46,7 @@ public abstract class PipeTransferTrackableHandler
   public void onComplete(final TPipeTransferResp response) {
     if (connector.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this);
+      connector.eliminateHandler(this, true);
       return;
     }
 
@@ -55,7 +55,7 @@ public abstract class PipeTransferTrackableHandler
       // completed
       // NOTE: We should not clear the reference count of events, as this would cause the
       // `org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic.IoTDBPipeDataSinkIT#testSinkTsFileFormat3` test to fail.
-      connector.eliminateHandler(this);
+      connector.eliminateHandler(this, false);
     }
   }
 
@@ -63,12 +63,12 @@ public abstract class PipeTransferTrackableHandler
   public void onError(final Exception exception) {
     if (connector.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this);
+      connector.eliminateHandler(this, true);
       return;
     }
 
     onErrorInternal(exception);
-    connector.eliminateHandler(this);
+    connector.eliminateHandler(this, false);
   }
 
   /**
@@ -90,7 +90,7 @@ public abstract class PipeTransferTrackableHandler
     connector.trackHandler(this);
     if (connector.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this);
+      connector.eliminateHandler(this, true);
       client.setShouldReturnSelf(true);
       try {
         client.returnSelf();
@@ -119,8 +119,7 @@ public abstract class PipeTransferTrackableHandler
 
   public abstract void clearEventsReferenceCount();
 
-  @Override
-  public void close() {
+  public void closeClient() {
     if (Objects.isNull(client)) {
       return;
     }
@@ -134,5 +133,10 @@ public abstract class PipeTransferTrackableHandler
           e.getMessage(),
           e);
     }
+  }
+
+  @Override
+  public void close() {
+    // Do nothing
   }
 }
