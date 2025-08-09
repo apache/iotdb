@@ -418,7 +418,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     if (connector.isClosed()) {
-      close();
+      closeClient();
     }
 
     client.setShouldReturnSelf(true);
