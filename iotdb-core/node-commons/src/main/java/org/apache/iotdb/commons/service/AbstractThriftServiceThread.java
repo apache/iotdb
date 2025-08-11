@@ -98,6 +98,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
         "{}: close TThreadPoolServer and TServerSocket for {}",
         IoTDBConstant.GLOBAL_DB_NAME,
         serviceName);
+    logger.error("failed to start, because ", e.getCause());
     throw new RPCServiceException(
         String.format(
             "%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName),
