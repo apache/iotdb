@@ -121,7 +121,7 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
     byte[] bytes = new byte[(int) actualReadSize];
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     try (FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
-      fileChannel.read(buffer);
+      fileChannel.read(buffer, offset);
     } catch (IOException e) {
       throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
