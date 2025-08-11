@@ -106,7 +106,11 @@ public class IoTDBAlterColumnTypeIT {
   }
 
   @Test
-  public void testWriteAndAlter() throws IoTDBConnectionException, StatementExecutionException, IOException, WriteProcessException {
+  public void testWriteAndAlter()
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
     Set<TSDataType> typesToTest = new HashSet<>();
     Collections.addAll(typesToTest, TSDataType.values());
     typesToTest.remove(TSDataType.VECTOR);
@@ -1193,7 +1197,8 @@ public class IoTDBAlterColumnTypeIT {
   }
 
   @Test
-  public void testNonAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to) throws IoTDBConnectionException,
+  public void testNonAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
+      throws IoTDBConnectionException,
           StatementExecutionException,
           IOException,
           WriteProcessException {
@@ -1202,20 +1207,24 @@ public class IoTDBAlterColumnTypeIT {
 
       // create a table with type of "from"
       session.executeNonQueryStatement(
-              "CREATE TABLE IF NOT EXISTS construct_and_alter_column_type (s1 " + from + ", s2 " + from + ")");
+          "CREATE TABLE IF NOT EXISTS construct_and_alter_column_type (s1 "
+              + from
+              + ", s2 "
+              + from
+              + ")");
 
       // write a sequence tsfile point of "from"
       Tablet tablet =
-              new Tablet(
-                      "construct_and_alter_column_type",
-                      Arrays.asList("s1", "s2"),
-                      Arrays.asList(from, from),
-                      Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
+          new Tablet(
+              "construct_and_alter_column_type",
+              Arrays.asList("s1", "s2"),
+              Arrays.asList(from, from),
+              Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
 
       for (int i = 1; i <= 10000; i++) {
         tablet.addTimestamp(0, i);
         tablet.addValue("s1", 0, genValue(from, i));
-        tablet.addValue("s2", 0, genValue(from, i*2));
+        tablet.addValue("s2", 0, genValue(from, i * 2));
         session.insert(tablet);
         tablet.reset();
       }
@@ -1228,15 +1237,15 @@ public class IoTDBAlterColumnTypeIT {
       boolean isCompatible = MetadataUtils.canAlter(from, to);
       if (isCompatible) {
         session.executeNonQueryStatement(
-                "ALTER TABLE construct_and_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
+            "ALTER TABLE construct_and_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
       } else {
         try {
           session.executeNonQueryStatement(
-                  "ALTER TABLE construct_and_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
+              "ALTER TABLE construct_and_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
         } catch (StatementExecutionException e) {
           assertEquals(
-                  "701: New type " + to + " is not compatible with the existing one " + from,
-                  e.getMessage());
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
         }
       }
 
@@ -1247,18 +1256,21 @@ public class IoTDBAlterColumnTypeIT {
       TSDataType newType = isCompatible ? to : from;
       standardSelectTestAfterAlterColumnType(session, newType);
 
-      //Accumulator query test
+      // Accumulator query test
       standardAccumulatorQueryTest(session, newType);
 
       session.executeNonQueryStatement("DROP TABLE construct_and_alter_column_type");
     }
   }
 
-  private static void standardSelectTestAfterAlterColumnType(ITableSession session, TSDataType newType) throws StatementExecutionException, IoTDBConnectionException {
-    //Value Filter Test
-    //1.satisfy the condition of value filter completely
+  private static void standardSelectTestAfterAlterColumnType(
+      ITableSession session, TSDataType newType)
+      throws StatementExecutionException, IoTDBConnectionException {
+    // Value Filter Test
+    // 1.satisfy the condition of value filter completely
     SessionDataSet dataSet1 =
-            session.executeQueryStatement("select time, s1 from construct_and_alter_column_type where s1 >= 1 and s2 > 2 order by time");
+        session.executeQueryStatement(
+            "select time, s1 from construct_and_alter_column_type where s1 >= 1 and s2 > 2 order by time");
     RowRecord rec1;
     for (int i = 2; i <= 3; i++) {
       rec1 = dataSet1.next();
@@ -1273,9 +1285,10 @@ public class IoTDBAlterColumnTypeIT {
     }
     dataSet1.close();
 
-    //2.satisfy the condition of value filter partially
+    // 2.satisfy the condition of value filter partially
     SessionDataSet dataSet2 =
-            session.executeQueryStatement("select time, s1 from construct_and_alter_column_type where s1 >= 1 or s2 < 2 order by time");
+        session.executeQueryStatement(
+            "select time, s1 from construct_and_alter_column_type where s1 >= 1 or s2 < 2 order by time");
     RowRecord rec2;
     for (int i = 1; i <= 2; i++) {
       rec2 = dataSet2.next();
@@ -1290,16 +1303,18 @@ public class IoTDBAlterColumnTypeIT {
     }
     dataSet2.close();
 
-    //3.can't satisfy the condition of value filter at all
+    // 3.can't satisfy the condition of value filter at all
     SessionDataSet dataSet3 =
-            session.executeQueryStatement("select time, s1 from construct_and_alter_column_type where s1 < 1 order by time");
+        session.executeQueryStatement(
+            "select time, s1 from construct_and_alter_column_type where s1 < 1 order by time");
     assertFalse(dataSet3.hasNext());
     dataSet3.close();
 
-    //Time filter
-    //1.satisfy the condition of time filter
+    // Time filter
+    // 1.satisfy the condition of time filter
     SessionDataSet dataSet4 =
-            session.executeQueryStatement("select time, s1 from construct_and_alter_column_type where time > 1 order by time");
+        session.executeQueryStatement(
+            "select time, s1 from construct_and_alter_column_type where time > 1 order by time");
     RowRecord rec4;
     for (int i = 2; i <= 3; i++) {
       rec4 = dataSet4.next();
@@ -1315,53 +1330,59 @@ public class IoTDBAlterColumnTypeIT {
     dataSet4.close();
   }
 
-  private static void standardSelectTest(TSDataType from, ITableSession session) throws StatementExecutionException, IoTDBConnectionException {
-    //Value Filter Test
-    //1.satisfy the condition of value filter completely
+  private static void standardSelectTest(TSDataType from, ITableSession session)
+      throws StatementExecutionException, IoTDBConnectionException {
+    // Value Filter Test
+    // 1.satisfy the condition of value filter completely
     SessionDataSet dataSet1 =
-            session.executeQueryStatement("select s1, s2 from construct_and_alter_column_type where s1 >= 1 and s2 > 2 order by time");
+        session.executeQueryStatement(
+            "select s1, s2 from construct_and_alter_column_type where s1 >= 1 and s2 > 2 order by time");
     RowRecord rec1;
     for (int i = 2; i <= 3; i++) {
       rec1 = dataSet1.next();
       assertEquals(i, rec1.getFields().get(0).getObjectValue(from));
-      assertEquals(i*2, rec1.getFields().get(1).getObjectValue(from));
+      assertEquals(i * 2, rec1.getFields().get(1).getObjectValue(from));
     }
     dataSet1.close();
 
-    //2.satisfy the condition of value filter partially
+    // 2.satisfy the condition of value filter partially
     SessionDataSet dataSet2 =
-            session.executeQueryStatement("select s1, s2 from construct_and_alter_column_type where s1 >= 1 or s2 < 2 order by time");
+        session.executeQueryStatement(
+            "select s1, s2 from construct_and_alter_column_type where s1 >= 1 or s2 < 2 order by time");
     RowRecord rec2;
     for (int i = 1; i <= 2; i++) {
       rec2 = dataSet2.next();
       assertEquals(i, rec2.getFields().get(0).getObjectValue(from));
-      assertEquals(i*2, rec2.getFields().get(1).getObjectValue(from));
+      assertEquals(i * 2, rec2.getFields().get(1).getObjectValue(from));
     }
     dataSet2.close();
 
-    //3.can't satisfy the condition of value filter at all
+    // 3.can't satisfy the condition of value filter at all
     SessionDataSet dataSet3 =
-            session.executeQueryStatement("select s1, s2 from construct_and_alter_column_type where s1 < 1 order by time");
+        session.executeQueryStatement(
+            "select s1, s2 from construct_and_alter_column_type where s1 < 1 order by time");
     assertFalse(dataSet3.hasNext());
     dataSet3.close();
 
-    //Time filter
-    //1.satisfy the condition of time filter
+    // Time filter
+    // 1.satisfy the condition of time filter
     SessionDataSet dataSet4 =
-            session.executeQueryStatement("select s1, s2 from construct_and_alter_column_type where time > 1 order by time");
+        session.executeQueryStatement(
+            "select s1, s2 from construct_and_alter_column_type where time > 1 order by time");
     RowRecord rec4;
     for (int i = 2; i <= 3; i++) {
       rec4 = dataSet4.next();
       assertEquals(i, rec4.getFields().get(0).getObjectValue(from));
-      assertEquals(i*2, rec4.getFields().get(1).getObjectValue(from));
+      assertEquals(i * 2, rec4.getFields().get(1).getObjectValue(from));
     }
     dataSet4.close();
   }
 
-  private static void standardAccumulatorQueryTest(ITableSession session, TSDataType newType) throws StatementExecutionException, IoTDBConnectionException {
+  private static void standardAccumulatorQueryTest(ITableSession session, TSDataType newType)
+      throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet =
-            session.executeQueryStatement(
-                    "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
+        session.executeQueryStatement(
+            "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
     RowRecord rec = dataSet.next();
     int[] expectedValue = {1, 10000, 1, 10000};
     for (int i = 0; i < 4; i++) {
@@ -1371,52 +1392,48 @@ public class IoTDBAlterColumnTypeIT {
         assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
       } else {
         assertEquals(
-                genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
+            genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
       }
     }
     assertFalse(dataSet.hasNext());
 
     if (newType.isNumeric()) {
       dataSet =
-              session.executeQueryStatement(
-                      "select avg(s1),sum(s1) from construct_and_alter_column_type");
+          session.executeQueryStatement(
+              "select avg(s1),sum(s1) from construct_and_alter_column_type");
       rec = dataSet.next();
       assertEquals(5000.5, rec.getFields().get(0).getDoubleV(), 0.001);
       assertEquals(50005000.0, rec.getFields().get(1).getDoubleV(), 0.001);
       assertFalse(dataSet.hasNext());
     }
 
-    //can use statistics information
+    // can use statistics information
     dataSet =
-            session.executeQueryStatement(
-                    "select count(*) from construct_and_alter_column_type where time > 0");
+        session.executeQueryStatement(
+            "select count(*) from construct_and_alter_column_type where time > 0");
     rec = dataSet.next();
     assertEquals(10000, rec.getFields().get(0).getLongV());
     assertFalse(dataSet.hasNext());
 
-    //can't use statistics information
+    // can't use statistics information
     dataSet =
-            session.executeQueryStatement(
-                    "select count(*) from construct_and_alter_column_type where time > 10000");
+        session.executeQueryStatement(
+            "select count(*) from construct_and_alter_column_type where time > 10000");
     rec = dataSet.next();
     assertEquals(0, rec.getFields().get(0).getLongV());
     assertFalse(dataSet.hasNext());
   }
 
   @Test
-  public void testNonAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to)  {
+  public void testNonAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to) {
     //
   }
 
   @Test
-  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to) {
-
-  }
+  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to) {}
 
   @Test
-  public void testAlignDeviceUnSequenceDataQuery() {
-
-  }
+  public void testAlignDeviceUnSequenceDataQuery() {}
 
   private static void writeWithTablets(
       long timestamp,

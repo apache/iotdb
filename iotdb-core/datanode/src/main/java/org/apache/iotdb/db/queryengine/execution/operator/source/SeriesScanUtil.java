@@ -759,7 +759,8 @@ public class SeriesScanUtil implements Accountable {
     int length = tsBlock.getValueColumnCount();
     boolean isTypeInconsistent = false;
     for (int i = 0; i < length; i++) {
-      TSDataType finalDataType = isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
+      TSDataType finalDataType =
+          isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
       if (valueColumns[i].getDataType() != finalDataType) {
         isTypeInconsistent = true;
         break;
@@ -774,8 +775,10 @@ public class SeriesScanUtil implements Accountable {
     Column[] newValueColumns = new Column[length];
     for (int i = 0; i < length; i++) {
       TSDataType sourceType = valueColumns[i].getDataType();
-      TSDataType finalDataType = isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
-      if (valueColumns[i].getDataType() != finalDataType && valueColumns[i].getDataType().isCompatible(finalDataType)) {
+      TSDataType finalDataType =
+          isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
+      if (valueColumns[i].getDataType() != finalDataType
+          && valueColumns[i].getDataType().isCompatible(finalDataType)) {
         switch (finalDataType) {
           case BOOLEAN:
             if (sourceType == TSDataType.BOOLEAN) {
@@ -795,7 +798,8 @@ public class SeriesScanUtil implements Accountable {
             if (sourceType == TSDataType.INT64) {
               newValueColumns[i] = valueColumns[i];
             } else if (sourceType == TSDataType.INT32) {
-              newValueColumns[i] = new DoubleColumn(
+              newValueColumns[i] =
+                  new DoubleColumn(
                       positionCount,
                       Optional.of(new boolean[positionCount]),
                       new double[positionCount]);
@@ -803,7 +807,8 @@ public class SeriesScanUtil implements Accountable {
               for (int j = 0; j < valueColumns[i].getInts().length; j++) {
                 newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
                 if (!valueColumns[i].isNull()[j]) {
-                  newValueColumns[i].getLongs()[j] = ((Number) valueColumns[i].getInts()[j]).longValue();
+                  newValueColumns[i].getLongs()[j] =
+                      ((Number) valueColumns[i].getInts()[j]).longValue();
                 }
               }
             } else if (sourceType == TSDataType.TIMESTAMP) {
@@ -816,7 +821,8 @@ public class SeriesScanUtil implements Accountable {
             if (sourceType == TSDataType.FLOAT) {
               newValueColumns[i] = valueColumns[i];
             } else if (sourceType == TSDataType.INT32) {
-              newValueColumns[i] = new FloatColumn(
+              newValueColumns[i] =
+                  new FloatColumn(
                       positionCount,
                       Optional.of(new boolean[positionCount]),
                       new float[positionCount]);
@@ -824,7 +830,8 @@ public class SeriesScanUtil implements Accountable {
               for (int j = 0; j < valueColumns[i].getInts().length; j++) {
                 newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
                 if (!valueColumns[i].isNull()[j]) {
-                  newValueColumns[i].getFloats()[j] = ((Number) valueColumns[i].getInts()[j]).floatValue();
+                  newValueColumns[i].getFloats()[j] =
+                      ((Number) valueColumns[i].getInts()[j]).floatValue();
                 }
               }
             } else {
@@ -835,7 +842,8 @@ public class SeriesScanUtil implements Accountable {
             if (sourceType == TSDataType.DOUBLE) {
               newValueColumns[i] = valueColumns[i];
             } else if (sourceType == TSDataType.INT32) {
-              newValueColumns[i] = new DoubleColumn(
+              newValueColumns[i] =
+                  new DoubleColumn(
                       positionCount,
                       Optional.of(new boolean[positionCount]),
                       new double[positionCount]);
@@ -843,11 +851,13 @@ public class SeriesScanUtil implements Accountable {
               for (int j = 0; j < valueColumns[i].getInts().length; j++) {
                 newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
                 if (!valueColumns[i].isNull()[j]) {
-                  newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getInts()[j]).doubleValue();
+                  newValueColumns[i].getDoubles()[j] =
+                      ((Number) valueColumns[i].getInts()[j]).doubleValue();
                 }
               }
             } else if (sourceType == TSDataType.INT64) {
-              newValueColumns[i] = new DoubleColumn(
+              newValueColumns[i] =
+                  new DoubleColumn(
                       positionCount,
                       Optional.of(new boolean[positionCount]),
                       new double[positionCount]);
@@ -855,11 +865,13 @@ public class SeriesScanUtil implements Accountable {
               for (int j = 0; j < valueColumns[i].getLongs().length; j++) {
                 newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
                 if (!valueColumns[i].isNull()[j]) {
-                  newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getLongs()[j]).doubleValue();
+                  newValueColumns[i].getDoubles()[j] =
+                      ((Number) valueColumns[i].getLongs()[j]).doubleValue();
                 }
               }
             } else if (sourceType == TSDataType.FLOAT) {
-              newValueColumns[i] = new DoubleColumn(
+              newValueColumns[i] =
+                  new DoubleColumn(
                       positionCount,
                       Optional.of(new boolean[positionCount]),
                       new double[positionCount]);
@@ -867,11 +879,13 @@ public class SeriesScanUtil implements Accountable {
               for (int j = 0; j < valueColumns[i].getFloats().length; j++) {
                 newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
                 if (!valueColumns[i].isNull()[j]) {
-                  newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getFloats()[j]).doubleValue();
+                  newValueColumns[i].getDoubles()[j] =
+                      ((Number) valueColumns[i].getFloats()[j]).doubleValue();
                 }
               }
             } else if (sourceType == TSDataType.TIMESTAMP) {
-              newValueColumns[i] = new DoubleColumn(
+              newValueColumns[i] =
+                  new DoubleColumn(
                       positionCount,
                       Optional.of(new boolean[positionCount]),
                       new double[positionCount]);
@@ -879,7 +893,8 @@ public class SeriesScanUtil implements Accountable {
               for (int j = 0; j < valueColumns[i].getLongs().length; j++) {
                 newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
                 if (!valueColumns[i].isNull()[j]) {
-                  newValueColumns[i].getDoubles()[j] = ((Number) valueColumns[i].getLongs()[j]).doubleValue();
+                  newValueColumns[i].getDoubles()[j] =
+                      ((Number) valueColumns[i].getLongs()[j]).doubleValue();
                 }
               }
             } else {
@@ -897,7 +912,8 @@ public class SeriesScanUtil implements Accountable {
             if (sourceType == TSDataType.TIMESTAMP) {
               newValueColumns[i] = valueColumns[i];
             } else if (sourceType == TSDataType.INT32) {
-              newValueColumns[i] = new LongColumn(
+              newValueColumns[i] =
+                  new LongColumn(
                       positionCount,
                       Optional.of(new boolean[positionCount]),
                       new long[positionCount]);
@@ -905,7 +921,8 @@ public class SeriesScanUtil implements Accountable {
               for (int j = 0; j < valueColumns[i].getInts().length; j++) {
                 newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
                 if (!valueColumns[i].isNull()[j]) {
-                  newValueColumns[i].getLongs()[j] = ((Number) valueColumns[i].getInts()[j]).longValue();
+                  newValueColumns[i].getLongs()[j] =
+                      ((Number) valueColumns[i].getInts()[j]).longValue();
                 }
               }
             } else if (sourceType == TSDataType.INT64) {
@@ -923,8 +940,8 @@ public class SeriesScanUtil implements Accountable {
             break;
           case BLOB:
             if (sourceType == TSDataType.BLOB
-                    || sourceType == TSDataType.STRING
-                    || sourceType == TSDataType.TEXT) {
+                || sourceType == TSDataType.STRING
+                || sourceType == TSDataType.TEXT) {
               newValueColumns[i] = valueColumns[i];
             } else {
               newValueColumns[i].isNull();
