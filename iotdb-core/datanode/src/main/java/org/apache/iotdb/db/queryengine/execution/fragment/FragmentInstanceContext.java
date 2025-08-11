@@ -145,7 +145,7 @@ public class FragmentInstanceContext extends QueryContext {
   private long closedSeqFileNum = 0;
   private long closedUnseqFileNum = 0;
 
-  private final DeviceMetadataIndexEntryCache metadataIndexEntryCache =
+  private DeviceMetadataIndexEntryCache metadataIndexEntryCache =
       new DeviceMetadataIndexEntryCache(this);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
@@ -801,6 +801,7 @@ public class FragmentInstanceContext extends QueryContext {
     dataRegion = null;
     globalTimeFilter = null;
     sharedQueryDataSource = null;
+    metadataIndexEntryCache = null;
 
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
