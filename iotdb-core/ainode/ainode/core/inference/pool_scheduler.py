@@ -49,9 +49,8 @@ class PoolScheduler:
     def __init__(self, pool_manager: PoolManager, result_queue: mp.Queue):
         self._pool_manager = pool_manager
         self._result_queue = result_queue
-        self._lock = threading.Lock()
 
-    @synchronized(lambda self: self._lock)
+    @synchronized(threading.Lock())
     def first_req_init(self, model_id: str):
         if not self._pool_manager.has_request_pools(model_id):
             pool_num = _estimate_pool_size(self.DEFAULT_DEVICE, model_id)
