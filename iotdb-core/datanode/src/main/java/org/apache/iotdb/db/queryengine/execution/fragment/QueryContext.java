@@ -105,11 +105,11 @@ public class QueryContext {
   private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(TsFileResource resource) {
     if (!(this instanceof FragmentInstanceContext)) {
       return fileModCache.computeIfAbsent(
-          resource.getTsFileID(), k -> loadAllModifications(resource));
+          resource.getTsFileID(), k -> loadAllModificationsFromDisk(resource));
     }
     FragmentInstanceContext fragmentInstanceContext = (FragmentInstanceContext) this;
     if (fragmentInstanceContext.getSourcePaths().size() == 1) {
-      return loadAllModifications(resource);
+      return loadAllModificationsFromDisk(resource);
     }
 
     AtomicReference<PatternTreeMap<ModEntry, ModsSerializer>> atomicReference =
@@ -118,7 +118,8 @@ public class QueryContext {
         fileModCache.computeIfAbsent(
             resource.getTsFileID(),
             k -> {
-              PatternTreeMap<ModEntry, ModsSerializer> allMods = loadAllModifications(resource);
+              PatternTreeMap<ModEntry, ModsSerializer> allMods =
+                  loadAllModificationsFromDisk(resource);
               atomicReference.set(allMods);
               if (cachedModEntriesSize.get() >= config.getModsCacheSizeLimitPerFI()) {
                 return null;
@@ -142,7 +143,8 @@ public class QueryContext {
     return cachedResult == null ? atomicReference.get() : cachedResult;
   }
 
-  private PatternTreeMap<ModEntry, ModsSerializer> loadAllModifications(TsFileResource resource) {
+  public PatternTreeMap<ModEntry, ModsSerializer> loadAllModificationsFromDisk(
+      TsFileResource resource) {
     PatternTreeMap<ModEntry, ModsSerializer> modifications =
         PatternTreeMapFactory.getModsPatternTreeMap();
     for (ModEntry modification : resource.getAllModEntries()) {
@@ -158,8 +160,17 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    List<ModEntry> modEntries =
-        getAllModifications(tsFileResource).getOverlapped(deviceID, measurement);
+    return getPathModifications(getAllModifications(tsFileResource), deviceID, measurement);
+  }
+
+  public List<ModEntry> getPathModifications(
+      PatternTreeMap<ModEntry, ModsSerializer> fileModEntries,
+      IDeviceID deviceID,
+      String measurement) {
+    if (fileModEntries == null) {
+      return Collections.emptyList();
+    }
+    List<ModEntry> modEntries = fileModEntries.getOverlapped(deviceID, measurement);
     if (deviceID.isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
@@ -179,8 +190,16 @@ public class QueryContext {
     if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
-    List<ModEntry> modEntries =
-        getAllModifications(tsFileResource).getOverlapped(new PartialPath(deviceID));
+    return getPathModifications(getAllModifications(tsFileResource), deviceID);
+  }
+
+  public List<ModEntry> getPathModifications(
+      PatternTreeMap<ModEntry, ModsSerializer> fileModEntries, IDeviceID deviceID)
+      throws IllegalPathException {
+    if (fileModEntries == null) {
+      return Collections.emptyList();
+    }
+    List<ModEntry> modEntries = fileModEntries.getOverlapped(new PartialPath(deviceID));
     if (deviceID.isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering

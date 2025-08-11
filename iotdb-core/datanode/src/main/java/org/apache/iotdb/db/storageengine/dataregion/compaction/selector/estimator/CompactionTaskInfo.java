@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
@@ -38,7 +43,7 @@ public class CompactionTaskInfo {
     this.fileInfoList = fileInfoList;
     this.resources = resources;
     for (TsFileResource resource : resources) {
-      this.modificationFileSize += resource.getTotalModSizeInByte();
+      this.modificationFileSize += getMemCostForCachedModEntries(resource);
       this.totalFileSize += resource.getTsFileSize();
     }
     for (FileInfo fileInfo : fileInfoList) {
@@ -87,5 +92,14 @@ public class CompactionTaskInfo {
 
   public List<TsFileResource> getResources() {
     return resources;
+  }
+
+  private long getMemCostForCachedModEntries(TsFileResource tsFileResource) {
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    for (ModEntry modification : tsFileResource.getAllModEntries()) {
+      modifications.append(modification.keyOfPatternTree(), modification);
+    }
+    return RamUsageEstimator.sizeOfObject(modifications);
   }
 }
