@@ -92,6 +92,7 @@ public class SessionExample {
     //     createTemplate();
     createTimeseries();
     createMultiTimeseries();
+    createMultiTimeseriesWithNullPartical();
     insertRecord();
     insertTablet();
     //    insertTabletWithNullValues();
@@ -235,6 +236,53 @@ public class SessionExample {
       List<String> alias = new ArrayList<>();
       alias.add("weight1");
       alias.add("weight2");
+
+      session.createMultiTimeseries(
+          paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList, attributesList, alias);
+    }
+  }
+
+  private static void createMultiTimeseriesWithNullPartical()
+      throws IoTDBConnectionException, StatementExecutionException {
+
+    if (!session.checkTimeseriesExists("root.sg1.d2.s16")
+        && !session.checkTimeseriesExists("root.sg1.d2.s17")) {
+      List<String> paths = new ArrayList<>();
+      paths.add("root.sg1.d2.s16");
+      paths.add("root.sg1.d2.s17");
+      paths.add("root.sg1.d2.s18");
+      List<TSDataType> tsDataTypes = new ArrayList<>();
+      tsDataTypes.add(TSDataType.INT64);
+      tsDataTypes.add(TSDataType.INT64);
+      tsDataTypes.add(TSDataType.INT64);
+      List<TSEncoding> tsEncodings = new ArrayList<>();
+      tsEncodings.add(TSEncoding.RLE);
+      tsEncodings.add(TSEncoding.RLE);
+      tsEncodings.add(TSEncoding.RLE);
+      List<CompressionType> compressionTypes = new ArrayList<>();
+      compressionTypes.add(CompressionType.SNAPPY);
+      compressionTypes.add(CompressionType.SNAPPY);
+      compressionTypes.add(CompressionType.SNAPPY);
+
+      List<Map<String, String>> tagsList = new ArrayList<>();
+      Map<String, String> tags = new HashMap<>();
+      tags.put("unit", "kg");
+      tagsList.add(tags);
+      tagsList.add(tags);
+      tagsList.add(null);
+
+      List<Map<String, String>> attributesList = new ArrayList<>();
+      Map<String, String> attributes = new HashMap<>();
+      attributes.put("minValue", "1");
+      attributes.put("maxValue", "100");
+      attributesList.add(attributes);
+      attributesList.add(attributes);
+      attributesList.add(null);
+
+      List<String> alias = new ArrayList<>();
+      alias.add("weight16");
+      alias.add("weight17");
+      alias.add(null);
 
       session.createMultiTimeseries(
           paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList, attributesList, alias);
