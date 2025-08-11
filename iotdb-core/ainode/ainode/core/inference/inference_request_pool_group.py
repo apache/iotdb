@@ -15,13 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from ainode.core.log import Logger
+from typing import Dict, Tuple
+
+import torch.multiprocessing as mp
+
 from ainode.core.exception import (
     InferenceModelInternalError,
 )
-from typing import Dict, Tuple
-import torch.multiprocessing as mp
 from ainode.core.inference.inference_request_pool import InferenceRequestPool
+from ainode.core.log import Logger
 
 logger = Logger()
 

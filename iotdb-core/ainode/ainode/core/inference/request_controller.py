@@ -17,22 +17,24 @@
 #
 import threading
 import time
+
+import torch.multiprocessing as mp
+
 from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.inference_request import (
     InferenceRequest,
     InferenceRequestProxy,
 )
-from ainode.core.log import Logger
-import torch.multiprocessing as mp
-from ainode.core.inference.pool_scheduler import PoolScheduler
 from ainode.core.inference.pool_manager import PoolManager
+from ainode.core.inference.pool_scheduler import PoolScheduler
+from ainode.core.log import Logger
 
 logger = Logger()
 
 
-class RequestManager:
+class RequestController:
     """
-    Manages the lifecycle of inference requests and their associated resources.
+    Controls the lifecycle and scheduling of inference requests.
     """
 
     WAITING_INTERVAL_IN_MS = (
@@ -70,8 +72,8 @@ class RequestManager:
             self._result_wrapper_map[req.req_id] = infer_proxy
         # lazy initialization for first request
         model_id = req.model_id
-        if model_id not in self._pool_manager.get_request_pool_map():
-            self._pool_scheduler._first_req_init(model_id)
+        if not self._pool_manager.has_request_pools(model_id):
+            self._pool_scheduler.first_req_init(model_id)
         # dispatch request to the pool
         self._pool_manager.dispatch_request(model_id, req)
         outputs = infer_proxy.wait_for_completion()
