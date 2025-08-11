@@ -68,7 +68,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
-
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertTabletStatement.class);
 
@@ -504,10 +503,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       deviceIDs = new IDeviceID[rowCount];
     }
     if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
+      String[] deviceIdSegments = new String[getTagColumnIndices().size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < getIdColumnIndices().size(); i++) {
-        final Integer columnIndex = getIdColumnIndices().get(i);
+      for (int i = 0; i < getTagColumnIndices().size(); i++) {
+        final Integer columnIndex = getTagColumnIndices().get(i);
         boolean isNull = isNull(rowIdx, i);
         deviceIdSegments[i + 1] =
             isNull ? null : ((Object[]) columns[columnIndex])[rowIdx].toString();

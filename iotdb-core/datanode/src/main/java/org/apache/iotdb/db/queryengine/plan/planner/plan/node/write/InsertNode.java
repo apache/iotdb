@@ -53,7 +53,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends SearchNode {
-
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**

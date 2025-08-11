@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
@@ -49,6 +50,8 @@ import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,7 +90,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
 
   protected TsTableColumnCategory[] columnCategories;
-  protected List<Integer> idColumnIndices;
+  protected List<Integer> tagColumnIndices;
   protected List<Integer> attrColumnIndices;
   protected boolean writeToTable = false;
 
@@ -319,19 +322,23 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       columnCategories = new TsTableColumnCategory[measurements.length];
     }
     this.columnCategories[i] = columnCategory;
-    this.idColumnIndices = null;
+    StringBuilder sb = new StringBuilder();
+    Arrays.stream(columnCategories)
+        .forEach(tsTableColumnCategory -> sb.append(tsTableColumnCategory).append(","));
+    logger.info(sb.toString());
+    this.tagColumnIndices = null;
   }
 
-  public List<Integer> getIdColumnIndices() {
-    if (idColumnIndices == null && columnCategories != null) {
-      idColumnIndices = new ArrayList<>();
+  public List<Integer> getTagColumnIndices() {
+    if (tagColumnIndices == null && columnCategories != null) {
+      tagColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
         if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
-          idColumnIndices.add(i);
+          tagColumnIndices.add(i);
         }
       }
     }
-    return idColumnIndices;
+    return tagColumnIndices;
   }
 
   public List<Integer> getAttrColumnIndices() {
@@ -432,7 +439,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     subRemoveAttributeColumns(columnsToKeep);
 
     // to reconstruct indices
-    idColumnIndices = null;
+    tagColumnIndices = null;
     attrColumnIndices = null;
   }
 
@@ -601,8 +608,12 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       System.arraycopy(
           columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
       columnCategories = tmpCategories;
-      idColumnIndices = null;
+      tagColumnIndices = null;
     }
+    StringBuilder sb = new StringBuilder();
+    Arrays.stream(columnCategories)
+        .forEach(tsTableColumnCategory -> sb.append(tsTableColumnCategory).append(","));
+    logger.info(sb.toString());
   }
 
   public void swapColumn(int src, int target) {
@@ -626,7 +637,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (inputLocations != null) {
       CommonUtils.swapArray(inputLocations, src, target);
     }
-    idColumnIndices = null;
+    tagColumnIndices = null;
   }
 
   public boolean isWriteToTable() {
@@ -707,7 +718,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             + RamUsageEstimator.shallowSizeOf(dataTypes)
             + RamUsageEstimator.shallowSizeOf(columnCategories)
             // We assume that the integers are all cached by JVM
-            + shallowSizeOfList(idColumnIndices)
+            + shallowSizeOfList(tagColumnIndices)
             + shallowSizeOfList(attrColumnIndices)
             + shallowSizeOfList(logicalViewSchemaList)
             + (Objects.nonNull(logicalViewSchemaList)
