@@ -556,6 +556,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    dnConfig.setDataNodeMemoryProportion(dataNodeMemoryProportion);
+    cnConfig.setDataNodeMemoryProportion(dataNodeMemoryProportion);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
       int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
     dnConfig.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(

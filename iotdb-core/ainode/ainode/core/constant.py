@@ -21,7 +21,7 @@ import os
 from enum import Enum
 from typing import List
 
-from ainode.core.model.model_info import BuiltInModelType
+from ainode.core.model.model_enums import BuiltInModelType
 from ainode.thrift.common.ttypes import TEndPoint
 
 AINODE_VERSION_INFO = "UNKNOWN"
@@ -88,8 +88,8 @@ INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = (
 # AINode model management
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
 MODEL_CONFIG_FILE_IN_JSON = "config.json"
-DEFAULT_MODEL_FILE_NAME = "model.pt"
-DEFAULT_CONFIG_FILE_NAME = "config.yaml"
+MODEL_WEIGHTS_FILE_IN_PT = "model.pt"
+MODEL_CONFIG_FILE_IN_YAML = "config.yaml"
 DEFAULT_CHUNK_SIZE = 8192
 
 

@@ -2491,11 +2491,28 @@ public class IoTDBTableAggregationIT {
         new String[] {
           "2024-09-24T06:15:55.000Z,55,50000,40.0,55.0,false,shanghai_huangpu_red_A_d01_35,shanghai_huangpu_red_A_d01_40,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
         };
-    tableResultSetEqualTest(
+    repeatTest(
         "select last(time),last(s1),last(s2),last(s3),last(s4),last(s5),last(s6),last(s7),last(s8),last(s9),last(s10) from table1 where device_id = 'd01'",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
+
+    expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12"
+        };
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:55.000Z,d01,red,55,2024-09-24T06:15:55.000Z,50000,2024-09-24T06:15:50.000Z,40.0,2024-09-24T06:15:40.000Z,55.0,2024-09-24T06:15:55.000Z,false,2024-09-24T06:15:50.000Z,",
+        };
+    repeatTest(
+        "select last(time),last(device_id),last(color),last(s1),last_by(time, s1),last(s2),last_by(time, s2),last(s3),last_by(time, s3),last(s4),last_by(time, s4),last(s5),last_by(time, s5) from table1 where device_id = 'd01'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME,
+        2);
 
     expectedHeader =
         new String[] {
@@ -2656,11 +2673,12 @@ public class IoTDBTableAggregationIT {
           "shanghai,shanghai,pudong,d07,2024-09-24T06:15:51.000Z,41,46000,51.0,46.0,false,shanghai_pudong_yellow_A_d07_51,shanghai_pudong_yellow_A_d07_46,0xcafebabe41,2024-09-24T06:15:51.000Z,2024-09-24,",
           "shanghai,shanghai,pudong,d08,2024-09-24T06:15:55.000Z,55,40000,30.0,55.0,true,shanghai_pudong_yellow_B_d08_55,shanghai_pudong_yellow_B_d08_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
         };
-    tableResultSetEqualTest(
+    repeatTest(
         "select province,city,region,device_id, last(time),last(s1),last(s2),last(s3),last(s4),last(s5),last(s6),last(s7),last(s8),last(s9),last(s10) from table1 group by 1,2,3,4 order by 1,2,3,4",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
   }
 
   @Test
