@@ -274,4 +274,4 @@ class InferenceManager:
         )
 
     def shutdown(self):
-        self._request_manager.shutdown()
+        self._request_controller.shutdown()

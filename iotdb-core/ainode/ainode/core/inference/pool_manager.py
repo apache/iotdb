@@ -49,19 +49,19 @@ class PoolManager:
         self._request_pool_map: Dict[str, PoolGroup] = {}
 
     def dispatch_request(self, model_id, req: InferenceRequest):
-        pool_idx = self._select_pool_by_hash(model_id)
+        pool_idx = self._select_pool_by_hash(model_id, req.req_id)
         self.add_request(pool_idx, req)
         logger.debug(
             f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_idx}][ID-{req.req_id}] Request is queued for inference"
         )
 
-    def _select_pool_by_hash(self, model_id) -> int:
+    def _select_pool_by_hash(self, model_id, req_id) -> int:
         pool_ids = self.get_pool_ids(model_id)
         if not pool_ids:
             raise InferenceModelInternalError(
                 f"No available pools for model {model_id}"
             )
-        start_idx = hash(model_id) % len(pool_ids)
+        start_idx = hash(req_id) % len(pool_ids)
         n = len(pool_ids)
         for i in range(n):
             pool_id = pool_ids[(start_idx + i) % n]
