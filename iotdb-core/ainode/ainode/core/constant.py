@@ -21,7 +21,7 @@ import os
 from enum import Enum
 from typing import List
 
-from ainode.core.model.model_info import BuiltInModelType
+from ainode.core.model.model_enums import BuiltInModelType
 from ainode.thrift.common.ttypes import TEndPoint
 
 AINODE_VERSION_INFO = "UNKNOWN"

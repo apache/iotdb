@@ -28,7 +28,7 @@ from ainode.core.constant import (
 )
 from ainode.core.exception import BadConfigValueError, InvalidUriError
 from ainode.core.log import Logger
-from ainode.core.model.model_info import ModelFileType
+from ainode.core.model.model_enums import ModelFileType
 from ainode.core.model.uri_utils import (
     UriType,
     download_file,

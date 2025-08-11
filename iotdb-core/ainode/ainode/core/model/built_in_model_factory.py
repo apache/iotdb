@@ -44,7 +44,8 @@ from ainode.core.exception import (
     WrongAttributeTypeError,
 )
 from ainode.core.log import Logger
-from ainode.core.model.model_info import TIMER_REPO_ID, BuiltInModelType
+from ainode.core.model.model_enums import BuiltInModelType
+from ainode.core.model.model_info import TIMER_REPO_ID
 from ainode.core.model.sundial import modeling_sundial
 from ainode.core.model.timerxl import modeling_timer
 

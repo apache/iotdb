@@ -30,7 +30,8 @@ from ainode.core.constant import (
 )
 from ainode.core.exception import UnsupportedError
 from ainode.core.log import Logger
-from ainode.core.model.model_info import ModelFileType, get_model_file_type
+from ainode.core.model.model_enums import ModelFileType
+from ainode.core.model.model_info import get_model_file_type
 
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"

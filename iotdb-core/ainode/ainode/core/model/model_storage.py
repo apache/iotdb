@@ -42,15 +42,17 @@ from ainode.core.model.built_in_model_factory import (
     download_built_in_ltsm_from_hf_if_necessary,
     fetch_built_in_model,
 )
+from ainode.core.model.model_enums import (
+    BuiltInModelType,
+    ModelCategory,
+    ModelFileType,
+    ModelStates,
+)
 from ainode.core.model.model_factory import fetch_model_by_uri
 from ainode.core.model.model_info import (
     BUILT_IN_LTSM_MAP,
     BUILT_IN_MACHINE_LEARNING_MODEL_MAP,
-    BuiltInModelType,
-    ModelCategory,
-    ModelFileType,
     ModelInfo,
-    ModelStates,
     get_built_in_model_type,
     get_model_file_type,
 )

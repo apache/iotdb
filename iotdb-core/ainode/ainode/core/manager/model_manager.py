@@ -26,7 +26,8 @@ from ainode.core.exception import (
     InvalidUriError,
 )
 from ainode.core.log import Logger
-from ainode.core.model.model_info import BuiltInModelType, ModelInfo, ModelStates
+from ainode.core.model.model_enums import BuiltInModelType, ModelStates
+from ainode.core.model.model_info import ModelInfo
 from ainode.core.model.model_storage import ModelStorage
 from ainode.core.rpc.status import get_status
 from ainode.core.util.decorator import singleton
