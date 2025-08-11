@@ -94,7 +94,7 @@ public class CompactionTaskInfo {
     return resources;
   }
 
-  private long getMemCostForCachedModEntries(TsFileResource tsFileResource) {
+  public static long getMemCostForCachedModEntries(TsFileResource tsFileResource) {
     PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
         PatternTreeMapFactory.getModsPatternTreeMap();
     for (ModEntry modification : tsFileResource.getAllModEntries()) {
