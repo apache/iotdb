@@ -17,8 +17,6 @@
 #
 import glob
 import os
-from enum import Enum
-from typing import List
 
 from ainode.core.constant import (
     MODEL_CONFIG_FILE_IN_JSON,
@@ -26,42 +24,12 @@ from ainode.core.constant import (
     MODEL_WEIGHTS_FILE_IN_PT,
     MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
 )
-
-
-class BuiltInModelType(Enum):
-    # forecast models
-    ARIMA = "Arima"
-    HOLTWINTERS = "HoltWinters"
-    EXPONENTIAL_SMOOTHING = "ExponentialSmoothing"
-    NAIVE_FORECASTER = "NaiveForecaster"
-    STL_FORECASTER = "StlForecaster"
-
-    # anomaly detection models
-    GAUSSIAN_HMM = "GaussianHmm"
-    GMM_HMM = "GmmHmm"
-    STRAY = "Stray"
-
-    # large time series models (LTSM)
-    TIMER_XL = "Timer-XL"
-    # sundial
-    SUNDIAL = "Timer-Sundial"
-
-    @classmethod
-    def values(cls) -> List[str]:
-        return [item.value for item in cls]
-
-    @staticmethod
-    def is_built_in_model(model_type: str) -> bool:
-        """
-        Check if the given model type corresponds to a built-in model.
-        """
-        return model_type in BuiltInModelType.values()
-
-
-class ModelFileType(Enum):
-    SAFETENSORS = "safetensors"
-    PYTORCH = "pytorch"
-    UNKNOWN = "unknown"
+from ainode.core.model.model_enums import (
+    BuiltInModelType,
+    ModelCategory,
+    ModelFileType,
+    ModelStates,
+)
 
 
 def get_model_file_type(model_path: str) -> ModelFileType:
@@ -94,21 +62,6 @@ def get_built_in_model_type(model_type: str) -> BuiltInModelType:
     if not BuiltInModelType.is_built_in_model(model_type):
         raise ValueError(f"Invalid built-in model type: {model_type}")
     return BuiltInModelType(model_type)
-
-
-class ModelCategory(Enum):
-    BUILT_IN = "BUILT-IN"
-    FINE_TUNED = "FINE-TUNED"
-    USER_DEFINED = "USER-DEFINED"
-
-
-class ModelStates(Enum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    LOADING = "LOADING"
-    DROPPING = "DROPPING"
-    TRAINING = "TRAINING"
-    FAILED = "FAILED"
 
 
 class ModelInfo:
