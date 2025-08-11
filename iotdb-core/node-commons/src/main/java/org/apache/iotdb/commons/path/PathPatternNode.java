@@ -281,8 +281,8 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> impleme
   public long ramBytesUsed() {
     return SHALLOW_SIZE
         + RamUsageEstimator.sizeOf(name)
-        + RamUsageEstimator.sizeOfCollection(valueSet)
-        + RamUsageEstimator.sizeOfCollection(childrenNamesWithNonTrivialWildcard)
+        + RamUsageEstimator.sizeOfHashSet(valueSet)
+        + RamUsageEstimator.sizeOfHashSet(childrenNamesWithNonTrivialWildcard)
         + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
             children,
             RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,

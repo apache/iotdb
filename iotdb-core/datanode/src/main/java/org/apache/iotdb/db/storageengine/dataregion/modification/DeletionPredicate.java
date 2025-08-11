@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
@@ -191,6 +190,6 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     return SHALLOW_SIZE
         + RamUsageEstimator.sizeOf(tableName)
         + RamUsageEstimator.sizeOfObject(idPredicate)
-        + MemoryEstimationHelper.getEstimatedSizeOfStringArrayList(measurementNames);
+        + RamUsageEstimator.sizeOfArrayList(measurementNames);
   }
 }

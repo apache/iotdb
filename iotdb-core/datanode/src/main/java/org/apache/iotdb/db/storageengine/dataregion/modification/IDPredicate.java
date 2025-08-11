@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
@@ -432,8 +431,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE
-          + MemoryEstimationHelper.getEstimatedSizeOfAccountableArrayList(predicates);
+      return SHALLOW_SIZE + RamUsageEstimator.sizeOfArrayList(predicates);
     }
   }
 }
