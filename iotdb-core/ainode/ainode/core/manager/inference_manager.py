@@ -34,6 +34,7 @@ from ainode.core.exception import (
 from ainode.core.inference.inference_request import (
     InferenceRequest,
 )
+from ainode.core.inference.request_controller import RequestController
 from ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
     TimerSundialInferencePipeline,
 )
@@ -58,8 +59,6 @@ from ainode.thrift.ainode.ttypes import (
     TInferenceReq,
     TInferenceResp,
 )
-from ainode.core.inference.request_manager import RequestManager
-
 
 logger = Logger()
 
@@ -149,7 +148,7 @@ class InferenceManager:
         self._model_mem_usage_map: Dict[str, int] = (
             {}
         )  # store model memory usage for each model
-        self._request_manager = RequestManager()
+        self._request_controller = RequestController()
         # self._preload_model_benchmarks()
 
     def _preload_model_benchmarks(self):
@@ -224,7 +223,7 @@ class InferenceManager:
                     inference_pipeline=inference_pipeline,
                     max_new_tokens=predict_length,
                 )
-                outputs = self._request_manager.process_request(infer_req)
+                outputs = self._request_controller.process_request(infer_req)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
             else:
                 # load model

@@ -16,11 +16,11 @@
 # under the License.
 #
 
-from enum import Enum
 import gc
 import random
 import threading
 import time
+from enum import Enum
 
 import numpy as np
 import torch

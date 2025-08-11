@@ -16,20 +16,22 @@
 # under the License.
 #
 import threading
-from ainode.core.log import Logger
+
+import torch
+import torch.multiprocessing as mp
+
 from ainode.core.exception import (
     InferenceModelInternalError,
 )
-import torch.multiprocessing as mp
 from ainode.core.inference.inference_request_pool import InferenceRequestPool, PoolState
-from ainode.core.util.decorator import synchronized
+from ainode.core.inference.pool_manager import PoolManager
+from ainode.core.log import Logger
 from ainode.core.manager.utils import (
     _estimate_pool_size,
 )
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.timerxl.configuration_timer import TimerConfig
-import torch
-from ainode.core.inference.pool_manager import PoolManager
+from ainode.core.util.decorator import synchronized
 
 logger = Logger()
 
@@ -47,10 +49,11 @@ class PoolScheduler:
     def __init__(self, pool_manager: PoolManager, result_queue: mp.Queue):
         self._pool_manager = pool_manager
         self._result_queue = result_queue
+        self._lock = threading.Lock()
 
-    @synchronized(threading.Lock())
-    def _first_req_init(self, model_id: str):
-        if model_id not in self._pool_manager.get_request_pool_map():
+    @synchronized(lambda self: self._lock)
+    def first_req_init(self, model_id: str):
+        if not self._pool_manager.has_request_pools(model_id):
             pool_num = _estimate_pool_size(self.DEFAULT_DEVICE, model_id)
             if pool_num <= 0:
                 raise InferenceModelInternalError(
