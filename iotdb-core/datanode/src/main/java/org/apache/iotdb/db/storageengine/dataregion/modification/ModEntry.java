@@ -25,6 +25,7 @@ import org.apache.iotdb.db.utils.io.StreamSerializable;
 import org.apache.tsfile.annotations.TreeModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -33,7 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public abstract class ModEntry
-    implements StreamSerializable, BufferSerializable, Comparable<ModEntry> {
+    implements StreamSerializable, BufferSerializable, Comparable<ModEntry>, Accountable {
 
   protected ModType modType;
   protected TimeRange timeRange;

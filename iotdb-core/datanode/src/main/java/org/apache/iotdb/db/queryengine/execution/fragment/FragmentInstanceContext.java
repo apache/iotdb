@@ -791,6 +791,7 @@ public class FragmentInstanceContext extends QueryContext {
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
 
+    fileModCache = null;
     dataRegion = null;
     globalTimeFilter = null;
     sharedQueryDataSource = null;
@@ -966,5 +967,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean ignoreNotExistsDevice() {
     return ignoreNotExistsDevice;
+  }
+
+  public List<IFullPath> getSourcePaths() {
+    return sourcePaths;
   }
 }

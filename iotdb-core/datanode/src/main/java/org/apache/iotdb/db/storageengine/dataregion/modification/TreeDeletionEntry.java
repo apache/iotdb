@@ -24,12 +24,14 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -44,6 +46,8 @@ import java.util.Objects;
 
 public class TreeDeletionEntry extends ModEntry {
 
+  public static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TreeDeletionEntry.class);
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeletionEntry.class);
   private MeasurementPath pathPattern;
 
@@ -225,5 +229,12 @@ public class TreeDeletionEntry extends ModEntry {
   @Override
   public int hashCode() {
     return Objects.hash(pathPattern, timeRange);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + MemoryEstimationHelper.TIME_RANGE_INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(pathPattern);
   }
 }

@@ -1029,6 +1029,8 @@ public class IoTDBDescriptor {
     // The buffer for sort operator to calculate
     loadSortBuffer(properties);
 
+    loadModsCacheSizeLimitPerFI(properties);
+
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
 
@@ -1108,6 +1110,23 @@ public class IoTDBDescriptor {
         memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
             / memoryConfig.getQueryThreadCount()
             / 2);
+  }
+
+  private void loadModsCacheSizeLimitPerFI(TrimProperties properties) {
+    long defaultValue =
+        Math.min(
+            32 * 1024 * 1024L,
+            memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
+                / memoryConfig.getQueryThreadCount()
+                / 2);
+    long size =
+        Long.parseLong(
+            properties.getProperty(
+                "mods_cache_size_limit_per_fi_in_bytes", Long.toString(defaultValue)));
+    if (size <= 0) {
+      size = defaultValue;
+    }
+    conf.setModsCacheSizeLimitPerFI(size);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -2084,6 +2103,8 @@ public class IoTDBDescriptor {
 
       // sort_buffer_size_in_bytes
       loadSortBuffer(properties);
+
+      loadModsCacheSizeLimitPerFI(properties);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

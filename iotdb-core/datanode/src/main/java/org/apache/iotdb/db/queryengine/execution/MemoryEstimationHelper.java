@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -31,6 +32,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public class MemoryEstimationHelper {
 
@@ -47,6 +49,8 @@ public class MemoryEstimationHelper {
       RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
   private static final long INTEGER_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+  public static final long TIME_RANGE_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
 
   private MemoryEstimationHelper() {
     // hide the constructor
@@ -118,5 +122,48 @@ public class MemoryEstimationHelper {
             + (long) integerArrayList.size() * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     size += INTEGER_INSTANCE_SIZE * integerArrayList.size();
     return RamUsageEstimator.alignObjectSize(size);
+  }
+
+  public static long getEstimatedSizeOfStringArrayList(List<String> stringArrayList) {
+    if (stringArrayList == null) {
+      return 0L;
+    }
+    long size = ARRAY_LIST_INSTANCE_SIZE;
+    size +=
+        (long) RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + (long) stringArrayList.size() * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    for (String str : stringArrayList) {
+      size += RamUsageEstimator.sizeOf(str);
+    }
+    return RamUsageEstimator.alignObjectSize(size);
+  }
+
+  public static long getEstimatedSizeOfAccountableArrayList(
+      List<? extends Accountable> stringArrayList) {
+    if (stringArrayList == null) {
+      return 0L;
+    }
+    long size = ARRAY_LIST_INSTANCE_SIZE;
+    size +=
+        (long) RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + (long) stringArrayList.size() * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    for (Accountable obj : stringArrayList) {
+      size += RamUsageEstimator.sizeOfObject(obj);
+    }
+    return RamUsageEstimator.alignObjectSize(size);
+  }
+
+  public static long getEstimatedSizeOfHashSet(Set<?> set) {
+    if (set == null) {
+      return 0L;
+    } else {
+      long size =
+          RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP
+              + (long) set.size() * RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY;
+      for (Object obj : set) {
+        size += RamUsageEstimator.sizeOfObject(obj);
+      }
+      return RamUsageEstimator.alignObjectSize(size);
+    }
   }
 }
