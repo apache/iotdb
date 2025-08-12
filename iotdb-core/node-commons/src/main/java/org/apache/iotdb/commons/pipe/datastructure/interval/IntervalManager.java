@@ -56,6 +56,10 @@ public class IntervalManager<T extends Interval<T>> {
   }
 
   public boolean remove(final T interval) {
-    return intervals.remove(interval);
+    if (intervals.remove(interval)) {
+      interval.onRemoved();
+      return true;
+    }
+    return false;
   }
 }

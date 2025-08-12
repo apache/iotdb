@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.agent.task.progress;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.interval.Interval;
 
 import java.util.List;
@@ -29,9 +30,11 @@ public class PipeCommitInterval extends Interval<PipeCommitInterval> {
 
   private ProgressIndex currentIndex;
   private List<Supplier<Void>> onCommittedHooks;
+  private final PipeTaskMeta pipeTaskMeta;
 
-  public PipeCommitInterval(final int s, final int e) {
+  public PipeCommitInterval(final int s, final int e, final PipeTaskMeta pipeTaskMeta) {
     super(s, e);
+    this.pipeTaskMeta = pipeTaskMeta;
   }
 
   @Override
@@ -42,14 +45,16 @@ public class PipeCommitInterval extends Interval<PipeCommitInterval> {
     if (this.start <= another.start) {
       onCommittedHooks.addAll(another.onCommittedHooks);
     } else {
-      // Not that if merged, another interval is not supposed to be reused
+      // Note that if merged, another interval is not supposed to be reused
       // thus we can arbitrarily alter its hooks
       another.onCommittedHooks.addAll(this.onCommittedHooks);
       this.onCommittedHooks = another.onCommittedHooks;
     }
   }
 
-  public ProgressIndex getCurrentIndex() {
-    return currentIndex;
+  @Override
+  public void onRemoved() {
+    pipeTaskMeta.updateProgressIndex(currentIndex);
+    onCommittedHooks.forEach(Supplier::get);
   }
 }

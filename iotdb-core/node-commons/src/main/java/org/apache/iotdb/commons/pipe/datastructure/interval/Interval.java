@@ -32,6 +32,10 @@ public class Interval<T extends Interval<T>> implements Comparable<Interval<?>> 
     // Do nothing by default
   }
 
+  public void onRemoved() {
+    // Do nothing by default
+  }
+
   @Override
   public int compareTo(final Interval other) {
     return Long.compare(this.start, other.start);
