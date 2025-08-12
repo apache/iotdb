@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -106,7 +107,7 @@ public class DataNodeAuthUtils {
         return CommonDateTimeUtils.convertIoTDBTimeToMillis(timeByIndex);
       }
     } catch (IoTDBException e) {
-      LOGGER.warn("Cannot generate query for checking password expiration", e);
+      LOGGER.warn("Cannot generate query for checking password reuse interval", e);
     }
     return -1;
   }
@@ -175,6 +176,9 @@ public class DataNodeAuthUtils {
                   ClusterSchemaFetcher.getInstance());
       return result.status;
     } catch (Exception e) {
+      if (CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException()) {
+        return StatusUtils.OK;
+      }
       LOGGER.error("Cannot create password history for {} because {}", username, e.getMessage());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage("The server is not ready for login, please check the server log for details");
