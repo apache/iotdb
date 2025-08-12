@@ -1164,7 +1164,7 @@ public class IoTDBConfig {
 
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
-  private boolean enableNullValueIncludedInQuatityStats = false;
+  private boolean includeNullValueInWriteThroughputMetric = false;
 
   IoTDBConfig() {}
 
@@ -4141,12 +4141,12 @@ public class IoTDBConfig {
     this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
   }
 
-  public boolean isEnableNullValueIncludedInQuatityStats() {
-    return enableNullValueIncludedInQuatityStats;
+  public boolean isIncludeNullValueInWriteThroughputMetric() {
+    return includeNullValueInWriteThroughputMetric;
   }
 
-  public void setEnableNullValueIncludedInQuatityStats(
-      boolean enableNullValueIncludedInQuatityStats) {
-    this.enableNullValueIncludedInQuatityStats = enableNullValueIncludedInQuatityStats;
+  public void setIncludeNullValueInWriteThroughputMetric(
+      boolean includeNullValueInWriteThroughputMetric) {
+    this.includeNullValueInWriteThroughputMetric = includeNullValueInWriteThroughputMetric;
   }
 }

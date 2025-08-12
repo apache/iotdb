@@ -212,7 +212,7 @@ public abstract class AbstractMemTable implements IMemTable {
     int pointsInserted =
         insertRowNode.getMeasurements().length
             - insertRowNode.getFailedMeasurementNumber()
-            - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
+            - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
                 ? 0
                 : nullPointsNumber);
 
@@ -253,7 +253,7 @@ public abstract class AbstractMemTable implements IMemTable {
     int pointsInserted =
         insertRowNode.getMeasurementColumnCnt()
             - insertRowNode.getFailedMeasurementNumber()
-            - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
+            - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
                 ? 0
                 : nullPointsNumber);
     totalPointsNum += pointsInserted;
@@ -270,7 +270,7 @@ public abstract class AbstractMemTable implements IMemTable {
       int pointsInserted =
           ((insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
                   * (end - start))
-              - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
+              - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
                   ? 0
                   : nullPointsNumber);
       totalPointsNum += pointsInserted;
@@ -293,7 +293,7 @@ public abstract class AbstractMemTable implements IMemTable {
           ((insertTabletNode.getMeasurementColumnCnt()
                       - insertTabletNode.getFailedMeasurementNumber())
                   * (end - start))
-              - (IoTDBDescriptor.getInstance().getConfig().isEnableNullValueIncludedInQuatityStats()
+              - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
                   ? 0
                   : nullPointsNumber);
       totalPointsNum += pointsInserted;

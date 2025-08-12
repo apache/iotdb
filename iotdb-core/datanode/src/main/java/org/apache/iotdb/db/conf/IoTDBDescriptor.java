@@ -1089,11 +1089,11 @@ public class IoTDBDescriptor {
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
 
-    conf.setEnableNullValueIncludedInQuatityStats(
+    conf.setIncludeNullValueInWriteThroughputMetric(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enable_null_value_included_in_quatity_stats",
-                String.valueOf(conf.isEnableNullValueIncludedInQuatityStats()))));
+                "include_null_value_in_write_throughput_metric",
+                String.valueOf(conf.isIncludeNullValueInWriteThroughputMetric()))));
   }
 
   private void loadSortBuffer(TrimProperties properties) {
@@ -2091,12 +2091,12 @@ public class IoTDBDescriptor {
       // sort_buffer_size_in_bytes
       loadSortBuffer(properties);
 
-      conf.setEnableNullValueIncludedInQuatityStats(
+      conf.setIncludeNullValueInWriteThroughputMetric(
           Boolean.parseBoolean(
               properties.getProperty(
-                  "enable_null_value_included_in_quatity_stats",
+                  "include_null_value_in_write_throughput_metric",
                   ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "enable_null_value_included_in_quatity_stats"))));
+                      "include_null_value_in_write_throughput_metric"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
