@@ -23,12 +23,14 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -108,7 +110,7 @@ public class TreeDeletionEntry extends ModEntry {
   public void deserialize(InputStream stream) throws IOException {
     super.deserialize(stream);
     try {
-      this.pathPattern = new MeasurementPath(ReadWriteIOUtils.readVarIntString(stream));
+      this.pathPattern = getMeasurementPath(ReadWriteIOUtils.readVarIntString(stream));
     } catch (IllegalPathException e) {
       throw new IOException(e);
     }
@@ -118,9 +120,18 @@ public class TreeDeletionEntry extends ModEntry {
   public void deserialize(ByteBuffer buffer) {
     super.deserialize(buffer);
     try {
-      this.pathPattern = new MeasurementPath(ReadWriteIOUtils.readVarIntString(buffer));
+      this.pathPattern = getMeasurementPath(ReadWriteIOUtils.readVarIntString(buffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(e);
+    }
+  }
+
+  private MeasurementPath getMeasurementPath(String path) throws IllegalPathException {
+    if (path.contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      return new MeasurementPath(PathUtils.splitPathToDetachedNodes(path));
+    } else {
+      String[] nodes = path.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
+      return new MeasurementPath(nodes);
     }
   }
 
@@ -235,6 +246,6 @@ public class TreeDeletionEntry extends ModEntry {
   public long ramBytesUsed() {
     return SHALLOW_SIZE
         + MemoryEstimationHelper.TIME_RANGE_INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(pathPattern);
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathNodes(pathPattern);
   }
 }

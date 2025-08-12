@@ -102,6 +102,18 @@ public class MemoryEstimationHelper {
     return totalSize;
   }
 
+  public static long getEstimatedSizeOfPartialPathNodes(@Nullable final PartialPath partialPath) {
+    if (partialPath == null) {
+      return 0;
+    }
+    long totalSize = 0;
+    String[] nodes = partialPath.getNodes();
+    if (nodes != null && nodes.length > 0) {
+      totalSize += Arrays.stream(nodes).mapToLong(RamUsageEstimator::sizeOf).sum();
+    }
+    return totalSize;
+  }
+
   // This method should only be called if the content in the current PartialPath comes from other
   // structures whose memory cost have already been calculated.
   public static long getEstimatedSizeOfCopiedPartialPath(@Nullable final PartialPath partialPath) {

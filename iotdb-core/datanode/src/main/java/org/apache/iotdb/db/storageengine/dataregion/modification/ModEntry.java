@@ -28,6 +28,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -178,7 +179,10 @@ public abstract class ModEntry
     }
 
     public static ModType deserialize(InputStream stream) throws IOException {
-      byte typeNum = ReadWriteIOUtils.readByte(stream);
+      int typeNum = stream.read();
+      if (typeNum == -1) {
+        throw new EOFException();
+      }
       switch (typeNum) {
         case 0x00:
           return TABLE_DELETION;
