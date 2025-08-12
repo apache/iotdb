@@ -417,7 +417,7 @@ public class IoTDBConfig {
   /** The buffer for sort operation */
   private long sortBufferSize = 32 * 1024 * 1024L;
 
-  /** Mods cache size limit per query */
+  /** Mods cache size limit per fi */
   private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
 
   /**
