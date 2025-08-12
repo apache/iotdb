@@ -66,4 +66,9 @@ public class IntervalManager<T extends Interval<T>> {
   public int size() {
     return intervals.size();
   }
+
+  @Override
+  public String toString() {
+    return "IntervalManager{" + "intervals=" + intervals + '}';
+  }
 }

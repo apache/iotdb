@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 public class PipeCommitQueue {
   private final IntervalManager<PipeCommitInterval> intervalManager = new IntervalManager<>();
-  private long lastCommitted = -1;
+  private long lastCommitted = 0;
 
   public void offer(final EnrichedEvent event) {
     final PipeCommitInterval interval =
@@ -46,5 +46,15 @@ public class PipeCommitQueue {
 
   public int size() {
     return intervalManager.size();
+  }
+
+  @Override
+  public String toString() {
+    return "PipeCommitQueue{"
+        + "lastCommitted='"
+        + lastCommitted
+        + "', IntervalManager="
+        + intervalManager
+        + "}";
   }
 }

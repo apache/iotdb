@@ -42,16 +42,16 @@ public class PipeCommitQueueTest {
   @Test
   public void testCommitQueue() {
     final PipeCommitQueue pipeCommitQueue = new PipeCommitQueue();
-    pipeCommitQueue.offer(new TestEnrichedEvent(0, new IoTProgressIndex(0, 1L)));
-    pipeCommitQueue.offer(new TestEnrichedEvent(2, new IoTProgressIndex(0, 3L)));
+    pipeCommitQueue.offer(new TestEnrichedEvent(1, new IoTProgressIndex(0, 1L)));
+    pipeCommitQueue.offer(new TestEnrichedEvent(3, new IoTProgressIndex(0, 3L)));
     Assert.assertEquals(1, pipeCommitQueue.size());
     Assert.assertEquals(new IoTProgressIndex(0, 1L), pipeTaskMeta.getProgressIndex());
-    TestEnrichedEvent nextEvent = new TestEnrichedEvent(4, new IoTProgressIndex(0, 5L));
+    TestEnrichedEvent nextEvent = new TestEnrichedEvent(5, new IoTProgressIndex(0, 5L));
     nextEvent.setShouldReportOnCommit(false);
     pipeCommitQueue.offer(nextEvent);
-    pipeCommitQueue.offer(new TestEnrichedEvent(3, new IoTProgressIndex(0, 4L)));
+    pipeCommitQueue.offer(new TestEnrichedEvent(4, new IoTProgressIndex(0, 4L)));
     Assert.assertEquals(1, pipeCommitQueue.size());
-    nextEvent = new TestEnrichedEvent(1, new IoTProgressIndex(0, 2L));
+    nextEvent = new TestEnrichedEvent(2, new IoTProgressIndex(0, 2L));
     nextEvent.addOnCommittedHook(() -> commitHookTestSet.add(1));
     pipeCommitQueue.offer(nextEvent);
     Assert.assertEquals(0, pipeCommitQueue.size());
