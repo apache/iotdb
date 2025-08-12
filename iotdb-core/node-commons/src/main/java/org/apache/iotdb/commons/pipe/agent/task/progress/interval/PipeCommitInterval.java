@@ -24,19 +24,18 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.interval.Interval;
 
 import java.util.List;
-import java.util.function.Supplier;
 
 public class PipeCommitInterval extends Interval<PipeCommitInterval> {
 
   private ProgressIndex currentIndex;
-  private List<Supplier<Void>> onCommittedHooks;
+  private List<Runnable> onCommittedHooks;
   private final PipeTaskMeta pipeTaskMeta;
 
   public PipeCommitInterval(
       final long s,
       final long e,
       final ProgressIndex currentIndex,
-      final List<Supplier<Void>> onCommittedHooks,
+      final List<Runnable> onCommittedHooks,
       final PipeTaskMeta pipeTaskMeta) {
     super(s, e);
     this.pipeTaskMeta = pipeTaskMeta;
@@ -62,6 +61,6 @@ public class PipeCommitInterval extends Interval<PipeCommitInterval> {
   @Override
   public void onRemoved() {
     pipeTaskMeta.updateProgressIndex(currentIndex);
-    onCommittedHooks.forEach(Supplier::get);
+    onCommittedHooks.forEach(Runnable::run);
   }
 }
