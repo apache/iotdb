@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
@@ -50,8 +49,6 @@ import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -322,10 +319,6 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       columnCategories = new TsTableColumnCategory[measurements.length];
     }
     this.columnCategories[i] = columnCategory;
-    StringBuilder sb = new StringBuilder();
-    Arrays.stream(columnCategories)
-        .forEach(tsTableColumnCategory -> sb.append(tsTableColumnCategory).append(","));
-    logger.info(sb.toString());
     this.tagColumnIndices = null;
   }
 
@@ -610,10 +603,6 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       columnCategories = tmpCategories;
       tagColumnIndices = null;
     }
-    StringBuilder sb = new StringBuilder();
-    Arrays.stream(columnCategories)
-        .forEach(tsTableColumnCategory -> sb.append(tsTableColumnCategory).append(","));
-    logger.info(sb.toString());
   }
 
   public void swapColumn(int src, int target) {
