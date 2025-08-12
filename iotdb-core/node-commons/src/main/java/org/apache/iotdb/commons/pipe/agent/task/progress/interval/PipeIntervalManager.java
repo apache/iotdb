@@ -17,32 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure.interval;
+package org.apache.iotdb.commons.pipe.agent.task.progress.interval;
 
-public class Interval<T extends Interval<T>> implements Comparable<Interval<?>> {
-  public long start;
-  public long end;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
-  public Interval(final long s, final long e) {
-    start = s;
-    end = e;
-  }
+public class PipeIntervalManager extends IntervalManager<PipeCommitInterval> {
 
-  public void onMerged(final T another) {
-    // Do nothing by default
-  }
-
-  public void onRemoved() {
-    // Do nothing by default
-  }
-
-  @Override
-  public int compareTo(final Interval other) {
-    return Long.compare(this.start, other.start);
-  }
-
-  @Override
-  public String toString() {
-    return "[" + start + ", " + end + "]";
+  public void addInterval(final EnrichedEvent event) {
+    final PipeCommitInterval interval =
+        new PipeCommitInterval(
+            event.getCommitId(),
+            event.getCommitId(),
+            event.getProgressIndex(),
+            event.getOnCommittedHooks(),
+            event.getPipeTaskMeta());
+    addInterval(interval);
+    if (event.getCommitId() == peek().start) {
+      remove(interval);
+    }
   }
 }

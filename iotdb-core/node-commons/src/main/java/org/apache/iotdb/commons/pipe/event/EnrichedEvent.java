@@ -400,6 +400,10 @@ public abstract class EnrichedEvent implements Event {
       final long startTime,
       final long endTime);
 
+  public List<Supplier<Void>> getOnCommittedHooks() {
+    return onCommittedHooks;
+  }
+
   public PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
   }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.agent.task.progress;
+package org.apache.iotdb.commons.pipe.agent.task.progress.interval;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -32,9 +32,16 @@ public class PipeCommitInterval extends Interval<PipeCommitInterval> {
   private List<Supplier<Void>> onCommittedHooks;
   private final PipeTaskMeta pipeTaskMeta;
 
-  public PipeCommitInterval(final int s, final int e, final PipeTaskMeta pipeTaskMeta) {
+  public PipeCommitInterval(
+      final long s,
+      final long e,
+      final ProgressIndex currentIndex,
+      final List<Supplier<Void>> onCommittedHooks,
+      final PipeTaskMeta pipeTaskMeta) {
     super(s, e);
     this.pipeTaskMeta = pipeTaskMeta;
+    this.currentIndex = currentIndex;
+    this.onCommittedHooks = onCommittedHooks;
   }
 
   @Override
