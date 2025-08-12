@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.progress;
 
-import org.apache.iotdb.commons.pipe.agent.task.progress.interval.PipeIntervalManager;
+import org.apache.iotdb.commons.pipe.agent.task.progress.interval.PipeCommitQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -32,7 +32,7 @@ public class PipeEventCommitter {
 
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
 
-  private final PipeIntervalManager commitQueue = new PipeIntervalManager();
+  private final PipeCommitQueue commitQueue = new PipeCommitQueue();
 
   PipeEventCommitter(final CommitterKey committerKey) {
     // make it package-private

@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.progress.interval;
 
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
-public class PipeIntervalManager extends IntervalManager<PipeCommitInterval> {
+public class PipeCommitQueue {
+  private final IntervalManager<PipeCommitInterval> intervalManager = new IntervalManager<>();
   private long lastCommitted = -1;
 
   public void offer(final EnrichedEvent event) {
@@ -30,13 +32,19 @@ public class PipeIntervalManager extends IntervalManager<PipeCommitInterval> {
         new PipeCommitInterval(
             event.getCommitId(),
             event.getCommitId(),
-            event.getProgressIndex(),
+            event.isShouldReportOnCommit()
+                ? event.getProgressIndex()
+                : MinimumProgressIndex.INSTANCE,
             event.getOnCommittedHooks(),
             event.getPipeTaskMeta());
-    addInterval(interval);
+    intervalManager.addInterval(interval);
     if (interval.start == lastCommitted + 1) {
-      remove(interval);
+      intervalManager.remove(interval);
       lastCommitted = interval.end;
     }
+  }
+
+  public int size() {
+    return intervalManager.size();
   }
 }
