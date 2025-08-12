@@ -270,7 +270,9 @@ public abstract class AbstractMemTable implements IMemTable {
       int pointsInserted =
           ((insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
                   * (end - start))
-              - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
+              - (IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .isIncludeNullValueInWriteThroughputMetric()
                   ? 0
                   : nullPointsNumber);
       totalPointsNum += pointsInserted;
@@ -293,7 +295,9 @@ public abstract class AbstractMemTable implements IMemTable {
           ((insertTabletNode.getMeasurementColumnCnt()
                       - insertTabletNode.getFailedMeasurementNumber())
                   * (end - start))
-              - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
+              - (IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .isIncludeNullValueInWriteThroughputMetric()
                   ? 0
                   : nullPointsNumber);
       totalPointsNum += pointsInserted;

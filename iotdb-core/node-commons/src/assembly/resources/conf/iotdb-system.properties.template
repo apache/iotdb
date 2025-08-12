@@ -2158,4 +2158,4 @@ enable_retry_for_unknown_error=false
 # The switch to control if allow null value be included in the "quantity total" metric statistic.
 # effectiveMode: hot_reload
 # Datatype: Boolean
-enable_null_value_included_in_quatity_stats=false
+include_null_value_in_write_throughput_metric=false
