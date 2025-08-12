@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -381,6 +382,11 @@ public abstract class EnrichedEvent implements Event {
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime);
+
+  @TestOnly
+  public void setShouldReportOnCommit(final boolean shouldReportOnCommit) {
+    this.shouldReportOnCommit = shouldReportOnCommit;
+  }
 
   public boolean isShouldReportOnCommit() {
     return shouldReportOnCommit;
