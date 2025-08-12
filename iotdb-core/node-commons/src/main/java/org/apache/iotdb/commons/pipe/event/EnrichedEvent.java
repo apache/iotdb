@@ -464,10 +464,6 @@ public abstract class EnrichedEvent implements Event {
     this.replicateIndexForIoTV2 = replicateIndexForIoTV2;
   }
 
-  public void onCommitted() {
-    onCommittedHooks.forEach(Runnable::run);
-  }
-
   public void addOnCommittedHook(final Runnable hook) {
     onCommittedHooks.add(hook);
   }
