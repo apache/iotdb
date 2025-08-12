@@ -26,11 +26,17 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 public abstract class PipeTransferTrackableHandler
     implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
 
   protected final IoTDBDataRegionAsyncSink connector;
+  protected volatile AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink connector) {
     this.connector = connector;
@@ -40,7 +46,7 @@ public abstract class PipeTransferTrackableHandler
   public void onComplete(final TPipeTransferResp response) {
     if (connector.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this);
+      connector.eliminateHandler(this, true);
       return;
     }
 
@@ -49,7 +55,7 @@ public abstract class PipeTransferTrackableHandler
       // completed
       // NOTE: We should not clear the reference count of events, as this would cause the
       // `org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic.IoTDBPipeDataSinkIT#testSinkTsFileFormat3` test to fail.
-      connector.eliminateHandler(this);
+      connector.eliminateHandler(this, false);
     }
   }
 
@@ -57,12 +63,12 @@ public abstract class PipeTransferTrackableHandler
   public void onError(final Exception exception) {
     if (connector.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this);
+      connector.eliminateHandler(this, true);
       return;
     }
 
     onErrorInternal(exception);
-    connector.eliminateHandler(this);
+    connector.eliminateHandler(this, false);
   }
 
   /**
@@ -77,13 +83,22 @@ public abstract class PipeTransferTrackableHandler
   protected boolean tryTransfer(
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
+    if (Objects.isNull(this.client)) {
+      this.client = client;
+    }
     // track handler before checking if connector is closed
     connector.trackHandler(this);
     if (connector.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this);
+      connector.eliminateHandler(this, true);
       client.setShouldReturnSelf(true);
-      client.returnSelf();
+      try {
+        client.returnSelf();
+      } catch (final IllegalStateException e) {
+        LOGGER.info(
+            "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+      }
+      this.client = null;
       return false;
     }
     doTransfer(client, req);
@@ -104,8 +119,24 @@ public abstract class PipeTransferTrackableHandler
 
   public abstract void clearEventsReferenceCount();
 
+  public void closeClient() {
+    if (Objects.isNull(client)) {
+      return;
+    }
+    try {
+      client.close();
+      client.invalidateAll();
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
+          client,
+          e.getMessage(),
+          e);
+    }
+  }
+
   @Override
   public void close() {
-    // do nothing
+    // Do nothing
   }
 }
