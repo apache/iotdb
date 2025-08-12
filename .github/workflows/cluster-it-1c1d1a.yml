@@ -37,7 +37,7 @@ jobs:
       max-parallel: 15
       matrix:
         os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, gpu]
 
     steps:
       - uses: actions/checkout@v4
