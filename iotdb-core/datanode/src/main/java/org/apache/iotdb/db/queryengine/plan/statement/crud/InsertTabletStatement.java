@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -29,6 +31,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -47,11 +50,15 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -61,7 +68,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
-
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertTabletStatement.class);
 
@@ -88,6 +94,42 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     statementType = StatementType.BATCH_INSERT;
     this.recordedBeginOfLogicalViewSchemaList = 0;
     this.recordedEndOfLogicalViewSchemaList = 0;
+  }
+
+  public InsertTabletStatement(
+      final Tablet tablet, final boolean isAligned, final String databaseName)
+      throws MetadataException {
+    this();
+    setMeasurements(
+        tablet.getSchemas().stream()
+            .map(IMeasurementSchema::getMeasurementName)
+            .toArray(String[]::new));
+    setDataTypes(
+        tablet.getSchemas().stream().map(IMeasurementSchema::getType).toArray(TSDataType[]::new));
+    setDevicePath(DataNodeDevicePathCache.getInstance().getPartialPath(tablet.getDeviceId()));
+    setAligned(isAligned);
+    setTimes(tablet.getTimestamps());
+    setColumns(Arrays.stream(tablet.getValues()).map(this::convertTableColumn).toArray());
+    setBitMaps(tablet.getBitMaps());
+    setRowCount(tablet.getRowSize());
+
+    if (Objects.nonNull(databaseName)) {
+      setWriteToTable(true);
+      setDatabaseName(databaseName);
+      setColumnCategories(
+          tablet.getColumnTypes().stream()
+              .map(TsTableColumnCategory::fromTsFileColumnCategory)
+              .toArray(TsTableColumnCategory[]::new));
+    }
+  }
+
+  private Object convertTableColumn(final Object input) {
+    return input instanceof LocalDate[]
+        ? Arrays.stream(((LocalDate[]) input))
+            .map(date -> Objects.nonNull(date) ? DateUtils.parseDateExpressionToInt(date) : 0)
+            .mapToInt(Integer::intValue)
+            .toArray()
+        : input;
   }
 
   public InsertTabletStatement(InsertTabletNode node) {
@@ -461,10 +503,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       deviceIDs = new IDeviceID[rowCount];
     }
     if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
+      String[] deviceIdSegments = new String[getTagColumnIndices().size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < getIdColumnIndices().size(); i++) {
-        final Integer columnIndex = getIdColumnIndices().get(i);
+      for (int i = 0; i < getTagColumnIndices().size(); i++) {
+        final Integer columnIndex = getTagColumnIndices().get(i);
         boolean isNull = isNull(rowIdx, i);
         deviceIdSegments[i + 1] =
             isNull ? null : ((Object[]) columns[columnIndex])[rowIdx].toString();
