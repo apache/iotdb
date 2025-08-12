@@ -21,16 +21,16 @@ package org.apache.iotdb.commons.pipe.datastructure.interval;
 
 import java.util.TreeSet;
 
-public class IntervalManager {
-  private final TreeSet<Interval> intervals = new TreeSet<>();
+public class IntervalManager<T extends Interval<T>> {
+  private final TreeSet<T> intervals = new TreeSet<>();
 
   // insert into new interval and merge
-  public void addInterval(final Interval newInterval) {
+  public void addInterval(final T newInterval) {
     // Left closest
-    final Interval left = intervals.floor(newInterval);
+    final T left = intervals.floor(newInterval);
 
     // Right closest
-    final Interval right = intervals.ceiling(newInterval);
+    final T right = intervals.ceiling(newInterval);
 
     // Merge left ([0,1] + [2,3] → [0,3])
     if (left != null && left.end >= newInterval.start - 1) {
@@ -51,11 +51,11 @@ public class IntervalManager {
     intervals.add(newInterval);
   }
 
-  public Interval peek() {
+  public T peek() {
     return intervals.first();
   }
 
-  public boolean remove(final Interval interval) {
+  public boolean remove(final T interval) {
     return intervals.remove(interval);
   }
 }

@@ -17,28 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure.interval;
+package org.apache.iotdb.commons.pipe.datastructure;
 
-public class Interval<T extends Interval<T>> implements Comparable<Interval<?>> {
-  public long start;
-  public long end;
-
-  public Interval(final int s, final int e) {
-    start = s;
-    end = e;
-  }
-
-  public void onMerged(final T another) {
-    // Do nothing by default
-  }
-
-  @Override
-  public int compareTo(final Interval other) {
-    return Long.compare(this.start, other.start);
-  }
-
-  @Override
-  public String toString() {
-    return "[" + start + ", " + end + "]";
-  }
-}
+public class IntervalManagerTest {}
