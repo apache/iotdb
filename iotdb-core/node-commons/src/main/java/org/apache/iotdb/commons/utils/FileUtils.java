@@ -551,17 +551,17 @@ public class FileUtils {
   }
 
   private static void copyFileRename(final File sourceFile, final File targetFile)
-          throws IOException {
+      throws IOException {
     Files.copy(
-            sourceFile.toPath(),
-            targetFile.toPath(),
-            StandardCopyOption.REPLACE_EXISTING,
-            StandardCopyOption.COPY_ATTRIBUTES);
+        sourceFile.toPath(),
+        targetFile.toPath(),
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.COPY_ATTRIBUTES);
 
     LOGGER.info(
-            COPY_FILE_MESSAGE,
-            sourceFile.getName(),
-            targetFile,
-            targetFile.getParentFile().getAbsolutePath());
+        COPY_FILE_MESSAGE,
+        sourceFile.getName(),
+        targetFile,
+        targetFile.getParentFile().getAbsolutePath());
   }
 }
