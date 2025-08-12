@@ -146,9 +146,6 @@ public class SessionManager implements SessionManagerMBean {
         CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
     boolean mayBypassPasswordCheckInException =
         CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException();
-    if (mayBypassPasswordCheckInException && passwordExpirationDays < 0) {
-      return Long.MAX_VALUE;
-    }
 
     TSLastDataQueryReq lastDataQueryReq = new TSLastDataQueryReq();
     lastDataQueryReq.setSessionId(0);
