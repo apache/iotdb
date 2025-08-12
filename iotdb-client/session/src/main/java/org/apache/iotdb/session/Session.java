@@ -433,7 +433,7 @@ public class Session implements ISession {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
     }
-    Collections.shuffle(nodeUrls);
+    nodeUrls = shuffleNodeUrls(nodeUrls);
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -450,7 +450,7 @@ public class Session implements ISession {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
       }
-      Collections.shuffle(builder.nodeUrls);
+      builder.nodeUrls = shuffleNodeUrls(builder.nodeUrls);
       this.nodeUrls = builder.nodeUrls;
       this.enableQueryRedirection = true;
     } else {
@@ -576,6 +576,16 @@ public class Session implements ISession {
               }
               return t;
             });
+  }
+
+  private static List<String> shuffleNodeUrls(List<String> endPoints) {
+    try {
+      Collections.shuffle(endPoints);
+    } catch (UnsupportedOperationException e) {
+      endPoints = new ArrayList<>(endPoints);
+      Collections.shuffle(endPoints);
+    }
+    return endPoints;
   }
 
   private List<TEndPoint> getNodeUrls() {
