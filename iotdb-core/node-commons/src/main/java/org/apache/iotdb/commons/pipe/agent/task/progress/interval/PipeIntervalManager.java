@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 public class PipeIntervalManager extends IntervalManager<PipeCommitInterval> {
+  private long lastCommitted = -1;
 
   public void offer(final EnrichedEvent event) {
     final PipeCommitInterval interval =
@@ -33,8 +34,9 @@ public class PipeIntervalManager extends IntervalManager<PipeCommitInterval> {
             event.getOnCommittedHooks(),
             event.getPipeTaskMeta());
     addInterval(interval);
-    if (event.getCommitId() == peek().start) {
+    if (interval.start == lastCommitted + 1) {
       remove(interval);
+      lastCommitted = interval.end;
     }
   }
 }
