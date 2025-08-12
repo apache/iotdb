@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -326,6 +327,8 @@ class ClusterSchemaFetchExecutor {
         throw new RuntimeException(
             new MetadataException("Failed to fetch schema because of unrecognized data"));
       }
+    } catch (MemoryNotEnoughException e) {
+      throw e;
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
