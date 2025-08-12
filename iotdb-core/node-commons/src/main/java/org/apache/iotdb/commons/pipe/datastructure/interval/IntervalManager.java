@@ -62,4 +62,8 @@ public class IntervalManager<T extends Interval<T>> {
     }
     return false;
   }
+
+  public int size() {
+    return intervals.size();
+  }
 }

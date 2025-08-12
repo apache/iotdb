@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 public class PipeIntervalManager extends IntervalManager<PipeCommitInterval> {
 
-  public void addInterval(final EnrichedEvent event) {
+  public void offer(final EnrichedEvent event) {
     final PipeCommitInterval interval =
         new PipeCommitInterval(
             event.getCommitId(),
