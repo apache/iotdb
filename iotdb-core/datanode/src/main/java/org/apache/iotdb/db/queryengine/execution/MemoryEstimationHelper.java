@@ -102,11 +102,12 @@ public class MemoryEstimationHelper {
     return totalSize;
   }
 
-  public static long getEstimatedSizeOfPartialPathNodes(@Nullable final PartialPath partialPath) {
+  public static long getEstimatedSizeOfMeasurementPathNodes(
+      @Nullable final PartialPath partialPath) {
     if (partialPath == null) {
       return 0;
     }
-    long totalSize = 0;
+    long totalSize = MEASUREMENT_PATH_INSTANCE_SIZE;
     String[] nodes = partialPath.getNodes();
     if (nodes != null && nodes.length > 0) {
       totalSize += Arrays.stream(nodes).mapToLong(RamUsageEstimator::sizeOf).sum();

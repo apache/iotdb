@@ -246,6 +246,6 @@ public class TreeDeletionEntry extends ModEntry {
   public long ramBytesUsed() {
     return SHALLOW_SIZE
         + MemoryEstimationHelper.TIME_RANGE_INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathNodes(pathPattern);
+        + MemoryEstimationHelper.getEstimatedSizeOfMeasurementPathNodes(pathPattern);
   }
 }
