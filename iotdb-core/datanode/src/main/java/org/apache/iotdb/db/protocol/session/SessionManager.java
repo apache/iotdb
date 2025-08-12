@@ -22,7 +22,6 @@ package org.apache.iotdb.db.protocol.session;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.service.JMXService;
@@ -63,10 +62,12 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -143,6 +144,8 @@ public class SessionManager implements SessionManagerMBean {
     // check password expiration
     long passwordExpirationDays =
         CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
+    boolean mayBypassPasswordCheckInException =
+        CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException();
 
     TSLastDataQueryReq lastDataQueryReq = new TSLastDataQueryReq();
     lastDataQueryReq.setSessionId(0);
@@ -199,12 +202,15 @@ public class SessionManager implements SessionManagerMBean {
       } else {
         return null;
       }
-    } catch (IoTDBException e) {
-      throw new IoTDBRuntimeException(
-          "Cannot query password history because: "
-              + e.getMessage()
-              + ", please log in later or disable password expiration.",
-          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    } catch (Throwable e) {
+      LOGGER.error("Fail to check password expiration", e);
+      if (mayBypassPasswordCheckInException) {
+        return Long.MAX_VALUE;
+      } else {
+        throw new IoTDBRuntimeException(
+            "Internal server error " + ", please log in later or disable password expiration.",
+            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
     }
   }
 
@@ -240,7 +246,12 @@ public class SessionManager implements SessionManagerMBean {
         supplySession(session, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
         if (timeToExpire != null && timeToExpire != Long.MAX_VALUE) {
-          logInMessage += ". Your password will expire at " + new Date(timeToExpire);
+          DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+          logInMessage +=
+              ". Your password will expire at "
+                  + dateFormat.format(
+                      LocalDateTime.ofInstant(
+                          Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
         } else if (timeToExpire == null) {
           LOGGER.info(
               "No password history for user {}, using the current time to create a new one",
@@ -259,7 +270,12 @@ public class SessionManager implements SessionManagerMBean {
                       * 1000
                       * 86400;
           if (timeToExpire > System.currentTimeMillis()) {
-            logInMessage += ". Your password will expire at " + new Date(timeToExpire);
+            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            logInMessage +=
+                ". Your password will expire at "
+                    + dateFormat.format(
+                        LocalDateTime.ofInstant(
+                            Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
           }
         }
         openSessionResp
