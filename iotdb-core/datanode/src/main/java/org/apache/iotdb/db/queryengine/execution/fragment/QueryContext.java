@@ -108,7 +108,7 @@ public class QueryContext {
           resource.getTsFileID(), k -> loadAllModificationsFromDisk(resource));
     }
     FragmentInstanceContext fragmentInstanceContext = (FragmentInstanceContext) this;
-    if (fragmentInstanceContext.getSourcePaths().size() == 1) {
+    if (fragmentInstanceContext.isSingleSourcePath()) {
       return loadAllModificationsFromDisk(resource);
     }
 
@@ -199,7 +199,7 @@ public class QueryContext {
     if (fileModEntries == null) {
       return Collections.emptyList();
     }
-    List<ModEntry> modEntries = fileModEntries.getOverlapped(new PartialPath(deviceID));
+    List<ModEntry> modEntries = fileModEntries.getDeviceOverlapped(new PartialPath(deviceID));
     if (deviceID.isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering

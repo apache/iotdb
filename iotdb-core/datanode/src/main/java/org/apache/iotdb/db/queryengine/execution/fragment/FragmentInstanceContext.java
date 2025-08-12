@@ -93,6 +93,8 @@ public class FragmentInstanceContext extends QueryContext {
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   private List<IFullPath> sourcePaths;
 
+  private boolean singleSourcePath = false;
+
   // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
@@ -485,6 +487,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setSourcePaths(List<IFullPath> sourcePaths) {
     this.sourcePaths = sourcePaths;
+    if (sourcePaths != null && sourcePaths.size() == 1) {
+      singleSourcePath = true;
+    }
   }
 
   public void setDevicePathsToContext(Map<IDeviceID, DeviceContext> devicePathsToContext) {
@@ -969,7 +974,7 @@ public class FragmentInstanceContext extends QueryContext {
     return ignoreNotExistsDevice;
   }
 
-  public List<IFullPath> getSourcePaths() {
-    return sourcePaths;
+  public boolean isSingleSourcePath() {
+    return singleSourcePath;
   }
 }
