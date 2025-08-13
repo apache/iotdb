@@ -53,12 +53,14 @@ public class SyncStatus {
         && !Thread.interrupted()) {
       wait();
     }
-    LOGGER.info(
-        "Reserved {} bytes for batch {}-{}, current total usage {}",
-        batch.getMemorySize(),
-        batch.getStartIndex(),
-        batch.getEndIndex(),
-        iotConsensusMemoryManager.getMemorySizeInByte());
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Reserved {} bytes for batch {}-{}, current total usage {}",
+          batch.getMemorySize(),
+          batch.getStartIndex(),
+          batch.getEndIndex(),
+          iotConsensusMemoryManager.getMemorySizeInByte());
+    }
     pendingBatches.add(batch);
   }
 
