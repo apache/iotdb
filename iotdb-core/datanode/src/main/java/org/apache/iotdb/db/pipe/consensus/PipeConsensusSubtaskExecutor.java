@@ -20,12 +20,11 @@ package org.apache.iotdb.db.pipe.consensus;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 public class PipeConsensusSubtaskExecutor extends PipeSinkSubtaskExecutor {
-    public PipeConsensusSubtaskExecutor() {
+  public PipeConsensusSubtaskExecutor() {
     super(
         // The number of data regions for a datanode is limited by offHeapMemory. At the same time,
         // in order to ensure multi-core performance, the number of data regions usually does not
