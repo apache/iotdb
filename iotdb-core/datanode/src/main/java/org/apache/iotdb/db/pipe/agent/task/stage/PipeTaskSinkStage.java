@@ -63,7 +63,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
             .register(
                 // IoTV2 uses global singleton executor pool.
                 pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
-                    ? (PipeConnectorSubtaskExecutor)
+                    ? (PipeSinkSubtaskExecutor)
                         IoTV2GlobalComponentContainer.getInstance().getConsensusExecutor()
                     : executor.get(),
                 pipeConnectorParameters,
