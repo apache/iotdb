@@ -213,11 +213,10 @@ public class RestApiServiceImpl extends RestApiService {
 
       CommonUtils.addStatementExecutionLatency(
           OperationType.EXECUTE_QUERY_STATEMENT, statementType.name(), costTime);
+      if (finish) {
+        CommonUtils.addQueryLatency(statementType, costTime);
+      }
       if (queryId != null) {
-        if (finish) {
-          long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
-          CommonUtils.addQueryLatency(statementType, executionTime > 0 ? executionTime : costTime);
-        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
