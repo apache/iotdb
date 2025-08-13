@@ -294,7 +294,7 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
-  private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
+  private long pipeReceiverLoginPeriodicVerificationIntervalMs = -1;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
   private int pipeReceiverReqDecompressedMaxLengthInBytes = 1073741824; // 1GB
