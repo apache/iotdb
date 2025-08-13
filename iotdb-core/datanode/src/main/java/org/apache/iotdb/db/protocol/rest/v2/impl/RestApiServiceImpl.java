@@ -198,6 +198,7 @@ public class RestApiServiceImpl extends RestApiService {
         targetDataSet.addValuesItem(valueList);
         targetDataSet.addValuesItem(dataTypeList);
       }
+      finish = true;
       return Response.ok().entity(targetDataSet).build();
 
     } catch (Exception e) {
