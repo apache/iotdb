@@ -20,12 +20,12 @@
 package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 /**
  * {@link EnrichedEvent} is an {@link Event} that can be enriched with additional runtime
@@ -72,7 +71,7 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isTimeParsed;
 
   protected volatile boolean shouldReportOnCommit = true;
-  protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
+  protected List<Runnable> onCommittedHooks = new ArrayList<>();
 
   protected EnrichedEvent(
       final String pipeName,
@@ -91,13 +90,6 @@ public abstract class EnrichedEvent implements Event {
     this.endTime = endTime;
     isPatternParsed = this.pipePattern == null || this.pipePattern.isRoot();
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
-    addOnCommittedHook(
-        () -> {
-          if (shouldReportOnCommit) {
-            reportProgress();
-          }
-          return null;
-        });
   }
 
   protected void trackResource() {
@@ -263,14 +255,6 @@ public abstract class EnrichedEvent implements Event {
    */
   public abstract boolean internallyDecreaseResourceReferenceCount(final String holderMessage);
 
-  protected void reportProgress() {
-    if (pipeTaskMeta != null) {
-      final ProgressIndex progressIndex = getProgressIndex();
-      pipeTaskMeta.updateProgressIndex(
-          progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex);
-    }
-  }
-
   /**
    * Externally skip the report of the processing {@link ProgressIndex} of this {@link
    * EnrichedEvent} when committed. Report by generated events are still allowed.
@@ -364,6 +348,19 @@ public abstract class EnrichedEvent implements Event {
       final long startTime,
       final long endTime);
 
+  @TestOnly
+  public void setShouldReportOnCommit(final boolean shouldReportOnCommit) {
+    this.shouldReportOnCommit = shouldReportOnCommit;
+  }
+
+  public boolean isShouldReportOnCommit() {
+    return shouldReportOnCommit;
+  }
+
+  public List<Runnable> getOnCommittedHooks() {
+    return onCommittedHooks;
+  }
+
   public PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
   }
@@ -412,11 +409,7 @@ public abstract class EnrichedEvent implements Event {
     return Collections.singletonList(commitId);
   }
 
-  public void onCommitted() {
-    onCommittedHooks.forEach(Supplier::get);
-  }
-
-  public void addOnCommittedHook(final Supplier<Void> hook) {
+  public void addOnCommittedHook(final Runnable hook) {
     onCommittedHooks.add(hook);
   }
 

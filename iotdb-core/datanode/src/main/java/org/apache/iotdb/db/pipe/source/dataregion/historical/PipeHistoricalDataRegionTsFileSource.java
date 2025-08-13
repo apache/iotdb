@@ -78,6 +78,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
@@ -87,6 +91,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
 
@@ -117,6 +122,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   private boolean shouldExtractInsertion;
   private boolean shouldTransferModFile; // Whether to transfer mods
 
+  private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
   private boolean isForwardingPipeRequests;
@@ -282,6 +288,13 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
             EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE
                 || // Should extract deletion
                 listeningOptionPair.getRight());
+
+    final String extractorModeValue =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY), EXTRACTOR_MODE_DEFAULT_VALUE);
+    shouldTerminatePipeOnAllHistoricalEventsConsumed =
+        extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_SNAPSHOT_VALUE)
+            || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
 
     isForwardingPipeRequests =
         parameters.getBooleanOrDefault(
@@ -528,7 +541,12 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
     if (resource == null) {
       final PipeTerminateEvent terminateEvent =
-          new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
+          new PipeTerminateEvent(
+              pipeName,
+              creationTime,
+              pipeTaskMeta,
+              dataRegionId,
+              shouldTerminatePipeOnAllHistoricalEventsConsumed);
       if (!terminateEvent.increaseReferenceCount(
           PipeHistoricalDataRegionTsFileSource.class.getName())) {
         LOGGER.warn(

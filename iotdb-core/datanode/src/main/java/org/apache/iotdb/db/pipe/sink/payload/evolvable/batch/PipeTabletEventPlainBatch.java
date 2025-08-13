@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -55,7 +54,14 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated = new HashMap<>();
 
   PipeTabletEventPlainBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    super(maxDelayInMs, requestMaxBatchSizeInBytes);
+    super(maxDelayInMs, requestMaxBatchSizeInBytes, null);
+  }
+
+  PipeTabletEventPlainBatch(
+      final int maxDelayInMs,
+      final long requestMaxBatchSizeInBytes,
+      final TriLongConsumer recordMetric) {
+    super(maxDelayInMs, requestMaxBatchSizeInBytes, recordMetric);
   }
 
   @Override
@@ -69,12 +75,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         (pipeName, bytesAccumulated) ->
             bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
     return true;
-  }
-
-  @Override
-  protected void recordMetric(long timeInterval, long bufferSize) {
-    PipeDataRegionSinkMetrics.tabletBatchTimeIntervalHistogram.update(timeInterval);
-    PipeDataRegionSinkMetrics.tabletBatchSizeHistogram.update(bufferSize);
   }
 
   @Override

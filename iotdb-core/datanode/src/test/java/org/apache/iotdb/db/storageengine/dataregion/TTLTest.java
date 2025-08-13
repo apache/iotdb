@@ -59,6 +59,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -255,6 +256,57 @@ public class TTLTest {
     reader.close();
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt == 0);
+  }
+
+  @Test
+  public void testTTLRead2() throws IllegalPathException {
+    DataNodeTTLCache.getInstance().setTTL("root.test1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.test1.d1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.test2.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.test2.d1.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.test.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.test1.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.test.sg1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.test.sg2.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.test.sg1.d1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
+
+    DataNodeTTLCache.getInstance().setTTL("root.`1.1`.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.`1.1`"));
+    DataNodeTTLCache.getInstance().clearAllTTL();
   }
 
   private MeasurementPath mockMeasurementPath() throws MetadataException {

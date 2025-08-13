@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.sink.util.PipeTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -97,7 +96,14 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private volatile TsFileWriter fileWriter;
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    super(maxDelayInMs, requestMaxBatchSizeInBytes);
+    this(maxDelayInMs, requestMaxBatchSizeInBytes, null);
+  }
+
+  public PipeTabletEventTsFileBatch(
+      final int maxDelayInMs,
+      final long requestMaxBatchSizeInBytes,
+      final TriLongConsumer recordMetric) {
+    super(maxDelayInMs, requestMaxBatchSizeInBytes, recordMetric);
 
     try {
       this.batchFileBaseDir = getNextBaseDir();
@@ -180,12 +186,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           event.getClass());
     }
     return true;
-  }
-
-  @Override
-  protected void recordMetric(long timeInterval, long bufferSize) {
-    PipeDataRegionSinkMetrics.tsFileBatchTimeIntervalHistogram.update(timeInterval);
-    PipeDataRegionSinkMetrics.tsFileBatchSizeHistogram.update(bufferSize);
   }
 
   private void bufferTablet(
