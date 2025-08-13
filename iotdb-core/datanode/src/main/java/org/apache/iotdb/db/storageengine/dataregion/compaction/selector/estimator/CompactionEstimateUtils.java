@@ -167,7 +167,7 @@ public class CompactionEstimateUtils {
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     try {
       for (TsFileResource resource : resources) {
-        cost += CompactionTaskInfo.getMemCostForCachedModEntries(resource);
+        cost += resource.getTotalModSizeInByte();
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
           for (Map.Entry<IDeviceID, Long> entry :
@@ -190,7 +190,7 @@ public class CompactionEstimateUtils {
       boolean hasConcurrentSubTask) {
     CompactionTaskMetadataInfo metadataInfo = new CompactionTaskMetadataInfo();
     for (TsFileResource resource : resources) {
-      metadataInfo.metadataMemCost += CompactionTaskInfo.getMemCostForCachedModEntries(resource);
+      metadataInfo.metadataMemCost += resource.getTotalModSizeInByte();
       long maxMemToReadAlignedSeries = cachedFileInfo.get(resource).maxMemToReadAlignedSeries;
       long maxMemToReadNonAlignedSeries = cachedFileInfo.get(resource).maxMemToReadNonAlignedSeries;
       metadataInfo.metadataMemCost +=

@@ -92,6 +92,7 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongConsumer;
 import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
@@ -1027,9 +1028,10 @@ public class IoTDBDescriptor {
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // The buffer for sort operator to calculate
-    loadSortBuffer(properties);
+    loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
 
-    loadModsCacheSizeLimitPerFI(properties);
+    loadFixedSizeLimitForQuery(
+        properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
 
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
@@ -1092,41 +1094,19 @@ public class IoTDBDescriptor {
     loadTrustedUriPattern(properties);
   }
 
-  private void loadSortBuffer(TrimProperties properties) {
-    long defaultValue = calculateDefaultSortBufferSize(memoryConfig);
-    long sortBufferSize =
-        Long.parseLong(
-            properties.getProperty("sort_buffer_size_in_bytes", Long.toString(defaultValue)));
-    if (sortBufferSize <= 0) {
-      sortBufferSize = defaultValue;
-    }
-    // The buffer for sort operator to calculate
-    conf.setSortBufferSize(sortBufferSize);
-  }
-
-  public static long calculateDefaultSortBufferSize(DataNodeMemoryConfig memoryConfig) {
-    return Math.min(
-        32 * 1024 * 1024L,
-        memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
-            / memoryConfig.getQueryThreadCount()
-            / 2);
-  }
-
-  private void loadModsCacheSizeLimitPerFI(TrimProperties properties) {
+  private void loadFixedSizeLimitForQuery(
+      TrimProperties properties, String name, LongConsumer setFunction) {
     long defaultValue =
         Math.min(
             32 * 1024 * 1024L,
             memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
                 / memoryConfig.getQueryThreadCount()
                 / 2);
-    long size =
-        Long.parseLong(
-            properties.getProperty(
-                "mods_cache_size_limit_per_fi_in_bytes", Long.toString(defaultValue)));
+    long size = Long.parseLong(properties.getProperty(name, Long.toString(defaultValue)));
     if (size <= 0) {
       size = defaultValue;
     }
-    conf.setModsCacheSizeLimitPerFI(size);
+    setFunction.accept(size);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -2102,9 +2082,10 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
 
       // sort_buffer_size_in_bytes
-      loadSortBuffer(properties);
+      loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
 
-      loadModsCacheSizeLimitPerFI(properties);
+      loadFixedSizeLimitForQuery(
+          properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

@@ -127,6 +127,8 @@ public class TreeDeletionEntry extends ModEntry {
   }
 
   private MeasurementPath getMeasurementPath(String path) throws IllegalPathException {
+    // In this place, we can be sure that the path pattern here has been checked by antlr before, so
+    // when conditions permit, a lighter split method can be used here.
     if (path.contains(TsFileConstant.BACK_QUOTE_STRING)) {
       return new MeasurementPath(PathUtils.splitPathToDetachedNodes(path));
     } else {

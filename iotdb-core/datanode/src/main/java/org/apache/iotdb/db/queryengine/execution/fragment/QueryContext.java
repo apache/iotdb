@@ -22,8 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -33,7 +31,6 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSeriali
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,20 +42,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryContext.class);
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private QueryStatistics queryStatistics = new QueryStatistics();
 
   /**
-   * The key is the path of a ModificationFile and the value is all Modifications in this file. We
-   * use this field because each call of Modification.getModifications() return a copy of the
-   * Modifications, and we do not want it to create multiple copies within a query.
+   * The key is TsFileID and the value is all Modifications in this file. We use this field because
+   * each call of Modification.getModifications() return a copy of the Modifications, and we do not
+   * want it to create multiple copies within a query.
    */
   protected Map<TsFileID, PatternTreeMap<ModEntry, ModsSerializer>> fileModCache =
       new ConcurrentHashMap<>();
@@ -102,48 +97,9 @@ public class QueryContext {
     return tsFileResource.anyModFileExists();
   }
 
-  private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(TsFileResource resource) {
-    if (!(this instanceof FragmentInstanceContext)) {
-      return fileModCache.computeIfAbsent(
-          resource.getTsFileID(), k -> loadAllModificationsFromDisk(resource));
-    }
-    FragmentInstanceContext fragmentInstanceContext = (FragmentInstanceContext) this;
-    if (fragmentInstanceContext.isSingleSourcePath()
-        || fragmentInstanceContext.getMemoryReservationContext() == null) {
-      return loadAllModificationsFromDisk(resource);
-    }
-
-    AtomicReference<PatternTreeMap<ModEntry, ModsSerializer>> atomicReference =
-        new AtomicReference<>();
-    PatternTreeMap<ModEntry, ModsSerializer> cachedResult =
-        fileModCache.computeIfAbsent(
-            resource.getTsFileID(),
-            k -> {
-              PatternTreeMap<ModEntry, ModsSerializer> allMods =
-                  loadAllModificationsFromDisk(resource);
-              atomicReference.set(allMods);
-              if (cachedModEntriesSize.get() >= config.getModsCacheSizeLimitPerFI()) {
-                return null;
-              }
-              long memCost =
-                  RamUsageEstimator.sizeOfObject(allMods)
-                      + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP;
-              long alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
-              while (alreadyUsedMemoryForCachedModEntries + memCost
-                  < config.getModsCacheSizeLimitPerFI()) {
-                if (cachedModEntriesSize.compareAndSet(
-                    alreadyUsedMemoryForCachedModEntries,
-                    alreadyUsedMemoryForCachedModEntries + memCost)) {
-                  fragmentInstanceContext
-                      .getMemoryReservationContext()
-                      .reserveMemoryCumulatively(memCost);
-                  return allMods;
-                }
-                alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
-              }
-              return null;
-            });
-    return cachedResult == null ? atomicReference.get() : cachedResult;
+  protected PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(TsFileResource resource) {
+    return fileModCache.computeIfAbsent(
+        resource.getTsFileID(), k -> loadAllModificationsFromDisk(resource));
   }
 
   public PatternTreeMap<ModEntry, ModsSerializer> loadAllModificationsFromDisk(
