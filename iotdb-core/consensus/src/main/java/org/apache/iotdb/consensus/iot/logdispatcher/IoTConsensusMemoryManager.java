@@ -41,16 +41,53 @@ public class IoTConsensusMemoryManager {
     MetricService.getInstance().addMetricSet(new IoTConsensusMemoryManagerMetrics(this));
   }
 
-  public boolean reserve(IndexedConsensusRequest request, boolean fromQueue) {
+  public boolean reserve(IndexedConsensusRequest request) {
     long prevRef = request.incRef();
     if (prevRef == 0) {
-      return reserve(request.getMemorySize(), fromQueue);
+      boolean reserved = reserve(request.getMemorySize(), true);
+      if (reserved) {
+        logger.info(
+            "Reserving {} bytes for request {} succeeds, current total usage {}",
+            request.getMemorySize(),
+            request.getSearchIndex(),
+            memoryBlock.getUsedMemoryInBytes());
+      } else {
+        logger.info(
+            "Reserving {} bytes for request {} fails, current total usage {}",
+            request.getMemorySize(),
+            request.getSearchIndex(),
+            memoryBlock.getUsedMemoryInBytes());
+      }
+      return reserved;
     } else {
+      logger.info(
+          "Skip memory reservation for {} because its ref count is not 0",
+          request.getSearchIndex());
       return true;
     }
   }
 
-  public boolean reserve(long size, boolean fromQueue) {
+  public boolean reserve(Batch batch) {
+    boolean reserved = reserve(batch.getMemorySize(), false);
+    if (reserved) {
+      logger.info(
+          "Reserving {} bytes for batch {}-{} succeeds, current total usage {}",
+          batch.getMemorySize(),
+          batch.getStartIndex(),
+          batch.getEndIndex(),
+          memoryBlock.getUsedMemoryInBytes());
+    } else {
+      logger.info(
+          "Reserving {} bytes for batch {}-{} fails, current total usage {}",
+          batch.getMemorySize(),
+          batch.getStartIndex(),
+          batch.getEndIndex(),
+          memoryBlock.getUsedMemoryInBytes());
+    }
+    return reserved;
+  }
+
+  private boolean reserve(long size, boolean fromQueue) {
     boolean result =
         fromQueue
             ? memoryBlock.allocateIfSufficient(size, maxMemoryRatioForQueue)
@@ -65,14 +102,29 @@ public class IoTConsensusMemoryManager {
     return result;
   }
 
-  public void free(IndexedConsensusRequest request, boolean fromQueue) {
+  public void free(IndexedConsensusRequest request) {
     long prevRef = request.decRef();
     if (prevRef == 1) {
-      free(request.getMemorySize(), fromQueue);
+      free(request.getMemorySize(), true);
+      logger.info(
+          "Freed {} bytes for request {}, current total usage {}",
+          request.getMemorySize(),
+          request.getSearchIndex(),
+          memoryBlock.getUsedMemoryInBytes());
     }
   }
 
-  public void free(long size, boolean fromQueue) {
+  public void free(Batch batch) {
+    free(batch.getMemorySize(), false);
+    logger.info(
+        "Freed {} bytes for batch {}-{}, current total usage {}",
+        batch.getMemorySize(),
+        batch.getStartIndex(),
+        batch.getEndIndex(),
+        getMemorySizeInByte());
+  }
+
+  private void free(long size, boolean fromQueue) {
     long currentUsedMemory = memoryBlock.release(size);
     if (fromQueue) {
       queueMemorySizeInByte.addAndGet(-size);
