@@ -69,6 +69,8 @@ public class PipeTerminateEvent extends EnrichedEvent {
     super(pipeName, creationTime, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldMark = shouldMark;
+
+    addOnCommittedHook(this::markCompleted);
   }
 
   @Override
@@ -114,8 +116,7 @@ public class PipeTerminateEvent extends EnrichedEvent {
     return true;
   }
 
-  @Override
-  public void reportProgress() {
+  public void markCompleted() {
     // To avoid deadlock
     if (shouldMark) {
       terminateExecutor.submit(

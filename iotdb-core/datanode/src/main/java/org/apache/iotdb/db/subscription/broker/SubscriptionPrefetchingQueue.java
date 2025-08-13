@@ -499,11 +499,7 @@ public abstract class SubscriptionPrefetchingQueue {
       if (event instanceof PipeTerminateEvent) {
         final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
         // add mark completed hook
-        terminateEvent.addOnCommittedHook(
-            () -> {
-              markCompleted();
-              return null;
-            });
+        terminateEvent.addOnCommittedHook(this::markCompleted);
         // commit directly
         ((PipeTerminateEvent) event)
             .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
@@ -619,11 +615,7 @@ public abstract class SubscriptionPrefetchingQueue {
     if (event instanceof PipeTerminateEvent) {
       final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
       // add mark completed hook
-      terminateEvent.addOnCommittedHook(
-          () -> {
-            markCompleted();
-            return null;
-          });
+      terminateEvent.addOnCommittedHook(this::markCompleted);
       // commit directly
       ((PipeTerminateEvent) event)
           .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);

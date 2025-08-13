@@ -160,6 +160,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
     // and can be sent.
     isClosed.set(resource.isClosed());
+
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            eliminateProgressIndex();
+          }
+        });
   }
 
   /**
@@ -318,12 +325,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       return overridingProgressIndex;
     }
     return resource.getMaxProgressIndex();
-  }
-
-  @Override
-  protected void reportProgress() {
-    super.reportProgress();
-    this.eliminateProgressIndex();
   }
 
   public void eliminateProgressIndex() {
