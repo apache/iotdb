@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 
 import org.slf4j.Logger;
@@ -46,38 +47,43 @@ public class IoTConsensusMemoryManager {
     if (prevRef == 0) {
       boolean reserved = reserve(request.getMemorySize(), true);
       if (reserved) {
-        logger.info(
-            "Reserving {} bytes for request {} succeeds, current total usage {}",
-            request.getMemorySize(),
-            request.getSearchIndex(),
-            memoryBlock.getUsedMemoryInBytes());
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "Reserving {} bytes for request {} succeeds, current total usage {}",
+              request.getMemorySize(),
+              request.getSearchIndex(),
+              memoryBlock.getUsedMemoryInBytes());
+        }
       } else {
-        logger.info(
-            "Reserving {} bytes for request {} fails, current total usage {}",
-            request.getMemorySize(),
-            request.getSearchIndex(),
-            memoryBlock.getUsedMemoryInBytes());
+        request.decRef();
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "Reserving {} bytes for request {} fails, current total usage {}",
+              request.getMemorySize(),
+              request.getSearchIndex(),
+              memoryBlock.getUsedMemoryInBytes());
+        }
       }
       return reserved;
-    } else {
-      logger.info(
+    } else if (logger.isDebugEnabled()) {
+      logger.debug(
           "Skip memory reservation for {} because its ref count is not 0",
           request.getSearchIndex());
-      return true;
     }
+    return true;
   }
 
   public boolean reserve(Batch batch) {
     boolean reserved = reserve(batch.getMemorySize(), false);
-    if (reserved) {
-      logger.info(
+    if (reserved && logger.isDebugEnabled()) {
+      logger.debug(
           "Reserving {} bytes for batch {}-{} succeeds, current total usage {}",
           batch.getMemorySize(),
           batch.getStartIndex(),
           batch.getEndIndex(),
           memoryBlock.getUsedMemoryInBytes());
-    } else {
-      logger.info(
+    } else if (logger.isDebugEnabled()) {
+      logger.debug(
           "Reserving {} bytes for batch {}-{} fails, current total usage {}",
           batch.getMemorySize(),
           batch.getStartIndex(),
@@ -106,22 +112,26 @@ public class IoTConsensusMemoryManager {
     long prevRef = request.decRef();
     if (prevRef == 1) {
       free(request.getMemorySize(), true);
-      logger.info(
-          "Freed {} bytes for request {}, current total usage {}",
-          request.getMemorySize(),
-          request.getSearchIndex(),
-          memoryBlock.getUsedMemoryInBytes());
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Freed {} bytes for request {}, current total usage {}",
+            request.getMemorySize(),
+            request.getSearchIndex(),
+            memoryBlock.getUsedMemoryInBytes());
+      }
     }
   }
 
   public void free(Batch batch) {
     free(batch.getMemorySize(), false);
-    logger.info(
-        "Freed {} bytes for batch {}-{}, current total usage {}",
-        batch.getMemorySize(),
-        batch.getStartIndex(),
-        batch.getEndIndex(),
-        getMemorySizeInByte());
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Freed {} bytes for batch {}-{}, current total usage {}",
+          batch.getMemorySize(),
+          batch.getStartIndex(),
+          batch.getEndIndex(),
+          getMemorySizeInByte());
+    }
   }
 
   private void free(long size, boolean fromQueue) {
@@ -141,6 +151,28 @@ public class IoTConsensusMemoryManager {
   public void init(IMemoryBlock memoryBlock, double maxMemoryRatioForQueue) {
     this.memoryBlock = memoryBlock;
     this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
+  }
+
+  @TestOnly
+  public void reset() {
+    this.memoryBlock.release(this.memoryBlock.getUsedMemoryInBytes());
+    this.queueMemorySizeInByte.set(0);
+    this.syncMemorySizeInByte.set(0);
+  }
+
+  @TestOnly
+  public IMemoryBlock getMemoryBlock() {
+    return memoryBlock;
+  }
+
+  @TestOnly
+  public void setMemoryBlock(IMemoryBlock memoryBlock) {
+    this.memoryBlock = memoryBlock;
+  }
+
+  @TestOnly
+  public Double getMaxMemoryRatioForQueue() {
+    return maxMemoryRatioForQueue;
   }
 
   long getMemorySizeInByte() {
