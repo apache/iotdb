@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.agent.task.stage;
 
+import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
@@ -59,7 +61,11 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
     this.connectorSubtaskId =
         PipeConnectorSubtaskManager.instance()
             .register(
-                executor,
+                // IoTV2 uses global singleton executor pool.
+                pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+                    ? (PipeConnectorSubtaskExecutor)
+                        IoTV2GlobalComponentContainer.getInstance().getConsensusExecutor()
+                    : executor.get(),
                 pipeConnectorParameters,
                 new PipeTaskConnectorRuntimeEnvironment(pipeName, creationTime, regionId));
   }

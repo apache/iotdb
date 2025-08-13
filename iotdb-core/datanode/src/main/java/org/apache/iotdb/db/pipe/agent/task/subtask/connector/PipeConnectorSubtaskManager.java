@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 public class PipeConnectorSubtaskManager {
 
@@ -63,7 +62,7 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      final Supplier<? extends PipeConnectorSubtaskExecutor> executorSupplier,
+      final PipeConnectorSubtaskExecutor executor,
       final PipeParameters pipeConnectorParameters,
       final PipeTaskConnectorRuntimeEnvironment environment) {
     final String connectorKey =
@@ -113,8 +112,6 @@ public class PipeConnectorSubtaskManager {
     environment.setAttributeSortedString(attributeSortedString);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      final PipeConnectorSubtaskExecutor executor = executorSupplier.get();
-
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 

@@ -4038,7 +4038,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.directBufferMemoryCost = acquireDirectBufferMemCost;
   }
 
-  private static long getAcquireDirectBufferMemCost() {
+  public static long getAcquireDirectBufferMemCost() {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
         || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
