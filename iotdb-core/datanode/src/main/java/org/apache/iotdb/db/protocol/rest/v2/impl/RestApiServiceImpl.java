@@ -205,20 +205,18 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      String statementType =
+
+      StatementType statementType =
           Optional.ofNullable(statement)
-              .map(s -> s.getType().name())
-              .orElse(StatementType.FAST_LAST_QUERY.name());
+              .map(s -> s.getType())
+              .orElse(StatementType.FAST_LAST_QUERY);
 
       CommonUtils.addStatementExecutionLatency(
-          OperationType.EXECUTE_QUERY_STATEMENT, statementType, costTime);
+          OperationType.EXECUTE_QUERY_STATEMENT, statementType.name(), costTime);
+      if (finish) {
+        CommonUtils.addQueryLatency(statementType, costTime);
+      }
       if (queryId != null) {
-        if (finish) {
-          long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
-          CommonUtils.addQueryLatency(
-              statement != null ? statement.getType() : null,
-              executionTime > 0 ? executionTime : costTime);
-        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
