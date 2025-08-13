@@ -108,7 +108,8 @@ public class QueryContext {
           resource.getTsFileID(), k -> loadAllModificationsFromDisk(resource));
     }
     FragmentInstanceContext fragmentInstanceContext = (FragmentInstanceContext) this;
-    if (fragmentInstanceContext.isSingleSourcePath()) {
+    if (fragmentInstanceContext.isSingleSourcePath()
+        || fragmentInstanceContext.getMemoryReservationContext() == null) {
       return loadAllModificationsFromDisk(resource);
     }
 
