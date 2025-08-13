@@ -134,7 +134,7 @@ public class RemoteServerEnv implements BaseEnv {
       connection =
           DriverManager.getConnection(
               Config.IOTDB_URL_PREFIX + ip_addr + ":" + port,
-              BaseEnv.constructProperties(this.user, this.password, sqlDialect));
+              BaseEnv.constructProperties(username, password, sqlDialect));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       throw new AssertionError();
@@ -225,7 +225,7 @@ public class RemoteServerEnv implements BaseEnv {
         .maxSize(maxSize)
         .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
         .waitToGetSessionTimeoutInMs(60_000)
-        .enableCompression(false)
+        .enableIoTDBRpcCompression(false)
         .zoneId(null)
         .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
         .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
@@ -246,7 +246,7 @@ public class RemoteServerEnv implements BaseEnv {
         .maxSize(maxSize)
         .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
         .waitToGetSessionTimeoutInMs(60_000)
-        .enableCompression(false)
+        .enableThriftCompression(false)
         .zoneId(null)
         .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
         .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
@@ -267,7 +267,7 @@ public class RemoteServerEnv implements BaseEnv {
         .maxSize(maxSize)
         .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
         .waitToGetSessionTimeoutInMs(60_000)
-        .enableCompression(false)
+        .enableThriftCompression(false)
         .zoneId(null)
         .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
         .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)

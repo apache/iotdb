@@ -57,6 +57,7 @@ public class IoTDBAuthenticationTableIT {
   @BeforeClass
   public static void setUpClass() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -134,16 +135,16 @@ public class IoTDBAuthenticationTableIT {
       }
 
       // test users
-      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA'");
-      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB1234567'");
       // grant an irrelevant privilege so that the new users can use database
       sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userA");
       sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userB");
 
       try (ITableSession sessionA =
-              EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
+              EnvFactory.getEnv().getTableSessionConnection("userA", "userA1234567");
           ITableSession sessionB =
-              EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
+              EnvFactory.getEnv().getTableSessionConnection("userB", "userB1234567")) {
         sessionA.executeNonQueryStatement("USE \"汉化\"");
         sessionB.executeNonQueryStatement("USE \"汉化\"");
         // userA no privilege
@@ -386,17 +387,17 @@ public class IoTDBAuthenticationTableIT {
       }
 
       // test role
-      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC'");
-      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD1234567'");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role1");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role2");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role1 TO userC");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role2 TO userD");
 
       try (ITableSession sessionC =
-              EnvFactory.getEnv().getTableSessionConnection("userC", "userC");
+              EnvFactory.getEnv().getTableSessionConnection("userC", "userC1234567");
           ITableSession sessionD =
-              EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
+              EnvFactory.getEnv().getTableSessionConnection("userD", "userD1234567")) {
         // grant an irrelevant privilege so that the new users can use database
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userC");
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userD");
@@ -648,13 +649,13 @@ public class IoTDBAuthenticationTableIT {
       }
 
       // test users
-      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA'");
-      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB1234567'");
 
       try (ITableSession sessionA =
-              EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
+              EnvFactory.getEnv().getTableSessionConnection("userA", "userA1234567");
           ITableSession sessionB =
-              EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
+              EnvFactory.getEnv().getTableSessionConnection("userB", "userB1234567")) {
         // grant an irrelevant privilege so that the new users can use database
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userA");
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userB");
@@ -828,17 +829,17 @@ public class IoTDBAuthenticationTableIT {
       }
 
       // test role
-      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC'");
-      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD1234567'");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role1");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role2");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role1 TO userC");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role2 TO userD");
 
       try (ITableSession sessionC =
-              EnvFactory.getEnv().getTableSessionConnection("userC", "userC");
+              EnvFactory.getEnv().getTableSessionConnection("userC", "userC1234567");
           ITableSession sessionD =
-              EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
+              EnvFactory.getEnv().getTableSessionConnection("userD", "userD1234567")) {
         // grant an irrelevant privilege so that the new users can use database
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userC");
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userD");
@@ -1028,7 +1029,7 @@ public class IoTDBAuthenticationTableIT {
   @Test
   public void testTableAuth() throws Exception {
     File tmpDir = new File(Files.createTempDirectory("load").toUri());
-    createUser("test", "test123");
+    createUser("test", "test123123456");
 
     final TsFileResource resource4 = new TsFileResource(new File(tmpDir, "test1-0-0-0.tsfile"));
     try (final CompactionTableModelTestFileWriter writer =
@@ -1050,7 +1051,7 @@ public class IoTDBAuthenticationTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "test123123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       Assert.assertThrows(
           SQLException.class,
@@ -1068,7 +1069,7 @@ public class IoTDBAuthenticationTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "test123123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       Assert.assertThrows(
           SQLException.class,
@@ -1086,7 +1087,7 @@ public class IoTDBAuthenticationTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "test123123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       userStmt.execute(
           String.format(

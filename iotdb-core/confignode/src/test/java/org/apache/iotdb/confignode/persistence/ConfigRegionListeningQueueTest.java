@@ -75,7 +75,7 @@ public class ConfigRegionListeningQueueTest {
                 ConfigPhysicalPlanType.CreateUser,
                 "user0",
                 "",
-                "passwd",
+                "passwd123456",
                 "",
                 new HashSet<>(),
                 false,

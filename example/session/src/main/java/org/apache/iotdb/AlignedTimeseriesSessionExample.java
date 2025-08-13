@@ -65,6 +65,7 @@ public class AlignedTimeseriesSessionExample {
 
     //    createTemplate();
     createAlignedTimeseries();
+    createAlignedTimeseriesWithNullPartical();
 
     insertAlignedRecord();
     //    insertAlignedRecords();
@@ -274,6 +275,50 @@ public class AlignedTimeseriesSessionExample {
     }
     session.createAlignedTimeseries(
         ROOT_SG1_D1, measurements, dataTypes, encodings, compressors, null, null, null);
+  }
+
+  private static void createAlignedTimeseriesWithNullPartical()
+      throws StatementExecutionException, IoTDBConnectionException {
+    List<String> measurements = new ArrayList<>();
+    for (int i = 3; i <= 4; i++) {
+      measurements.add("s" + i);
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.INT32);
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+    for (int i = 3; i <= 4; i++) {
+      encodings.add(TSEncoding.RLE);
+      compressors.add(CompressionType.SNAPPY);
+    }
+
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("unit", "kg");
+    tagsList.add(tags);
+    tagsList.add(null);
+
+    List<Map<String, String>> attributesList = new ArrayList<>();
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("minValue", "1");
+    attributes.put("maxValue", "100");
+    attributesList.add(attributes);
+    attributesList.add(null);
+
+    List<String> alias = new ArrayList<>();
+    alias.add("weight33");
+    alias.add(null);
+
+    session.createAlignedTimeseries(
+        ROOT_SG1_D1,
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        alias,
+        tagsList,
+        attributesList);
   }
 
   // be sure template is coordinate with tablet

@@ -169,6 +169,8 @@ public class TTLInfo implements SnapshotProcessor {
     lock.readLock().lock();
     try {
       return ttlCache.getDatabaseMaxTTL(database);
+    } catch (IllegalPathException e) {
+      return TTLCache.NULL_TTL;
     } finally {
       lock.readLock().unlock();
     }

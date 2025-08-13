@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
@@ -1098,6 +1099,15 @@ public class QueryPlanner {
             new ProjectNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), assignments.build()));
 
     return new PlanAndMappings(subPlan, mappings);
+  }
+
+  public static List<Symbol> visibleFields(RelationPlan subPlan) {
+    RelationType descriptor = subPlan.getDescriptor();
+    return descriptor.getAllFields().stream()
+        .filter(field -> !field.isHidden())
+        .map(descriptor::indexOf)
+        .map(subPlan.getFieldMappings()::get)
+        .collect(toImmutableList());
   }
 
   public static OrderingScheme translateOrderingScheme(

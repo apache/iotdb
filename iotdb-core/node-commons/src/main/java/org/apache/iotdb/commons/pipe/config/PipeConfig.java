@@ -217,10 +217,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxTsFileClientNumber();
   }
 
-  public double getPipeSendTsFileRateLimitBytesPerSecond() {
-    return COMMON_CONFIG.getPipeSendTsFileRateLimitBytesPerSecond();
-  }
-
   public double getPipeAllConnectorsRateLimitBytesPerSecond() {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
@@ -289,6 +285,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTransferTsFileSync();
   }
 
+  public long getPipeCheckAllSyncClientLiveTimeIntervalMs() {
+    return COMMON_CONFIG.getPipeCheckAllSyncClientLiveTimeIntervalMs();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -339,18 +339,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes();
   }
 
-  /////////////////////////////// Hybrid Mode ///////////////////////////////
-
-  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
-    return COMMON_CONFIG.getPipeMaxAllowedHistoricalTsFilePerDataRegion();
-  }
-
-  public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
-    return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
-  }
-
-  public long getPipeMaxAllowedLinkedTsFileCount() {
-    return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
+  public boolean isPipeReceiverLoadConversionEnabled() {
+    return COMMON_CONFIG.isPipeReceiverLoadConversionEnabled();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -512,6 +502,9 @@ public class PipeConfig {
         "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountEMAAlpha());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
     LOGGER.info("PipeTransferTsFileSync: {}", isTransferTsFileSync());
+    LOGGER.info(
+        "PipeCheckAllSyncClientLiveTimeIntervalMs: {}",
+        getPipeCheckAllSyncClientLiveTimeIntervalMs());
 
     LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());
     LOGGER.info(
@@ -544,8 +537,6 @@ public class PipeConfig {
         "PipeAsyncConnectorMaxTsFileClientNumber: {}",
         getPipeAsyncConnectorMaxTsFileClientNumber());
 
-    LOGGER.info(
-        "PipeSendTsFileRateLimitBytesPerSecond: {}", getPipeSendTsFileRateLimitBytesPerSecond());
     LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
         getPipeAllConnectorsRateLimitBytesPerSecond());
@@ -580,14 +571,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
         getPipeReceiverReqDecompressedMaxLengthInBytes());
-
-    LOGGER.info(
-        "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
-        getPipeMaxAllowedHistoricalTsFilePerDataRegion());
-    LOGGER.info(
-        "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
-        getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
-    LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
+    LOGGER.info("PipeReceiverLoadConversionEnabled: {}", isPipeReceiverLoadConversionEnabled());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

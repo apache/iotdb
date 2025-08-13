@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree.node;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -29,6 +30,9 @@ import java.util.Iterator;
 import java.util.Map;
 
 public class SchemaInternalNode extends SchemaNode {
+
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SchemaInternalNode.class);
 
   protected Map<String, SchemaNode> children = new HashMap<>();
 
@@ -85,7 +89,10 @@ public class SchemaInternalNode extends SchemaNode {
 
   public void serialize(OutputStream outputStream) throws IOException {
     serializeChildren(outputStream);
+    serializeNodeOwnContent(outputStream);
+  }
 
+  public void serializeNodeOwnContent(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(getType(), outputStream);
     ReadWriteIOUtils.write(name, outputStream);
     ReadWriteIOUtils.write(children.size(), outputStream);
@@ -101,5 +108,15 @@ public class SchemaInternalNode extends SchemaNode {
     String name = ReadWriteIOUtils.readString(inputStream);
 
     return new SchemaInternalNode(name);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + RamUsageEstimator.sizeOf(name)
+        + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+            children,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
   }
 }

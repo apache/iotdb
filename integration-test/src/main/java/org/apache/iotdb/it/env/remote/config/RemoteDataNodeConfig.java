@@ -88,4 +88,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    return this;
+  }
 }

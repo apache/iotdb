@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
@@ -77,11 +78,12 @@ public class AuthorInfo implements SnapshotProcessor {
   private static final String NO_USER_MSG = "No such user : ";
 
   private IAuthorizer authorizer;
+  private ConfigManager configManager;
 
-  public AuthorInfo() {
+  public AuthorInfo(ConfigManager configManager) {
     try {
       authorizer = BasicAuthorizer.getInstance();
-
+      this.configManager = configManager;
     } catch (AuthException e) {
       LOGGER.error("get user or role permissionInfo failed because ", e);
     }
@@ -648,6 +650,18 @@ public class AuthorInfo implements SnapshotProcessor {
     } else {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_HAS_ROLE));
     }
+    return result;
+  }
+
+  public TPermissionInfoResp getUser(String username) throws AuthException {
+    TPermissionInfoResp result;
+    User user = authorizer.getUser(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
+    }
+    result = getUserPermissionInfo(username, ModelType.ALL);
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
   }
 

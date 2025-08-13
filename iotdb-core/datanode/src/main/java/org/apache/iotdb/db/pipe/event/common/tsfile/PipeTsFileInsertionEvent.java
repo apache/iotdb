@@ -35,11 +35,11 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -207,6 +207,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     isClosed.set(resource.isClosed());
 
     this.eventParser = new AtomicReference<>(null);
+
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            eliminateProgressIndex();
+          }
+        });
   }
 
   /**
@@ -337,7 +344,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeSinglePipeMetrics.getInstance()
-            .decreaseTsFileEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
+            .decreaseTsFileEventCount(
+                pipeName,
+                creationTime,
+                shouldReportOnCommit ? System.nanoTime() - extractTime : -1);
       }
     }
   }
@@ -366,12 +376,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       return overridingProgressIndex;
     }
     return resource.getMaxProgressIndex();
-  }
-
-  @Override
-  protected void reportProgress() {
-    super.reportProgress();
-    this.eliminateProgressIndex();
   }
 
   public void eliminateProgressIndex() {

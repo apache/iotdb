@@ -36,7 +36,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
@@ -1302,13 +1302,6 @@ public class TsFileProcessor {
       tsFileResource.setGeneratedByPipe(isTotallyGeneratedByPipe.get());
 
       try {
-        PipeInsertionDataNodeListener.getInstance()
-            .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(),
-                dataRegionInfo.getDataRegion().getDatabaseName(),
-                tsFileResource,
-                false);
-
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
@@ -1723,7 +1716,7 @@ public class TsFileProcessor {
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
-      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos());
+      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos(), dataRegionId);
     } catch (IOException e) {
       logger.error(
           "{}: {} update compression ratio failed",
@@ -1832,6 +1825,7 @@ public class TsFileProcessor {
                   deviceID,
                   measurement,
                   filePath,
+                  tsFileResource.getTsFileID(),
                   false,
                   valueChunkMetaData.getOffsetOfChunkHeader(),
                   valueChunkMetaData.getStatistics(),
@@ -1856,6 +1850,7 @@ public class TsFileProcessor {
                 deviceID,
                 measurement,
                 filePath,
+                tsFileResource.getTsFileID(),
                 false,
                 chunkMetadata.getOffsetOfChunkHeader(),
                 chunkMetadata.getStatistics()));
@@ -2340,5 +2335,10 @@ public class TsFileProcessor {
       logger.debug(
           "{}: {} release flushQueryLock", dataRegionName, tsFileResource.getTsFile().getName());
     }
+  }
+
+  @Override
+  public String toString() {
+    return "TsFileProcessor{" + "tsFileResource=" + tsFileResource + '}';
   }
 }

@@ -37,6 +37,7 @@ public abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT
         .getConfig()
         .getCommonConfig()
         .setSubscriptionEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     EnvFactory.getEnv().initClusterEnvironment();

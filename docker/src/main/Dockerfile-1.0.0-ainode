@@ -62,8 +62,5 @@ ENV PATH="${IOTDB_AINODE_HOME}/sbin/:${IOTDB_AINODE_HOME}/tools/:${PATH}"
 RUN bash start-ainode.sh || true
 RUN rm -r ${IOTDB_AINODE_HOME}/logs/*
 
-EXPOSE 10810
-VOLUME $IOTDB_AINODE_HOME/logs
-
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["bash", "-c", "entrypoint.sh ainode"]

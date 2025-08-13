@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
@@ -128,7 +129,7 @@ public class RestApiServiceImpl extends RestApiService {
       }
       // Check cache first
       if (!TableDeviceSchemaCache.getInstance().getLastCache(resultMap)) {
-        IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+        IClientSession clientSession = SESSION_MANAGER.getCurrSession();
         TSLastDataQueryReq tsLastDataQueryReq =
             FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
         statement = StatementGenerator.createStatement(tsLastDataQueryReq);
@@ -204,18 +205,18 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      Optional.ofNullable(statement)
-          .ifPresent(
-              s ->
-                  CommonUtils.addStatementExecutionLatency(
-                      OperationType.EXECUTE_QUERY_STATEMENT, s.getType().name(), costTime));
+
+      StatementType statementType =
+          Optional.ofNullable(statement)
+              .map(s -> s.getType())
+              .orElse(StatementType.FAST_LAST_QUERY);
+
+      CommonUtils.addStatementExecutionLatency(
+          OperationType.EXECUTE_QUERY_STATEMENT, statementType.name(), costTime);
+      if (finish) {
+        CommonUtils.addQueryLatency(statementType, costTime);
+      }
       if (queryId != null) {
-        if (finish) {
-          long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
-          CommonUtils.addQueryLatency(
-              statement != null ? statement.getType() : null,
-              executionTime > 0 ? executionTime : costTime);
-        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }

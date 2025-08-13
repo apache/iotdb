@@ -57,6 +57,7 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
         .getConfig()
         .getCommonConfig()
         .setSubscriptionEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
     EnvFactory.getEnv().initClusterEnvironment();
 

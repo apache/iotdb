@@ -76,7 +76,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
-        .setDataReplicationFactor(dataRegionReplicationFactor);
+        .setDataReplicationFactor(dataRegionReplicationFactor)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -85,11 +88,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(schemaRegionConsensus)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
-        .setDataReplicationFactor(dataRegionReplicationFactor);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(dataRegionReplicationFactor)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
     receiverEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
@@ -170,7 +172,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
+        .setDataReplicationFactor(2)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -179,11 +184,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(1)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment(3, 3);
     receiverEnv.initClusterEnvironment(1, 1);
@@ -379,7 +383,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setDataReplicationFactor(1)
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -389,11 +396,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(2)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment(1, 1);
     receiverEnv.initClusterEnvironment(1, 3);

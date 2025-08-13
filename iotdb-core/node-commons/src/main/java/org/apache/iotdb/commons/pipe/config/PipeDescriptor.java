@@ -432,22 +432,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_req_decompressed_max_length_in_bytes",
                 String.valueOf(config.getPipeReceiverReqDecompressedMaxLengthInBytes()))));
-
-    config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
-        Integer.parseInt(
+    config.setPipeReceiverLoadConversionEnabled(
+        Boolean.parseBoolean(
             properties.getProperty(
-                "pipe_max_allowed_historical_tsfile_per_data_region",
-                String.valueOf(config.getPipeMaxAllowedHistoricalTsFilePerDataRegion()))));
-    config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
-                String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
-    config.setPipeMaxAllowedLinkedTsFileCount(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_max_allowed_linked_tsfile_count",
-                String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
+                "pipe_receiver_load_conversion_enabled",
+                String.valueOf(config.isPipeReceiverLoadConversionEnabled()))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
@@ -494,6 +483,11 @@ public class PipeDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_transfer_tsfile_sync", String.valueOf(config.getPipeTransferTsFileSync()))));
+    config.setPipeCheckAllSyncClientLiveTimeIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_check_all_sync_client_live_time_interval_ms",
+                String.valueOf(config.getPipeCheckAllSyncClientLiveTimeIntervalMs()))));
 
     config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
         Long.parseLong(
@@ -582,12 +576,6 @@ public class PipeDescriptor {
             isHotModify);
     if (value != null) {
       config.setPipeAsyncConnectorMaxTsFileClientNumber(Integer.parseInt(value));
-    }
-
-    value =
-        parserPipeConfig(properties, "pipe_send_tsfile_rate_limit_bytes_per_second", isHotModify);
-    if (value != null) {
-      config.setPipeSendTsFileRateLimitBytesPerSecond(Double.parseDouble(value));
     }
 
     value = parserPipeConfig(properties, "pipe_all_sinks_rate_limit_bytes_per_second", isHotModify);
