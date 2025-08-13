@@ -1092,6 +1092,12 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+
+    conf.setIncludeNullValueInWriteThroughputMetric(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "include_null_value_in_write_throughput_metric",
+                String.valueOf(conf.isIncludeNullValueInWriteThroughputMetric()))));
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -2086,6 +2092,13 @@ public class IoTDBDescriptor {
 
       loadFixedSizeLimitForQuery(
           properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
+
+      conf.setIncludeNullValueInWriteThroughputMetric(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "include_null_value_in_write_throughput_metric",
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "include_null_value_in_write_throughput_metric"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

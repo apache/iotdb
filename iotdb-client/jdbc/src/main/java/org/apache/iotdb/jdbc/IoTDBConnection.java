@@ -59,7 +59,9 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -574,7 +576,7 @@ public class IoTDBConnection implements Connection {
       this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
-            "Protocol differ, Client version is {}}, but Server version is {}",
+            "Protocol differ, Client version is {}, but Server version is {}",
             protocolVersion.getValue(),
             openResp.getServerProtocolVersion().getValue());
         if (openResp.getServerProtocolVersion().getValue() == 0) { // less than 0.10
@@ -584,7 +586,21 @@ public class IoTDBConnection implements Connection {
                   protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
         }
       }
-      logger.info(openResp.getStatus().getMessage());
+      String expirationInformer = "Your password will expire at ";
+      String message = openResp.getStatus().getMessage();
+      int expirationIndex = message.indexOf(expirationInformer);
+      if (expirationIndex != -1) {
+        String expirationDateStr = message.substring(expirationIndex + expirationInformer.length());
+        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime expirationDate = LocalDateTime.from(dateFormat.parse(expirationDateStr));
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isAfter(expirationDate.minusDays(3))) {
+          logger.warn(
+              "{}{}, please change it in time via 'ALTER USER' statement",
+              expirationInformer,
+              expirationDateStr);
+        }
+      }
     } catch (TException e) {
       transport.close();
       if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
