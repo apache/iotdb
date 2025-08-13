@@ -24,8 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.interval.PipeCommitQueue;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.junit.Assert;
@@ -60,19 +59,10 @@ public class PipeCommitQueueTest {
   }
 
   private class TestEnrichedEvent extends EnrichedEvent {
-    private ProgressIndex progressIndex;
+    private final ProgressIndex progressIndex;
 
     private TestEnrichedEvent(final long commitId, final ProgressIndex progressIndex) {
-      this(
-          null,
-          0,
-          PipeCommitQueueTest.this.pipeTaskMeta,
-          null,
-          null,
-          null,
-          false,
-          Long.MIN_VALUE,
-          Long.MAX_VALUE);
+      super(null, 0, PipeCommitQueueTest.this.pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
       this.commitId = commitId;
       this.progressIndex = progressIndex;
     }
@@ -83,28 +73,6 @@ public class PipeCommitQueueTest {
     }
 
     /////////////////////////////// Useless logic ///////////////////////////////
-
-    protected TestEnrichedEvent(
-        final String pipeName,
-        final long creationTime,
-        final PipeTaskMeta pipeTaskMeta,
-        final TreePattern treePattern,
-        final TablePattern tablePattern,
-        final String userName,
-        final boolean skipIfNoPrivileges,
-        final long startTime,
-        final long endTime) {
-      super(
-          pipeName,
-          creationTime,
-          pipeTaskMeta,
-          treePattern,
-          tablePattern,
-          userName,
-          skipIfNoPrivileges,
-          startTime,
-          endTime);
-    }
 
     @Override
     public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
@@ -118,15 +86,12 @@ public class PipeCommitQueueTest {
 
     @Override
     public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-        final String pipeName,
-        final long creationTime,
-        final PipeTaskMeta pipeTaskMeta,
-        final TreePattern treePattern,
-        final TablePattern tablePattern,
-        final String userName,
-        final boolean skipIfNoPrivileges,
-        final long startTime,
-        final long endTime) {
+        String pipeName,
+        long creationTime,
+        PipeTaskMeta pipeTaskMeta,
+        PipePattern pattern,
+        long startTime,
+        long endTime) {
       return null;
     }
 
