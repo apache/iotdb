@@ -179,6 +179,9 @@ public abstract class ModEntry
     }
 
     public static ModType deserialize(InputStream stream) throws IOException {
+      // The ModIterator needs to use this EOFException to determine whether it has finished
+      // reading. And we should not use InputStream.available() to make this judgments outside,
+      // because calling it frequently will have a certain overhead.
       int typeNum = stream.read();
       if (typeNum == -1) {
         throw new EOFException();
