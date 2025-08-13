@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.Abstract
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceChunkMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -117,7 +118,8 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public Iterator<AbstractDeviceChunkMetaData> getAllDeviceChunkMetaData() throws IOException {
 
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(getFilePath(), true);
+    TsFileSequenceReader tsFileReader =
+        FileReaderManager.getInstance().get(getFilePath(), tsFileResource.getTsFileID(), true);
     TsFileDeviceIterator deviceIterator = tsFileReader.getAllDevicesIteratorWithIsAligned();
 
     List<AbstractDeviceChunkMetaData> deviceChunkMetaDataList = new LinkedList<>();
@@ -170,10 +172,12 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
       List<Statistics<? extends Serializable>> statisticsList,
       List<Integer> orderedIndexList) {
     String filePath = tsFileResource.getTsFilePath();
+    TsFileID tsFileID = tsFileResource.getTsFileID();
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
     for (int i : orderedIndexList) {
       AbstractChunkOffset chunkOffset = chunkInfoList.get(i);
-      chunkHandleList.add(chunkOffset.generateChunkHandle(filePath, statisticsList.get(i)));
+      chunkHandleList.add(
+          chunkOffset.generateChunkHandle(filePath, tsFileID, statisticsList.get(i)));
     }
     return chunkHandleList.iterator();
   }
