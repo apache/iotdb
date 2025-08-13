@@ -124,7 +124,9 @@ public class QueryContext {
               if (cachedModEntriesSize.get() >= config.getModsCacheSizeLimitPerFI()) {
                 return null;
               }
-              long memCost = RamUsageEstimator.sizeOfObject(allMods);
+              long memCost =
+                  RamUsageEstimator.sizeOfObject(allMods)
+                      + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP;
               long alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
               while (alreadyUsedMemoryForCachedModEntries + memCost
                   < config.getModsCacheSizeLimitPerFI()) {
