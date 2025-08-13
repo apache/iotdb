@@ -350,7 +350,7 @@ public class FragmentInstanceContext extends QueryContext {
               }
               long memCost =
                   RamUsageEstimator.sizeOfObject(allMods)
-                      + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP;
+                      + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY;
               long alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
               while (alreadyUsedMemoryForCachedModEntries + memCost
                   < config.getModsCacheSizeLimitPerFI()) {
