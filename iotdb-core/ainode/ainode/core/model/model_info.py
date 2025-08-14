@@ -15,59 +15,53 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from enum import Enum
-from typing import List
+import glob
+import os
+
+from ainode.core.constant import (
+    MODEL_CONFIG_FILE_IN_JSON,
+    MODEL_CONFIG_FILE_IN_YAML,
+    MODEL_WEIGHTS_FILE_IN_PT,
+    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+)
+from ainode.core.model.model_enums import (
+    BuiltInModelType,
+    ModelCategory,
+    ModelFileType,
+    ModelStates,
+)
 
 
-class BuiltInModelType(Enum):
-    # forecast models
-    ARIMA = "Arima"
-    HOLTWINTERS = "HoltWinters"
-    EXPONENTIAL_SMOOTHING = "ExponentialSmoothing"
-    NAIVE_FORECASTER = "NaiveForecaster"
-    STL_FORECASTER = "StlForecaster"
+def get_model_file_type(model_path: str) -> ModelFileType:
+    """
+    Determine the file type of the specified model directory.
+    """
+    if _has_safetensors_format(model_path):
+        return ModelFileType.SAFETENSORS
+    elif _has_pytorch_format(model_path):
+        return ModelFileType.PYTORCH
+    else:
+        return ModelFileType.UNKNOWN
 
-    # anomaly detection models
-    GAUSSIAN_HMM = "GaussianHmm"
-    GMM_HMM = "GmmHmm"
-    STRAY = "Stray"
 
-    # large time series models (LTSM)
-    TIMER_XL = "Timer-XL"
-    # sundial
-    SUNDIAL = "Timer-Sundial"
+def _has_safetensors_format(path: str) -> bool:
+    """Check if directory contains safetensors files."""
+    safetensors_files = glob.glob(os.path.join(path, MODEL_WEIGHTS_FILE_IN_SAFETENSORS))
+    json_files = glob.glob(os.path.join(path, MODEL_CONFIG_FILE_IN_JSON))
+    return len(safetensors_files) > 0 and len(json_files) > 0
 
-    @classmethod
-    def values(cls) -> List[str]:
-        return [item.value for item in cls]
 
-    @staticmethod
-    def is_built_in_model(model_type: str) -> bool:
-        """
-        Check if the given model type corresponds to a built-in model.
-        """
-        return model_type in BuiltInModelType.values()
+def _has_pytorch_format(path: str) -> bool:
+    """Check if directory contains pytorch files."""
+    pt_files = glob.glob(os.path.join(path, MODEL_WEIGHTS_FILE_IN_PT))
+    yaml_files = glob.glob(os.path.join(path, MODEL_CONFIG_FILE_IN_YAML))
+    return len(pt_files) > 0 and len(yaml_files) > 0
 
 
 def get_built_in_model_type(model_type: str) -> BuiltInModelType:
     if not BuiltInModelType.is_built_in_model(model_type):
         raise ValueError(f"Invalid built-in model type: {model_type}")
     return BuiltInModelType(model_type)
-
-
-class ModelCategory(Enum):
-    BUILT_IN = "BUILT-IN"
-    FINE_TUNED = "FINE-TUNED"
-    USER_DEFINED = "USER-DEFINED"
-
-
-class ModelStates(Enum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    LOADING = "LOADING"
-    DROPPING = "DROPPING"
-    TRAINING = "TRAINING"
-    FAILED = "FAILED"
 
 
 class ModelInfo:

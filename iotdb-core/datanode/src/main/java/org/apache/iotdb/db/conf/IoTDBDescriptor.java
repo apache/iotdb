@@ -1027,10 +1027,7 @@ public class IoTDBDescriptor {
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // The buffer for sort operator to calculate
-    conf.setSortBufferSize(
-        Long.parseLong(
-            properties.getProperty(
-                "sort_buffer_size_in_bytes", Long.toString(conf.getSortBufferSize()))));
+    loadSortBuffer(properties);
 
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
@@ -1091,6 +1088,32 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+
+    conf.setIncludeNullValueInWriteThroughputMetric(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "include_null_value_in_write_throughput_metric",
+                String.valueOf(conf.isIncludeNullValueInWriteThroughputMetric()))));
+  }
+
+  private void loadSortBuffer(TrimProperties properties) {
+    long defaultValue = calculateDefaultSortBufferSize(memoryConfig);
+    long sortBufferSize =
+        Long.parseLong(
+            properties.getProperty("sort_buffer_size_in_bytes", Long.toString(defaultValue)));
+    if (sortBufferSize <= 0) {
+      sortBufferSize = defaultValue;
+    }
+    // The buffer for sort operator to calculate
+    conf.setSortBufferSize(sortBufferSize);
+  }
+
+  public static long calculateDefaultSortBufferSize(DataNodeMemoryConfig memoryConfig) {
+    return Math.min(
+        32 * 1024 * 1024L,
+        memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
+            / memoryConfig.getQueryThreadCount()
+            / 2);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -2064,6 +2087,16 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "tvlist_sort_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
+
+      // sort_buffer_size_in_bytes
+      loadSortBuffer(properties);
+
+      conf.setIncludeNullValueInWriteThroughputMetric(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "include_null_value_in_write_throughput_metric",
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "include_null_value_in_write_throughput_metric"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

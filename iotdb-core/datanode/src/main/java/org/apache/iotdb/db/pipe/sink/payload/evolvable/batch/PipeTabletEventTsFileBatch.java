@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTableModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTreeModelTsFileBuilderV2;
@@ -59,7 +58,18 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final Map<Pair<String, Long>, Double> pipeName2WeightMap = new HashMap<>();
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    super(maxDelayInMs, requestMaxBatchSizeInBytes);
+    super(maxDelayInMs, requestMaxBatchSizeInBytes, null);
+
+    final AtomicLong tsFileIdGenerator = new AtomicLong(0);
+    treeModeTsFileBuilder = new PipeTreeModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
+    tableModeTsFileBuilder = new PipeTableModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
+  }
+
+  public PipeTabletEventTsFileBatch(
+      final int maxDelayInMs,
+      final long requestMaxBatchSizeInBytes,
+      final TriLongConsumer recordMetric) {
+    super(maxDelayInMs, requestMaxBatchSizeInBytes, recordMetric);
 
     final AtomicLong tsFileIdGenerator = new AtomicLong(0);
     treeModeTsFileBuilder = new PipeTreeModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
@@ -124,12 +134,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           event.getClass());
     }
     return true;
-  }
-
-  @Override
-  protected void recordMetric(long timeInterval, long bufferSize) {
-    PipeDataRegionSinkMetrics.tsFileBatchTimeIntervalHistogram.update(timeInterval);
-    PipeDataRegionSinkMetrics.tsFileBatchSizeHistogram.update(bufferSize);
   }
 
   private void bufferTreeModelTablet(

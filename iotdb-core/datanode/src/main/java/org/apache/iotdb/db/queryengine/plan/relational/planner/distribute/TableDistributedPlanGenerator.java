@@ -41,10 +41,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -62,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
@@ -89,6 +93,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pus
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
@@ -97,6 +103,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
@@ -119,10 +126,14 @@ import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind.AGGREGATE;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TransformSortToStreamSort.isOrderByAllIdsAndTime;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
 import static org.apache.tsfile.utils.Preconditions.checkArgument;
 
 /** This class is used to generate distributed plan for table model. */
@@ -197,6 +208,62 @@ public class TableDistributedPlanGenerator
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
+  }
+
+  @Override
+  public List<PlanNode> visitInto(final IntoNode node, final PlanContext context) {
+    final List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    }
+
+    List<PlanNode> resultNodeList = new ArrayList<>();
+    for (PlanNode child : childrenNodes) {
+      IntoNode subIntoNode =
+          new IntoNode(
+              queryId.genPlanNodeId(),
+              child,
+              node.getDatabase(),
+              node.getTable(),
+              node.getColumns(),
+              node.getRowCountSymbol());
+      resultNodeList.add(subIntoNode);
+    }
+    PlanNode collectNode = mergeChildrenViaCollectOrMergeSort(null, resultNodeList);
+
+    // prepare aggregation map
+    Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>();
+    ResolvedFunction countFunction =
+        new ResolvedFunction(
+            new BoundSignature(COUNT, LongType.INT64, Collections.singletonList(LongType.INT64)),
+            FunctionId.NOOP_FUNCTION_ID,
+            AGGREGATE,
+            true,
+            getAggregationFunctionNullability(1));
+    AggregationNode.Aggregation countAggregation =
+        new AggregationNode.Aggregation(
+            countFunction,
+            ImmutableList.of(new SymbolReference(Insert.ROWS)),
+            false,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty());
+    aggregations.put(node.getRowCountSymbol(), countAggregation);
+
+    // final count aggregation actually does sum calculation
+    PlanNode aggregationNode =
+        new AggregationNode(
+            queryId.genPlanNodeId(),
+            collectNode,
+            aggregations,
+            AggregationNode.singleGroupingSet(ImmutableList.of()),
+            ImmutableList.of(),
+            FINAL,
+            Optional.empty(),
+            Optional.empty());
+
+    return Collections.singletonList(aggregationNode);
   }
 
   @Override

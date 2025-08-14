@@ -91,7 +91,7 @@ public class IoTDBConfigNodeSnapshotIT {
         .getConfig()
         .getCommonConfig()
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setConfigNodeRatisSnapshotTriggerThreshold(100)
+        .setConfigNodeRatisSnapshotTriggerThreshold(1000)
         .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 2C2D cluster environment

@@ -208,7 +208,7 @@ public class IoTDBPartitionGetterIT {
 
     final String d11 = sg1 + ".d1.s";
 
-    final String allPaths = "root.**";
+    final String allPaths = "root.sg*";
     final String allSg0 = "root.sg0.**";
 
     final String notExistsSg = "root.sg10.**";
@@ -535,7 +535,8 @@ public class IoTDBPartitionGetterIT {
       nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
-      Assert.assertEquals(storageGroupNum, nodeManagementResp.getMatchedNodeSize());
+      // +1 for SYSTEM database
+      Assert.assertEquals(storageGroupNum + 1, nodeManagementResp.getMatchedNodeSize());
       Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
       Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
     }

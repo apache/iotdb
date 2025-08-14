@@ -251,8 +251,8 @@ public class CommonConfig {
 
   private long pipeMaxWaitFinishTime = 10 * 1000;
 
-  private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
-  private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
+  private int pipeExtractorAssignerDisruptorRingBufferSize = 128;
+  private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 72 * KB;
   private long pipeExtractorMatcherCacheSize = 1024;
 
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
@@ -273,7 +273,6 @@ public class CommonConfig {
   private int pipeAsyncConnectorMaxTsFileClientNumber =
       Math.max(16, Runtime.getRuntime().availableProcessors());
 
-  private double pipeSendTsFileRateLimitBytesPerSecond = 32 * MB;
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
 
@@ -290,10 +289,11 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
-  private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
+  private long pipeReceiverLoginPeriodicVerificationIntervalMs = -1;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
   private int pipeReceiverReqDecompressedMaxLengthInBytes = 1073741824; // 1GB
+  private boolean pipeReceiverLoadConversionEnabled = false;
 
   private double pipeMetaReportMaxLogNumPerRound = 0.1;
   private int pipeMetaReportMaxLogIntervalRounds = 360;
@@ -412,6 +412,12 @@ public class CommonConfig {
   private volatile boolean enableQuerySampling = true;
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
+
+  private boolean enforceStrongPassword = false;
+  private long passwordExpirationDays = -1;
+  // an old password cannot be reused within the given interval if >= 0.
+  private long passwordReuseIntervalDays = -1;
+  private boolean mayBypassPasswordCheckInException = true;
 
   CommonConfig() {
     // Empty constructor
@@ -1491,6 +1497,18 @@ public class CommonConfig {
         pipeReceiverReqDecompressedMaxLengthInBytes);
   }
 
+  public boolean isPipeReceiverLoadConversionEnabled() {
+    return pipeReceiverLoadConversionEnabled;
+  }
+
+  public void setPipeReceiverLoadConversionEnabled(boolean pipeReceiverLoadConversionEnabled) {
+    if (this.pipeReceiverLoadConversionEnabled == pipeReceiverLoadConversionEnabled) {
+      return;
+    }
+    this.pipeReceiverLoadConversionEnabled = pipeReceiverLoadConversionEnabled;
+    logger.info("pipeReceiverConversionEnabled is set to {}.", pipeReceiverLoadConversionEnabled);
+  }
+
   public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
     return pipeReceiverReqDecompressedMaxLengthInBytes;
   }
@@ -1852,21 +1870,6 @@ public class CommonConfig {
     logger.info(
         "pipeCheckSyncAllClientLiveTimeIntervalMs is set to {}",
         pipeCheckSyncAllClientLiveTimeIntervalMs);
-  }
-
-  public double getPipeSendTsFileRateLimitBytesPerSecond() {
-    return pipeSendTsFileRateLimitBytesPerSecond;
-  }
-
-  public void setPipeSendTsFileRateLimitBytesPerSecond(
-      double pipeSendTsFileRateLimitBytesPerSecond) {
-    if (this.pipeSendTsFileRateLimitBytesPerSecond == pipeSendTsFileRateLimitBytesPerSecond) {
-      return;
-    }
-    this.pipeSendTsFileRateLimitBytesPerSecond = pipeSendTsFileRateLimitBytesPerSecond;
-    logger.info(
-        "pipeSendTsFileRateLimitBytesPerSecond is set to {}",
-        pipeSendTsFileRateLimitBytesPerSecond);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {
@@ -2399,5 +2402,37 @@ public class CommonConfig {
 
   public void setTrustedUriPattern(Pattern trustedUriPattern) {
     this.trustedUriPattern = trustedUriPattern;
+  }
+
+  public boolean isEnforceStrongPassword() {
+    return enforceStrongPassword;
+  }
+
+  public void setEnforceStrongPassword(boolean enforceStrongPassword) {
+    this.enforceStrongPassword = enforceStrongPassword;
+  }
+
+  public long getPasswordExpirationDays() {
+    return passwordExpirationDays;
+  }
+
+  public void setPasswordExpirationDays(long passwordExpirationDays) {
+    this.passwordExpirationDays = passwordExpirationDays;
+  }
+
+  public long getPasswordReuseIntervalDays() {
+    return passwordReuseIntervalDays;
+  }
+
+  public void setPasswordReuseIntervalDays(long passwordReuseIntervalDays) {
+    this.passwordReuseIntervalDays = passwordReuseIntervalDays;
+  }
+
+  public boolean isMayBypassPasswordCheckInException() {
+    return mayBypassPasswordCheckInException;
+  }
+
+  public void setMayBypassPasswordCheckInException(boolean mayBypassPasswordCheckInException) {
+    this.mayBypassPasswordCheckInException = mayBypassPasswordCheckInException;
   }
 }

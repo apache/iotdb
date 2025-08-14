@@ -217,10 +217,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxTsFileClientNumber();
   }
 
-  public double getPipeSendTsFileRateLimitBytesPerSecond() {
-    return COMMON_CONFIG.getPipeSendTsFileRateLimitBytesPerSecond();
-  }
-
   public double getPipeAllConnectorsRateLimitBytesPerSecond() {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
@@ -341,6 +337,10 @@ public class PipeConfig {
 
   public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
     return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes();
+  }
+
+  public boolean isPipeReceiverLoadConversionEnabled() {
+    return COMMON_CONFIG.isPipeReceiverLoadConversionEnabled();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -538,8 +538,6 @@ public class PipeConfig {
         getPipeAsyncConnectorMaxTsFileClientNumber());
 
     LOGGER.info(
-        "PipeSendTsFileRateLimitBytesPerSecond: {}", getPipeSendTsFileRateLimitBytesPerSecond());
-    LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
         getPipeAllConnectorsRateLimitBytesPerSecond());
     LOGGER.info(
@@ -573,6 +571,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
         getPipeReceiverReqDecompressedMaxLengthInBytes());
+    LOGGER.info("PipeReceiverLoadConversionEnabled: {}", isPipeReceiverLoadConversionEnabled());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

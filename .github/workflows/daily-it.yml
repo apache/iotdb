@@ -71,7 +71,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 -DintegrationTest.dataRegionPerDataNode=1\
+          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 -DintegrationTest.dataRegionPerDataNode=1 \
           -pl integration-test \
           -am -PTableSimpleIT
       - name: Upload Artifact

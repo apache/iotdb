@@ -42,15 +42,15 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
-public class IntoOperator extends AbstractIntoOperator {
+public class TreeIntoOperator extends AbstractTreeIntoOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(IntoOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TreeIntoOperator.class);
 
   private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
   @SuppressWarnings("squid:S107")
-  public IntoOperator(
+  public TreeIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
@@ -67,7 +67,7 @@ public class IntoOperator extends AbstractIntoOperator {
             targetPathToSourceInputLocationMap,
             targetPathToDataTypeMap,
             targetDeviceToAlignedMap,
-            typeConvertors,
+            inputColumnTypes,
             maxRowNumberInStatement);
   }
 
@@ -116,7 +116,7 @@ public class IntoOperator extends AbstractIntoOperator {
           new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET));
       columnBuilders[1].writeBinary(
           new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeInt(
+      columnBuilders[2].writeLong(
           findWritten(
               sourceTargetPathPair.right.getIDeviceID().toString(),
               sourceTargetPathPair.right.getMeasurement()));
@@ -137,6 +137,11 @@ public class IntoOperator extends AbstractIntoOperator {
                     pair ->
                         RamUsageEstimator.sizeOf(pair.left)
                             + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(pair.right))
+                .sum())
+        + (insertTabletStatementGenerators == null
+            ? 0
+            : insertTabletStatementGenerators.stream()
+                .mapToLong(InsertTabletStatementGenerator::ramBytesUsed)
                 .sum());
   }
 }

@@ -42,13 +42,11 @@ public class IoTConsensusMemoryManager {
   }
 
   public boolean reserve(IndexedConsensusRequest request, boolean fromQueue) {
-    synchronized (request) {
-      long prevRef = request.incRef();
-      if (prevRef == 0) {
-        return reserve(request.getMemorySize(), fromQueue);
-      } else {
-        return true;
-      }
+    long prevRef = request.incRef();
+    if (prevRef == 0) {
+      return reserve(request.getMemorySize(), fromQueue);
+    } else {
+      return true;
     }
   }
 
@@ -68,11 +66,9 @@ public class IoTConsensusMemoryManager {
   }
 
   public void free(IndexedConsensusRequest request, boolean fromQueue) {
-    synchronized (request) {
-      long prevRef = request.decRef();
-      if (prevRef == 0) {
-        free(request.getMemorySize(), fromQueue);
-      }
+    long prevRef = request.decRef();
+    if (prevRef == 1) {
+      free(request.getMemorySize(), fromQueue);
     }
   }
 

@@ -17,17 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.sink.limiter;
+package org.apache.iotdb.commons.pipe.datastructure.interval;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+public class Interval<T extends Interval<T>> implements Comparable<Interval<?>> {
+  public long start;
+  public long end;
 
-/** This is a global rate limiter for all connectors. */
-public class GlobalRPCRateLimiter extends GlobalRateLimiter {
+  public Interval(final long s, final long e) {
+    start = s;
+    end = e;
+  }
 
-  private static final PipeConfig CONFIG = PipeConfig.getInstance();
+  public void onMerged(final T another) {
+    // Do nothing by default
+  }
+
+  public void onRemoved() {
+    // Do nothing by default
+  }
 
   @Override
-  protected double getThroughputBytesPerSecond() {
-    return CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
+  public int compareTo(final Interval other) {
+    return Long.compare(this.start, other.start);
+  }
+
+  @Override
+  public String toString() {
+    return "[" + start + ", " + end + "]";
   }
 }

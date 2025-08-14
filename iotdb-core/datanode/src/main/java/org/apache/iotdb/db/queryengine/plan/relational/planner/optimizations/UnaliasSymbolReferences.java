@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -400,6 +401,15 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       LimitNode rewrittenLimit = mapper.map(node, rewrittenSource.getRoot());
 
       return new PlanAndMappings(rewrittenLimit, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitInto(IntoNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+
+      return new PlanAndMappings(
+          node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
+          rewrittenSource.getMappings());
     }
 
     @Override

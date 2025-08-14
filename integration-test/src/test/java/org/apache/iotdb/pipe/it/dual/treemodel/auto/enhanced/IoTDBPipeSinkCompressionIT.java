@@ -69,6 +69,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     receiverEnv
@@ -78,6 +79,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
         .setPipeAirGapReceiverEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
@@ -136,7 +138,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
               "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -168,7 +171,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
 
@@ -181,13 +184,14 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
               "insert into root.db.d1(time, s1) values (now(), 6)",
               "insert into root.db.d1(time, s1) values (now(), 7)",
               "insert into root.db.d1(time, s1) values (now(), 8)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"));
     }
@@ -210,7 +214,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
               "insert into root.db.d1(time, s3) values (1, 1)",
               "insert into root.db.d1(time, s4) values (1, 1)",
               "insert into root.db.d1(time, s5) values (1, 1)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -304,6 +309,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
       }
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           3,
           showPipeResult.stream()
@@ -311,7 +317,10 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
               .count());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("3,"));
     }
   }
 }

@@ -347,6 +347,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         senderSession.executeNonQueryStatement("flush");
       } else {
         // Send Tablet data to receiver
+        // Write once to create data regions, guarantee that no any tsFiles will be sent
+        consumer.accept(senderSession, receiverSession, tablet);
         createDataPipe(uuid, false);
         Thread.sleep(2000);
         // The actual implementation logic of inserting data
@@ -389,23 +391,25 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         String.format(
             "create timeseries root.test.%s.%s with datatype=%s,encoding=PLAIN",
             diff, measurementID, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(env, Collections.singletonList(timeSeriesCreation));
+    TestUtils.tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(timeSeriesCreation), null);
   }
 
   private void createDataPipe(String diff, boolean isTSFile) {
     String sql =
         String.format(
             "create pipe test%s"
-                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='%s','realtime.enable'='%s','history.enable'='true')"
+                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='%s','realtime.enable'='%s','history.enable'='%s')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
             diff,
             isTSFile ? "file" : "forced-log",
             !isTSFile,
+            isTSFile,
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
+    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql), null);
   }
 
   private void validateResultSet(

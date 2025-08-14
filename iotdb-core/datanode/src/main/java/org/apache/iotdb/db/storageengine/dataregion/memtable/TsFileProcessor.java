@@ -1720,7 +1720,7 @@ public class TsFileProcessor {
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
-      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos());
+      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos(), dataRegionId);
     } catch (IOException e) {
       logger.error(
           "{}: {} update compression ratio failed",
@@ -1829,6 +1829,7 @@ public class TsFileProcessor {
                   deviceID,
                   measurement,
                   filePath,
+                  tsFileResource.getTsFileID(),
                   false,
                   valueChunkMetaData.getOffsetOfChunkHeader(),
                   valueChunkMetaData.getStatistics(),
@@ -1853,6 +1854,7 @@ public class TsFileProcessor {
                 deviceID,
                 measurement,
                 filePath,
+                tsFileResource.getTsFileID(),
                 false,
                 chunkMetadata.getOffsetOfChunkHeader(),
                 chunkMetadata.getStatistics()));
@@ -2337,5 +2339,10 @@ public class TsFileProcessor {
       logger.debug(
           "{}: {} release flushQueryLock", dataRegionName, tsFileResource.getTsFile().getName());
     }
+  }
+
+  @Override
+  public String toString() {
+    return "TsFileProcessor{" + "tsFileResource=" + tsFileResource + '}';
   }
 }

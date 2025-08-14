@@ -207,7 +207,7 @@ public class SessionConnection {
       throw new IoTDBConnectionException(e);
     }
 
-    if (session.enableRPCCompression) {
+    if (session.enableThriftRpcCompaction) {
       client = new IClientRPCService.Client(new TCompactProtocol(transport));
     } else {
       client = new IClientRPCService.Client(new TBinaryProtocol(transport));

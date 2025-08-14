@@ -142,7 +142,7 @@ public class DropTableColumnProcedure
       isAttributeColumn = status.isSetMessage();
       setNextState(DropTableColumnState.INVALIDATE_CACHE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -216,7 +216,7 @@ public class DropTableColumnProcedure
                     : new CommitDeleteColumnPlan(database, tableName, columnName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
