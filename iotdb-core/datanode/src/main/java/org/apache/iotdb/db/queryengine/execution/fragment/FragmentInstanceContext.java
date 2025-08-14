@@ -364,9 +364,6 @@ public class FragmentInstanceContext extends QueryContext {
               }
               return null;
             });
-    if (cachedResult == null) {
-      LOGGER.error("cached num: {}, mem cost: {}", fileModCache.size(), cachedModEntriesSize.get());
-    }
     return cachedResult == null ? atomicReference.get() : cachedResult;
   }
 
