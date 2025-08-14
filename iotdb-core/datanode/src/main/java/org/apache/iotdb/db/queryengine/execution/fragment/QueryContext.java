@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -76,6 +77,8 @@ public class QueryContext {
   // referenced TVLists for the query
   protected final Set<TVList> tvListSet = new HashSet<>();
 
+  protected Set<String> tables;
+
   public QueryContext() {}
 
   public QueryContext(long queryId) {
@@ -88,6 +91,18 @@ public class QueryContext {
     this.debug = debug;
     this.startTime = startTime;
     this.timeout = timeout;
+  }
+
+  // Only used for query with table data(Tree view is not included)
+  public boolean collectTable(String table) {
+    if (tables == null) {
+      tables = Collections.singleton(table);
+      return true;
+    }
+    if (!(tables instanceof HashSet)) {
+      tables = new HashSet<>(tables);
+    }
+    return tables.add(table);
   }
 
   // if the mods file does not exist, do not add it to the cache
@@ -106,7 +121,15 @@ public class QueryContext {
       TsFileResource resource) {
     PatternTreeMap<ModEntry, ModsSerializer> modifications =
         PatternTreeMapFactory.getModsPatternTreeMap();
-    for (ModEntry modification : resource.getAllModEntries()) {
+    TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator();
+    while (modEntryIterator.hasNext()) {
+      ModEntry modification = modEntryIterator.next();
+      if (tables != null && modification instanceof TableDeletionEntry) {
+        String tableName = ((TableDeletionEntry) modification).getTableName();
+        if (!tables.contains(tableName)) {
+          continue;
+        }
+      }
       modifications.append(modification.keyOfPatternTree(), modification);
     }
     return modifications;

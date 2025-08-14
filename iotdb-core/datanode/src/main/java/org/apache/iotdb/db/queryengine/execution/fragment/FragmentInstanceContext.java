@@ -364,6 +364,9 @@ public class FragmentInstanceContext extends QueryContext {
               }
               return null;
             });
+    if (cachedResult == null) {
+      LOGGER.error("cached num: {}, mem cost: {}", fileModCache.size(), cachedModEntriesSize.get());
+    }
     return cachedResult == null ? atomicReference.get() : cachedResult;
   }
 
@@ -524,6 +527,16 @@ public class FragmentInstanceContext extends QueryContext {
       // throw new IllegalStateException(
       //    "globalTimeFilter in FragmentInstanceContext should only be set once in Table Model!");
     }
+  }
+
+  @Override
+  public boolean collectTable(String table) {
+    boolean added = super.collectTable(table);
+    if (added && memoryReservationManager != null) {
+      memoryReservationManager.reserveMemoryCumulatively(
+          RamUsageEstimator.sizeOf(table) + RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
+    }
+    return added;
   }
 
   public IDataRegionForQuery getDataRegion() {
@@ -842,6 +855,7 @@ public class FragmentInstanceContext extends QueryContext {
     releaseTVListOwnedByQuery();
 
     fileModCache = null;
+    tables = null;
     dataRegion = null;
     globalTimeFilter = null;
     sharedQueryDataSource = null;
