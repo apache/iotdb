@@ -1293,6 +1293,40 @@ public class TestUtils {
     assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
   }
 
+  public static void assertDataEventuallyOnEnvTMP(
+      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(600L, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0] && System.currentTimeMillis() - startTime > 600L >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet, true);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   public static void assertDataEventuallyOnEnv(
       final BaseEnv env,
       final String sql,
