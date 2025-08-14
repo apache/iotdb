@@ -129,7 +129,7 @@ public class IoTDBAlterColumnTypeIT {
         //            TSDataType from = TSDataType.DATE;
         //            TSDataType to = TSDataType.DATE;
         System.out.printf("testing %s to %s%n", from, to);
-        //        doWriteAndAlter(from, to);
+        doWriteAndAlter(from, to);
         if (from == TSDataType.DATE && to == TSDataType.DATE) {
           continue;
         }
