@@ -125,15 +125,17 @@ public class IoTDBAlterColumnTypeIT {
 
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
-        if (from == TSDataType.DATE && to == TSDataType.DATE) {
-          continue;
-        }
+
         //            TSDataType from = TSDataType.DATE;
         //            TSDataType to = TSDataType.DATE;
         System.out.printf("testing %s to %s%n", from, to);
         //        doWriteAndAlter(from, to);
+        if (from == TSDataType.DATE && to == TSDataType.DATE) {
+          continue;
+        }
         if (to.isCompatible(from)) {
-          testNonAlignDeviceSequenceDataQuery(from, to);
+          testAlignDeviceSequenceDataQuery(from, to);
+          testAlignDeviceUnSequenceDataQuery(from, to);
         }
       }
     }
@@ -1207,8 +1209,7 @@ public class IoTDBAlterColumnTypeIT {
     }
   }
 
-  //  @Test
-  public void testNonAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
+  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
       throws IoTDBConnectionException,
           StatementExecutionException,
           IOException,
@@ -1232,7 +1233,17 @@ public class IoTDBAlterColumnTypeIT {
               Arrays.asList(from, from),
               Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
 
-      for (int i = 1; i <= 1024; i++) {
+      //      for (int i = 1; i <= 1024; i++) {
+      //        int rowIndex = tablet.getRowSize();
+      //        tablet.addTimestamp(0, i);
+      //        tablet.addValue("s1", rowIndex, genValue(from, i));
+      //        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+      //        session.insert(tablet);
+      //        tablet.reset();
+      //      }
+      //
+      //      session.executeNonQueryStatement("FLUSH");
+      for (int i = 1; i <= 512; i++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(0, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
@@ -1242,6 +1253,15 @@ public class IoTDBAlterColumnTypeIT {
       }
 
       session.executeNonQueryStatement("FLUSH");
+
+      for (int i = 513; i <= 1024; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insert(tablet);
+        tablet.reset();
+      }
 
       SessionDataSet dataSet =
           session.executeQueryStatement(
@@ -1301,6 +1321,117 @@ public class IoTDBAlterColumnTypeIT {
       session.executeNonQueryStatement("DROP TABLE construct_and_alter_column_type");
     }
   }
+
+  public void testAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to)
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement("SET CONFIGURATION enable_unseq_space_compaction='false'");
+
+      // create a table with type of "from"
+      session.executeNonQueryStatement(
+          "CREATE TABLE IF NOT EXISTS construct_and_alter_column_type (s1 "
+              + from
+              + ", s2 "
+              + from
+              + ")");
+
+      // write a sequence tsfile point of "from"
+      Tablet tablet =
+          new Tablet(
+              "construct_and_alter_column_type",
+              Arrays.asList("s1", "s2"),
+              Arrays.asList(from, from),
+              Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
+
+      for (int i = 513; i <= 1024; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insert(tablet);
+        tablet.reset();
+      }
+
+      session.executeNonQueryStatement("FLUSH");
+
+      for (int i = 1; i <= 512; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insert(tablet);
+        tablet.reset();
+      }
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
+      RowRecord rec = dataSet.next();
+      while (rec != null) {
+        System.out.println(rec.getFields().toString());
+        rec = dataSet.next();
+      }
+      dataSet.close();
+
+      //      SessionDataSet dataSet1 =
+      //              session.executeQueryStatement(
+      ////                      "select cast(s1 as TEXT), cast(s2 as TEXT), s1, s2 from
+      // construct_and_alter_column_type where cast(s1 as TEXT) >= '1' and cast(s2 as TEXT) > '2'
+      // order by time");
+      //                      "select cast(s1 as INT64), cast(s2 as INT64), s1, s2 from
+      // construct_and_alter_column_type where cast(s1 as INT64) > 1 and cast(s2 as INT64) > 2 order
+      // by time limit 10");
+      //      RowRecord rec1 = dataSet1.next();
+      //      while (rec1 != null) {
+      //        System.out.println(rec1.getFields().toString());
+      //        rec1 = dataSet1.next();
+      //      }
+      //      dataSet1.close();
+      //      System.exit(0);
+
+      standardSelectTest(from, session);
+      standardAccumulatorQueryTest(session, from);
+
+      // alter the type to "to"
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
+      if (isCompatible) {
+        session.executeNonQueryStatement(
+            "ALTER TABLE construct_and_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
+      } else {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TABLE construct_and_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
+        }
+      }
+
+      // If don't execute the flush" operation, verify if result can get valid value, not be null
+      // when query memtable.
+      //      session.executeNonQueryStatement("FLUSH");
+
+      TSDataType newType = isCompatible ? to : from;
+      standardSelectTestAfterAlterColumnType(from, session, newType);
+
+      // Accumulator query test
+      standardAccumulatorQueryTest(session, newType);
+
+      session.executeNonQueryStatement("DROP TABLE construct_and_alter_column_type");
+    }
+  }
+
+  // Don't support for non-align device unsequence data query, because non-align timeseries is not
+  // exist in the table model, only exist align timeseries.
+  // Though support for non-align timeseries in the tree model, can let tree transfer to table, but
+  // table is a view table, it don't allow alter column type.
+  // So can't support functions as below:
+  // testNonAlignDeviceSequenceDataQuery();
+  // testNonAlignDeviceUnSequenceDataQuery();
 
   private static void standardSelectTestAfterAlterColumnType(
       TSDataType from, ITableSession session, TSDataType newType)
@@ -1649,17 +1780,6 @@ public class IoTDBAlterColumnTypeIT {
     assertEquals(0, rec.getFields().get(0).getLongV());
     assertFalse(dataSet.hasNext());
   }
-
-  //  @Test
-  //  public void testNonAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to) {
-  //    //
-  //  }
-  //
-  //  @Test
-  //  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to) {}
-  //
-  //  @Test
-  //  public void testAlignDeviceUnSequenceDataQuery() {}
 
   private static void writeWithTablets(
       long timestamp,
