@@ -67,7 +67,7 @@ public class QueryContext {
 
   private volatile boolean isInterrupted = false;
 
-  protected final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
+  protected Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
   // referenced TVLists for the query
   protected final Set<TVList> tvListSet = new HashSet<>();

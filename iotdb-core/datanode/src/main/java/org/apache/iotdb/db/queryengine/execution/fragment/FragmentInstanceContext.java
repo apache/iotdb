@@ -826,6 +826,7 @@ public class FragmentInstanceContext extends QueryContext {
     releaseTVListOwnedByQuery();
 
     fileModCache = null;
+    nonExistentModFiles = null;
     dataRegion = null;
     globalTimeFilter = null;
     sharedQueryDataSource = null;
