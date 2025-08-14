@@ -198,8 +198,9 @@ public class SessionManager implements SessionManagerMBean {
             return lastPasswordTime + passwordExpirationDays * 1000 * 86400;
           }
         } else {
-          // the password is incorrect, later logIn will fail
-          return Long.MAX_VALUE;
+          // 1. the password is incorrect, later logIn will fail
+          // 2. the password history does not record correctly, use the current time to create one
+          return null;
         }
       } else {
         return null;
