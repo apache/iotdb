@@ -50,7 +50,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=2 \
+          -DintegrationTest.forkCount=1 \
           -pl integration-test \
           -am \
           -PAIClusterIT
