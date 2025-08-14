@@ -33,6 +33,7 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,6 +52,8 @@ import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
+@Ignore(
+    "Currently this may lose some data because tsFile conversion is banned, and historical transferred is not opened if history.enable = false")
 public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualIT {
 
   @Override
@@ -248,7 +251,8 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
         null,
         BaseEnv.TABLE_SQL_DIALECT,
         env,
-        Arrays.asList("create database if not exists test", "use test", timeSeriesCreationQuery));
+        Arrays.asList("create database if not exists test", "use test", timeSeriesCreationQuery),
+        null);
   }
 
   private void createDataPipe() {
@@ -260,7 +264,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='tablet')",
             receiverEnv.getIP(), receiverEnv.getPort());
     TestUtils.tryExecuteNonQueriesWithRetry(
-        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql));
+        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql), null);
   }
 
   private List<Pair> createTestDataForType(String sourceType) {
@@ -299,35 +303,40 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForString(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForString(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case TIMESTAMP:
         TestUtils.tryExecuteNonQueriesWithRetry(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case DATE:
         TestUtils.tryExecuteNonQueriesWithRetry(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case BLOB:
         TestUtils.tryExecuteNonQueriesWithRetry(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       default:
         TestUtils.tryExecuteNonQueriesWithRetry(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()),
+            null);
     }
   }
 

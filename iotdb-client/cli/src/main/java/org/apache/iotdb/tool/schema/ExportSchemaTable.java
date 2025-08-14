@@ -58,7 +58,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
             .database(database)

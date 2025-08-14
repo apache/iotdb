@@ -47,7 +47,7 @@ public class FileSpillerReader implements SortReader {
   private int rowIndex;
   private boolean isEnd = false;
 
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+  private final int maxTsBlockSizeInBytes =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public FileSpillerReader(String fileName, SortBufferManager sortBufferManager, TsBlockSerde serde)
@@ -70,7 +70,7 @@ public class FileSpillerReader implements SortReader {
   private boolean readTsBlockFromFile() throws IoTDBException {
     long bufferSize = sortBufferManager.getReaderBufferAvailable();
     cacheBlocks.clear();
-    while (bufferSize >= DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) {
+    while (bufferSize >= maxTsBlockSizeInBytes) {
       long size = read();
       if (size == -1) {
         break;

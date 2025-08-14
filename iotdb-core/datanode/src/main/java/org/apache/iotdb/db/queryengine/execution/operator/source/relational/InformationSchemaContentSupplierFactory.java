@@ -59,7 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -516,8 +517,12 @@ public class InformationSchemaContentSupplierFactory {
       if (regionInfo.getConsensusGroupId().getType().ordinal()
           == TConsensusGroupType.DataRegion.ordinal()) {
         columnBuilders[12].writeLong(regionInfo.getTsFileSize());
+        columnBuilders[13].writeDouble(
+            MathUtils.roundWithGivenPrecision(
+                (double) regionInfo.getRawDataSize() / regionInfo.getTsFileSize(), 2));
       } else {
         columnBuilders[12].appendNull();
+        columnBuilders[13].appendNull();
       }
       resultBuilder.declarePosition();
     }
@@ -566,7 +571,7 @@ public class InformationSchemaContentSupplierFactory {
 
       if (remainingEventCount == -1 && remainingTime == -1) {
         final Pair<Long, Double> remainingEventAndTime =
-            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            PipeDataNodeSinglePipeMetrics.getInstance()
                 .getRemainingEventAndTime(tPipeInfo.getId(), tPipeInfo.getCreationTime());
         remainingEventCount = remainingEventAndTime.getLeft();
         remainingTime = remainingEventAndTime.getRight();

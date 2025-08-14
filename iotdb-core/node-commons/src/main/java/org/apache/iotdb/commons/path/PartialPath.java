@@ -856,6 +856,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return nodes[0];
   }
 
+  public void setIDeviceID(IDeviceID deviceID) {
+    this.device = deviceID;
+  }
+
   @Override
   public IDeviceID getIDeviceID() {
     if (device != null) {

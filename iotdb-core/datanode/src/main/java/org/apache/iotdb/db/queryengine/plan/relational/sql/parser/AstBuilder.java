@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -78,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
@@ -91,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
@@ -103,6 +106,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
@@ -151,6 +155,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
@@ -282,6 +287,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.Long.parseLong;
+import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
@@ -766,7 +772,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         return visitInsertValues(
             databaseName, tableName, identifiers, ((Values) query.getQueryBody()));
       } else {
-        throw new SemanticException("Only support insert by values.");
+        return new Insert(new Table(qualifiedName), identifiers, query);
       }
     } else {
       if (query.getQueryBody() instanceof Values) {
@@ -776,7 +782,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         }
         return visitInsertValues(databaseName, table, ((Values) query.getQueryBody()));
       } else {
-        throw new SemanticException("Only support insert by values.");
+        return new Insert(new Table(qualifiedName), query);
       }
     }
   }
@@ -846,7 +852,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                   }
                   String[] columnNameArray = columnNames.toArray(new String[0]);
                   return toInsertRowStatement(
-                      expressions, finalTimeColumnIndex, columnNameArray, tableName, databaseName);
+                      expressions,
+                      finalTimeColumnIndex,
+                      columnNameArray,
+                      tableName,
+                      databaseName,
+                      columnNames.size());
                 })
             .collect(toList());
 
@@ -920,7 +931,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       int timeColumnIndex,
       String[] nonTimeColumnNames,
       String tableName,
-      String databaseName) {
+      String databaseName,
+      int columnSize) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setWriteToTable(true);
     insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
@@ -930,6 +942,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       timestamp = CommonDateTimeUtils.currentTime();
       nonTimeColCnt = expressions.size();
     } else {
+      if (timeColumnIndex >= expressions.size()) {
+        throw new SemanticException(
+            String.format(
+                "TimeColumnIndex out of bound: %d-%d", timeColumnIndex, expressions.size()));
+      }
+
       Expression timeExpression = expressions.get(timeColumnIndex);
       if (timeExpression instanceof LongLiteral) {
         timestamp = ((LongLiteral) timeExpression).getParsedValue();
@@ -1442,6 +1460,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.RemoveConfigNodeStatementContext ctx) {
     Integer nodeId = Integer.parseInt(ctx.INTEGER_VALUE().getText());
     return new RemoveConfigNode(nodeId);
+  }
+
+  @Override
+  public Node visitRemoveAINodeStatement(RelationalSqlParser.RemoveAINodeStatementContext ctx) {
+    return new RemoveAINode();
   }
 
   @Override
@@ -3091,6 +3114,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitExtract(RelationalSqlParser.ExtractContext context) {
+    String fieldString = context.identifier().getText();
+    Extract.Field field;
+    try {
+      field = Extract.Field.valueOf(fieldString.toUpperCase(ENGLISH));
+    } catch (IllegalArgumentException e) {
+      throw parseError("Invalid EXTRACT field: " + fieldString, context);
+    }
+    return new Extract(getLocation(context), (Expression) visit(context.valueExpression()), field);
+  }
+
+  @Override
   public Node visitSubqueryExpression(RelationalSqlParser.SubqueryExpressionContext ctx) {
     return new SubqueryExpression(getLocation(ctx), (Query) visit(ctx.query()));
   }
@@ -3544,49 +3579,61 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   // ***************** AI *****************
-  public static void validateModelName(String modelName) {
-    if (modelName.length() < 2 || modelName.length() > 64) {
-      throw new SemanticException("Model name should be 2-64 characters");
-    } else if (modelName.startsWith("_")) {
-      throw new SemanticException("Model name should not start with '_'");
-    } else if (!modelName.matches("^[-\\w]*$")) {
-      throw new SemanticException("ModelName can only contain letters, numbers, and underscores");
+  public static void validateModelId(String modelId) {
+    if (modelId.length() < 2 || modelId.length() > 64) {
+      throw new SemanticException("ModelId should be 2-64 characters");
+    } else if (modelId.startsWith("_")) {
+      throw new SemanticException("ModelId should not start with '_'");
+    } else if (!modelId.matches("^[-\\w]*$")) {
+      throw new SemanticException("ModelId can only contain letters, numbers, and underscores");
     }
   }
 
   @Override
   public Node visitCreateModelStatement(RelationalSqlParser.CreateModelStatementContext ctx) {
     String modelId = ctx.modelId.getText();
-    validateModelName(modelId);
-
-    if (ctx.targetData == null) {
-      throw new SemanticException("Target data in sql should be set in CREATE MODEL");
-    }
-    String targetData = ((StringLiteral) visit(ctx.targetData)).getValue();
-    CreateTraining createTraining = new CreateTraining(modelId, targetData);
-    if (ctx.HYPERPARAMETERS() != null) {
-      Map<String, String> parameters = new HashMap<>();
-      for (RelationalSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
-        parameters.put(
-            hparamPairContext.hparamKey.getText(), hparamPairContext.hyparamValue.getText());
+    validateModelId(modelId);
+    if (ctx.uriClause() == null) {
+      if (ctx.targetData == null) {
+        throw new SemanticException("Target data in sql should be set in CREATE MODEL");
       }
-      createTraining.setParameters(parameters);
-    }
+      String targetData = ((StringLiteral) visit(ctx.targetData)).getValue();
+      CreateTraining createTraining = new CreateTraining(modelId, targetData);
+      if (ctx.HYPERPARAMETERS() != null) {
+        Map<String, String> parameters = new HashMap<>();
+        for (RelationalSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
+          parameters.put(
+              hparamPairContext.hparamKey.getText(), hparamPairContext.hyparamValue.getText());
+        }
+        createTraining.setParameters(parameters);
+      }
 
-    if (ctx.existingModelId != null) {
-      createTraining.setExistingModelId(ctx.existingModelId.getText());
-    }
+      if (ctx.existingModelId != null) {
+        createTraining.setExistingModelId(ctx.existingModelId.getText());
+      }
 
-    return createTraining;
+      return createTraining;
+    }
+    String uri = ((Identifier) visit(ctx.uriClause().uri)).getValue();
+    return new CreateModel(modelId, uri);
   }
 
   @Override
   public Node visitShowModelsStatement(RelationalSqlParser.ShowModelsStatementContext ctx) {
     ShowModels showModels = new ShowModels();
     if (ctx.modelId != null) {
-      showModels.setModelId(ctx.modelId.getText());
+      String modelId = ctx.modelId.getText();
+      validateModelId(modelId);
+      showModels.setModelId(modelId);
     }
     return showModels;
+  }
+
+  @Override
+  public Node visitDropModelStatement(RelationalSqlParser.DropModelStatementContext ctx) {
+    String modelId = ctx.modelId.getText();
+    validateModelId(modelId);
+    return new DropModel(modelId);
   }
 
   // ***************** arguments *****************

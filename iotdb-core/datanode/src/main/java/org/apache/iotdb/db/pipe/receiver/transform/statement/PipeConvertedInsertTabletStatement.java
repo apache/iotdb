@@ -46,7 +46,7 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     devicePath = insertTabletStatement.getDevicePath();
     isAligned = insertTabletStatement.isAligned();
     columnCategories = insertTabletStatement.getColumnCategories();
-    idColumnIndices = insertTabletStatement.getIdColumnIndices();
+    tagColumnIndices = insertTabletStatement.getTagColumnIndices();
     attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
     writeToTable = insertTabletStatement.isWriteToTable();
     databaseName = insertTabletStatement.getDatabaseName().orElse(null);

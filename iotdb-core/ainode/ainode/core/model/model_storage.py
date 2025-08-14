@@ -28,29 +28,37 @@ from torch import nn
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import (
-    DEFAULT_CONFIG_FILE_NAME,
-    DEFAULT_MODEL_FILE_NAME,
     MODEL_CONFIG_FILE_IN_JSON,
+    MODEL_WEIGHTS_FILE_IN_PT,
     TSStatusCode,
 )
-from ainode.core.exception import ModelNotExistError
+from ainode.core.exception import (
+    BuiltInModelDeletionError,
+    ModelNotExistError,
+    UnsupportedError,
+)
 from ainode.core.log import Logger
 from ainode.core.model.built_in_model_factory import (
-    download_ltsm_if_necessary,
+    download_built_in_ltsm_from_hf_if_necessary,
     fetch_built_in_model,
+)
+from ainode.core.model.model_enums import (
+    BuiltInModelType,
+    ModelCategory,
+    ModelFileType,
+    ModelStates,
 )
 from ainode.core.model.model_factory import fetch_model_by_uri
 from ainode.core.model.model_info import (
     BUILT_IN_LTSM_MAP,
     BUILT_IN_MACHINE_LEARNING_MODEL_MAP,
-    BuiltInModelType,
-    ModelCategory,
     ModelInfo,
-    ModelStates,
     get_built_in_model_type,
+    get_model_file_type,
 )
+from ainode.core.model.uri_utils import get_model_register_strategy
 from ainode.core.util.lock import ModelLockPool
-from ainode.thrift.ainode.ttypes import TShowModelsResp
+from ainode.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
 from ainode.thrift.common.ttypes import TSStatus
 
 logger = Logger()
@@ -164,7 +172,7 @@ class ModelStorage(object):
         """
         with self._lock_pool.get_lock(model_id).write_lock():
             local_dir = os.path.join(self._builtin_model_dir, model_id)
-            return download_ltsm_if_necessary(
+            return download_built_in_ltsm_from_hf_if_necessary(
                 get_built_in_model_type(self._model_info_map[model_id].model_type),
                 local_dir,
             )
@@ -205,28 +213,34 @@ class ModelStorage(object):
         """
         Args:
             model_id: id of model to register
-            uri: network dir path or local dir path of model to register, where model.pt and config.yaml are required,
-                e.g. https://huggingface.co/user/modelname/resolve/main/ or /Users/admin/Desktop/model
+            uri: network or local dir path of the model to register
         Returns:
             configs: TConfigs
             attributes: str
         """
-        storage_path = os.path.join(self._model_dir, f"{model_id}")
-        # create storage dir if not exist
-        if not os.path.exists(storage_path):
-            os.makedirs(storage_path)
-        model_storage_path = os.path.join(storage_path, DEFAULT_MODEL_FILE_NAME)
-        config_storage_path = os.path.join(storage_path, DEFAULT_CONFIG_FILE_NAME)
-        configs, attributes = fetch_model_by_uri(
-            uri, model_storage_path, config_storage_path
-        )
-        self._model_info_map[model_id] = ModelInfo(
-            model_id=model_id,
-            model_type="",
-            category=ModelCategory.USER_DEFINED,
-            state=ModelStates.ACTIVE,
-        )
-        return configs, attributes
+        with self._lock_pool.get_lock(model_id).write_lock():
+            storage_path = os.path.join(self._model_dir, f"{model_id}")
+            # create storage dir if not exist
+            if not os.path.exists(storage_path):
+                os.makedirs(storage_path)
+            uri_type, parsed_uri, model_file_type = get_model_register_strategy(uri)
+            self._model_info_map[model_id] = ModelInfo(
+                model_id=model_id,
+                model_type="",
+                category=ModelCategory.USER_DEFINED,
+                state=ModelStates.LOADING,
+            )
+            try:
+                # TODO: The uri should be fetched asynchronously
+                configs, attributes = fetch_model_by_uri(
+                    uri_type, parsed_uri, storage_path, model_file_type
+                )
+                self._model_info_map[model_id].state = ModelStates.ACTIVE
+                return configs, attributes
+            except Exception as e:
+                logger.error(f"Failed to register model {model_id}: {e}")
+                self._model_info_map[model_id].state = ModelStates.INACTIVE
+                raise e
 
     def delete_model(self, model_id: str) -> None:
         """
@@ -235,12 +249,17 @@ class ModelStorage(object):
         Returns:
             None
         """
-        storage_path = os.path.join(self._model_dir, f"{model_id}")
+        # check if the model is built-in
+        with self._lock_pool.get_lock(model_id).read_lock():
+            if self._is_built_in(model_id):
+                raise BuiltInModelDeletionError(model_id)
+
+        # delete the user-defined or fine-tuned model
         with self._lock_pool.get_lock(model_id).write_lock():
+            storage_path = os.path.join(self._model_dir, f"{model_id}")
             if os.path.exists(storage_path):
                 shutil.rmtree(storage_path)
-        storage_path = os.path.join(self._builtin_model_dir, f"{model_id}")
-        with self._lock_pool.get_lock(model_id).write_lock():
+            storage_path = os.path.join(self._builtin_model_dir, f"{model_id}")
             if os.path.exists(storage_path):
                 shutil.rmtree(storage_path)
             if model_id in self._model_info_map:
@@ -257,12 +276,29 @@ class ModelStorage(object):
         Returns:
             bool: True if the model is built-in, False otherwise.
         """
+        return (
+            model_id in self._model_info_map
+            and self._model_info_map[model_id].category == ModelCategory.BUILT_IN
+        )
+
+    def _is_built_in_or_fine_tuned(self, model_id: str) -> bool:
+        """
+        Check if the model_id corresponds to a built-in or fine-tuned model.
+
+        Args:
+            model_id (str): The ID of the model.
+
+        Returns:
+            bool: True if the model is built-in or fine_tuned, False otherwise.
+        """
         return model_id in self._model_info_map and (
             self._model_info_map[model_id].category == ModelCategory.BUILT_IN
             or self._model_info_map[model_id].category == ModelCategory.FINE_TUNED
         )
 
-    def load_model(self, model_id: str, acceleration: bool) -> Callable:
+    def load_model(
+        self, model_id: str, inference_attrs: Dict[str, str], acceleration: bool
+    ) -> Callable:
         """
         Load a model with automatic detection of .safetensors or .pt format
 
@@ -270,33 +306,39 @@ class ModelStorage(object):
             model: The model instance corresponding to specific model_id
         """
         with self._lock_pool.get_lock(model_id).read_lock():
-            if self._is_built_in(model_id):
+            if self._is_built_in_or_fine_tuned(model_id):
                 model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
                 return fetch_built_in_model(
                     get_built_in_model_type(self._model_info_map[model_id].model_type),
                     model_dir,
+                    inference_attrs,
                 )
             else:
                 # load the user-defined model
                 model_dir = os.path.join(self._model_dir, f"{model_id}")
-                model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
+                model_file_type = get_model_file_type(model_dir)
+                if model_file_type == ModelFileType.SAFETENSORS:
+                    # TODO: Support this function
+                    raise UnsupportedError("SAFETENSORS format")
+                else:
+                    model_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_PT)
 
-                if not os.path.exists(model_path):
-                    raise ModelNotExistError(model_path)
-                model = torch.jit.load(model_path)
-                if (
-                    isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
-                    or not acceleration
-                ):
+                    if not os.path.exists(model_path):
+                        raise ModelNotExistError(model_path)
+                    model = torch.jit.load(model_path)
+                    if (
+                        isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
+                        or not acceleration
+                    ):
+                        return model
+
+                    try:
+                        model = torch.compile(model)
+                    except Exception as e:
+                        logger.warning(
+                            f"acceleration failed, fallback to normal mode: {str(e)}"
+                        )
                     return model
-
-                try:
-                    model = torch.compile(model)
-                except Exception as e:
-                    logger.warning(
-                        f"acceleration failed, fallback to normal mode: {str(e)}"
-                    )
-                return model
 
     def save_model(self, model_id: str, model: nn.Module):
         """
@@ -306,14 +348,14 @@ class ModelStorage(object):
             Whether saving succeeded
         """
         with self._lock_pool.get_lock(model_id).write_lock():
-            if self._is_built_in(model_id):
+            if self._is_built_in_or_fine_tuned(model_id):
                 model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
                 model.save_pretrained(model_dir)
             else:
                 # save the user-defined model
                 model_dir = os.path.join(self._model_dir, f"{model_id}")
                 os.makedirs(model_dir, exist_ok=True)
-                model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
+                model_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_PT)
                 try:
                     scripted_model = (
                         model
@@ -337,12 +379,31 @@ class ModelStorage(object):
         # Only support built-in models for now
         return os.path.join(self._builtin_model_dir, f"{model_id}")
 
-    def show_models(self) -> TShowModelsResp:
+    def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
+        resp_status = TSStatus(
+            code=TSStatusCode.SUCCESS_STATUS.value,
+            message="Show models successfully",
+        )
+        if req.modelId:
+            if req.modelId in self._model_info_map:
+                model_info = self._model_info_map[req.modelId]
+                return TShowModelsResp(
+                    status=resp_status,
+                    modelIdList=[req.modelId],
+                    modelTypeMap={req.modelId: model_info.model_type},
+                    categoryMap={req.modelId: model_info.category.value},
+                    stateMap={req.modelId: model_info.state.value},
+                )
+            else:
+                return TShowModelsResp(
+                    status=resp_status,
+                    modelIdList=[],
+                    modelTypeMap={},
+                    categoryMap={},
+                    stateMap={},
+                )
         return TShowModelsResp(
-            status=TSStatus(
-                code=TSStatusCode.SUCCESS_STATUS.value,
-                message="Show models successfully",
-            ),
+            status=resp_status,
             modelIdList=list(self._model_info_map.keys()),
             modelTypeMap=dict(
                 (model_id, model_info.model_type)

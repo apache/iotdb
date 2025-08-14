@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -58,7 +59,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -345,11 +345,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus removeAINode(TAINodeRemoveReq req) {
-    LOGGER.info("ConfigNode RPC Service start to remove AINode, req: {}", req);
-    RemoveAINodePlan removeAINodePlan = new RemoveAINodePlan(req.getAiNodeLocation());
-    TSStatus status = configManager.removeAINode(removeAINodePlan);
-    LOGGER.info(
-        "ConfigNode RPC Service finished to remove AINode, req: {}, result: {}", req, status);
+    LOGGER.info("ConfigNode RPC Service start to remove AINode");
+    TSStatus status = configManager.removeAINode();
+    LOGGER.info("ConfigNode RPC Service finished to remove AINode, result: {}", status);
     return status;
   }
 
@@ -755,6 +753,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req) {
     return configManager.checkRoleOfUser(req.getUserName(), req.getRoleName());
+  }
+
+  @Override
+  public TPermissionInfoResp getUser(String userName) {
+    return configManager.getUser(userName);
   }
 
   @Override
@@ -1414,5 +1417,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus createTableView(final TCreateTableViewReq req) {
     return configManager.createTableView(req);
+  }
+
+  @Override
+  public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
+    return configManager.pushHeartbeat(dataNodeId, resp);
   }
 }

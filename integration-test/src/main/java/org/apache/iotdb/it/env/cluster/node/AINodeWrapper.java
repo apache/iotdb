@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.AI_NODE_NAME;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PYTHON_PATH;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.getTimeForLogDirectory;
@@ -43,6 +42,7 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   private static final Logger logger = IoTDBTestLogger.logger;
   private final long startTime;
   private final String seedConfigNode;
+  private final int clusterIngressPort;
 
   private static final String SCRIPT_FILE = "start-ainode.sh";
 
@@ -67,6 +67,7 @@ public class AINodeWrapper extends AbstractNodeWrapper {
 
   public AINodeWrapper(
       String seedConfigNode,
+      int clusterIngressPort,
       String testClassName,
       String testMethodName,
       int clusterIndex,
@@ -74,6 +75,7 @@ public class AINodeWrapper extends AbstractNodeWrapper {
       long startTime) {
     super(testClassName, testMethodName, port, clusterIndex, false, startTime);
     this.seedConfigNode = seedConfigNode;
+    this.clusterIngressPort = clusterIngressPort;
     this.startTime = startTime;
   }
 
@@ -99,28 +101,24 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   public void start() {
     try {
       File stdoutFile = new File(getLogPath());
-      String filePrefix =
-          System.getProperty(USER_DIR)
-              + File.separator
-              + TARGET
-              + File.separator
-              + AI_NODE_NAME
-              + getPort();
+      String filePrefix = getNodePath();
       String propertiesFile =
           filePrefix + File.separator + CONFIG_PATH + File.separator + PROPERTIES_FILE;
 
       // set attribute
       replaceAttribute(
-          new String[] {"ain_seed_config_node", "ain_inference_rpc_port"},
-          new String[] {this.seedConfigNode, Integer.toString(getPort())},
+          new String[] {"ain_seed_config_node", "ain_rpc_port", "ain_cluster_ingress_port"},
+          new String[] {
+            this.seedConfigNode,
+            Integer.toString(getPort()),
+            Integer.toString(this.clusterIngressPort)
+          },
           propertiesFile);
 
       // start AINode
       List<String> startCommand = new ArrayList<>();
       startCommand.add(SHELL_COMMAND);
       startCommand.add(filePrefix + File.separator + SCRIPT_PATH + File.separator + SCRIPT_FILE);
-      startCommand.add("-i");
-      startCommand.add(filePrefix + File.separator + PYTHON_PATH);
       startCommand.add("-r");
 
       ProcessBuilder processBuilder =

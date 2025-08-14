@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
@@ -44,6 +45,7 @@ import org.apache.iotdb.session.Session;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
@@ -307,7 +309,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
     }
   }
 
-  protected Set<Integer> getAllDataNodes(Statement statement) throws Exception {
+  public static Set<Integer> getAllDataNodes(Statement statement) throws Exception {
     ResultSet result = statement.executeQuery(SHOW_DATANODES);
     Set<Integer> allDataNodeId = new HashSet<>();
     while (result.next()) {
@@ -435,10 +437,36 @@ public class IoTDBRegionOperationReliabilityITFramework {
     Map<Integer, Set<Integer>> regionMap = new HashMap<>();
     while (showRegionsResult.next()) {
       if (String.valueOf(TConsensusGroupType.DataRegion)
-          .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))) {
+              .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.SYSTEM_DATABASE)) {
         int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
         int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
         regionMap.computeIfAbsent(regionId, id -> new HashSet<>()).add(dataNodeId);
+      }
+    }
+    return regionMap;
+  }
+
+  public static Map<Integer, Pair<Integer, Set<Integer>>> getDataRegionMapWithLeader(
+      Statement statement) throws Exception {
+    ResultSet showRegionsResult = statement.executeQuery(SHOW_REGIONS);
+    Map<Integer, Pair<Integer, Set<Integer>>> regionMap = new HashMap<>();
+    while (showRegionsResult.next()) {
+      if (String.valueOf(TConsensusGroupType.DataRegion)
+              .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.SYSTEM_DATABASE)) {
+        int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
+        int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
+        Pair<Integer, Set<Integer>> leaderNodesPair =
+            regionMap.computeIfAbsent(regionId, id -> new Pair<>(-1, new HashSet<>()));
+        leaderNodesPair.getRight().add(dataNodeId);
+        if (showRegionsResult.getString(ColumnHeaderConstant.ROLE).equals("Leader")) {
+          leaderNodesPair.setLeft(dataNodeId);
+        }
       }
     }
     return regionMap;
@@ -606,13 +634,16 @@ public class IoTDBRegionOperationReliabilityITFramework {
   private static void checkRegionFileClear(int dataNode) {
     File originalRegionDir = new File(buildRegionDirPath(dataNode));
     Assert.assertTrue(originalRegionDir.isDirectory());
+    File[] files = originalRegionDir.listFiles();
     try {
-      Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+      int length = Objects.requireNonNull(files).length;
+      // the node may still have a region of the system database
+      Assert.assertTrue(length == 0 || length == 1 && files[0].getName().equals("1_1"));
     } catch (AssertionError e) {
       LOGGER.error(
           "Original DataNode {} region file not clear, these files is still remain: {}",
           dataNode,
-          Arrays.toString(originalRegionDir.listFiles()));
+          Arrays.toString(files));
       throw e;
     }
     LOGGER.info("Original DataNode {} region file clear", dataNode);

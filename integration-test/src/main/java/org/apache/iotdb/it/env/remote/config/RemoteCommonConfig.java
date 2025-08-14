@@ -324,6 +324,16 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     return this;
   }
@@ -377,6 +387,16 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
       int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
     return this;
@@ -388,7 +408,13 @@ public class RemoteCommonConfig implements CommonConfig {
     return this;
   }
 
+  @Override
   public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     return this;
   }
 }

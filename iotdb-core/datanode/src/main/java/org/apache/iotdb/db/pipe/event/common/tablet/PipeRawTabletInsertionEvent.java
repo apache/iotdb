@@ -33,7 +33,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -108,6 +108,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            eliminateProgressIndex();
+          }
+        });
   }
 
   public PipeRawTabletInsertionEvent(
@@ -235,7 +242,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
             allocatedMemoryBlock,
             PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .increaseRawTabletEventCount(pipeName, creationTime);
     }
     return true;
@@ -244,7 +251,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .decreaseRawTabletEventCount(pipeName, creationTime);
     }
     allocatedMemoryBlock.close();
@@ -259,10 +266,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     return true;
   }
 
-  @Override
-  protected void reportProgress() {
+  protected void eliminateProgressIndex() {
     if (needToReport) {
-      super.reportProgress();
       if (sourceEvent instanceof PipeTsFileInsertionEvent) {
         ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
       }

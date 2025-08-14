@@ -32,7 +32,7 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -426,12 +426,42 @@ public abstract class AbstractOperatePipeProcedureV2
    * @return Error messages for the given pipe after pushing pipe meta
    */
   public static String parsePushPipeMetaExceptionForPipe(
-      String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
+      final String pipeName, final Map<Integer, TPushPipeMetaResp> respMap) {
     final StringBuilder exceptionMessageBuilder = new StringBuilder();
+    final StringBuilder enoughMemoryMessageBuilder = new StringBuilder();
 
-    for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
-      int dataNodeId = respEntry.getKey();
-      TPushPipeMetaResp resp = respEntry.getValue();
+    for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+      final int dataNodeId = respEntry.getKey();
+      final TPushPipeMetaResp resp = respEntry.getValue();
+
+      if (resp.getStatus().getCode()
+          == TSStatusCode.PIPE_PUSH_META_NOT_ENOUGH_MEMORY.getStatusCode()) {
+        exceptionMessageBuilder.append(String.format("DataNodeId: %s,", dataNodeId));
+        resp.getExceptionMessages()
+            .forEach(
+                message -> {
+                  // Ignore the timeStamp for simplicity
+                  if (pipeName == null) {
+                    enoughMemoryMessageBuilder.append(
+                        String.format(
+                            "PipeName: %s, Message: %s",
+                            message.getPipeName(), message.getMessage()));
+                  } else if (pipeName.equals(message.getPipeName())) {
+                    enoughMemoryMessageBuilder.append(
+                        String.format("Message: %s", message.getMessage()));
+                  }
+                });
+        enoughMemoryMessageBuilder.append(".");
+        continue;
+      }
+
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()) {
+        exceptionMessageBuilder.append(
+            String.format(
+                "DataNodeId: %s, Message: Timeout to wait for lock while processing pushPipeMeta on dataNodes.",
+                dataNodeId));
+        continue;
+      }
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         if (!resp.isSetExceptionMessages()) {
@@ -442,7 +472,7 @@ public abstract class AbstractOperatePipeProcedureV2
           continue;
         }
 
-        AtomicBoolean hasException = new AtomicBoolean(false);
+        final AtomicBoolean hasException = new AtomicBoolean(false);
 
         resp.getExceptionMessages()
             .forEach(
@@ -468,6 +498,12 @@ public abstract class AbstractOperatePipeProcedureV2
         }
       }
     }
+
+    final String enoughMemoryMessage = enoughMemoryMessageBuilder.toString();
+    if (!enoughMemoryMessage.isEmpty()) {
+      throw new PipeException(enoughMemoryMessage);
+    }
+
     return exceptionMessageBuilder.toString();
   }
 

@@ -25,18 +25,17 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
-import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
-import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskConnectorStage;
-import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskExtractorStage;
 import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskProcessorStage;
-import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
-import org.apache.iotdb.db.subscription.task.stage.SubscriptionTaskConnectorStage;
+import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskSinkStage;
+import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskSourceStage;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.subscription.task.stage.SubscriptionTaskSinkStage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.Pair;
@@ -44,22 +43,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TABLET_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_SNAPSHOT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_TABLET_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_SNAPSHOT_KEY;
 
 public class PipeDataNodeTaskBuilder {
 
@@ -69,19 +67,8 @@ public class PipeDataNodeTaskBuilder {
   private final int regionId;
   private final PipeTaskMeta pipeTaskMeta;
 
-  private static final PipeProcessorSubtaskExecutor PROCESSOR_EXECUTOR;
-  private static final Map<PipeType, PipeConnectorSubtaskExecutor> CONNECTOR_EXECUTOR_MAP;
-
-  static {
-    PROCESSOR_EXECUTOR = PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
-    CONNECTOR_EXECUTOR_MAP = new EnumMap<>(PipeType.class);
-    CONNECTOR_EXECUTOR_MAP.put(
-        PipeType.USER, PipeSubtaskExecutorManager.getInstance().getConnectorExecutor());
-    CONNECTOR_EXECUTOR_MAP.put(
-        PipeType.SUBSCRIPTION, PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor());
-    CONNECTOR_EXECUTOR_MAP.put(
-        PipeType.CONSENSUS, PipeSubtaskExecutorManager.getInstance().getConsensusExecutor());
-  }
+  private static final PipeProcessorSubtaskExecutor PROCESSOR_EXECUTOR =
+      PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
 
   protected final Map<String, String> systemParameters = new HashMap<>();
 
@@ -105,33 +92,35 @@ public class PipeDataNodeTaskBuilder {
     injectParameters(extractorParameters, connectorParameters);
 
     // We first build the extractor and connector, then build the processor.
-    final PipeTaskExtractorStage extractorStage =
-        new PipeTaskExtractorStage(
+    final PipeTaskSourceStage extractorStage =
+        new PipeTaskSourceStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
             extractorParameters,
             regionId,
             pipeTaskMeta);
 
-    final PipeTaskConnectorStage connectorStage;
+    final PipeTaskSinkStage connectorStage;
     final PipeType pipeType = pipeStaticMeta.getPipeType();
 
     if (PipeType.SUBSCRIPTION.equals(pipeType)) {
       connectorStage =
-          new SubscriptionTaskConnectorStage(
+          new SubscriptionTaskSinkStage(
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
               connectorParameters,
               regionId,
-              CONNECTOR_EXECUTOR_MAP.get(pipeType));
+              PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor());
     } else { // user pipe or consensus pipe
       connectorStage =
-          new PipeTaskConnectorStage(
+          new PipeTaskSinkStage(
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
               connectorParameters,
               regionId,
-              CONNECTOR_EXECUTOR_MAP.get(pipeType));
+              pipeType.equals(PipeType.USER)
+                  ? PipeSubtaskExecutorManager.getInstance().getConnectorExecutorSupplier()
+                  : PipeSubtaskExecutorManager.getInstance().getConsensusExecutorSupplier());
     }
 
     // The processor connects the extractor and connector.
@@ -209,10 +198,10 @@ public class PipeDataNodeTaskBuilder {
 
     final Boolean isRealtime =
         connectorParameters.getBooleanByKeys(
-            PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
-            PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
+            PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
+            PipeSinkConstant.SINK_REALTIME_FIRST_KEY);
     if (isRealtime == null) {
-      connectorParameters.addAttribute(PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
+      connectorParameters.addAttribute(PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
       if (insertionDeletionListeningOptionPair.right) {
         LOGGER.info(
             "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
@@ -240,15 +229,14 @@ public class PipeDataNodeTaskBuilder {
         !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
             extractorParameters
                 .getStringOrDefault(
-                    Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                    Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                     BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
                 .toLowerCase());
 
     final String connectorPluginName =
         connectorParameters
             .getStringOrDefault(
-                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
             .toLowerCase();
     final boolean isWriteBackSink =
@@ -257,7 +245,7 @@ public class PipeDataNodeTaskBuilder {
 
     if (isSourceExternal && isWriteBackSink) {
       connectorParameters.addAttribute(
-          PipeConnectorConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, Boolean.TRUE.toString());
+          PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, Boolean.TRUE.toString());
     }
   }
 }

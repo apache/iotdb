@@ -123,4 +123,7 @@ public enum CnToDnAsyncRequestType {
   DELETE_DATA_FOR_TABLE_DEVICE,
   DELETE_TABLE_DEVICE_IN_BLACK_LIST,
   DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
+
+  // audit log and event write-back
+  INSERT_RECORD
 }

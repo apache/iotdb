@@ -721,6 +721,7 @@ struct TRegionInfo {
   10: optional i64 createTime
   11: optional string internalAddress
   12: optional i64 tsFileSize
+  13: optional i64 rawDataSize
 }
 
 struct TShowRegionResp {
@@ -1172,7 +1173,7 @@ struct TAINodeRestartResp{
 }
 
 struct TAINodeRemoveReq{
-  1: required common.TAINodeLocation aiNodeLocation
+  1: optional common.TAINodeLocation aiNodeLocation
 }
 
 // ====================================================
@@ -1510,6 +1511,8 @@ service IConfigNodeRPCService {
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
 
   TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
+
+  TPermissionInfoResp getUser(string userName);
 
 
 
@@ -2010,6 +2013,9 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  /** Push heartbeat in shutdown */
+  common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
 
   // ======================================================
   // Table Or View

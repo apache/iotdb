@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -444,7 +445,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       // no predicate, just scan all matched deviceEntries
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
-        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList(), null);
+        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList());
         return tableScanNode;
       }
 
@@ -483,10 +484,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      getDeviceEntriesWithDataPartitions(
-          tableScanNode,
-          splitExpression.getMetadataExpressions(),
-          splitExpression.getTimeColumnName());
+      getDeviceEntriesWithDataPartitions(tableScanNode, splitExpression.getMetadataExpressions());
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
@@ -504,16 +502,16 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     private SplitExpression splitPredicate(DeviceTableScanNode node, Expression predicate) {
       Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
-      Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
+      Set<String> timeOrMeasurementColumnNames = new HashSet<>(node.getAssignments().size());
       String timeColumnName = null;
       for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
         Symbol columnSymbol = entry.getKey();
         ColumnSchema columnSchema = entry.getValue();
         if (TIME.equals(columnSchema.getColumnCategory())) {
-          measurementColumnNames.add(columnSymbol.getName());
+          timeOrMeasurementColumnNames.add(columnSymbol.getName());
           timeColumnName = columnSymbol.getName();
         } else if (FIELD.equals(columnSchema.getColumnCategory())) {
-          measurementColumnNames.add(columnSymbol.getName());
+          timeOrMeasurementColumnNames.add(columnSymbol.getName());
         } else {
           idOrAttributeColumnNames.add(columnSymbol.getName());
         }
@@ -530,7 +528,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, expression)) {
             metadataExpressions.add(expression);
           } else if (PredicateCombineIntoTableScanChecker.check(
-              measurementColumnNames, expression)) {
+              timeOrMeasurementColumnNames, expression)) {
             expressionsCanPushDown.add(expression);
           } else {
             expressionsCannotPushDown.add(expression);
@@ -543,7 +541,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, predicate)) {
         metadataExpressions.add(predicate);
-      } else if (PredicateCombineIntoTableScanChecker.check(measurementColumnNames, predicate)) {
+      } else if (PredicateCombineIntoTableScanChecker.check(
+          timeOrMeasurementColumnNames, predicate)) {
         expressionsCanPushDown.add(predicate);
       } else {
         expressionsCannotPushDown.add(predicate);
@@ -554,9 +553,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        final DeviceTableScanNode tableScanNode,
-        final List<Expression> metadataExpressions,
-        String timeColumnName) {
+        final DeviceTableScanNode tableScanNode, final List<Expression> metadataExpressions) {
 
       final List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
@@ -616,7 +613,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         final Filter timeFilter =
             tableScanNode
                 .getTimePredicate()
-                .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
+                .map(
+                    value ->
+                        value.accept(
+                            new ConvertPredicateToTimeFilterVisitor(
+                                queryContext.getZoneId(), TimestampPrecisionUtils.currPrecision),
+                            null))
                 .orElse(null);
 
         tableScanNode.setTimeFilter(timeFilter);

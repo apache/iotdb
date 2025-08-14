@@ -23,7 +23,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
-import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -253,11 +252,6 @@ public class FirstByAccumulator implements TableAccumulator {
           initResult = true;
           yFirstTime = yStatistics.getStartTime();
           xIsNull = false;
-
-          if (xStatistics instanceof TimeStatistics) {
-            xResult.setLong(xStatistics.getStartTime());
-            return;
-          }
 
           switch (xDataType) {
             case INT32:

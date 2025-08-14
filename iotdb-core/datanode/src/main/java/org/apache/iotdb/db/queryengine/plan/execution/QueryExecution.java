@@ -185,7 +185,7 @@ public class QueryExecution implements IQueryExecution {
     doDistributedPlan();
 
     stateMachine.transitionToPlanned();
-    if (context.getQueryType() == QueryType.READ) {
+    if (context.isQuery()) {
       initResultHandle();
     }
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
@@ -462,23 +462,25 @@ public class QueryExecution implements IQueryExecution {
   private void dealWithException(Throwable t) throws IoTDBException {
     t = getRootCause(t);
     stateMachine.transitionToFailed(t);
-    if (stateMachine.getFailureStatus() != null) {
-      throw new IoTDBException(
-          stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
-    } else if (stateMachine.getFailureException() != null) {
-      Throwable rootCause = stateMachine.getFailureException();
-      if (rootCause instanceof IoTDBRuntimeException) {
-        throw (IoTDBRuntimeException) rootCause;
-      } else if (rootCause instanceof IoTDBException) {
-        throw (IoTDBException) rootCause;
-      } else if (rootCause instanceof DateTimeParseException) {
-        throw new IoTDBRuntimeException(
-            rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true);
-      }
-      throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    TSStatus status = stateMachine.getFailureStatus();
+    if (status != null) {
+      throw new IoTDBException(status);
     } else {
-      throwIfUnchecked(t);
-      throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+      Throwable rootCause = stateMachine.getFailureException();
+      if (rootCause != null) {
+        if (rootCause instanceof IoTDBRuntimeException) {
+          throw (IoTDBRuntimeException) rootCause;
+        } else if (rootCause instanceof IoTDBException) {
+          throw (IoTDBException) rootCause;
+        } else if (rootCause instanceof DateTimeParseException) {
+          throw new IoTDBRuntimeException(
+              rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true);
+        }
+        throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      } else {
+        throwIfUnchecked(t);
+        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+      }
     }
   }
 
@@ -645,7 +647,12 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() == QueryType.READ;
+    return context.getQueryType() != QueryType.WRITE;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return context.getQueryType();
   }
 
   @Override

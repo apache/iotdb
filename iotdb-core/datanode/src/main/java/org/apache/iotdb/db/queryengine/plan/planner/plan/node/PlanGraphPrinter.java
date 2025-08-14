@@ -55,7 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
@@ -87,9 +86,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
 import com.google.common.base.Joiner;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
-import org.eclipse.jetty.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -547,24 +546,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitLastQueryScan(LastQueryScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
-      boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
-    }
-    boxValue.add(printRegion(node.getRegionReplicaSet()));
-    return render(node, boxValue, context);
-  }
-
-  @Override
-  public List<String> visitAlignedLastQueryScan(
-      AlignedLastQueryScanNode node, GraphContext context) {
-    List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("AlignedLastQueryScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Aligned: %s", node.isAligned()));
     boxValue.add(
         String.format(
-            "Series: %s%s",
-            node.getSeriesPath().getIDeviceID(), node.getSeriesPath().getMeasurementList()));
-    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
+            "Series: %s%s", node.getDevicePath().getIDeviceID(), node.getMeasurementSchemas()));
+    if (StringUtils.isNotBlank(node.getOutputViewPath())) {
       boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
     }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
@@ -809,6 +795,16 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("Project-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     boxValue.add(String.format("Expressions: %s", node.getAssignments().getMap().values()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitInto(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Into-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     return render(node, boxValue, context);
   }
 

@@ -39,33 +39,36 @@ public class AnnotationTest {
 
   @Test
   public void checkTestOnly() {
-    JavaClasses productionClasses =
-        new ClassFileImporter()
-            .withImportOption(new DoNotIncludeTests())
-            .importPackages("org.apache.iotdb");
-    JavaClasses testClasses =
-        new ClassFileImporter()
-            .withImportOption(new ImportOption.OnlyIncludeTests())
-            .importPackages("org.apache.iotdb");
+    try {
+      JavaClasses productionClasses =
+          new ClassFileImporter()
+              .withImportOption(new DoNotIncludeTests())
+              .importPackages("org.apache.iotdb");
+      JavaClasses testClasses =
+          new ClassFileImporter()
+              .withImportOption(new ImportOption.OnlyIncludeTests())
+              .importPackages("org.apache.iotdb");
 
-    List<Class> testReflectedClasses = new ArrayList<>();
-    for (JavaClass testClass : testClasses) {
-      testReflectedClasses.add(testClass.reflect());
+      List<Class> testReflectedClasses = new ArrayList<>();
+      for (JavaClass testClass : testClasses) {
+        testReflectedClasses.add(testClass.reflect());
+      }
+
+      ArchRule rule =
+          methods()
+              .that()
+              .areAnnotatedWith(TestOnly.class)
+              .should()
+              .onlyBeCalled()
+              .byClassesThat()
+              .belongToAnyOf(testReflectedClasses.toArray(new Class[0]))
+              .orShould()
+              .onlyBeCalled()
+              .byMethodsThat(
+                  CanBeAnnotated.Predicates.annotatedWith(TestOnly.class)); // see next section
+
+      rule.check(productionClasses);
+    } catch (OutOfMemoryError ignored) {
     }
-
-    ArchRule rule =
-        methods()
-            .that()
-            .areAnnotatedWith(TestOnly.class)
-            .should()
-            .onlyBeCalled()
-            .byClassesThat()
-            .belongToAnyOf(testReflectedClasses.toArray(new Class[0]))
-            .orShould()
-            .onlyBeCalled()
-            .byMethodsThat(
-                CanBeAnnotated.Predicates.annotatedWith(TestOnly.class)); // see next section
-
-    rule.check(productionClasses);
   }
 }

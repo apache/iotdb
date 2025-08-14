@@ -68,7 +68,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -77,12 +80,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(2)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment(3, 3);
@@ -90,7 +94,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testSourcePermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "create user `thulab` 'passwd'")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        senderEnv, "create user `thulab` 'passwD@123456'", null)) {
       return;
     }
 
@@ -161,7 +166,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     // Successfully alter
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify source ('username'='thulab', 'password'='passwd')");
+      statement.execute(
+          "alter pipe a2b modify source ('username'='thulab', 'password'='passwD@123456')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Alter pipe shall not fail if user and password are specified");
@@ -179,7 +185,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     // Grant some privilege
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab")) {
+        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null)) {
       return;
     }
 
@@ -207,7 +213,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       return;
     }
 
-    TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
+    try {
+      TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
+    } catch (final Exception | Error ignore) {
+      // Ignore because the db/table may be transferred because sender user may see these
+    }
 
     // Exception, block here
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, receiverEnv);
@@ -217,7 +227,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "test",
         BaseEnv.TABLE_SQL_DIALECT,
         senderEnv,
-        Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"))) {
+        Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"),
+        null)) {
       return;
     }
 
@@ -242,7 +253,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "create user testUser 'password'")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          receiverEnv, "create user testUser 'passwD@123456'", null)) {
         return;
       }
 
@@ -262,7 +274,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "testUser");
-      connectorAttributes.put("connector.password", "password");
+      connectorAttributes.put("connector.password", "passwD@123456");
 
       final TSStatus status =
           client.createPipe(
@@ -295,7 +307,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
-          "grant insert,create on database test to user testUser")) {
+          "grant insert,create on database test to user testUser",
+          null)) {
         return;
       }
 
@@ -334,7 +347,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
-          "grant insert,create on database test2 to user testUser")) {
+          "grant insert,create on database test2 to user testUser",
+          null)) {
         return;
       }
 

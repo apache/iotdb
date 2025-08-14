@@ -48,7 +48,7 @@ public interface ChunkData extends TsFileData {
 
   void writeDecodePage(long[] times, Object[] values, int satisfiedLength) throws IOException;
 
-  void writeToFileWriter(TsFileIOWriter writer) throws IOException;
+  void writeToFileWriter(TsFileIOWriter writer) throws IOException, PageException;
 
   @Override
   default TsFileDataType getType() {
