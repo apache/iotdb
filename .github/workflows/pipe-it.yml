@@ -49,7 +49,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -132,7 +132,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -216,7 +216,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -300,7 +300,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -384,7 +384,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -468,7 +468,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -552,7 +552,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -636,7 +636,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -719,7 +719,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -802,7 +802,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
