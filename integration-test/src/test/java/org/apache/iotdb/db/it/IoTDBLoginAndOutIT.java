@@ -59,7 +59,9 @@ public class IoTDBLoginAndOutIT {
         // do nothing
       }
     }
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection =
+            EnvFactory.getEnv()
+                .getConnectionWithSpecifiedDataNode(EnvFactory.getEnv().getDataNodeWrapper(0));
         Statement statement = connection.createStatement()) {
       int rowCount = 0;
       ResultSet resultSet = statement.executeQuery("SHOW QUERIES");
