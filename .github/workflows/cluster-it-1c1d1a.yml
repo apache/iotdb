@@ -34,7 +34,7 @@ jobs:
   AINode:
     strategy:
       fail-fast: false
-      max-parallel: 15
+      max-parallel: 1
       matrix:
         os: [ ubuntu-latest ]
     runs-on: [self-hosted, gpu]
