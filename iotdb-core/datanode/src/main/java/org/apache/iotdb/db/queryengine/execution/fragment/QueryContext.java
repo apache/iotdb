@@ -95,6 +95,8 @@ public class QueryContext {
 
   // Only used for query with table data(Tree view is not included)
   public boolean collectTable(String table) {
+    // In the current version (2025.08.14), there is only one table under one FI
+    // Therefore, SingletonSet is initially used here for better performance
     if (tables == null) {
       tables = Collections.singleton(table);
       return true;
