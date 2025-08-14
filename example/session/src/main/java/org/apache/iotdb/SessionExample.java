@@ -472,6 +472,61 @@ public class SessionExample {
     }
   }
 
+  private static void insertTabletWithNullValue()
+      throws IoTDBConnectionException, StatementExecutionException {
+    /*
+     * A Tablet example:
+     *      device1
+     * time s1, s2, s3
+     * 1,   1,  1,  1
+     * 2,   2,  2,  2
+     * 3,   3,  3,  3
+     */
+    // The schema of measurements of one device
+    // only measurementId and data type in MeasurementSchema take effects in Tablet
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
+
+    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
+
+    long timestamp = System.currentTimeMillis();
+
+    for (long row = 0; row < 90; row++) {
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, timestamp);
+      for (int s = 0; s < 3; s++) {
+        long value = random.nextLong();
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
+      }
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    for (long row = 90; row < 100; row++) {
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, timestamp);
+      for (int s = 0; s < 3; s++) {
+        Object value = null;
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
+      }
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.getRowSize() != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+  }
+
   private static void insertTabletWithNullValues()
       throws IoTDBConnectionException, StatementExecutionException {
     /*

@@ -2154,3 +2154,8 @@ write_request_remote_dispatch_max_retry_duration_in_ms=60000
 # effectiveMode: hot_reload
 # Datatype: boolean
 enable_retry_for_unknown_error=false
+
+# The switch to control if allow null value be included in the "quantity total" metric statistic.
+# effectiveMode: hot_reload
+# Datatype: Boolean
+include_null_value_in_write_throughput_metric=false
