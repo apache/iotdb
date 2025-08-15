@@ -5,9 +5,6 @@ on:
     # Run at UTC 19:00 every day (CST 03:00 AM)
     - cron: '0 19 * * *'
 
-  push:
-    branches:
-      - fix_daily_it_jdk_dld
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
