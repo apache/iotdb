@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
@@ -48,12 +49,14 @@ public class QueryContext {
   private QueryStatistics queryStatistics = new QueryStatistics();
 
   /**
-   * The key is the path of a ModificationFile and the value is all Modifications in this file. We
-   * use this field because each call of Modification.getModifications() return a copy of the
-   * Modifications, and we do not want it to create multiple copies within a query.
+   * The key is TsFileID and the value is all Modifications in this file. We use this field because
+   * each call of Modification.getModifications() return a copy of the Modifications, and we do not
+   * want it to create multiple copies within a query.
    */
-  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
+  protected Map<TsFileID, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
       new ConcurrentHashMap<>();
+
+  protected AtomicLong cachedModEntriesSize = new AtomicLong(0);
 
   protected long queryId;
 
@@ -64,7 +67,7 @@ public class QueryContext {
 
   private volatile boolean isInterrupted = false;
 
-  private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
+  protected Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
   // referenced TVLists for the query
   protected final Set<TVList> tvListSet = new HashSet<>();
@@ -96,18 +99,21 @@ public class QueryContext {
     return true;
   }
 
-  private PatternTreeMap<Modification, ModsSerializer> getAllModifications(
-      ModificationFile modFile) {
+  protected PatternTreeMap<Modification, ModsSerializer> getAllModifications(
+      TsFileResource resource) {
     return fileModCache.computeIfAbsent(
-        modFile.getFilePath(),
-        k -> {
-          PatternTreeMap<Modification, ModsSerializer> modifications =
-              PatternTreeMapFactory.getModsPatternTreeMap();
-          for (Modification modification : modFile.getModificationsIter()) {
-            modifications.append(modification.getPath(), modification);
-          }
-          return modifications;
-        });
+        resource.getTsFileID(), k -> loadAllModificationsFromDisk(resource));
+  }
+
+  public PatternTreeMap<Modification, ModsSerializer> loadAllModificationsFromDisk(
+      TsFileResource resource) {
+    PatternTreeMap<Modification, ModsSerializer> modifications =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    Iterable<Modification> modEntryIterator = resource.getModFile().getModificationsIter();
+    for (Modification modification : modEntryIterator) {
+      modifications.append(modification.getPath(), modification);
+    }
+    return modifications;
   }
 
   public List<Modification> getPathModifications(
@@ -119,20 +125,16 @@ public class QueryContext {
     }
 
     return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile())
-            .getOverlapped(new PartialPath(deviceID, measurement)));
+        getAllModifications(tsFileResource).getOverlapped(new PartialPath(deviceID, measurement)));
   }
 
-  public List<Modification> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
+  public List<Modification> getPathModifications(
+      PatternTreeMap<Modification, ModsSerializer> fileMods, IDeviceID deviceID)
       throws IllegalPathException {
-    // if the mods file does not exist, do not add it to the cache
-    if (!checkIfModificationExists(tsFileResource)) {
+    if (fileMods == null) {
       return Collections.emptyList();
     }
-
-    return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile())
-            .getDeviceOverlapped(new PartialPath(deviceID)));
+    return ModificationFile.sortAndMerge(fileMods.getDeviceOverlapped(new PartialPath(deviceID)));
   }
 
   /**
@@ -145,8 +147,15 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile()).getOverlapped(path));
+    return getPathModifications(getAllModifications(tsFileResource), path);
+  }
+
+  public List<Modification> getPathModifications(
+      PatternTreeMap<Modification, ModsSerializer> fileMods, PartialPath path) {
+    if (fileMods == null) {
+      return Collections.emptyList();
+    }
+    return ModificationFile.sortAndMerge(fileMods.getOverlapped(path));
   }
 
   /**
