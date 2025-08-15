@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -36,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -43,7 +47,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -214,9 +217,11 @@ public class SettleSelectorImpl implements ISettleSelector {
    * @return dirty status means the status of current resource.
    */
   @SuppressWarnings("OptionalGetWithoutIsPresent") // iterating the index, must present
-  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource) throws IOException {
+  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource)
+      throws IOException, IllegalPathException {
 
-    Collection<ModEntry> modifications = resource.getAllModEntries();
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
+        CompactionUtils.buildModEntryPatternTreeMap(resource);
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {
       timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
@@ -285,8 +290,16 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   /** Check whether the device is completely deleted by mods or not. */
   private boolean isDeviceDeletedByMods(
-      Collection<ModEntry> modifications, IDeviceID device, long startTime, long endTime) {
-    return ModificationUtils.isAllDeletedByMods(modifications, device, startTime, endTime);
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      IDeviceID device,
+      long startTime,
+      long endTime)
+      throws IllegalPathException {
+    return ModificationUtils.isAllDeletedByMods(
+        CompactionUtils.getMatchedModifications(
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER),
+        startTime,
+        endTime);
   }
 
   private List<SettleCompactionTask> createTask(List<SettleTaskResource> settleTaskResourceList) {
