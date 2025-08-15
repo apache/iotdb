@@ -90,6 +90,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.LongConsumer;
 import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
@@ -1086,6 +1087,9 @@ public class IoTDBDescriptor {
                 .getProperty("sort_buffer_size_in_bytes", Long.toString(conf.getSortBufferSize()))
                 .trim()));
 
+    loadFixedSizeLimitForQuery(
+        properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
+
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
 
@@ -1107,6 +1111,19 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+  }
+
+  private void loadFixedSizeLimitForQuery(
+      TrimProperties properties, String name, LongConsumer setFunction) {
+    long defaultValue =
+        Math.min(
+            32 * 1024 * 1024L,
+            conf.getAllocateMemoryForOperators() / conf.getQueryThreadCount() / 2);
+    long size = Long.parseLong(properties.getProperty(name, Long.toString(defaultValue)));
+    if (size <= 0) {
+      size = defaultValue;
+    }
+    setFunction.accept(size);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -2042,6 +2059,9 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "tvlist_sort_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
+
+      loadFixedSizeLimitForQuery(
+          properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

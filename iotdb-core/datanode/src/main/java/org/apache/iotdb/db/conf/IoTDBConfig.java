@@ -454,6 +454,9 @@ public class IoTDBConfig {
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
 
+  /** Mods cache size limit per fi */
+  private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
+
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
@@ -4240,6 +4243,14 @@ public class IoTDBConfig {
 
   public long getSortBufferSize() {
     return sortBufferSize;
+  }
+
+  public void setModsCacheSizeLimitPerFI(long modsCacheSizeLimitPerFI) {
+    this.modsCacheSizeLimitPerFI = modsCacheSizeLimitPerFI;
+  }
+
+  public long getModsCacheSizeLimitPerFI() {
+    return modsCacheSizeLimitPerFI;
   }
 
   public void setSortTmpDir(String sortTmpDir) {
