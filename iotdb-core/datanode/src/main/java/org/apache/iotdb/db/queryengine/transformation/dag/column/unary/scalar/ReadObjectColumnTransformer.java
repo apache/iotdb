@@ -108,16 +108,7 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
 
   private Binary readObject(Binary binary) {
     File file = ObjectTypeUtils.getObjectPathFromBinary(binary);
-    long fileSize = file.length();
-    if (offset >= fileSize) {
-      throw new SemanticException(
-          "offset is greater than object size, file path is " + file.getAbsolutePath());
-    }
-    long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
-    if (actualReadSize > Integer.MAX_VALUE) {
-      throw new SemanticException(
-          "Read object size is too large (size > 2G), file path is " + file.getAbsolutePath());
-    }
+    long actualReadSize = getActualReadSize(file);
     fragmentInstanceContext.ifPresent(
         context -> context.getMemoryReservationContext().reserveMemoryCumulatively(actualReadSize));
     byte[] bytes = new byte[(int) actualReadSize];
@@ -128,5 +119,23 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
       throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return new Binary(bytes);
+  }
+
+  private long getActualReadSize(File file) {
+    long fileSize = file.length();
+    if (offset >= fileSize) {
+      throw new SemanticException(
+          String.format(
+              "offset %d is greater than object size %d, file path is %s",
+              offset, fileSize, file.getAbsolutePath()));
+    }
+    long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
+    if (actualReadSize > Integer.MAX_VALUE) {
+      throw new SemanticException(
+          String.format(
+              "Read object size %s is too large (size > 2G), file path is %s",
+              actualReadSize, file.getAbsolutePath()));
+    }
+    return actualReadSize;
   }
 }
