@@ -81,27 +81,26 @@ public class CompressedTsFileModelProcessor extends ModelProcessor {
                       .dataType(TSDataType.FLOAT)
                       .category(ColumnCategory.FIELD)
                       .build()));
+      int restSize = values.length;
+      int offset = 0;
       try (ITsFileWriter writer = new DeviceTableModelWriter(tsFileOutput, tableSchema, 1)) {
         Tablet tablet =
             new Tablet(
                 Collections.singletonList("v"),
                 Collections.singletonList(TSDataType.FLOAT),
                 DEFAULT_CHUNK_NUMBER);
-
-        for (int i = 0; i < values.length; i++) {
-          int row = tablet.getRowSize();
-          tablet.addTimestamp(row, i);
-          tablet.addValue(row, "v", values[i]);
-          // write
-          if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-            writer.write(tablet);
-            tablet.reset();
+        long[] tabletTimeArr = tablet.getTimestamps();
+        float[] tabletValueArr = (float[]) tablet.getValues()[0];
+        while (restSize > 0) {
+          int copyLength = Math.min(restSize, DEFAULT_CHUNK_NUMBER);
+          for (int i = 0; i < copyLength; i++) {
+            tabletTimeArr[i] = i + offset;
           }
-        }
-        // write
-        if (tablet.getRowSize() != 0) {
+          System.arraycopy(values, offset, tabletValueArr, 0, copyLength);
+          restSize -= copyLength;
+          offset += copyLength;
+          tablet.setRowSize(copyLength);
           writer.write(tablet);
-          tablet.reset();
         }
       }
       return tsFileOutput.getByteBuffer().array();
