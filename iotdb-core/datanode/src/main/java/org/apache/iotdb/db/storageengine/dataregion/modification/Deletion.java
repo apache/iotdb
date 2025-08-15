@@ -21,9 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -33,6 +36,8 @@ import java.util.Objects;
 
 /** Deletion is a delete operation on a timeseries. */
 public class Deletion extends Modification implements Cloneable {
+
+  private static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(Deletion.class);
 
   /** data within the interval [startTime, endTime] are to be deleted. */
   private TimeRange timeRange;
@@ -117,10 +122,18 @@ public class Deletion extends Modification implements Cloneable {
     long startTime = stream.readLong();
     long endTime = stream.readLong();
     return new Deletion(
-        DataNodeDevicePathCache.getInstance().getPartialPath(ReadWriteIOUtils.readString(stream)),
-        0,
-        startTime,
-        endTime);
+        getMeasurementPath(ReadWriteIOUtils.readString(stream)), 0, startTime, endTime);
+  }
+
+  private static PartialPath getMeasurementPath(String path) throws IllegalPathException {
+    // In this place, we can be sure that the path pattern here has been checked by antlr before, so
+    // when conditions permit, a lighter split method can be used here.
+    if (path.contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      return new PartialPath(PathUtils.splitPathToDetachedNodes(path));
+    } else {
+      String[] nodes = path.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
+      return new PartialPath(nodes);
+    }
   }
 
   public long getSerializedSize() {
@@ -163,5 +176,12 @@ public class Deletion extends Modification implements Cloneable {
   @Override
   public Deletion clone() {
     return new Deletion(getPath(), getFileOffset(), getStartTime(), getEndTime());
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + MemoryEstimationHelper.TIME_RANGE_INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMeasurementPathNodes(path);
   }
 }
