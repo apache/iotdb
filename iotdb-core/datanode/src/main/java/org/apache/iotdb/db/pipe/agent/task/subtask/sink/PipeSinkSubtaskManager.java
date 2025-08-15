@@ -78,7 +78,7 @@ public class PipeSinkSubtaskManager {
             connectorKey);
 
     final boolean isDataRegionSink = isDataRegionSink(environment.getRegionId());
-    final int sinkNum = calculateSinkSubtaskNum(pipeSinkParameters, isDataRegionSink, connectorKey);
+    final int sinkNum = calculateSinkSubtaskNum(pipeSinkParameters, isDataRegionSink);
     boolean realTimeFirst = false;
     final String attributeSortedString =
         generateAttributeSortedString(pipeSinkParameters, environment.getRegionId());
@@ -260,8 +260,7 @@ public class PipeSinkSubtaskManager {
 
   public static int calculateSinkSubtaskNum(
       final PipeParameters pipeSinkParameters, final int regionId) {
-    final String connectorKey = getConnectorKey(pipeSinkParameters);
-    return calculateSinkSubtaskNum(pipeSinkParameters, isDataRegionSink(regionId), connectorKey);
+    return calculateSinkSubtaskNum(pipeSinkParameters, isDataRegionSink(regionId));
   }
 
   public static String generateAttributeSortedString(
@@ -285,9 +284,7 @@ public class PipeSinkSubtaskManager {
   }
 
   private static int calculateSinkSubtaskNum(
-      final PipeParameters pipeSinkParameters,
-      final boolean isDataRegionSink,
-      final String connectorKey) {
+      final PipeParameters pipeSinkParameters, final boolean isDataRegionSink) {
     if (!isDataRegionSink) {
       // Do not allow parallel tasks for schema region connectors to avoid the potential disorder of
       // the schema region data transfer.
@@ -300,9 +297,7 @@ public class PipeSinkSubtaskManager {
         Arrays.asList(
             PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
             PipeSinkConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
-        PipeSinkConstant.SINGLE_THREAD_DEFAULT_SINK.contains(connectorKey)
-            ? 1
-            : PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+        PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
   }
 
   private static String generateAttributeSortedString(
