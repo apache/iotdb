@@ -1039,6 +1039,8 @@ public class IoTDBConfig {
   private long dataRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
   private long schemaRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
 
+  private int ratisTransferLeaderTimeoutMs = 30 * 1000; // 30s
+
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
 
@@ -4075,6 +4077,14 @@ public class IoTDBConfig {
 
   public void setSchemaRatisPeriodicSnapshotInterval(long schemaRatisPeriodicSnapshotInterval) {
     this.schemaRatisPeriodicSnapshotInterval = schemaRatisPeriodicSnapshotInterval;
+  }
+
+  public int getRatisTransferLeaderTimeoutMs() {
+    return ratisTransferLeaderTimeoutMs;
+  }
+
+  public void setRatisTransferLeaderTimeoutMs(int ratisTransferLeaderTimeoutMs) {
+    this.ratisTransferLeaderTimeoutMs = ratisTransferLeaderTimeoutMs;
   }
 
   public boolean isEnableTsFileValidation() {

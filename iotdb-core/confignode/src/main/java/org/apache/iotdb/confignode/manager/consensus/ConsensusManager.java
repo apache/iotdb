@@ -141,6 +141,11 @@ public class ConsensusManager {
                       .setConsensusGroupType(TConsensusGroupType.ConfigRegion)
                       .setRatisConfig(
                           RatisConfig.newBuilder()
+                              .setUtils(
+                                  RatisConfig.Utils.newBuilder()
+                                      .setTransferLeaderTimeoutMs(
+                                          CONF.getRatisTransferLeaderTimeoutMs())
+                                      .build())
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(

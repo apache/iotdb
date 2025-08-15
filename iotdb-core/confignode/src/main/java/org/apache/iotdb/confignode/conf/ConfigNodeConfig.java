@@ -294,6 +294,8 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
+  private int ratisTransferLeaderTimeoutMs = 30 * 1000; // 30s
+
   private long configNodeRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
@@ -1104,6 +1106,14 @@ public class ConfigNodeConfig {
 
   public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public int getRatisTransferLeaderTimeoutMs() {
+    return ratisTransferLeaderTimeoutMs;
+  }
+
+  public void setRatisTransferLeaderTimeoutMs(int ratisTransferLeaderTimeoutMs) {
+    this.ratisTransferLeaderTimeoutMs = ratisTransferLeaderTimeoutMs;
   }
 
   public long getConfigNodeRatisLogMax() {
