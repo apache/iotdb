@@ -110,11 +110,13 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
     File file = ObjectTypeUtils.getObjectPathFromBinary(binary);
     long fileSize = file.length();
     if (offset >= fileSize) {
-      throw new SemanticException("offset is greater than object size");
+      throw new SemanticException(
+          "offset is greater than object size, file path is " + file.getAbsolutePath());
     }
     long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
     if (actualReadSize > Integer.MAX_VALUE) {
-      throw new SemanticException("Read object size is too large (size > 2G)");
+      throw new SemanticException(
+          "Read object size is too large (size > 2G), file path is " + file.getAbsolutePath());
     }
     fragmentInstanceContext.ifPresent(
         context -> context.getMemoryReservationContext().reserveMemoryCumulatively(actualReadSize));
