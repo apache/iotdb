@@ -1207,6 +1207,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     TableScanOperator tableScanOperator = new TableScanOperator(parameter);
 
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
     addSource(
         tableScanOperator,
         context,
@@ -3021,6 +3022,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     } else {
       DefaultAggTableScanOperator aggTableScanOperator = new DefaultAggTableScanOperator(parameter);
 
+      context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
       addSource(
           aggTableScanOperator,
           context,
