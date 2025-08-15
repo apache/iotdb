@@ -90,6 +90,8 @@ public class CommonDescriptor {
             "iotdb_server_encrypt_decrypt_provider_parameter",
             config.getEncryptDecryptProviderParameter()));
 
+    config.setUserEncryptTokenHint(System.getenv("user_encrypt_token_hint"));
+
     String[] tierTTLStr = new String[config.getTierTTLInMs().length];
     for (int i = 0; i < tierTTLStr.length; ++i) {
       tierTTLStr[i] = String.valueOf(config.getTierTTLInMs()[i]);
