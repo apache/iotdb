@@ -1293,6 +1293,34 @@ public class TestUtils {
     assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
   }
 
+  public static void assertDataEventuallyOnEnvTMP(
+      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(600L, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  statement.execute("flush");
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet, true);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   public static void assertDataEventuallyOnEnv(
       final BaseEnv env,
       final String sql,
