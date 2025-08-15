@@ -34,6 +34,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.SessionExample.printDataSet;
+
 public class TableModelSessionExample {
 
   private static final String LOCAL_URL = "127.0.0.1:6667";
@@ -71,10 +73,7 @@ public class TableModelSessionExample {
       // show tables by specifying another database
       // using SHOW tables FROM
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES FROM test1")) {
-        System.out.println(dataSet.getColumnNames());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
       // insert table data by tablet
@@ -122,11 +121,7 @@ public class TableModelSessionExample {
           session.executeQueryStatement(
               "select * from test1 "
                   + "where region_id = '1' and plant_id in ('3', '5') and device_id = '3'")) {
-        System.out.println(dataSet.getColumnNames());
-        System.out.println(dataSet.getColumnTypes());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
     } catch (IoTDBConnectionException e) {
@@ -146,10 +141,7 @@ public class TableModelSessionExample {
 
       // show tables from current database
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
-        System.out.println(dataSet.getColumnNames());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
       // change database to test2
@@ -158,10 +150,7 @@ public class TableModelSessionExample {
       // show tables by specifying another database
       // using SHOW tables FROM
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
-        System.out.println(dataSet.getColumnNames());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
     } catch (IoTDBConnectionException e) {
