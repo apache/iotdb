@@ -134,7 +134,10 @@ public class QueryContext {
     if (fileMods == null) {
       return Collections.emptyList();
     }
-    return ModificationFile.sortAndMerge(fileMods.getDeviceOverlapped(new PartialPath(deviceID)));
+
+    return ModificationFile.sortAndMerge(
+        fileMods.getOverlapped(
+            new PartialPath(deviceID).concatAsMeasurementPath(AlignedPath.VECTOR_PLACEHOLDER)));
   }
 
   /**
