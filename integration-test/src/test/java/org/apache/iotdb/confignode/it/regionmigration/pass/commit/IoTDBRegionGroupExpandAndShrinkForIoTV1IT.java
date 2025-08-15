@@ -139,7 +139,12 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
           return dataNodes.contains(targetDataNode);
         };
 
-    awaitUntilSuccess(client, expandRegionPredicate, Optional.of(targetDataNode), Optional.empty());
+    awaitUntilSuccess(
+        client,
+        selectedRegion,
+        expandRegionPredicate,
+        Optional.of(targetDataNode),
+        Optional.empty());
 
     LOGGER.info("Region {} has expanded to DataNode {}", selectedRegion, targetDataNode);
   }
@@ -167,7 +172,12 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
           return !dataNodes.contains(targetDataNode);
         };
 
-    awaitUntilSuccess(client, shrinkRegionPredicate, Optional.empty(), Optional.of(targetDataNode));
+    awaitUntilSuccess(
+        client,
+        selectedRegion,
+        shrinkRegionPredicate,
+        Optional.empty(),
+        Optional.of(targetDataNode));
 
     LOGGER.info("Region {} has shrunk from DataNode {}", selectedRegion, targetDataNode);
   }

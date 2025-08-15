@@ -24,7 +24,10 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -39,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
@@ -46,12 +50,14 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +84,7 @@ import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long END_TIME_INITIAL_VALUE = -1L;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
@@ -92,6 +99,8 @@ public class FragmentInstanceContext extends QueryContext {
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   private List<IFullPath> sourcePaths;
+
+  private boolean singleSourcePath = false;
 
   // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
@@ -320,6 +329,44 @@ public class FragmentInstanceContext extends QueryContext {
     lastExecutionStartTime.set(now);
   }
 
+  @Override
+  protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> getAllModifications(
+      TsFileResource resource) {
+    if (isSingleSourcePath() || memoryReservationManager == null) {
+      return loadAllModificationsFromDisk(resource);
+    }
+
+    AtomicReference<PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
+        atomicReference = new AtomicReference<>();
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> cachedResult =
+        fileModCache.computeIfAbsent(
+            resource.getTsFileID(),
+            k -> {
+              PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allMods =
+                  loadAllModificationsFromDisk(resource);
+              atomicReference.set(allMods);
+              if (cachedModEntriesSize.get() >= config.getModsCacheSizeLimitPerFI()) {
+                return null;
+              }
+              long memCost =
+                  RamUsageEstimator.sizeOfObject(allMods)
+                      + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY;
+              long alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
+              while (alreadyUsedMemoryForCachedModEntries + memCost
+                  < config.getModsCacheSizeLimitPerFI()) {
+                if (cachedModEntriesSize.compareAndSet(
+                    alreadyUsedMemoryForCachedModEntries,
+                    alreadyUsedMemoryForCachedModEntries + memCost)) {
+                  memoryReservationManager.reserveMemoryCumulatively(memCost);
+                  return allMods;
+                }
+                alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
+              }
+              return null;
+            });
+    return cachedResult == null ? atomicReference.get() : cachedResult;
+  }
+
   // the state change listener is added here in a separate initialize() method
   // instead of the constructor to prevent leaking the "this" reference to
   // another thread, which will cause unsafe publication of this instance.
@@ -479,12 +526,25 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
+  @Override
+  public boolean collectTable(String table) {
+    boolean added = super.collectTable(table);
+    if (added && memoryReservationManager != null) {
+      memoryReservationManager.reserveMemoryCumulatively(
+          RamUsageEstimator.sizeOf(table) + RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
+    }
+    return added;
+  }
+
   public IDataRegionForQuery getDataRegion() {
     return dataRegion;
   }
 
   public void setSourcePaths(List<IFullPath> sourcePaths) {
     this.sourcePaths = sourcePaths;
+    if (sourcePaths != null && sourcePaths.size() == 1) {
+      singleSourcePath = true;
+    }
   }
 
   public void setDevicePathsToContext(Map<IDeviceID, DeviceContext> devicePathsToContext) {
@@ -791,6 +851,8 @@ public class FragmentInstanceContext extends QueryContext {
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
 
+    fileModCache = null;
+    tables = null;
     dataRegion = null;
     globalTimeFilter = null;
     sharedQueryDataSource = null;
@@ -966,5 +1028,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean ignoreNotExistsDevice() {
     return ignoreNotExistsDevice;
+  }
+
+  public boolean isSingleSourcePath() {
+    return singleSourcePath;
   }
 }
