@@ -216,6 +216,10 @@ class InferenceManager:
                     inference_pipeline = TimerSundialInferencePipeline(SundialConfig())
                 elif model_id == "timer_xl":
                     inference_pipeline = TimerXLInferencePipeline(TimerConfig())
+                else:
+                    raise InferenceModelInternalError(
+                        f"Unsupported model_id: {model_id}"
+                    )
                 infer_req = InferenceRequest(
                     req_id=generate_req_id(),
                     model_id=model_id,
