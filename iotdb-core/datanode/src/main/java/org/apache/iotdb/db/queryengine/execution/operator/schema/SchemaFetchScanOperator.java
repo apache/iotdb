@@ -222,11 +222,17 @@ public class SchemaFetchScanOperator implements SourceOperator {
       schemaNodeIteratorForSerialize = schemaTree.getIteratorForSerialize();
       baos = new PublicBAOS(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + EXTRA_SIZE_TO_AVOID_GROW);
       if (operatorContext != null) {
-        schemaTreeMemCost = schemaTree.ramBytesUsed();
+        long ramBytesUsed = schemaTree.ramBytesUsed();
         operatorContext
             .getInstanceContext()
             .getMemoryReservationContext()
-            .reserveMemoryCumulatively(schemaTreeMemCost);
+            .reserveMemoryCumulatively(ramBytesUsed);
+        // For temporary and independently counted memory, we need process it immediately
+        operatorContext
+            .getInstanceContext()
+            .getMemoryReservationContext()
+            .reserveMemoryImmediately();
+        this.schemaTreeMemCost = ramBytesUsed;
       }
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e);

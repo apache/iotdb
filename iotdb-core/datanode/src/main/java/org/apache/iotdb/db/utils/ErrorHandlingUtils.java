@@ -163,7 +163,9 @@ public class ErrorHandlingUtils {
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
     } else if (t instanceof RootFIPlacementException
         || t instanceof ReplicaSetUnreachableException
-        || t instanceof QuerySchemaFetchFailedException) {
+        || (t instanceof QuerySchemaFetchFailedException
+            && ((QuerySchemaFetchFailedException) t).getErrorCode()
+                != TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode())) {
       return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
       return Objects.nonNull(((IoTDBException) t).getStatus())
