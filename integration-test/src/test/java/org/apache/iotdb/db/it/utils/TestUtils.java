@@ -1308,13 +1308,7 @@ public class TestUtils {
           .untilAsserted(
               () -> {
                 try {
-                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
-                  // sync requires tsFile to process. We flush in the middle of assertion because we
-                  // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > 600L >> 1) {
-                    flushed[0] = true;
-                    statement.execute("flush");
-                  }
+                  statement.execute("flush");
                   TestUtils.assertResultSetEqual(
                       executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet, true);
                 } catch (Exception e) {
