@@ -73,7 +73,8 @@ public class IoTDBLoginAndOutIT {
       System.out.println();
       while (dataSet.hasNext()) {
         RowRecord rec = dataSet.next();
-        for (int i = 0; i < columnCount; i++) {
+        System.out.printf("%s, ", rec.getTimestamp());
+        for (int i = 0; i < columnCount - 1; i++) {
           System.out.printf("%s, ", rec.getFields().get(i).toString());
         }
         System.out.println();
