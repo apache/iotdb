@@ -118,12 +118,12 @@ class PoolManager:
     def shutdown(self):
         for model_id, pool_group in self._request_pool_map.items():
             for pool_id in pool_group.get_pool_ids():
-                requestPool = pool_group.get_request_pool(pool_id)
-                requestQueue = pool_group.get_request_queue(pool_id)
-                requestPool.stop()
-                while not requestQueue.empty():
-                    requestQueue.get_nowait()
-                requestQueue.close()
+                request_pool = pool_group.get_request_pool(pool_id)
+                request_queue = pool_group.get_request_queue(pool_id)
+                request_pool.stop()
+                while not request_queue.empty():
+                    request_queue.get_nowait()
+                request_queue.close()
             for pool_id in pool_group.get_pool_ids():
-                requestPool = pool_group.get_request_pool(pool_id)
-                requestPool.join(timeout=10)
+                request_pool = pool_group.get_request_pool(pool_id)
+                request_pool.join(timeout=10)
