@@ -132,7 +132,7 @@ public class QueryContext {
 
     return ModificationFile.sortAndMerge(
         getAllModifications(tsFileResource.getModFile())
-            .getDeviceOverlapped(new PartialPath(deviceID)));
+            .getOverlapped(new PartialPath(deviceID, AlignedPath.VECTOR_PLACEHOLDER)));
   }
 
   /**
