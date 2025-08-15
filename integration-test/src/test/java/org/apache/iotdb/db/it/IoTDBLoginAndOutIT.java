@@ -36,7 +36,6 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
