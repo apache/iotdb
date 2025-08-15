@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.session.Session;
 
+import org.apache.tsfile.read.common.RowRecord;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -31,8 +35,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 
@@ -59,20 +61,19 @@ public class IoTDBLoginAndOutIT {
         // do nothing
       }
     }
-    try (Connection connection =
-            EnvFactory.getEnv()
-                .getConnectionWithSpecifiedDataNode(EnvFactory.getEnv().getDataNodeWrapper(0));
-        Statement statement = connection.createStatement()) {
+    DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    try (Session session = new Session(dataNodeWrapper.getIp(), dataNodeWrapper.getPort())) {
       int rowCount = 0;
-      ResultSet resultSet = statement.executeQuery("SHOW QUERIES");
-      int columnCount = resultSet.getMetaData().getColumnCount();
+      SessionDataSet dataSet = session.executeQueryStatement("SHOW QUERIES");
+      int columnCount = dataSet.getColumnNames().size();
       for (int i = 0; i < columnCount; i++) {
-        System.out.printf("%s, ", resultSet.getMetaData().getColumnName(i + 1));
+        System.out.printf("%s, ", dataSet.getColumnNames().get(i));
       }
       System.out.println();
-      while (resultSet.next()) {
+      while (dataSet.hasNext()) {
+        RowRecord rec = dataSet.next();
         for (int i = 0; i < columnCount; i++) {
-          System.out.printf("%s, ", resultSet.getString(i + 1));
+          System.out.printf("%s, ", rec.getFields().get(i).toString());
         }
         System.out.println();
         rowCount++;
