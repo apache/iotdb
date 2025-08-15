@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
@@ -59,6 +60,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   protected TsFileSequenceReader tsFileSequenceReader;
 
+  protected Iterable<TabletInsertionEvent> tabletInsertionIterable;
+
   protected TsFileInsertionEventParser(
       final String pipeName,
       final long creationTime,
@@ -83,9 +86,10 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
-    // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlockForTablet =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
   }
 
   /**
@@ -95,6 +99,9 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   @Override
   public void close() {
+
+    tabletInsertionIterable = null;
+
     try {
       if (pipeName != null && !timeUsageReported) {
         PipeTsFileToTabletsMetrics.getInstance()
