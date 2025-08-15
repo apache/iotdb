@@ -47,6 +47,7 @@ import javax.validation.constraints.NotNull;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -124,7 +125,10 @@ public class ConfigExecution implements IQueryExecution {
     ConfigTaskResult result;
     if (cause instanceof IoTDBException) {
       result =
-          new ConfigTaskResult(TSStatusCode.representOf(((IoTDBException) cause).getErrorCode()));
+          Objects.nonNull(((IoTDBException) cause).getStatus())
+              ? new ConfigTaskResult(
+                  TSStatusCode.representOf(((IoTDBException) cause).getErrorCode()))
+              : new ConfigTaskResult(((IoTDBException) cause).getStatus());
     } else if (cause instanceof StatementExecutionException) {
       result =
           new ConfigTaskResult(
@@ -158,14 +162,17 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public ExecutionResult getStatus() {
     try {
-      ConfigTaskResult taskResult = taskFuture.get();
-      TSStatusCode statusCode = taskResult.getStatusCode();
+      final ConfigTaskResult taskResult = taskFuture.get();
       resultSet = taskResult.getResultSet();
       datasetHeader = taskResult.getResultSetHeader();
-      String message =
+      if (Objects.nonNull(taskResult.getStatus())) {
+        return new ExecutionResult(context.getQueryId(), taskResult.getStatus());
+      }
+      final TSStatusCode statusCode = taskResult.getStatusCode();
+      final String message =
           statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (final InterruptedException | ExecutionException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
