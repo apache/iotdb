@@ -46,7 +46,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <3.13"
+python = ">=3.9, <3.14"
 numpy = "^1.21.4"
 pandas = ">=2.2.0"
 torch = ">=2.7.1"

@@ -222,7 +222,7 @@ description = "Composable command line interface toolkit"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "python_version == \"3.10\" and platform_system == \"Windows\" and platform_python_implementation != \"PyPy\" or python_version >= \"3.11\""
+markers = "python_version >= \"3.10\" and platform_system == \"Windows\" and platform_python_implementation != \"PyPy\" or python_version >= \"3.11\""
 files = [
     {file = "click-8.2.1-py3-none-any.whl", hash = "sha256:61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b"},
     {file = "click-8.2.1.tar.gz", hash = "sha256:27c491cc05d968d271d5a1db13e3b5a184636d9d930f148c50b038f0d0646202"},
@@ -436,7 +436,7 @@ description = "Lightweight in-process concurrent programming"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\""
+markers = "(platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\") and python_version < \"3.13\""
 files = [
     {file = "greenlet-3.0.3-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:9da2bd29ed9e4f15955dd1595ad7bc9320308a3b766ef7f837e23ad4b4aac31a"},
     {file = "greenlet-3.0.3-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d353cadd6083fdb056bb46ed07e4340b0869c305c8ca54ef9da3421acbdf6881"},
@@ -1648,6 +1648,7 @@ description = "Base classes for sklearn-like parametric objects"
 optional = false
 python-versions = "<3.13,>=3.8"
 groups = ["main"]
+markers = "python_version <= \"3.11\""
 files = [
     {file = "scikit-base-0.6.2.tar.gz", hash = "sha256:ac7c1dd9b1006e1e466d8269074f7fb02b7f5143c615f7fdf6a1e0c7565431fe"},
     {file = "scikit_base-0.6.2-py3-none-any.whl", hash = "sha256:91af9fdc6f8e35cbb1a89436f127681a64957645be0039a38d343381abef9154"},
@@ -1658,6 +1659,27 @@ all-extras = ["numpy", "pandas"]
 binder = ["jupyter"]
 dev = ["pre-commit", "pytest", "pytest-cov", "scikit-learn (>=0.24.0)"]
 docs = ["Sphinx (!=7.2.0,<8.0.0)", "jupyter", "myst-parser", "nbsphinx (>=0.8.6)", "numpydoc", "pydata-sphinx-theme", "sphinx-design (<0.6.0)", "sphinx-gallery (<0.16.0)", "sphinx-issues (<4.0.0)", "sphinx-panels", "tabulate"]
+linters = ["black", "doc8", "flake8", "flake8-bugbear", "flake8-builtins", "flake8-comprehensions", "flake8-print", "flake8-quotes", "isort", "mypy", "nbqa", "pandas-vet", "pep8-naming", "pydocstyle"]
+test = ["coverage", "numpy", "pandas", "pytest", "pytest-cov", "safety", "scikit-learn (>=0.24.0)", "scipy"]
+
+[[package]]
+name = "scikit-base"
+version = "0.12.4"
+description = "Base classes for sklearn-like parametric objects"
+optional = false
+python-versions = "<3.14,>=3.9"
+groups = ["main"]
+markers = "python_version >= \"3.12\""
+files = [
+    {file = "scikit_base-0.12.4-py3-none-any.whl", hash = "sha256:ebb5338813433c86153f22e58d698061eb5442c94313ef4e6ab5c2732b6ab08f"},
+    {file = "scikit_base-0.12.4.tar.gz", hash = "sha256:d452844cb898560dedc5116c5441f348c2b75312cdb8ff4a3d1310456c887591"},
+]
+
+[package.extras]
+all-extras = ["numpy", "pandas"]
+binder = ["jupyter"]
+dev = ["pre-commit", "pytest", "pytest-cov", "scikit-learn (>=0.24.0)"]
+docs = ["Sphinx (!=7.2.0,<9.0.0)", "jupyter", "myst-parser", "nbsphinx (>=0.8.6)", "numpydoc", "pydata-sphinx-theme", "sphinx-design (<0.7.0)", "sphinx-gallery (<0.20.0)", "sphinx-issues (<6.0.0)", "sphinx-panels", "tabulate"]
 linters = ["black", "doc8", "flake8", "flake8-bugbear", "flake8-builtins", "flake8-comprehensions", "flake8-print", "flake8-quotes", "isort", "mypy", "nbqa", "pandas-vet", "pep8-naming", "pydocstyle"]
 test = ["coverage", "numpy", "pandas", "pytest", "pytest-cov", "safety", "scikit-learn (>=0.24.0)", "scipy"]
 
@@ -2534,5 +2556,5 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.9, <3.13"
-content-hash = "2b36eb1e819c8ef88012adcb89cabefea9354b556fbade80b6068274736fe31f"
+python-versions = ">=3.9, <3.14"
+content-hash = "48e8a31d411b005f289fe56d5a194ea06afe954cf431c0959e0aae78b127d19b"
