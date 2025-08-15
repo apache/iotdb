@@ -264,13 +264,24 @@ public class TableMetadataImpl implements Metadata {
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
+      if (argumentTypes.size() != 1) {
         throw new SemanticException(
-            "Scalar function "
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text or string data type.");
+          "Scalar function "
+            + functionName.toLowerCase(Locale.ENGLISH)
+            + " only accepts one argument.");
       }
-      return INT32;
+      Type argumentType = argumentTypes.get(0);
+      if (isCharType(argumentType)) {
+        return INT32;
+      } else if (isBlobType(argumentType)) {
+        return INT64;
+      } else {
+        throw new SemanticException(
+          "Scalar function "
+            + functionName.toLowerCase(Locale.ENGLISH)
+            + " only accepts text, string or blob data type, but got: "
+            + argumentType);
+      }
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
