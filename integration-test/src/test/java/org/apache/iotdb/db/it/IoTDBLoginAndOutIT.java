@@ -63,6 +63,7 @@ public class IoTDBLoginAndOutIT {
     }
     DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     try (Session session = new Session(dataNodeWrapper.getIp(), dataNodeWrapper.getPort())) {
+      session.open();
       int rowCount = 0;
       SessionDataSet dataSet = session.executeQueryStatement("SHOW QUERIES");
       int columnCount = dataSet.getColumnNames().size();
