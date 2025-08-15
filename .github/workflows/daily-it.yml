@@ -64,7 +64,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: corretto
           java-version: ${{ matrix.java }}
       - name: IT/UT Test
         shell: bash
