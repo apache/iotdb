@@ -84,6 +84,12 @@ public class IoTConsensusConfig {
     private final int thriftMaxFrameSize;
     private final int maxClientNumForEachNode;
 
+    private final boolean isEnableSSL;
+    private final String sslTrustStorePath;
+    private final String sslTrustStorePassword;
+    private final String sslKeyStorePath;
+    private final String sslKeyStorePassword;
+
     private RPC(
         int rpcSelectorThreadNum,
         int rpcMinConcurrentClientNum,
@@ -94,7 +100,12 @@ public class IoTConsensusConfig {
         int connectionTimeoutInMs,
         boolean printLogWhenThriftClientEncounterException,
         int thriftMaxFrameSize,
-        int maxClientNumForEachNode) {
+        int maxClientNumForEachNode,
+        boolean isEnableSSL,
+        String sslTrustStorePath,
+        String sslTrustStorePassword,
+        String sslKeyStorePath,
+        String sslKeyStorePassword) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
       this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -105,6 +116,11 @@ public class IoTConsensusConfig {
       this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
       this.maxClientNumForEachNode = maxClientNumForEachNode;
+      this.isEnableSSL = isEnableSSL;
+      this.sslTrustStorePath = sslTrustStorePath;
+      this.sslTrustStorePassword = sslTrustStorePassword;
+      this.sslKeyStorePath = sslKeyStorePath;
+      this.sslKeyStorePassword = sslKeyStorePassword;
     }
 
     public int getRpcSelectorThreadNum() {
@@ -147,6 +163,26 @@ public class IoTConsensusConfig {
       return maxClientNumForEachNode;
     }
 
+    public boolean isEnableSSL() {
+      return isEnableSSL;
+    }
+
+    public String getSslTrustStorePath() {
+      return sslTrustStorePath;
+    }
+
+    public String getSslTrustStorePassword() {
+      return sslTrustStorePassword;
+    }
+
+    public String getSslKeyStorePath() {
+      return sslKeyStorePath;
+    }
+
+    public String getSslKeyStorePassword() {
+      return sslKeyStorePassword;
+    }
+
     public static RPC.Builder newBuilder() {
       return new RPC.Builder();
     }
@@ -164,6 +200,12 @@ public class IoTConsensusConfig {
       private boolean printLogWhenThriftClientEncounterException = true;
       private int thriftMaxFrameSize = 536870912;
       private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+      private boolean isEnableSSL = false;
+      private String sslTrustStorePath = "";
+      private String sslTrustStorePassword = "";
+      private String sslKeyStorePath = "";
+      private String sslKeyStorePassword = "";
 
       public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
         this.rpcSelectorThreadNum = rpcSelectorThreadNum;
@@ -218,6 +260,31 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setEnableSSL(boolean isEnableSSL) {
+        this.isEnableSSL = isEnableSSL;
+        return this;
+      }
+
+      public Builder setSslTrustStorePath(String sslTrustStorePath) {
+        this.sslTrustStorePath = sslTrustStorePath;
+        return this;
+      }
+
+      public Builder setSslTrustStorePassword(String sslTrustStorePassword) {
+        this.sslTrustStorePassword = sslTrustStorePassword;
+        return this;
+      }
+
+      public Builder setSslKeyStorePath(String sslKeyStorePath) {
+        this.sslKeyStorePath = sslKeyStorePath;
+        return this;
+      }
+
+      public Builder setSslKeyStorePassword(String sslKeyStorePassword) {
+        this.sslKeyStorePassword = sslKeyStorePassword;
+        return this;
+      }
+
       public RPC build() {
         return new RPC(
             rpcSelectorThreadNum,
@@ -229,7 +296,12 @@ public class IoTConsensusConfig {
             connectionTimeoutInMs,
             printLogWhenThriftClientEncounterException,
             thriftMaxFrameSize,
-            maxClientNumForEachNode);
+            maxClientNumForEachNode,
+            isEnableSSL,
+            sslTrustStorePath,
+            sslTrustStorePassword,
+            sslKeyStorePath,
+            sslKeyStorePassword);
       }
     }
   }

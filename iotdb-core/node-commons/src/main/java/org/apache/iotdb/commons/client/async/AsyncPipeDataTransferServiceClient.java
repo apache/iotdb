@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -66,7 +66,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     super(
         property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(
+        TNonblockingTransportWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
