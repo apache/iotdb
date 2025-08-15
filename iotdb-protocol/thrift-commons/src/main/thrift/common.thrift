@@ -293,7 +293,8 @@ enum TAggregationType {
   MAX,
   COUNT_ALL,
   APPROX_COUNT_DISTINCT,
-  APPROX_MOST_FREQUENT
+  APPROX_MOST_FREQUENT,
+  APPROX_PERCENTILE,
 }
 
 struct TShowConfigurationTemplateResp {
