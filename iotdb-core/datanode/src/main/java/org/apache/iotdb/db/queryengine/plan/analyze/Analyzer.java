@@ -45,7 +45,12 @@ public class Analyzer {
     long startTime = System.nanoTime();
     AnalyzeVisitor visitor = new AnalyzeVisitor(partitionFetcher, schemaFetcher);
     Analysis analysis = null;
-    context.setReserveMemoryForSchemaTreeFunc(context::reserveMemoryForFrontEnd);
+    context.setReserveMemoryForSchemaTreeFunc(
+        mem -> {
+          context.reserveMemoryForFrontEnd(mem);
+          // For temporary and independently counted memory, we need process it immediately
+          context.reserveMemoryForFrontEndImmediately();
+        });
     try {
       analysis = visitor.process(statement, context);
     } finally {
