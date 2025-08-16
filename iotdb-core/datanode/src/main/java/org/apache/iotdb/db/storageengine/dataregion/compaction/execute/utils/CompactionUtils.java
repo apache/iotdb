@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -39,6 +41,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
@@ -54,6 +58,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -393,6 +398,37 @@ public class CompactionUtils {
     } else {
       logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
     }
+  }
+
+  public static PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
+      buildModEntryPatternTreeMap(TsFileResource resource) {
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> patternTreeMap =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator();
+    while (modEntryIterator.hasNext()) {
+      ModEntry modification = modEntryIterator.next();
+      patternTreeMap.append(modification.keyOfPatternTree(), modification);
+    }
+    return patternTreeMap;
+  }
+
+  public static List<ModEntry> getMatchedModifications(
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> patternTreeMap,
+      IDeviceID deviceID,
+      String measurement)
+      throws IllegalPathException {
+    if (patternTreeMap == null) {
+      return Collections.emptyList();
+    }
+    PartialPath path = CompactionPathUtils.getPath(deviceID, measurement);
+    List<ModEntry> modEntries = patternTreeMap.getOverlapped(path);
+    if (path.getIDeviceID().isTableModel()) {
+      modEntries =
+          modEntries.stream()
+              .filter(e -> e.affects(path.getIDeviceID()) && e.affects(path.getMeasurement()))
+              .collect(Collectors.toList());
+    }
+    return ModificationUtils.sortAndMerge(modEntries);
   }
 
   public static boolean isDiskHasSpace() {

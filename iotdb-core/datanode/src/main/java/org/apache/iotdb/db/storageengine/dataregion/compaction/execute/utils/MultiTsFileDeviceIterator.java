@@ -21,7 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -67,7 +70,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private List<TsFileResource> tsFileResourcesSortedByAsc;
   private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
-  private final Map<TsFileResource, List<ModEntry>> modificationCache = new HashMap<>();
+  private final Map<TsFileResource, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
+      modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
   private boolean ignoreAllNullRows;
   private long ttlForCurrentDevice;
@@ -437,21 +441,18 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
     }
 
-    List<ModEntry> modifications =
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
         modificationCache.computeIfAbsent(
-            tsFileResource, r -> new ArrayList<>(tsFileResource.getAllModEntries()));
+            tsFileResource, CompactionUtils::buildModEntryPatternTreeMap);
 
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
     AbstractAlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
 
     // match time column modifications
-    List<ModEntry> modificationForTimeColumn = new ArrayList<>();
-    for (ModEntry modification : modifications) {
-      if (modification.affectsAll(device)) {
-        modificationForTimeColumn.add(modification);
-      }
-    }
+    List<ModEntry> modificationForTimeColumn =
+        CompactionUtils.getMatchedModifications(
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER);
     if (ttlDeletion != null) {
       modificationForTimeColumn.add(ttlDeletion);
     }
@@ -463,13 +464,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         modificationForValueColumns.add(Collections.emptyList());
         continue;
       }
-      List<ModEntry> modificationList = new ArrayList<>();
-      for (ModEntry modification : modifications) {
-        if (modification.affects(currentDevice.getLeft())
-            && modification.affects(valueChunkMetadata.getMeasurementUid())) {
-          modificationList.add(modification);
-        }
-      }
+      List<ModEntry> modificationList =
+          CompactionUtils.getMatchedModifications(
+              modifications, device, valueChunkMetadata.getMeasurementUid());
       if (ttlDeletion != null) {
         modificationList.add(ttlDeletion);
       }
@@ -682,16 +679,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               chunkMetadataListMap.get(currentCompactingSeries);
           chunkMetadataListMap.remove(currentCompactingSeries);
 
-          List<ModEntry> modificationsInThisResource =
-              modificationCache.computeIfAbsent(
-                  resource, r -> new ArrayList<>(r.getAllModEntries()));
-          LinkedList<ModEntry> modificationForCurrentSeries = new LinkedList<>();
+          PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
+              modificationsInThisResource =
+                  modificationCache.computeIfAbsent(
+                      resource, CompactionUtils::buildModEntryPatternTreeMap);
           // collect the modifications for current series
-          for (ModEntry modification : modificationsInThisResource) {
-            if (modification.affects(device) && modification.affects(currentCompactingSeries)) {
-              modificationForCurrentSeries.add(modification);
-            }
-          }
+          List<ModEntry> modificationForCurrentSeries =
+              CompactionUtils.getMatchedModifications(
+                  modificationsInThisResource, device, currentCompactingSeries);
           // add ttl deletion for current series
           if (ttlDeletion != null) {
             modificationForCurrentSeries.add(ttlDeletion);

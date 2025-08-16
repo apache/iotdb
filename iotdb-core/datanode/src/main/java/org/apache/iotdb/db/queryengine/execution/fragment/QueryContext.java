@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -183,7 +183,8 @@ public class QueryContext {
     if (fileModEntries == null) {
       return Collections.emptyList();
     }
-    List<ModEntry> modEntries = fileModEntries.getDeviceOverlapped(new PartialPath(deviceID));
+    List<ModEntry> modEntries =
+        fileModEntries.getOverlapped(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
     if (deviceID.isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering

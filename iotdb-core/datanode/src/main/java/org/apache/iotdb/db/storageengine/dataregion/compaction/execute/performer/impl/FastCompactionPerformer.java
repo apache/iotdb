@@ -365,10 +365,7 @@ public class FastCompactionPerformer
       }
       // read mods
       PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
-          PatternTreeMapFactory.getModsPatternTreeMap();
-      for (ModEntry modification : resource.getAllModEntries()) {
-        modifications.append(modification.keyOfPatternTree(), modification);
-      }
+          CompactionUtils.buildModEntryPatternTreeMap(resource);
       modificationCache.put(resource.getTsFile().getName(), modifications);
     }
   }
