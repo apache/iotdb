@@ -26,8 +26,6 @@ foreground="yes"
 
 IOTDB_HEAP_DUMP_COMMAND=""
 
-CLASSPATH=""
-
 if [ $# -ne 0 ]; then
   echo "All parameters are $*"
 fi
@@ -72,6 +70,15 @@ while true; do
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -XX:$2"
             shift 2
         ;;
+
+        -l)
+            IOTDB_LIBRARY_PATH="$2"
+            shift 2
+        ;;
+        -t)
+            GDAL_CLASSPATH="$2"
+            shift 2
+        ;;
         -h)
             echo "Usage: $0 [-v] [-f] [-d] [-h] [-p pidfile] [-c configFolder] [-H HeapDumpPath] [-E JvmErrorFile] [printgc]"
             exit 0
@@ -79,14 +86,6 @@ while true; do
         -v)
             SHOW_VERSION="yes"
             break
-        ;;
-        -l)
-            LIBRARY_PATH="$2"
-            shift 2
-        ;;
-        -t)
-            CLASSPATH="$2"
-            shift 2
         ;;
         --)
             shift
@@ -118,9 +117,11 @@ checkAllVariables
 #checkDataNodePortUsages is in iotdb-common.sh
 checkDataNodePortUsages
 
+CLASSPATH=""
 for f in "${IOTDB_HOME}"/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
+CLASSPATH=${CLASSPATH}":"${GDAL_CLASSPATH}
 
 classname=org.apache.iotdb.db.service.DataNode
 
@@ -173,7 +174,7 @@ launch_service()
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
 	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
 	iotdb_parms="$iotdb_parms -DOFF_HEAP_MEMORY=${OFF_HEAP_MEMORY}"
-	iotdb_parms="$iotdb_parms -Djava.library.path=${LIBRARY_PATH}"
+	iotdb_parms="$iotdb_parms -Djava.library.path=${IOTDB_LIBRARY_PATH}"
 
 	  if [ "x$pidfile" != "x" ]; then
        iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidfile"
