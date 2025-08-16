@@ -182,6 +182,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showAINodes();
 
+  SettableFuture<ConfigTaskResult> showProcedures();
+
   SettableFuture<ConfigTaskResult> createSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement);
 
