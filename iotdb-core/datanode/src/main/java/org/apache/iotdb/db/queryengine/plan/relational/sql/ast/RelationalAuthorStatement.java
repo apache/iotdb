@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
@@ -265,7 +266,9 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   private TSStatus onCreateUserSuccess() {
-    TSStatus tsStatus = DataNodeAuthUtils.recordPassword(userName, password, null);
+    TSStatus tsStatus =
+        DataNodeAuthUtils.recordPassword(
+            userName, password, null, CommonDateTimeUtils.currentTime());
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -275,7 +278,9 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   private TSStatus onUpdateUserSuccess() {
-    TSStatus tsStatus = DataNodeAuthUtils.recordPassword(userName, password, oldPassword);
+    TSStatus tsStatus =
+        DataNodeAuthUtils.recordPassword(
+            userName, password, oldPassword, CommonDateTimeUtils.currentTime());
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {

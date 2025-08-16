@@ -152,12 +152,14 @@ public class SessionManager implements SessionManagerMBean {
     lastDataQueryReq.setPaths(
         Collections.singletonList(
             SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
+
+    long queryId = -1;
     try {
       Statement statement = StatementGenerator.createStatement(lastDataQueryReq);
       SessionInfo sessionInfo =
           new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
-      long queryId = requestQueryId();
+      queryId = requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
               .executeForTreeModel(
@@ -196,8 +198,9 @@ public class SessionManager implements SessionManagerMBean {
             return lastPasswordTime + passwordExpirationDays * 1000 * 86400;
           }
         } else {
-          // the password is incorrect, later logIn will fail
-          return Long.MAX_VALUE;
+          // 1. the password is incorrect, later logIn will fail
+          // 2. the password history does not record correctly, use the current time to create one
+          return null;
         }
       } else {
         return null;
@@ -210,6 +213,10 @@ public class SessionManager implements SessionManagerMBean {
         throw new IoTDBRuntimeException(
             "Internal server error " + ", please log in later or disable password expiration.",
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
+    } finally {
+      if (queryId != -1) {
+        Coordinator.getInstance().cleanupQueryExecution(queryId);
       }
     }
   }
@@ -256,7 +263,9 @@ public class SessionManager implements SessionManagerMBean {
           LOGGER.info(
               "No password history for user {}, using the current time to create a new one",
               username);
-          TSStatus tsStatus = DataNodeAuthUtils.recordPassword(username, password, null);
+          long currentTime = CommonDateTimeUtils.currentTime();
+          TSStatus tsStatus =
+              DataNodeAuthUtils.recordPassword(username, password, null, currentTime);
           if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             openSessionResp
                 .sessionId(-1)
@@ -265,7 +274,7 @@ public class SessionManager implements SessionManagerMBean {
             return openSessionResp;
           }
           timeToExpire =
-              System.currentTimeMillis()
+              CommonDateTimeUtils.convertIoTDBTimeToMillis(currentTime)
                   + CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays()
                       * 1000
                       * 86400;
