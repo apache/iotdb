@@ -46,7 +46,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <3.13"
+python = ">=3.9, <3.14"
 numpy = "^1.21.4"
 pandas = ">=2.2.0"
 torch = ">=2.7.1"
@@ -55,17 +55,19 @@ dynaconf = "^3.1.11"
 requests = "^2.31.0"
 optuna = "^3.2.0"
 psutil = "^5.9.5"
-sktime = "0.38.3"
-pmdarima = "^2.0.4"
+sktime = "0.38.4"
+scikit-learn = "^1.4"
+statsmodels = "^0.14"
 hmmlearn = "^0.3.0"
 apache-iotdb = "2.0.4.dev0"
 einops = "^0.8.1"
 safetensors = "^0.5.1"
 huggingface_hub = "^0.30.1"
+tokenizers = "^0.20"
 hf_xet = ">=1.1.7"
 black = "25.1.0"
 isort = "6.0.1"
-transformers = "==4.40.1"
+transformers = "^4.40"
 torchmetrics = ">=1.2.0"
 
 [tool.poetry.scripts]
