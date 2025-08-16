@@ -26,6 +26,8 @@ foreground="yes"
 
 IOTDB_HEAP_DUMP_COMMAND=""
 
+CLASSPATH=""
+
 if [ $# -ne 0 ]; then
   echo "All parameters are $*"
 fi
@@ -80,8 +82,13 @@ while true; do
         ;;
         -l)
             LIBRARY_PATH="$2"
+            shift 2
             echo "Execute start-datanode.sh get library ${LIBRARY_PATH}"
-            break
+        ;;
+        -t)
+            CLASSPATH="$2"
+            shift 2
+            echo "Execute start-datanode.sh get class ${CLASSPATH}"
         ;;
         --)
             shift
@@ -113,7 +120,6 @@ checkAllVariables
 #checkDataNodePortUsages is in iotdb-common.sh
 checkDataNodePortUsages
 
-CLASSPATH=""
 for f in "${IOTDB_HOME}"/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
