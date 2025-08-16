@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc.model;
 
+import org.gdal.VsiGdalNative;
 import org.gdal.gdal.Band;
 import org.gdal.gdal.Dataset;
 import org.gdal.gdal.Driver;
@@ -76,7 +77,7 @@ public class CompressedTiffModelProcessor extends ModelProcessor {
       }
       band.FlushCache();
       dataset.FlushCache();
-      return gdal.GetMemFileBuffer(filePath);
+      return VsiGdalNative.vsiGetMemFileBuffer(filePath, true);
     } finally {
       if (dataset != null) {
         dataset.delete();

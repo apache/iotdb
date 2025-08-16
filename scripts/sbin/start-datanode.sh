@@ -78,6 +78,10 @@ while true; do
             SHOW_VERSION="yes"
             break
         ;;
+        -l)
+            LIBRARY_PATH="$2"
+            break
+        ;;
         --)
             shift
             #all others are args to the program
@@ -164,6 +168,7 @@ launch_service()
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
 	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
 	iotdb_parms="$iotdb_parms -DOFF_HEAP_MEMORY=${OFF_HEAP_MEMORY}"
+	iotdb_parms="$iotdb_parms -Djava.library.path=${LIBRARY_PATH}"
 
 	  if [ "x$pidfile" != "x" ]; then
        iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidfile"
