@@ -80,6 +80,7 @@ while true; do
         ;;
         -l)
             LIBRARY_PATH="$2"
+            echo "Execute start-datanode.sh get library ${LIBRARY_PATH}"
             break
         ;;
         --)
