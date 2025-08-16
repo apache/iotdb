@@ -34,10 +34,10 @@ jobs:
   AINode:
     strategy:
       fail-fast: false
-      max-parallel: 15
+      max-parallel: 1
       matrix:
         os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, gpu]
 
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=2 \
+          -DintegrationTest.forkCount=1 \
           -pl integration-test \
           -am \
           -PAIClusterIT
