@@ -32,6 +32,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.nio.charset.StandardCharsets;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
 
@@ -239,7 +241,13 @@ public class LastAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryLastValue((Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
+        if (statistics[0].getLastValue() instanceof Binary) {
+          updateBinaryLastValue((Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
+        } else {
+          updateBinaryLastValue(
+              new Binary(String.valueOf(statistics[0].getLastValue()), StandardCharsets.UTF_8),
+              statistics[0].getEndTime());
+        }
         break;
       case BOOLEAN:
         updateBooleanLastValue((boolean) statistics[0].getLastValue(), statistics[0].getEndTime());

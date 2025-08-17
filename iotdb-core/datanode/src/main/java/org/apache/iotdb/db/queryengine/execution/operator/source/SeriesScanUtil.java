@@ -72,6 +72,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -941,6 +942,111 @@ public class SeriesScanUtil implements Accountable {
         case TEXT:
           if (sourceType == TSDataType.TEXT || sourceType == TSDataType.STRING) {
             newValueColumns[i] = valueColumns[i];
+          } else if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.DATE) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.INT64 || sourceType == TSDataType.TIMESTAMP) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getLongs()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.FLOAT) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getFloats()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.DOUBLE) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getDoubles()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.BOOLEAN) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getBooleans()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.BLOB) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getBinaries()[j]), StandardCharsets.UTF_8);
+              }
+            }
           } else {
             newValueColumns[i] =
                 new BinaryColumn(
@@ -1013,6 +1119,111 @@ public class SeriesScanUtil implements Accountable {
         case STRING:
           if (sourceType == TSDataType.STRING || sourceType == TSDataType.TEXT) {
             newValueColumns[i] = valueColumns[i];
+          } else if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.DATE) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.INT64 || sourceType == TSDataType.TIMESTAMP) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getLongs()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.FLOAT) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getFloats()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.DOUBLE) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getDoubles()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.BOOLEAN) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getBooleans()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.BLOB) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getBinaries()[j]), StandardCharsets.UTF_8);
+              }
+            }
           } else {
             newValueColumns[i] =
                 new BinaryColumn(

@@ -32,6 +32,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.nio.charset.StandardCharsets;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
 
@@ -271,7 +273,13 @@ public class FirstByAccumulator implements TableAccumulator {
             case TEXT:
             case BLOB:
             case STRING:
-              xResult.setBinary((Binary) statistics[0].getFirstValue());
+              if (statistics[0].getFirstValue() instanceof Binary) {
+                xResult.setBinary((Binary) statistics[0].getFirstValue());
+              } else {
+                xResult.setBinary(
+                    new Binary(
+                        String.valueOf(statistics[0].getFirstValue()), StandardCharsets.UTF_8));
+              }
               break;
             case BOOLEAN:
               xResult.setBoolean((boolean) statistics[0].getFirstValue());

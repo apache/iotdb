@@ -28,6 +28,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.nio.charset.StandardCharsets;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class MaxAccumulator implements TableAccumulator {
@@ -221,7 +223,12 @@ public class MaxAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
+        if (statistics[0].getMaxValue() instanceof Binary) {
+          updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
+        } else {
+          updateBinaryMaxValue(
+              new Binary(String.valueOf(statistics[0].getMaxValue()), StandardCharsets.UTF_8));
+        }
         break;
       case BOOLEAN:
         updateBooleanMaxValue((boolean) statistics[0].getMaxValue());

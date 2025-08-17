@@ -28,6 +28,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.nio.charset.StandardCharsets;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class MinAccumulator implements TableAccumulator {
@@ -221,7 +223,12 @@ public class MinAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryMinValue((Binary) statistics[0].getMinValue());
+        if (statistics[0].getMinValue() instanceof Binary) {
+          updateBinaryMinValue((Binary) statistics[0].getMinValue());
+        } else {
+          updateBinaryMinValue(
+              new Binary(String.valueOf(statistics[0].getMinValue()), StandardCharsets.UTF_8));
+        }
         break;
       case BOOLEAN:
         updateBooleanMinValue((boolean) statistics[0].getMinValue());
