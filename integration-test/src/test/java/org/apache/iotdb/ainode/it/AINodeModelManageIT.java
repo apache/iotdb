@@ -54,7 +54,7 @@ import static org.junit.Assert.fail;
 @Category({AIClusterIT.class})
 public class AINodeModelManageIT {
 
-  private static final Map<String, FakeModelInfo> BUILT_IN_MACHINE_LEARNING_MODEL_MAP =
+  private static final Map<String, FakeModelInfo> BUILT_IN_MODEL_MAP =
       Stream.of(
               new AbstractMap.SimpleEntry<>(
                   "arima", new FakeModelInfo("arima", "Arima", "BUILT-IN", "ACTIVE")),
@@ -77,13 +77,11 @@ public class AINodeModelManageIT {
               new AbstractMap.SimpleEntry<>(
                   "gmm_hmm", new FakeModelInfo("gmm_hmm", "GmmHmm", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
-                  "stray", new FakeModelInfo("stray", "Stray", "BUILT-IN", "ACTIVE")))
-          //              new AbstractMap.SimpleEntry<>(
-          //                  "sundial", new FakeModelInfo("sundial", "Timer-Sundial", "BUILT-IN",
-          // "ACTIVE")),
-          //              new AbstractMap.SimpleEntry<>(
-          //                  "timer_xl", new FakeModelInfo("timer_xl", "Timer-XL", "BUILT-IN",
-          // "ACTIVE")))
+                  "stray", new FakeModelInfo("stray", "Stray", "BUILT-IN", "ACTIVE")),
+              new AbstractMap.SimpleEntry<>(
+                  "sundial", new FakeModelInfo("sundial", "Timer-Sundial", "BUILT-IN", "ACTIVE")),
+              new AbstractMap.SimpleEntry<>(
+                  "timer_xl", new FakeModelInfo("timer_xl", "Timer-XL", "BUILT-IN", "ACTIVE")))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   @BeforeClass
@@ -203,20 +201,17 @@ public class AINodeModelManageIT {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
       while (resultSet.next()) {
-        String modelId = resultSet.getString(1);
-        if (!modelId.equals("sundial") && !modelId.equals("timer_xl")) {
-          built_in_model_count++;
-          FakeModelInfo modelInfo =
-              new FakeModelInfo(
-                  resultSet.getString(1),
-                  resultSet.getString(2),
-                  resultSet.getString(3),
-                  resultSet.getString(4));
-          assertTrue(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.containsKey(modelInfo.getModelId()));
-          assertEquals(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
-        }
+        built_in_model_count++;
+        FakeModelInfo modelInfo =
+            new FakeModelInfo(
+                resultSet.getString(1),
+                resultSet.getString(2),
+                resultSet.getString(3),
+                resultSet.getString(4));
+        assertTrue(BUILT_IN_MODEL_MAP.containsKey(modelInfo.getModelId()));
+        assertEquals(BUILT_IN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
       }
     }
-    assertEquals(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.size(), built_in_model_count);
+    assertEquals(BUILT_IN_MODEL_MAP.size(), built_in_model_count);
   }
 }
