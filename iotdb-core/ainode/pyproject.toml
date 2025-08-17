@@ -46,7 +46,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <3.14"
+python = ">=3.9, <3.13"
 numpy = "^1.21.4"
 pandas = ">=2.2.0"
 torch = ">=2.7.1"
@@ -63,11 +63,11 @@ apache-iotdb = "2.0.4.dev0"
 einops = "^0.8.1"
 safetensors = "^0.5.1"
 huggingface_hub = "^0.30.1"
-tokenizers = "^0.20"
+tokenizers = ">=0.19"
 hf_xet = ">=1.1.7"
 black = "25.1.0"
 isort = "6.0.1"
-transformers = "^4.40"
+transformers = "==4.40.1"
 torchmetrics = ">=1.2.0"
 
 [tool.poetry.scripts]
