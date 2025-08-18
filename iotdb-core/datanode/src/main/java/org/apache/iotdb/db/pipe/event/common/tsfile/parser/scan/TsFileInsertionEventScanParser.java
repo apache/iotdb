@@ -476,7 +476,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               break;
             }
             boolean needReturn = false;
-            long timeChunkSize =
+            final long timeChunkSize =
                 lastIndex >= 0
                     ? PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(lastIndex))
                     : 0;
@@ -490,7 +490,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   if (valueChunkList.size() <= 1
                       && chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
                     PipeDataNodeResourceManager.memory()
-                        .forceResize(allocatedMemoryBlockForChunk, timeChunkSize + valueChunkSize);
+                        .forceResize(allocatedMemoryBlockForChunk, chunkSize);
                   }
                   needReturn = recordAlignedChunk(valueChunkList, marker);
                 }

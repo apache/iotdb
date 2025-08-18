@@ -354,26 +354,22 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     measurementList.subList(deviceIdSize, measurementList.size()).clear();
     dataTypeList.subList(deviceIdSize, dataTypeList.size()).clear();
 
-    final int startOffset = offset;
     for (; offset < alignedChunkMetadata.getValueChunkMetadataList().size(); ++offset) {
       final IChunkMetadata metadata = alignedChunkMetadata.getValueChunkMetadataList().get(offset);
       if (metadata != null) {
-        // Record the column information corresponding to Meta to fill in Tablet
-        columnTypes.add(ColumnCategory.FIELD);
-        measurementList.add(metadata.getMeasurementUid());
-        dataTypeList.add(metadata.getDataType());
-
         final Chunk chunk = reader.readMemChunk((ChunkMetadata) metadata);
         size += PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
         if (size > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-          if (valueChunkList.isEmpty()) {
+          if (valueChunkList.size() == 1) {
             // If the first chunk exceeds the memory limit, we need to allocate more memory
-            valueChunkList.add(chunk);
             PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
-          } else {
-            break;
           }
+          break;
         } else {
+          // Record the column information corresponding to Meta to fill in Tablet
+          columnTypes.add(ColumnCategory.FIELD);
+          measurementList.add(metadata.getMeasurementUid());
+          dataTypeList.add(metadata.getDataType());
           valueChunkList.add(chunk);
         }
       }
