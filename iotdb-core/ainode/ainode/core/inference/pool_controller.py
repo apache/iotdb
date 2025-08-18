@@ -32,9 +32,9 @@ from ainode.core.log import Logger
 logger = Logger()
 
 
-class PoolManager:
+class PoolController:
     """
-    A manager for handling inference request pools.
+    A controller for handling inference request pools.
     It handles the registration of pools, adding and removing requests,
     and managing the state of each pool.
     """

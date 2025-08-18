@@ -25,7 +25,7 @@ from ainode.core.inference.inference_request import (
     InferenceRequest,
     InferenceRequestProxy,
 )
-from ainode.core.inference.pool_manager import PoolManager
+from ainode.core.inference.pool_controller import PoolController
 from ainode.core.inference.pool_scheduler import PoolScheduler
 from ainode.core.log import Logger
 
@@ -51,8 +51,8 @@ class RequestController:
             target=self._handle_results, daemon=True
         )
         self._result_handler_thread.start()
-        self._pool_manager = PoolManager()
-        self._pool_scheduler = PoolScheduler(self._pool_manager, self._result_queue)
+        self._pool_controller = PoolController()
+        self._pool_scheduler = PoolScheduler(self._pool_controller, self._result_queue)
 
     def _handle_results(self):
         while not self._stop_event.is_set():
@@ -60,7 +60,7 @@ class RequestController:
                 time.sleep(self.WAITING_INTERVAL_IN_MS / 1000)
                 continue
             infer_req: InferenceRequest = self._result_queue.get()
-            self._pool_manager.remove_request(infer_req.model_id, infer_req.req_id)
+            self._pool_controller.remove_request(infer_req.model_id, infer_req.req_id)
             with self._result_wrapper_lock:
                 self._result_wrapper_map[infer_req.req_id].set_result(
                     infer_req.get_final_output()
@@ -72,10 +72,10 @@ class RequestController:
             self._result_wrapper_map[req.req_id] = infer_proxy
         # lazy initialization for first request
         model_id = req.model_id
-        if not self._pool_manager.has_request_pools(model_id):
+        if not self._pool_controller.has_request_pools(model_id):
             self._pool_scheduler.first_req_init(model_id)
         # dispatch request to the pool
-        self._pool_manager.dispatch_request(model_id, req)
+        self._pool_controller.dispatch_request(model_id, req)
         outputs = infer_proxy.wait_for_completion()
         with self._result_wrapper_lock:
             del self._result_wrapper_map[req.req_id]
@@ -83,7 +83,7 @@ class RequestController:
 
     def shutdown(self):
         self._stop_event.set()
-        self._pool_manager.shutdown()
+        self._pool_controller.shutdown()
         while not self._result_queue.empty():
             self._result_queue.get_nowait()
         self._result_queue.close()
