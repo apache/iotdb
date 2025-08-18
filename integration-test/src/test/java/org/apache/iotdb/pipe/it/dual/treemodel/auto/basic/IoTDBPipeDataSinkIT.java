@@ -344,6 +344,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       TestUtils.assertDataEventuallyOnEnvTMP(
+          senderEnv,
           receiverEnv,
           "show timeSeries root.ln.wf01.wt01.*",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
@@ -361,6 +362,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                       "root.ln.wf01.wt01.string,null,root.ln,STRING,PLAIN,LZ4,null,null,null,null,BASE,",
                       "root.ln.wf01.wt01.blob,null,root.ln,BLOB,PLAIN,LZ4,null,null,null,null,BASE,"))));
       TestUtils.assertDataEventuallyOnEnvTMP(
+          senderEnv,
           receiverEnv,
           "show devices root.ln.wf01.wt02",
           "Device,IsAligned,Template,TTL(ms),",

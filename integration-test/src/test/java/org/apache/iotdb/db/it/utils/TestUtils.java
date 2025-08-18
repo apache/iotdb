@@ -1294,11 +1294,17 @@ public class TestUtils {
   }
 
   public static void assertDataEventuallyOnEnvTMP(
-      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+      BaseEnv sender,
+      BaseEnv recevier,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet) {
     final long startTime = System.currentTimeMillis();
     final boolean[] flushed = {false};
-    try (Connection connection = env.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (Connection connection = recevier.getConnection();
+        Statement statement = connection.createStatement();
+        Connection _connection = sender.getConnection();
+        Statement _statement = _connection.createStatement(); ) {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
@@ -1308,6 +1314,7 @@ public class TestUtils {
           .untilAsserted(
               () -> {
                 try {
+                  _statement.execute("flush");
                   statement.execute("flush");
                   TestUtils.assertResultSetEqual(
                       executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet, true);
