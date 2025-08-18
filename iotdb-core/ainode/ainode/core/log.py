@@ -85,6 +85,9 @@ class BaseLogger:
                 interval=1,
                 encoding="utf-8",
             )
+            if LOG_FILE_TYPE[i] != "all":
+                file_handler.setLevel(logging.NOTSET)
+                file_handler.addFilter(LogLevelFilter(file_level))
 
             # set renamer
             def universal_namer(
@@ -145,3 +148,13 @@ class Logger(BaseLogger):
 
     def __init__(self, log_file_name_prefix: str = AINODE_LOG_FILE_NAME_PREFIX):
         super().__init__(log_file_name_prefix=log_file_name_prefix)
+
+
+class LogLevelFilter(logging.Filter):
+
+    def __init__(self, level: int):
+        super().__init__()
+        self.level = level
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno == self.level
