@@ -365,15 +365,17 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
         final Chunk chunk = reader.readMemChunk((ChunkMetadata) metadata);
         size += PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
-        if (allocatedMemoryBlockForChunk.getMemoryUsageInBytes() < size
-            && valueChunkList.isEmpty()) {
-          PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+        if (size > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+          if (valueChunkList.isEmpty()) {
+            // If the first chunk exceeds the memory limit, we need to allocate more memory
+            valueChunkList.add(chunk);
+            PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+          } else {
+            break;
+          }
+        } else {
+          valueChunkList.add(chunk);
         }
-
-        valueChunkList.add(chunk);
-      }
-      if (size >= allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-        break;
       }
     }
 

@@ -480,15 +480,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 lastIndex >= 0
                     ? PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(lastIndex))
                     : 0;
-            if (lastIndex >= 0
-                && (valueIndex != lastIndex
-                    || valueChunkSize + timeChunkSize
-                        >= allocatedMemoryBlockForChunk.getMemoryUsageInBytes())) {
-              if (valueChunkList.size() == 1) {
-                PipeDataNodeResourceManager.memory()
-                    .forceResize(allocatedMemoryBlockForChunk, valueChunkSize + timeChunkSize);
+            if (lastIndex >= 0) {
+              if (valueIndex != lastIndex) {
+                needReturn = recordAlignedChunk(valueChunkList, marker);
+              } else {
+                final long chunkSize = timeChunkSize + valueChunkSize;
+                if (chunkSize + chunkHeader.getDataSize()
+                    > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+                  if (valueChunkList.size() <= 1
+                      && chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+                    PipeDataNodeResourceManager.memory()
+                        .forceResize(allocatedMemoryBlockForChunk, timeChunkSize + valueChunkSize);
+                  }
+                  needReturn = recordAlignedChunk(valueChunkList, marker);
+                }
               }
-              needReturn = recordAlignedChunk(valueChunkList, marker);
             }
             lastIndex = valueIndex;
             if (needReturn) {
