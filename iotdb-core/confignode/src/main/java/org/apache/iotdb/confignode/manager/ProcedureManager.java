@@ -176,6 +176,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -824,7 +825,7 @@ public class ProcedureManager {
       failMessage =
           String.format(
               "Target DataNode %s already contains region %s",
-              targetDataNode.getDataNodeId(), req.getRegionId());
+              targetDataNode.getDataNodeId(), regionId);
     }
 
     if (failMessage != null) {
@@ -1125,14 +1126,60 @@ public class ProcedureManager {
     return RpcUtils.SUCCESS_STATUS;
   }
 
-  public TSStatus extendRegion(TExtendRegionReq req) {
+  public TSStatus extendRegions(TExtendRegionReq req) {
+    return processExtendOrRemoveRegions(
+        req.getRegionId(), req, this::extendOneRegion, TSStatusCode.EXTEND_REGION_ERROR);
+  }
+
+  public TSStatus removeRegions(TRemoveRegionReq req) {
+    return processExtendOrRemoveRegions(
+        req.getRegionId(), req, this::removeOneRegion, TSStatusCode.REMOVE_REGION_PEER_ERROR);
+  }
+
+  private <R> TSStatus processExtendOrRemoveRegions(
+      Iterable<Integer> regionIds,
+      R req,
+      BiFunction<Integer, R, TSStatus> regionAction,
+      TSStatusCode errorCode) {
+    TSStatus resp = new TSStatus();
+    StringBuilder messageBuilder = new StringBuilder();
+
+    int total = 0, success = 0;
+    for (int regionId : regionIds) {
+      total++;
+      TSStatus subStatus = regionAction.apply(regionId, req);
+      if (subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        messageBuilder.append("region ").append(regionId).append(": Successfully submitted\n");
+        success++;
+      } else {
+        messageBuilder
+            .append("region ")
+            .append(regionId)
+            .append(": ")
+            .append(subStatus.getMessage())
+            .append('\n');
+      }
+      resp.addToSubStatus(subStatus);
+    }
+
+    messageBuilder.insert(
+        0,
+        String.format(
+            "Total regions: %d, successfully submitted: %d, failed to submit: %d\n",
+            total, success, total - success));
+
+    resp.setCode(
+        total == success ? TSStatusCode.SUCCESS_STATUS.getStatusCode() : errorCode.getStatusCode());
+    resp.setMessage(messageBuilder.toString());
+    return resp;
+  }
+
+  private TSStatus extendOneRegion(int theRegionId, TExtendRegionReq req) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       TConsensusGroupId regionId;
       Optional<TConsensusGroupId> optional =
-          configManager
-              .getPartitionManager()
-              .generateTConsensusGroupIdByRegionId(req.getRegionId());
+          configManager.getPartitionManager().generateTConsensusGroupIdByRegionId(theRegionId);
       if (optional.isPresent()) {
         regionId = optional.get();
       } else {
@@ -1171,14 +1218,12 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus removeRegion(TRemoveRegionReq req) {
+  private TSStatus removeOneRegion(int theRegionId, TRemoveRegionReq req) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       TConsensusGroupId regionId;
       Optional<TConsensusGroupId> optional =
-          configManager
-              .getPartitionManager()
-              .generateTConsensusGroupIdByRegionId(req.getRegionId());
+          configManager.getPartitionManager().generateTConsensusGroupIdByRegionId(theRegionId);
       if (optional.isPresent()) {
         regionId = optional.get();
       } else {
