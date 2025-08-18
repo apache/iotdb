@@ -184,6 +184,10 @@ public class DataRegionConsensusImpl {
                   // An empty log is committed after each restart, even if no data is
                   // written. This setting ensures that compaction work is not discarded
                   // even if there are frequent restarts
+                  .setUtils(
+                      RatisConfig.Utils.newBuilder()
+                          .setTransferLeaderTimeoutMs(CONF.getRatisTransferLeaderTimeoutMs())
+                          .build())
                   .setSnapshot(
                       Snapshot.newBuilder()
                           .setCreationGap(1)

@@ -1946,6 +1946,10 @@ data_region_ratis_max_sleep_time_ms=10000
 ratis_first_election_timeout_min_ms=50
 ratis_first_election_timeout_max_ms=150
 
+# the timeout threshold for transferring leader in ratis
+# Datatype: int
+ratis_transfer_leader_timeout_ms=30000
+
 # preserve certain logs when take snapshot and purge
 # effectiveMode: restart
 # Datatype: int
