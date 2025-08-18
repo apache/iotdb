@@ -336,7 +336,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public final void extract(final PipeRealtimeEvent event) {
     // The progress report event shall be directly extracted
     if (event.getEvent() instanceof ProgressReportEvent) {
-      extractDirectly(event);
+      extractProgressReportEvent(event);
       return;
     }
 
@@ -418,6 +418,31 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       // the correction of pipe progress.
 
       // Ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
+    }
+  }
+
+  protected void extractProgressReportEvent(final PipeRealtimeEvent event) {
+    if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
+      final ProgressReportEvent oldEvent = (ProgressReportEvent) pendingQueue.peekLast();
+      oldEvent.bindProgressIndex(
+          oldEvent
+              .getProgressIndex()
+              .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+      return;
+    }
+    if (!pendingQueue.waitedOffer(event)) {
+      // This would not happen, but just in case.
+      // Pending is unbounded, so it should never reach capacity.
+      final String errorMessage =
+          String.format(
+              "extract: pending queue of %s %s " + "has reached capacity, discard event %s",
+              this.getClass().getSimpleName(), this, event);
+      LOGGER.error(errorMessage);
+      PipeDataNodeAgent.runtime()
+          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+
+      // Ignore the event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
     }
   }
