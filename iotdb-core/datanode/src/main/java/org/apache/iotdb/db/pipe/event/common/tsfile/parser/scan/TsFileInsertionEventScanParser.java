@@ -74,6 +74,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private IChunkReader chunkReader;
   private BatchData data;
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
+  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
 
   private boolean currentIsMultiPage;
   private IDeviceID currentDevice;
@@ -106,11 +107,14 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
-    // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlockForBatchData =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+    this.allocatedMemoryBlockForChunk =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
@@ -385,6 +389,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private void moveToNextChunkReader() throws IOException, IllegalStateException {
     ChunkHeader chunkHeader;
+    long valueChunkSize = 0;
     final List<Chunk> valueChunkList = new ArrayList<>();
     currentMeasurements.clear();
 
@@ -429,6 +434,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             break;
           }
 
+          if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+            PipeDataNodeResourceManager.memory()
+                .forceResize(allocatedMemoryBlockForChunk, chunkHeader.getDataSize());
+          }
+
           chunkReader =
               currentIsMultiPage
                   ? new ChunkReader(
@@ -462,16 +472,25 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     chunkHeader.getMeasurementID(),
                     (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
 
-            // Emit when encountered non-sequential value chunk, or the chunk list size exceeds
+            // Emit when encountered non-sequential value chunk, or the chunk size exceeds
             // certain value to avoid OOM
             // Do not record or end current value chunks when there are empty chunks
             if (chunkHeader.getDataSize() == 0) {
               break;
             }
             boolean needReturn = false;
+            long timeChunkSize =
+                lastIndex >= 0
+                    ? PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(lastIndex))
+                    : 0;
             if (lastIndex >= 0
                 && (valueIndex != lastIndex
-                    || valueChunkList.size() >= pipeMaxAlignedSeriesNumInOneBatch)) {
+                    || valueChunkSize + timeChunkSize
+                        >= allocatedMemoryBlockForChunk.getMemoryUsageInBytes())) {
+              if (valueChunkList.size() == 1) {
+                PipeDataNodeResourceManager.memory()
+                    .forceResize(allocatedMemoryBlockForChunk, valueChunkSize + timeChunkSize);
+              }
               needReturn = recordAlignedChunk(valueChunkList, marker);
             }
             lastIndex = valueIndex;
@@ -484,6 +503,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             firstChunkHeader4NextSequentialValueChunks = null;
           }
 
+          valueChunkSize += chunkHeader.getDataSize();
           valueChunkList.add(
               new Chunk(
                   chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));

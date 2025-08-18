@@ -237,6 +237,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAlignedSeriesNumInOneBatch();
   }
 
+  public long getPipeMaxAlignedSeriesChunkSizeInOneBatch() {
+    return COMMON_CONFIG.getPipeMaxAlignedSeriesChunkSizeInOneBatch();
+  }
+
   public long getPipeListeningQueueTransferSnapshotThreshold() {
     return COMMON_CONFIG.getPipeListeningQueueTransferSnapshotThreshold();
   }
@@ -489,6 +493,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
     LOGGER.info("PipeMaxAlignedSeriesNumInOneBatch: {}", getPipeMaxAlignedSeriesNumInOneBatch());
+    LOGGER.info(
+        "PipeMaxAlignedSeriesChunkSizeInOneBatch: {}",
+        getPipeMaxAlignedSeriesChunkSizeInOneBatch());
     LOGGER.info(
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
