@@ -161,8 +161,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
             if (chunkReader != null && chunkReader.hasNextSatisfiedPage()) {
               batchData = chunkReader.nextPageData();
               final long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(batchData);
-              if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes()
-                  < PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(batchData)) {
+              if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
                 PipeDataNodeResourceManager.memory()
                     .forceResize(allocatedMemoryBlockForBatchData, size);
               }
