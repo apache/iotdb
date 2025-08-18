@@ -60,6 +60,7 @@
         <argLine/>
         <awaitility.version>4.2.0</awaitility.version>
         <boost.include.dir/>
+        <bouncycastle.version>1.79</bouncycastle.version>
         <!-- This was the last version to support Java 8 -->
         <caffeine.version>2.9.3</caffeine.version>
         <cglib.version>3.3.0</cglib.version>
@@ -311,7 +312,7 @@
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcprov-jdk18on</artifactId>
-                <version>1.78</version>
+                <version>${bouncycastle.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-io</groupId>
