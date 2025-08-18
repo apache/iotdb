@@ -65,6 +65,7 @@ public class DataNodeAuthUtils {
    */
   public static long getPasswordChangeTimeMillis(String username, String password) {
 
+    long queryId = -1;
     try {
       Statement statement =
           StatementGenerator.createStatement(
@@ -79,7 +80,7 @@ public class DataNodeAuthUtils {
       SessionInfo sessionInfo =
           new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
-      long queryId = SessionManager.getInstance().requestQueryId();
+      queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
               .executeForTreeModel(
@@ -108,6 +109,10 @@ public class DataNodeAuthUtils {
       }
     } catch (IoTDBException e) {
       LOGGER.warn("Cannot generate query for checking password reuse interval", e);
+    } finally {
+      if (queryId != -1) {
+        Coordinator.getInstance().cleanupQueryExecution(queryId);
+      }
     }
     return -1;
   }
@@ -139,7 +144,8 @@ public class DataNodeAuthUtils {
         currentTimeMillis);
   }
 
-  public static TSStatus recordPassword(String username, String password, String oldPassword) {
+  public static TSStatus recordPassword(
+      String username, String password, String oldPassword, long timeToRecord) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     try {
       insertRowStatement.setDevicePath(
@@ -160,11 +166,12 @@ public class DataNodeAuthUtils {
                   + " because the path will be illegal");
     }
 
+    long queryId = -1;
     try {
       SessionInfo sessionInfo =
           new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
-      long queryId = SessionManager.getInstance().requestQueryId();
+      queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
               .executeForTreeModel(
@@ -182,6 +189,10 @@ public class DataNodeAuthUtils {
       LOGGER.error("Cannot create password history for {} because {}", username, e.getMessage());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage("The server is not ready for login, please check the server log for details");
+    } finally {
+      if (queryId != -1) {
+        Coordinator.getInstance().cleanupQueryExecution(queryId);
+      }
     }
   }
 }
