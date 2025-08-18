@@ -184,10 +184,6 @@
             <artifactId>jna-platform</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.eclipse.milo</groupId>
             <artifactId>stack-core</artifactId>
         </dependency>
