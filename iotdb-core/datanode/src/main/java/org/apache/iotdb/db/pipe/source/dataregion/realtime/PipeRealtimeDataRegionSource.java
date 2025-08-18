@@ -431,20 +431,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
               .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
       return;
     }
-    if (!pendingQueue.waitedOffer(event)) {
-      // This would not happen, but just in case.
-      // Pending is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of %s %s " + "has reached capacity, discard event %s",
-              this.getClass().getSimpleName(), this, event);
-      LOGGER.error(errorMessage);
-      PipeDataNodeAgent.runtime()
-          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-
-      // Ignore the event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
-    }
+    extractDirectly(event);
   }
 
   protected void extractDirectly(final PipeRealtimeEvent event) {
