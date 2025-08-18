@@ -19,7 +19,9 @@ import os
 import shutil
 import sys
 
-from ainode.core.ainode import AINode
+import torch.multiprocessing as mp
+
+from ainode.core.ai_node import AINode
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import TSStatusCode
 from ainode.core.exception import MissingConfigError
@@ -37,10 +39,8 @@ def remove_ainode(arguments):
     # Delete the current node
     if len(arguments) == 2:
         target_ainode_id = AINodeDescriptor().get_config().get_ainode_id()
-        target_rpc_address = (
-            AINodeDescriptor().get_config().get_ain_inference_rpc_address()
-        )
-        target_rpc_port = AINodeDescriptor().get_config().get_ain_inference_rpc_port()
+        target_rpc_address = AINodeDescriptor().get_config().get_ain_rpc_address()
+        target_rpc_port = AINodeDescriptor().get_config().get_ain_rpc_port()
 
     # Delete the node with a given id
     elif len(arguments) == 3:
@@ -86,6 +86,8 @@ def main():
     command = arguments[1]
     if command == "start":
         try:
+            mp.set_start_method("spawn", force=True)
+            logger.info(f"Current multiprocess start method: {mp.get_start_method()}")
             logger.info("IoTDB-AINode is starting...")
             ai_node = AINode()
             ai_node.start()

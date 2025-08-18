@@ -162,7 +162,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
           "Execute auth plan {} success. To invalidate datanodes: {}", plan, dataNodesToInvalid);
     } else {
       LOGGER.info("Failed to execute plan {} because {}", plan, res.message);
-      setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
+      setFailure(new ProcedureException(new IoTDBException(res)));
     }
   }
 

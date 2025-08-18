@@ -110,8 +110,7 @@ public class AddTableColumnProcedure
                   database, tableName, addedColumnList, this instanceof AddViewColumnProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
         return;
       }
       table = result.getRight();
@@ -137,7 +136,7 @@ public class AddTableColumnProcedure
                     : new AddTableColumnPlan(database, tableName, addedColumnList, false),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(AddTableColumnState.COMMIT_RELEASE);
     }
@@ -186,7 +185,7 @@ public class AddTableColumnProcedure
                     : new AddTableColumnPlan(database, tableName, addedColumnList, true),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

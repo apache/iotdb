@@ -25,6 +25,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,20 +61,17 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
 
   @Override
   public void evaluateWithSelection(boolean[] selection) {
+    List<Column> childrenColumns = new ArrayList<>();
+
     for (ColumnTransformer child : columnTransformerList) {
       child.evaluateWithSelection(selection);
+      childrenColumns.add(child.getColumn());
     }
 
     int positionCount = columnTransformerList.get(0).getColumnCachePositionCount();
 
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-    doTransform(
-        columnTransformerList.stream()
-            .map(ColumnTransformer::getColumn)
-            .collect(Collectors.toList()),
-        builder,
-        positionCount,
-        selection);
+    doTransform(childrenColumns, builder, positionCount, selection);
     initializeColumnCache(builder.build());
 
     for (ColumnTransformer child : columnTransformerList) {

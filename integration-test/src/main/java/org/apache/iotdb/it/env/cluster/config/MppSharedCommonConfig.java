@@ -474,6 +474,20 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    dnConfig.setPipeMemoryManagementEnabled(pipeMemoryManagementEnabled);
+    cnConfig.setPipeMemoryManagementEnabled(pipeMemoryManagementEnabled);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    dnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
+    cnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     dnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
     cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
@@ -549,6 +563,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    dnConfig.setDataNodeMemoryProportion(dataNodeMemoryProportion);
+    cnConfig.setDataNodeMemoryProportion(dataNodeMemoryProportion);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
       int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
     dnConfig.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
@@ -578,6 +599,19 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    dnConfig.setEnforceStrongPassword(enforceStrongPassword);
+    cnConfig.setEnforceStrongPassword(enforceStrongPassword);
+    return this;
+  }
+
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    dnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
     return this;
   }
 }

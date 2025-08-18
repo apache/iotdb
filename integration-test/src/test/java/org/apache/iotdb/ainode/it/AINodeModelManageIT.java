@@ -38,6 +38,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.AbstractMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,6 +46,7 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.EXAMPLE_MODEL_PATH;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -52,7 +54,7 @@ import static org.junit.Assert.fail;
 @Category({AIClusterIT.class})
 public class AINodeModelManageIT {
 
-  private static final Map<String, FakeModelInfo> BUILT_IN_MACHINE_LEARNING_MODEL_MAP =
+  private static final Map<String, FakeModelInfo> BUILT_IN_MODEL_MAP =
       Stream.of(
               new AbstractMap.SimpleEntry<>(
                   "arima", new FakeModelInfo("arima", "Arima", "BUILT-IN", "ACTIVE")),
@@ -75,13 +77,11 @@ public class AINodeModelManageIT {
               new AbstractMap.SimpleEntry<>(
                   "gmm_hmm", new FakeModelInfo("gmm_hmm", "GmmHmm", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
-                  "stray", new FakeModelInfo("stray", "Stray", "BUILT-IN", "ACTIVE")))
-          //              new AbstractMap.SimpleEntry<>(
-          //                  "sundial", new FakeModelInfo("sundial", "Timer-Sundial", "BUILT-IN",
-          // "ACTIVE")),
-          //              new AbstractMap.SimpleEntry<>(
-          //                  "timer_xl", new FakeModelInfo("timer_xl", "Timer-XL", "BUILT-IN",
-          // "ACTIVE")))
+                  "stray", new FakeModelInfo("stray", "Stray", "BUILT-IN", "ACTIVE")),
+              new AbstractMap.SimpleEntry<>(
+                  "sundial", new FakeModelInfo("sundial", "Timer-Sundial", "BUILT-IN", "ACTIVE")),
+              new AbstractMap.SimpleEntry<>(
+                  "timer_xl", new FakeModelInfo("timer_xl", "Timer-XL", "BUILT-IN", "ACTIVE")))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   @BeforeClass
@@ -96,7 +96,7 @@ public class AINodeModelManageIT {
   }
 
   @Test
-  public void userDefinedModelManagementTestInTree() throws SQLException {
+  public void userDefinedModelManagementTestInTree() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       userDefinedModelManagementTest(statement);
@@ -104,14 +104,15 @@ public class AINodeModelManageIT {
   }
 
   @Test
-  public void userDefinedModelManagementTestInTable() throws SQLException {
+  public void userDefinedModelManagementTestInTable() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       userDefinedModelManagementTest(statement);
     }
   }
 
-  private void userDefinedModelManagementTest(Statement statement) throws SQLException {
+  private void userDefinedModelManagementTest(Statement statement)
+      throws SQLException, InterruptedException {
     final String alterConfigSQL = "set configuration \"trusted_uri_pattern\"='.*'";
     final String registerSql =
         "create model operationTest using uri \"" + EXAMPLE_MODEL_PATH + "\"";
@@ -122,7 +123,7 @@ public class AINodeModelManageIT {
     statement.execute(registerSql);
     boolean loading = true;
     int count = 0;
-    while (loading) {
+    for (int retryCnt = 0; retryCnt < 100; retryCnt++) {
       try (ResultSet resultSet = statement.executeQuery(showSql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
@@ -130,7 +131,6 @@ public class AINodeModelManageIT {
           String modelId = resultSet.getString(1);
           String category = resultSet.getString(3);
           String state = resultSet.getString(4);
-
           assertEquals("operationTest", modelId);
           assertEquals("USER-DEFINED", category);
           if (state.equals("ACTIVE")) {
@@ -143,7 +143,12 @@ public class AINodeModelManageIT {
           }
         }
       }
+      if (!loading) {
+        break; // Model is loaded successfully
+      }
+      TimeUnit.SECONDS.sleep(1);
     }
+    assertFalse(loading);
     assertEquals(1, count);
     statement.execute(dropSql);
     try (ResultSet resultSet = statement.executeQuery(showSql)) {
@@ -196,20 +201,17 @@ public class AINodeModelManageIT {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
       while (resultSet.next()) {
-        String modelId = resultSet.getString(1);
-        if (!modelId.equals("sundial") && !modelId.equals("timer_xl")) {
-          built_in_model_count++;
-          FakeModelInfo modelInfo =
-              new FakeModelInfo(
-                  resultSet.getString(1),
-                  resultSet.getString(2),
-                  resultSet.getString(3),
-                  resultSet.getString(4));
-          assertTrue(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.containsKey(modelInfo.getModelId()));
-          assertEquals(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
-        }
+        built_in_model_count++;
+        FakeModelInfo modelInfo =
+            new FakeModelInfo(
+                resultSet.getString(1),
+                resultSet.getString(2),
+                resultSet.getString(3),
+                resultSet.getString(4));
+        assertTrue(BUILT_IN_MODEL_MAP.containsKey(modelInfo.getModelId()));
+        assertEquals(BUILT_IN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
       }
     }
-    assertEquals(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.size(), built_in_model_count);
+    assertEquals(BUILT_IN_MODEL_MAP.size(), built_in_model_count);
   }
 }

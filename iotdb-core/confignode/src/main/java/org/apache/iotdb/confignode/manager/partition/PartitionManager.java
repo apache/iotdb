@@ -522,7 +522,7 @@ public class PartitionManager {
       return getConsensusManager().write(plan);
     } catch (ConsensusException e) {
       // The allocation might fail due to consensus error
-      LOGGER.error("Write partition allocation result failed because: {}", status);
+      LOGGER.error("Write partition allocation result failed because: {}", e.getMessage());
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -1097,10 +1097,17 @@ public class PartitionManager {
                         .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
                         .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
                 regionInfo.setTsFileSize(regionSize);
+
+                long rawDataSize =
+                    getLoadManager()
+                        .getLoadCache()
+                        .getRegionRawSizeMap()
+                        .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
+                        .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
+                regionInfo.setRawDataSize(rawDataSize);
               });
 
       return regionInfoListResp;
-
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

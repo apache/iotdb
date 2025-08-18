@@ -222,7 +222,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
             },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false, false, false),
+            Arrays.asList(false, false, false, true, false),
             true);
     seqResources.add(seqResource2);
 

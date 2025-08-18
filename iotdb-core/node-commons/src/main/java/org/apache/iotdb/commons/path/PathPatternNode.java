@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.path;
 
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -40,8 +42,10 @@ import java.util.function.Supplier;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
+public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> implements Accountable {
 
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PathPatternNode.class);
   private final String name;
   private final Map<String, PathPatternNode<V, S>> children;
   private Set<V> valueSet;
@@ -271,6 +275,18 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
       childrenSize--;
     }
     return node;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + RamUsageEstimator.sizeOf(name)
+        + RamUsageEstimator.sizeOfHashSet(valueSet)
+        + RamUsageEstimator.sizeOfHashSet(childrenNamesWithNonTrivialWildcard)
+        + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+            children,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
   }
 
   /**

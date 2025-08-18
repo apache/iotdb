@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -210,6 +211,11 @@ class AggregationAnalyzer {
     @Override
     protected Boolean visitNullIfExpression(NullIfExpression node, Void context) {
       return process(node.getFirst(), context) && process(node.getSecond(), context);
+    }
+
+    @Override
+    protected Boolean visitExtract(Extract node, Void context) {
+      return process(node.getExpression(), context);
     }
 
     @Override

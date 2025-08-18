@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpres
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -106,6 +107,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
 import javax.annotation.Nullable;
@@ -1553,6 +1555,22 @@ public class ExpressionAnalyzer {
       }
       Type resultType = process(providedValue, context);
       return setExpressionType(node, resultType);
+    }
+
+    @Override
+    protected Type visitExtract(Extract node, StackableAstVisitorContext<Context> context) {
+      if (node.getExpression() instanceof LongLiteral) {
+        // Don't visit child here to avoid setting its Type to INT32
+        setExpressionType(node.getExpression(), INT64);
+      } else {
+        Type type = process(node.getExpression(), context);
+
+        if (!(type instanceof TimestampType)) {
+          throw new SemanticException(String.format("Cannot extract from %s", type));
+        }
+      }
+
+      return setExpressionType(node, INT64);
     }
 
     @Override

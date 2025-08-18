@@ -74,7 +74,6 @@ import java.util.Objects;
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
-
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   protected long[] times; // times should be sorted. It is done in the session API.
@@ -528,17 +527,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  private void writeTimes(ByteBuffer buffer) {
+  private void writeTimes(final ByteBuffer buffer) {
     ReadWriteIOUtils.write(rowCount, buffer);
-    for (long time : times) {
-      ReadWriteIOUtils.write(time, buffer);
+    for (int i = 0; i < rowCount; ++i) {
+      ReadWriteIOUtils.write(times[i], buffer);
     }
   }
 
-  private void writeTimes(DataOutputStream stream) throws IOException {
+  private void writeTimes(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(rowCount, stream);
-    for (long time : times) {
-      ReadWriteIOUtils.write(time, stream);
+    for (int i = 0; i < rowCount; ++i) {
+      ReadWriteIOUtils.write(times[i], stream);
     }
   }
 
@@ -556,7 +555,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(false), buffer);
         } else {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(true), buffer);
-          buffer.put(bitMaps[i].getByteArray());
+          buffer.put(bitMaps[i].getByteArray(), 0, BitMap.getSizeOfBytes(rowCount));
         }
       }
     }
@@ -576,7 +575,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
         } else {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
-          stream.write(bitMaps[i].getByteArray());
+          stream.write(bitMaps[i].getByteArray(), 0, BitMap.getSizeOfBytes(rowCount));
         }
       }
     }
@@ -643,7 +642,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
-          if (binaryValues[j] != null) {
+          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
             ReadWriteIOUtils.write(binaryValues[j], buffer);
           } else {
             ReadWriteIOUtils.write(0, buffer);
@@ -695,7 +694,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case BLOB:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
-          if (binaryValues[j] != null) {
+          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
             ReadWriteIOUtils.write(binaryValues[j], stream);
           } else {
             ReadWriteIOUtils.write(0, stream);
@@ -751,6 +750,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       bitMaps =
           QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount).orElse(null);
     }
+
     columns =
         QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
     isAligned = buffer.get() == 1;
@@ -966,7 +966,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case BLOB:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
-          if (binaryValues[j] != null) {
+          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
             buffer.putInt(binaryValues[j].getLength());
             buffer.put(binaryValues[j].getValues());
           } else {
@@ -1310,10 +1310,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         + Arrays.toString(measurements)
         + ", rowCount="
         + rowCount
-        + ", timeRange=[,"
-        + times[0]
-        + ", "
-        + times[times.length - 1]
+        + ", timeRange=["
+        + (Objects.nonNull(times) && times.length > 0
+            ? times[0] + ", " + times[times.length - 1]
+            : "")
         + "]"
         + '}';
   }

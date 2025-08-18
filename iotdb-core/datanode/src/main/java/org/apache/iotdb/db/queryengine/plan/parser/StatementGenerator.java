@@ -91,6 +91,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.util.TabletDecoder;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -102,6 +103,7 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TimeDuration;
 
@@ -113,6 +115,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -332,28 +335,37 @@ public class StatementGenerator {
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
-    long[] timestamps =
-        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
-    if (timestamps.length != 0) {
-      TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
-    }
-    insertStatement.setTimes(timestamps);
-    insertStatement.setColumns(
-        QueryDataSetUtils.readTabletValuesFromBuffer(
-            insertTabletReq.values,
-            insertTabletReq.types,
-            insertTabletReq.types.size(),
-            insertTabletReq.size));
-    insertStatement.setBitMaps(
-        QueryDataSetUtils.readBitMapsFromBuffer(
-                insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
-            .orElse(null));
-    insertStatement.setRowCount(insertTabletReq.size);
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
     for (int i = 0; i < insertTabletReq.types.size(); i++) {
       dataTypes[i] = TSDataType.deserialize((byte) insertTabletReq.types.get(i).intValue());
     }
     insertStatement.setDataTypes(dataTypes);
+
+    TabletDecoder tabletDecoder =
+        new TabletDecoder(
+            insertTabletReq.isIsCompressed()
+                ? CompressionType.deserialize(insertTabletReq.getCompressType())
+                : CompressionType.UNCOMPRESSED,
+            dataTypes,
+            insertTabletReq.isIsCompressed()
+                ? insertTabletReq.encodingTypes.stream()
+                    .map(TSEncoding::deserialize)
+                    .collect(Collectors.toList())
+                : Collections.nCopies(dataTypes.length + 1, TSEncoding.PLAIN),
+            insertTabletReq.size);
+
+    long[] timestamps = tabletDecoder.decodeTime(insertTabletReq.timestamps);
+    Pair<Object[], ByteBuffer> valueAndRemainingBuffer =
+        tabletDecoder.decodeValues(insertTabletReq.values);
+    insertStatement.setTimes(timestamps);
+    insertStatement.setColumns(valueAndRemainingBuffer.left);
+    insertStatement.setBitMaps(
+        QueryDataSetUtils.readBitMapsFromBuffer(
+                valueAndRemainingBuffer.right, insertTabletReq.types.size(), insertTabletReq.size)
+            .orElse(null));
+
+    insertStatement.setRowCount(insertTabletReq.size);
+
     insertStatement.setAligned(insertTabletReq.isAligned);
     insertStatement.setWriteToTable(insertTabletReq.isWriteToTable());
     if (insertTabletReq.isWriteToTable()) {
@@ -479,7 +491,7 @@ public class StatementGenerator {
     insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     // req.timestamps sorted on session side
-    if (req.timestamps.size() != 0) {
+    if (!req.timestamps.isEmpty()) {
       TimestampPrecisionUtils.checkTimestampPrecision(
           req.timestamps.get(req.timestamps.size() - 1));
     }

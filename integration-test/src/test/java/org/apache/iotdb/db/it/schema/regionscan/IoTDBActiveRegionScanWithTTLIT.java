@@ -123,7 +123,7 @@ public class IoTDBActiveRegionScanWithTTLIT extends AbstractSchemaIT {
 
   @Test
   public void showActiveDataWithMods() {
-    final String sql = "show devices where time > 0";
+    final String sql = "show devices root.sg.** where time > 0";
     String[] retArray = new String[] {"root.sg.d1", "root.sg.d2"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 

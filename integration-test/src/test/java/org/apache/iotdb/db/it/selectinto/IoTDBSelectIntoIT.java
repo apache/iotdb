@@ -151,6 +151,7 @@ public class IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
     // if we don't change this configuration, we may get an error like: Cannot reserve XXXX bytes of
     // direct buffer memory
@@ -597,11 +598,11 @@ public class IoTDBSelectIntoIT {
   public void testPermission1() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser1 'temppw1'");
+      adminStmt.execute("CREATE USER tempuser1 'temppw1123456'");
       adminStmt.execute("GRANT WRITE_DATA on root.sg_bk.** TO USER tempuser1;");
       ResultSet resultSet;
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1123456");
           Statement userStmt = userCon.createStatement()) {
         userStmt.executeQuery(
             "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
@@ -620,10 +621,10 @@ public class IoTDBSelectIntoIT {
   public void testPermission2() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser2 'temppw2'");
+      adminStmt.execute("CREATE USER tempuser2 'temppw2123456'");
       adminStmt.execute("GRANT WRITE_DATA on root.sg.** TO USER tempuser2;");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2123456");
           Statement userStmt = userCon.createStatement()) {
         userStmt.executeQuery(
             "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");

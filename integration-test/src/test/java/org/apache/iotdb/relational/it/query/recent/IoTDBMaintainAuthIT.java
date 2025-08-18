@@ -43,7 +43,7 @@ public class IoTDBMaintainAuthIT {
   private static final String CREATE_USER_FORMAT = "create user %s '%s'";
   private static final String USER_1 = "user1";
   private static final String USER_2 = "user2";
-  private static final String PASSWORD = "password";
+  private static final String PASSWORD = "password123456";
 
   private static final String[] createSqls =
       new String[] {
@@ -58,6 +58,7 @@ public class IoTDBMaintainAuthIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }

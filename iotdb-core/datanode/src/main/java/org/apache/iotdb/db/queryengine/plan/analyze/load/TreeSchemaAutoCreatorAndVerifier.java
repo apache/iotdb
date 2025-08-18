@@ -439,13 +439,12 @@ public class TreeSchemaAutoCreatorAndVerifier {
       // check device schema: is aligned or not
       final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
       final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-      if (isAlignedInTsFile != isAlignedInIoTDB) {
-        throw new LoadAnalyzeException(
-            String.format(
-                "Device %s in TsFile is %s, but in IoTDB is %s.",
-                device,
-                isAlignedInTsFile ? "aligned" : "not aligned",
-                isAlignedInIoTDB ? "aligned" : "not aligned"));
+      if (LOGGER.isDebugEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
+        LOGGER.debug(
+            "Device {} in TsFile is {}, but in IoTDB is {}.",
+            device,
+            isAlignedInTsFile ? "aligned" : "not aligned",
+            isAlignedInIoTDB ? "aligned" : "not aligned");
       }
 
       // check timeseries schema
@@ -463,15 +462,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
         }
 
         // check datatype
-        if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          throw new LoadAnalyzeTypeMismatchException(
-              String.format(
-                  "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
-                  device,
-                  TsFileConstant.PATH_SEPARATOR,
-                  iotdbSchema.getMeasurementName(),
-                  tsFileSchema.getType(),
-                  iotdbSchema.getType()));
+        if (LOGGER.isDebugEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
+          LOGGER.debug(
+              "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
+              device,
+              TsFileConstant.PATH_SEPARATOR,
+              iotdbSchema.getMeasurementName(),
+              tsFileSchema.getType(),
+              iotdbSchema.getType());
         }
 
         // check encoding

@@ -128,7 +128,7 @@ public class DataNodeShutdownHook extends Thread {
           PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.entrySet()) {
         boolean timeout = false;
         while (true) {
-          if (entry.getValue().getRemainingNonHeartbeatEvents() > 0) {
+          if (entry.getValue().getRemainingNonHeartbeatEvents() == 0) {
             logger.info(
                 "Successfully waited for pipe {} to finish.", entry.getValue().getPipeName());
             break;
@@ -183,7 +183,7 @@ public class DataNodeShutdownHook extends Thread {
         .forEach(
             id -> {
               try {
-                DataRegionConsensusImpl.getInstance().triggerSnapshot(id, false);
+                DataRegionConsensusImpl.getInstance().triggerSnapshot(id, true);
               } catch (ConsensusException e) {
                 logger.warn(
                     "Something wrong happened while calling consensus layer's "

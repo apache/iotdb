@@ -33,7 +33,13 @@ public abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT
     super.setUp();
 
     // enable subscription
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSubscriptionEnabled(true);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSubscriptionEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

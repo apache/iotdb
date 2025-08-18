@@ -41,7 +41,7 @@ import static org.junit.Assert.fail;
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
   @Test
   public void testSinkPermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(env, "create user `thulab` 'passwd'")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(env, "create user `thulab` 'passwd'", null)) {
       return;
     }
 
@@ -106,7 +106,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     }
 
     // Filter this
-    if (!TestUtils.tryExecuteNonQueryWithRetry("test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        "test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush", null)) {
       return;
     }
 
@@ -115,7 +116,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     // Continue, ensure that it won't block
     // Grant some privilege
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test1", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on test.test1 to user thulab")) {
+        "test1",
+        BaseEnv.TABLE_SQL_DIALECT,
+        env,
+        "grant INSERT on test.test1 to user thulab",
+        null)) {
       return;
     }
     if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
@@ -125,7 +130,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
 
     // Clear data, avoid resending
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, env, "drop database test1")) {
+        "test", BaseEnv.TABLE_SQL_DIALECT, env, "drop database test1", null)) {
       return;
     }
 
@@ -149,7 +154,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
 
     // Grant some privilege
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on any to user thulab")) {
+        "test", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on any to user thulab", null)) {
       return;
     }
 
@@ -168,7 +173,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         BaseEnv.TABLE_SQL_DIALECT,
         env,
         Arrays.asList(
-            "create user thulab 'passwd'", "grant INSERT on test.test1 to user thulab"))) {
+            "create user thulab 'passwD@123456'", "grant INSERT on test.test1 to user thulab"),
+        null)) {
       return;
     }
 
@@ -188,7 +194,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
           "create pipe a2b "
               + "with source ('database'='test1', 'table'='test1') "
               + "with processor('processor'='rename-database-processor', 'processor.new-db-name'='test') "
-              + "with sink ('sink'='write-back-sink', 'username'='thulab', 'password'='passwd')");
+              + "with sink ('sink'='write-back-sink', 'username'='thulab', 'password'='passwD@123456')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Create pipe without user shall succeed if use the current session");
