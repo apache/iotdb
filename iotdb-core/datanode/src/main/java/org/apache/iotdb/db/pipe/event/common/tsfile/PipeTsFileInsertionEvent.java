@@ -207,6 +207,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     isClosed.set(resource.isClosed());
 
     this.eventParser = new AtomicReference<>(null);
+
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            eliminateProgressIndex();
+          }
+        });
   }
 
   /**
@@ -369,12 +376,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       return overridingProgressIndex;
     }
     return resource.getMaxProgressIndex();
-  }
-
-  @Override
-  protected void reportProgress() {
-    super.reportProgress();
-    this.eliminateProgressIndex();
   }
 
   public void eliminateProgressIndex() {

@@ -17,22 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster.env;
+package org.apache.iotdb.commons.pipe.datastructure.interval;
 
-public class AIEnv extends AbstractEnv {
-  @Override
-  public void initClusterEnvironment() {
-    initClusterEnvironment(1, 1);
+public class Interval<T extends Interval<T>> implements Comparable<Interval<?>> {
+  public long start;
+  public long end;
+
+  public Interval(final long s, final long e) {
+    start = s;
+    end = e;
+  }
+
+  public void onMerged(final T another) {
+    // Do nothing by default
+  }
+
+  public void onRemoved() {
+    // Do nothing by default
   }
 
   @Override
-  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    super.initEnvironment(configNodesNum, dataNodesNum, 600, true);
+  public int compareTo(final Interval other) {
+    return Long.compare(this.start, other.start);
   }
 
   @Override
-  public void initClusterEnvironment(
-      int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
-    super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, true);
+  public String toString() {
+    return "[" + start + ", " + end + "]";
   }
 }

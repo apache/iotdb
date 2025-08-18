@@ -408,6 +408,9 @@ public class IoTDBConfig {
   /** The buffer for sort operation */
   private long sortBufferSize = 32 * 1024 * 1024L;
 
+  /** Mods cache size limit per fi */
+  private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
+
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
@@ -1154,6 +1157,8 @@ public class IoTDBConfig {
   private boolean cacheLastValuesForLoad = true;
 
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
+
+  private boolean includeNullValueInWriteThroughputMetric = false;
 
   IoTDBConfig() {}
 
@@ -4003,6 +4008,14 @@ public class IoTDBConfig {
     return sortBufferSize;
   }
 
+  public void setModsCacheSizeLimitPerFI(long modsCacheSizeLimitPerFI) {
+    this.modsCacheSizeLimitPerFI = modsCacheSizeLimitPerFI;
+  }
+
+  public long getModsCacheSizeLimitPerFI() {
+    return modsCacheSizeLimitPerFI;
+  }
+
   public void setSortTmpDir(String sortTmpDir) {
     this.sortTmpDir = sortTmpDir;
   }
@@ -4104,5 +4117,14 @@ public class IoTDBConfig {
 
   public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
     this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public boolean isIncludeNullValueInWriteThroughputMetric() {
+    return includeNullValueInWriteThroughputMetric;
+  }
+
+  public void setIncludeNullValueInWriteThroughputMetric(
+      boolean includeNullValueInWriteThroughputMetric) {
+    this.includeNullValueInWriteThroughputMetric = includeNullValueInWriteThroughputMetric;
   }
 }
