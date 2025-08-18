@@ -89,6 +89,39 @@ public abstract class AlignedTVList extends TVList {
 
   private final AlignedTVList outer = this;
 
+  private static final byte[] HEAD_MASK = {
+    (byte) 0b1111_1111,
+    (byte) 0b0111_1111,
+    (byte) 0b0011_1111,
+    (byte) 0b0001_1111,
+    (byte) 0b0000_1111,
+    (byte) 0b0000_0111,
+    (byte) 0b0000_0011,
+    (byte) 0b0000_0001
+  };
+
+  private static final byte[] TAIL_MASK = {
+    (byte) 0b0000_0000,
+    (byte) 0b1000_0000,
+    (byte) 0b1100_0000,
+    (byte) 0b1110_0000,
+    (byte) 0b1111_0000,
+    (byte) 0b1111_1000,
+    (byte) 0b1111_1100,
+    (byte) 0b1111_1110
+  };
+
+  private static final byte[] BIT_MASK = {
+    0b0000_0001,
+    0b0000_0010,
+    0b0000_0100,
+    0b0000_1000,
+    0b0001_0000,
+    0b0010_0000,
+    0b0100_0000,
+    (byte) 0b1000_0000
+  };
+
   AlignedTVList(List<TSDataType> types) {
     super();
     dataTypes = types;
@@ -786,17 +819,9 @@ public abstract class AlignedTVList extends TVList {
           if (indices != null) {
             indices.get(arrayIdx)[elementIdx + i] = rowCount;
           }
-          for (int j = 0; j < values.size(); j++) {
-            if (value[j] == null
-                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
-                || results != null
-                    && results[idx + i] != null
-                    && results[idx + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              markNullValue(j, arrayIdx, elementIdx + i);
-            }
-          }
           rowCount++;
         }
+        markNullBitmapRange(value, bitMaps, results, idx, elementIdx, inputRemaining, arrayIdx);
         break;
       } else {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
@@ -807,21 +832,72 @@ public abstract class AlignedTVList extends TVList {
           if (indices != null) {
             indices.get(arrayIdx)[elementIdx + i] = rowCount;
           }
-          for (int j = 0; j < values.size(); j++) {
-            if (value[j] == null
-                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
-                || results != null
-                    && results[idx + i] != null
-                    && results[idx + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              markNullValue(j, arrayIdx, elementIdx + i);
-            }
-          }
           rowCount++;
         }
+        markNullBitmapRange(value, bitMaps, results, idx, elementIdx, internalRemaining, arrayIdx);
         idx += internalRemaining;
         checkExpansion();
       }
     }
+  }
+
+  private void markNullBitmapRange(
+      Object[] values,
+      BitMap[] bitMaps,
+      TSStatus[] results,
+      int idx,
+      int elementIdx,
+      int len,
+      int arrayIndex) {
+
+    /* 1. Build result-level bitmap (1 = failure row) */
+    byte[] resultBitMap =
+        (results != null) ? buildResultBitMapBytes(results, idx, elementIdx, len) : null;
+
+    for (int j = 0; j < values.length; j++) {
+      /* Fast-path: column is entirely null */
+      if (values[j] == null) {
+        markNullValue(j, arrayIndex, elementIdx, len);
+        continue;
+      }
+
+      /* 2.mask the column bitmap */
+      if (bitMaps != null && bitMaps[j] != null) {
+        for (int i = 0; i < elementIdx; i++) {
+          if (bitMaps[j].isMarked(idx + i)) {
+            markNullValue(j, arrayIndex, elementIdx + i);
+          }
+        }
+      }
+
+      /* 3. Overlay result bitmap (failure rows) */
+      if (resultBitMap != null) {
+        markNullValue(j, arrayIndex, elementIdx, resultBitMap);
+      }
+    }
+  }
+
+  public static byte[] buildResultBitMapBytes(
+      TSStatus[] results, int idx, int elementIdx, int length) {
+    int start = elementIdx & 7;
+    int totalBits = start + length;
+    byte[] bitmap = new byte[(totalBits + 7) >> 3];
+
+    if (results == null) {
+      return bitmap;
+    }
+
+    for (int i = 0; i < length; i++) {
+      int globalBit = start + i;
+      int bytePos = globalBit >>> 3;
+      int bitPos = globalBit & 7;
+
+      if (results[idx + i] != null
+          && results[idx + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        bitmap[bytePos] |= BIT_MASK[bitPos];
+      }
+    }
+    return bitmap;
   }
 
   private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {
@@ -871,7 +947,7 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  private void markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
+  private BitMap getBitMap(int columnIndex, int arrayIndex) {
     // init BitMaps if doesn't have
     if (bitMaps == null) {
       List<List<BitMap>> localBitMaps = new ArrayList<>(dataTypes.size());
@@ -895,8 +971,52 @@ public abstract class AlignedTVList extends TVList {
       bitMaps.get(columnIndex).set(arrayIndex, new BitMap(ARRAY_SIZE));
     }
 
+    return bitMaps.get(columnIndex).get(arrayIndex);
+  }
+
+  private void markRange(byte[] bitMap, int bitStart, int bitLen) {
+    if (bitLen <= 0) return;
+
+    int bitEnd = bitStart + bitLen;
+    int byte0 = bitStart >>> 3;
+    int byte1 = (bitEnd - 1) >>> 3;
+
+    if (byte0 == byte1) {
+      int mask = HEAD_MASK[bitStart & 7] & TAIL_MASK[bitEnd & 7];
+      bitMap[byte0] |= (byte) mask;
+      return;
+    }
+    if ((bitStart & 7) != 0) {
+      bitMap[byte0] |= HEAD_MASK[bitStart & 7];
+      byte0++;
+    }
+
+    while (byte0 < byte1) {
+      bitMap[byte0++] = (byte) 0xFF;
+    }
+
+    int tailBits = bitEnd & 7;
+    if (tailBits != 0) {
+      bitMap[byte1] |= TAIL_MASK[tailBits];
+    }
+  }
+
+  private void markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
     // mark the null value in the current bitmap
-    bitMaps.get(columnIndex).get(arrayIndex).mark(elementIndex);
+    getBitMap(columnIndex, arrayIndex).mark(elementIndex);
+  }
+
+  private void markNullValue(int columnIndex, int arrayIndex, int elementIndex, int length) {
+    markRange(getBitMap(columnIndex, arrayIndex).getByteArray(), elementIndex, length);
+  }
+
+  private void markNullValue(
+      int columnIndex, int arrayIndex, int elementIndex, byte[] resultBitMap) {
+    byte[] bitMap = getBitMap(columnIndex, arrayIndex).getByteArray();
+    int start = elementIndex >>> 3;
+    for (byte b : resultBitMap) {
+      bitMap[start++] |= b;
+    }
   }
 
   @Override
