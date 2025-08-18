@@ -141,7 +141,7 @@ import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
-import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
+import static com.google.gson.internal.GsonPreconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
