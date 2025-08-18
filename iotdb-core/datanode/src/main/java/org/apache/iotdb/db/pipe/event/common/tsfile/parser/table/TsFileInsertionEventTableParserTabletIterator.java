@@ -362,7 +362,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         if (size > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
           if (valueChunkList.size() == 1) {
             // If the first chunk exceeds the memory limit, we need to allocate more memory
-            PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+            PipeDataNodeResourceManager.memory()
+                .forceResize(
+                    allocatedMemoryBlockForChunk,
+                    size - PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk));
           }
           break;
         } else {
