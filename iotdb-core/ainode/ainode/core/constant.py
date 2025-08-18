@@ -73,12 +73,6 @@ AINODE_LOG_DIR = "logs"
 # AINode log
 LOG_FILE_TYPE = ["all", "info", "warning", "error"]
 AINODE_LOG_FILE_NAME_PREFIX = "log_ainode_"
-AINODE_LOG_FILE_NAMES = [
-    "log_ainode_all.log",
-    "log_ainode_info.log",
-    "log_ainode_warning.log",
-    "log_ainode_error.log",
-]
 AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
 DEFAULT_LOG_LEVEL = logging.INFO
 INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = (
