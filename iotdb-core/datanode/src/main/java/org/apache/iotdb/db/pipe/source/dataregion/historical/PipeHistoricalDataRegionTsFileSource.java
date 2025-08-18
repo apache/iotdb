@@ -561,13 +561,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
     if (!filteredTsFileResources.contains(resource)) {
       final ProgressReportEvent progressReportEvent =
-          new ProgressReportEvent(
-              pipeName,
-              creationTime,
-              pipeTaskMeta,
-              pipePattern,
-              historicalDataExtractionStartTime,
-              historicalDataExtractionEndTime);
+          new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
       progressReportEvent.bindProgressIndex(resource.getMaxProgressIndex());
       final boolean isReferenceCountIncreased =
           progressReportEvent.increaseReferenceCount(
