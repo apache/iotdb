@@ -64,9 +64,6 @@ import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
-  private final int pipeMaxAlignedSeriesNumInOneBatch =
-      PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
-
   private final long startTime;
   private final long endTime;
   private final Filter filter;

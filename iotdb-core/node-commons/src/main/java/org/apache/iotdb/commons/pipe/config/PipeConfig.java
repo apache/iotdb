@@ -233,10 +233,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
 
-  public int getPipeMaxAlignedSeriesNumInOneBatch() {
-    return COMMON_CONFIG.getPipeMaxAlignedSeriesNumInOneBatch();
-  }
-
   public long getPipeMaxAlignedSeriesChunkSizeInOneBatch() {
     return COMMON_CONFIG.getPipeMaxAlignedSeriesChunkSizeInOneBatch();
   }
@@ -492,7 +488,6 @@ public class PipeConfig {
         isPipeConnectorRPCThriftCompressionEnabled());
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
-    LOGGER.info("PipeMaxAlignedSeriesNumInOneBatch: {}", getPipeMaxAlignedSeriesNumInOneBatch());
     LOGGER.info(
         "PipeMaxAlignedSeriesChunkSizeInOneBatch: {}",
         getPipeMaxAlignedSeriesChunkSizeInOneBatch());

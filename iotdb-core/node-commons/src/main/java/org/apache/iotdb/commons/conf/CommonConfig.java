@@ -308,7 +308,6 @@ public class CommonConfig {
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private volatile long pipeCheckMemoryEnoughIntervalMs = 10L;
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
-  private int pipeMaxAlignedSeriesNumInOneBatch = 15;
   private long pipeMaxAlignedSeriesChunkSizeInOneBatch = (long) 16 * 1024 * 1024; // 16MB;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
@@ -1690,19 +1689,6 @@ public class CommonConfig {
     this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
     logger.info(
         "pipeLeaderCacheMemoryUsagePercentage is set to {}", pipeLeaderCacheMemoryUsagePercentage);
-  }
-
-  public int getPipeMaxAlignedSeriesNumInOneBatch() {
-    return pipeMaxAlignedSeriesNumInOneBatch;
-  }
-
-  public void setPipeMaxAlignedSeriesNumInOneBatch(int pipeMaxAlignedSeriesNumInOneBatch) {
-    if (this.pipeMaxAlignedSeriesNumInOneBatch == pipeMaxAlignedSeriesNumInOneBatch) {
-      return;
-    }
-    this.pipeMaxAlignedSeriesNumInOneBatch = pipeMaxAlignedSeriesNumInOneBatch;
-    logger.info(
-        "pipeMaxAlignedSeriesNumInOneBatch is set to {}", pipeMaxAlignedSeriesNumInOneBatch);
   }
 
   public long getPipeMaxAlignedSeriesChunkSizeInOneBatch() {
