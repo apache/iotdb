@@ -92,6 +92,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableNameRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.StringType;
@@ -181,11 +183,13 @@ public class TableLogicalPlanner {
 
   private String calculateCacheKey(Statement statement, Analysis analysis) {
     StringBuilder sb = new StringBuilder();
-    sb.append(analysis.getDatabaseName());
-    sb.append(SqlFormatter.formatSql(statement));
+    Statement normalized = TableNameRewriter.rewrite(statement, analysis.getDatabaseName());
+    sb.append(SqlFormatter.formatSql(normalized));
     long version = DataNodeTableCache.getInstance().getVersion();
     sb.append(version);
-    return sb.toString();
+    String rawKey = sb.toString();
+    String md5Key = DigestUtils.md5Hex(rawKey);
+    return md5Key;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(TableLogicalPlanner.class);
