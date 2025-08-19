@@ -184,7 +184,6 @@ import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
 import io.airlift.units.Duration;
-import io.jsonwebtoken.lang.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
@@ -1277,7 +1276,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       String database = req.getDatabase();
       if (StringUtils.isEmpty(database)) {
-        String[] splits = Strings.split(req.getDevice(), "\\.");
+        String[] splits = req.getDevice().split("\\.");
         database = String.format("%s.%s", splits[0], splits[1]);
       }
       IDeviceID deviceId = Factory.DEFAULT_FACTORY.create(req.getDevice());
