@@ -89,37 +89,26 @@ public abstract class AlignedTVList extends TVList {
 
   private final AlignedTVList outer = this;
 
-  private static final byte[] HEAD_MASK = {
-    (byte) 0b1111_1111,
-    (byte) 0b0111_1111,
-    (byte) 0b0011_1111,
-    (byte) 0b0001_1111,
-    (byte) 0b0000_1111,
-    (byte) 0b0000_0111,
+  private static final byte[] LOW_N_BITS = {
+    (byte) 0b0000_0001,
     (byte) 0b0000_0011,
-    (byte) 0b0000_0001
+    (byte) 0b0000_0111,
+    (byte) 0b0000_1111,
+    (byte) 0b0001_1111,
+    (byte) 0b0011_1111,
+    (byte) 0b0111_1111,
+    (byte) 0b1111_1111,
   };
 
-  private static final byte[] TAIL_MASK = {
-    (byte) 0b0000_0000,
-    (byte) 0b1000_0000,
-    (byte) 0b1100_0000,
-    (byte) 0b1110_0000,
-    (byte) 0b1111_0000,
-    (byte) 0b1111_1000,
+  private static final byte[] HIGH_N_BITS = {
+    (byte) 0b1111_1111,
+    (byte) 0b1111_1110,
     (byte) 0b1111_1100,
-    (byte) 0b1111_1110
-  };
-
-  private static final byte[] BIT_MASK = {
-    0b0000_0001,
-    0b0000_0010,
-    0b0000_0100,
-    0b0000_1000,
-    0b0001_0000,
-    0b0010_0000,
-    0b0100_0000,
-    (byte) 0b1000_0000
+    (byte) 0b1111_1000,
+    (byte) 0b1111_0000,
+    (byte) 0b1110_0000,
+    (byte) 0b1100_0000,
+    (byte) 0b1000_0000,
   };
 
   AlignedTVList(List<TSDataType> types) {
@@ -881,23 +870,19 @@ public abstract class AlignedTVList extends TVList {
       TSStatus[] results, int idx, int elementIdx, int length) {
     int start = elementIdx & 7;
     int totalBits = start + length;
-    byte[] bitmap = new byte[(totalBits + 7) >> 3];
+    BitMap bitmap = new BitMap((totalBits + 7) >> 3);
 
     if (results == null) {
-      return bitmap;
+      return bitmap.getByteArray();
     }
 
     for (int i = 0; i < length; i++) {
-      int globalBit = start + i;
-      int bytePos = globalBit >>> 3;
-      int bitPos = globalBit & 7;
-
       if (results[idx + i] != null
           && results[idx + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        bitmap[bytePos] |= BIT_MASK[bitPos];
+        bitmap.mark(start + i);
       }
     }
-    return bitmap;
+    return bitmap.getByteArray();
   }
 
   private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {
@@ -974,7 +959,7 @@ public abstract class AlignedTVList extends TVList {
     return bitMaps.get(columnIndex).get(arrayIndex);
   }
 
-  private void markRange(byte[] bitMap, int bitStart, int bitLen) {
+  public static void markRange(byte[] bitMap, int bitStart, int bitLen) {
     if (bitLen <= 0) return;
 
     int bitEnd = bitStart + bitLen;
@@ -982,23 +967,18 @@ public abstract class AlignedTVList extends TVList {
     int byte1 = (bitEnd - 1) >>> 3;
 
     if (byte0 == byte1) {
-      int mask = HEAD_MASK[bitStart & 7] & TAIL_MASK[bitEnd & 7];
+      int mask = ((1 << (bitStart & 7)) - 1) ^ LOW_N_BITS[(bitEnd - 1) & 7];
       bitMap[byte0] |= (byte) mask;
       return;
     }
-    if ((bitStart & 7) != 0) {
-      bitMap[byte0] |= HEAD_MASK[bitStart & 7];
-      byte0++;
-    }
+
+    bitMap[byte0++] |= HIGH_N_BITS[bitStart & 7];
 
     while (byte0 < byte1) {
       bitMap[byte0++] = (byte) 0xFF;
     }
 
-    int tailBits = bitEnd & 7;
-    if (tailBits != 0) {
-      bitMap[byte1] |= TAIL_MASK[tailBits];
-    }
+    bitMap[byte1] |= LOW_N_BITS[(bitEnd - 1) & 7];
   }
 
   private void markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
