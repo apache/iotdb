@@ -170,13 +170,7 @@ public class VariationTableFunction implements TableFunction {
   private static class NonEquivalentVariationDataProcessor extends VariationDataProcessor {
     private final double gap;
     private double baseValue = 0;
-<<<<<<< HEAD
-    private long curIndex = 0;
-    private long windowIndex = 0;
-    private List<Double> values;
-=======
     private boolean baseValueIsNull = true;
->>>>>>> master
 
     public NonEquivalentVariationDataProcessor(double delta, boolean ignoreNull) {
       super(ignoreNull);
