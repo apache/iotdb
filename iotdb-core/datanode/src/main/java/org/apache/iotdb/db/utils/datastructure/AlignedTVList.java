@@ -852,7 +852,7 @@ public abstract class AlignedTVList extends TVList {
 
       /* 2.mask the column bitmap */
       if (bitMaps != null && bitMaps[j] != null) {
-        for (int i = 0; i < elementIdx; i++) {
+        for (int i = 0; i < len; i++) { // 注意：循环到 len
           if (bitMaps[j].isMarked(idx + i)) {
             markNullValue(j, arrayIndex, elementIdx + i);
           }
