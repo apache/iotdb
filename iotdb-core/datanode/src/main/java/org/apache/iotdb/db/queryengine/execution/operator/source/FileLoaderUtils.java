@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -80,6 +81,7 @@ public class FileLoaderUtils {
       TsFileResource resource,
       NonAlignedFullPath seriesPath,
       FragmentInstanceContext context,
+      Ordering scanOrder,
       Filter globalTimeFilter,
       Set<String> allSensors,
       boolean isSeq)
@@ -130,7 +132,9 @@ public class FileLoaderUtils {
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
 
-        timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
+        timeSeriesMetadata =
+            (TimeseriesMetadata)
+                resource.getTimeSeriesMetadata(seriesPath, scanOrder, globalTimeFilter);
         if (timeSeriesMetadata != null) {
           timeSeriesMetadata.setChunkMetadataLoader(
               new MemChunkMetadataLoader(resource, seriesPath, context, globalTimeFilter));
@@ -181,6 +185,7 @@ public class FileLoaderUtils {
       TsFileResource resource,
       AlignedFullPath alignedPath,
       FragmentInstanceContext context,
+      Ordering scanOrder,
       Filter globalTimeFilter,
       boolean isSeq,
       boolean ignoreAllNullRows)
@@ -197,7 +202,8 @@ public class FileLoaderUtils {
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
-            (AbstractAlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(alignedPath);
+            (AbstractAlignedTimeSeriesMetadata)
+                resource.getTimeSeriesMetadata(alignedPath, scanOrder, globalTimeFilter);
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new MemAlignedChunkMetadataLoader(

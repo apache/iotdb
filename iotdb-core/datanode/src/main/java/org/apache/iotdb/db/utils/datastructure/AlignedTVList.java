@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -35,7 +36,9 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.TsBlockUtil;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
@@ -1531,6 +1534,8 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public AlignedTVListIterator iterator(
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TSDataType> dataTypeList,
       List<Integer> columnIndexList,
       List<TimeRange> timeColumnDeletion,
@@ -1540,6 +1545,7 @@ public abstract class AlignedTVList extends TVList {
       boolean ignoreAllNullRows,
       int maxNumberOfPointsInPage) {
     return new AlignedTVListIterator(
+        globalTimeFilter,
         dataTypeList,
         columnIndexList,
         timeColumnDeletion,
@@ -1551,7 +1557,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   /* AlignedTVList Iterator */
-  public class AlignedTVListIterator extends TVListIterator implements MemPointIterator {
+  public class AlignedTVListIterator extends TVListIterator {
     private final BitMap allValueColDeletedMap;
     private final List<TSDataType> dataTypeList;
     private final List<Integer> columnIndexList;
@@ -1569,6 +1575,7 @@ public abstract class AlignedTVList extends TVList {
     private final List<int[]> valueColumnDeleteCursor = new ArrayList<>();
 
     public AlignedTVListIterator(
+        Filter globalTimeFilter,
         List<TSDataType> dataTypeList,
         List<Integer> columnIndexList,
         List<TimeRange> timeColumnDeletion,
@@ -1577,7 +1584,7 @@ public abstract class AlignedTVList extends TVList {
         List<TSEncoding> encodingList,
         boolean ignoreAllNullRows,
         int maxNumberOfPointsInPage) {
-      super(null, null, null, maxNumberOfPointsInPage);
+      super(globalTimeFilter, null, null, null, maxNumberOfPointsInPage);
       this.dataTypeList = dataTypeList;
       this.columnIndexList =
           (columnIndexList == null)
@@ -1602,8 +1609,12 @@ public abstract class AlignedTVList extends TVList {
       while (index < rows && !findValidRow) {
         // all columns values are deleted
         if ((allValueColDeletedMap != null && allValueColDeletedMap.isMarked(getValueIndex(index)))
-            || isTimeDeleted(getValueIndex(index), false)
-            || isPointDeleted(getTime(index), timeColumnDeletion, timeDeleteCursor)) {
+            || isTimeDeleted(getValueIndex(index), false)) {
+          index++;
+          continue;
+        }
+        long time = getTime(index);
+        if (isPointDeleted(time, timeColumnDeletion, timeDeleteCursor) || !isTimeSatisfied(time)) {
           index++;
           continue;
         }
@@ -1636,7 +1647,7 @@ public abstract class AlignedTVList extends TVList {
         // MergeSortMultiAlignedTVListIterator or OrderedMultiAlignedTVListIterator.
         if (valueColumnsDeletionList != null) {
           BitMap bitMap = new BitMap(dataTypeList.size());
-          long time = getTime(index);
+          time = getTime(index);
           for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
             if (isNullValue(index, columnIndex)
                 || isPointDeleted(
@@ -1735,6 +1746,9 @@ public abstract class AlignedTVList extends TVList {
 
     @Override
     public boolean hasNextBatch() {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
       if (!probeNext) {
         prepareNext();
       }
@@ -1746,7 +1760,7 @@ public abstract class AlignedTVList extends TVList {
 
     @Override
     public TsBlock nextBatch() {
-      TsBlockBuilder builder = new TsBlockBuilder(dataTypeList);
+      TsBlockBuilder builder = new TsBlockBuilder(maxNumberOfPointsInPage, dataTypeList);
       // Time column
       TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
 
@@ -1765,17 +1779,17 @@ public abstract class AlignedTVList extends TVList {
         if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(getValueIndex(index))) {
           continue;
         }
-        if (isTimeDeleted(index)) {
+        long time = getTime(index);
+        if (isTimeDeleted(index) || !isTimeSatisfied(time)) {
           continue;
         }
         int nextRowIndex = index + 1;
         while (nextRowIndex < rows
             && ((allValueColDeletedMap != null
                     && allValueColDeletedMap.isMarked(getValueIndex(nextRowIndex)))
-                || (isTimeDeleted(nextRowIndex)))) {
+                || (isTimeDeleted(nextRowIndex) || !isTimeSatisfied(time)))) {
           nextRowIndex++;
         }
-        long time = getTime(index);
         if ((nextRowIndex == rows || time != getTime(nextRowIndex))
             && !isPointDeleted(time, timeColumnDeletion, deleteCursor)) {
           timeBuilder.writeLong(time);
@@ -1808,7 +1822,7 @@ public abstract class AlignedTVList extends TVList {
           // skip empty row
           if ((allValueColDeletedMap != null
                   && allValueColDeletedMap.isMarked(getValueIndex(sortedRowIndex)))
-              || (isTimeDeleted(sortedRowIndex))) {
+              || (isTimeDeleted(sortedRowIndex) || !isTimeSatisfied(getTime(sortedRowIndex)))) {
             continue;
           }
           // skip time duplicated or totally deleted rows
@@ -1901,6 +1915,17 @@ public abstract class AlignedTVList extends TVList {
       if (ignoreAllNullRows && needRebuildTsBlock(hasAnyNonNullValue)) {
         // if exist all null rows, at most have validRowCount - 1 valid rows
         tsBlock = reBuildTsBlock(hasAnyNonNullValue, validRowCount, dataTypeList, tsBlock);
+      }
+      if (pushDownFilter != null) {
+        tsBlock =
+            TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+                tsBlock,
+                new TsBlockBuilder(
+                    Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()), dataTypeList),
+                pushDownFilter,
+                paginationController);
+      } else {
+        tsBlock = paginationController.applyTsBlock(tsBlock);
       }
       tsBlocks.add(tsBlock);
 

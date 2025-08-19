@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.TsBlockUtil;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
@@ -32,7 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class MultiTVListIterator implements MemPointIterator {
+public abstract class MultiTVListIterator extends MemPointIterator {
   protected TSDataType tsDataType;
   protected List<TVList.TVListIterator> tvListIterators;
   protected List<TsBlock> tsBlocks;
@@ -49,6 +54,8 @@ public abstract class MultiTVListIterator implements MemPointIterator {
   protected final int maxNumberOfPointsInPage;
 
   protected MultiTVListIterator(
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       TSDataType tsDataType,
       List<TVList> tvLists,
       List<TimeRange> deletionList,
@@ -57,8 +64,12 @@ public abstract class MultiTVListIterator implements MemPointIterator {
       int maxNumberOfPointsInPage) {
     this.tsDataType = tsDataType;
     this.tvListIterators = new ArrayList<>(tvLists.size());
-    for (TVList tvList : tvLists) {
-      tvListIterators.add(tvList.iterator(deletionList, null, null, maxNumberOfPointsInPage));
+    for (int i = 0; i < tvLists.size(); i++) {
+      TVList tvList = tvLists.get(i);
+      TVList.TVListIterator iterator =
+          tvList.iterator(
+              scanOrder, globalTimeFilter, deletionList, null, null, maxNumberOfPointsInPage);
+      tvListIterators.set(scanOrder.isAscending() ? i : tvLists.size() - 1 - i, iterator);
     }
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encoding = encoding;
@@ -148,6 +159,18 @@ public abstract class MultiTVListIterator implements MemPointIterator {
       builder.declarePosition();
     }
     TsBlock tsBlock = builder.build();
+    if (pushDownFilter == null) {
+      paginationController.consumeLimit(tsBlock.getPositionCount());
+    } else {
+      tsBlock =
+          TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+              tsBlock,
+              new TsBlockBuilder(
+                  Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()),
+                  Collections.singletonList(tsDataType)),
+              pushDownFilter,
+              paginationController);
+    }
     tsBlocks.add(tsBlock);
     return tsBlock;
   }
@@ -174,4 +197,19 @@ public abstract class MultiTVListIterator implements MemPointIterator {
   protected abstract void prepareNext();
 
   protected abstract void next();
+
+  @Override
+  public void setPushDownFilter(Filter pushDownFilter) {
+    for (TVList.TVListIterator iterator : tvListIterators) {
+      iterator.setPushDownFilter(pushDownFilter);
+    }
+  }
+
+  @Override
+  public void setLimitAndOffset(PaginationController paginationController) {
+    for (TVList.TVListIterator iterator : tvListIterators) {
+      iterator.setLimitAndOffset(paginationController);
+    }
+    this.paginationController = paginationController;
+  }
 }

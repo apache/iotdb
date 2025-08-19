@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -39,6 +40,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -143,6 +145,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             dataTypes,
             columnIndexList,
             alignedTvLists,
+            Ordering.ASC,
+            null,
             timeColumnDeletion,
             valueColumnsDeletionList,
             floatPrecision,
@@ -278,6 +282,79 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     cachedMetaData = alignedChunkMetadata;
   }
 
+  @Override
+  public void initChunkMetaFromTVLists2(Ordering scanOrder, Filter globalTimeFilter) {
+    // create MergeSortAlignedTVListIterator
+    List<AlignedTVList> alignedTvLists =
+        alignedTvListQueryMap.keySet().stream()
+            .map(x -> (AlignedTVList) x)
+            .collect(Collectors.toList());
+
+    timeValuePairIterator =
+        MemPointIteratorFactory.create(
+            dataTypes,
+            columnIndexList,
+            alignedTvLists,
+            Ordering.ASC,
+            null,
+            timeColumnDeletion,
+            valueColumnsDeletionList,
+            floatPrecision,
+            encodingList,
+            context.isIgnoreAllNullRows(),
+            MAX_NUMBER_OF_POINTS_IN_PAGE);
+
+    long chunkStartTime = Long.MAX_VALUE;
+    long chunkEndTime = Long.MIN_VALUE;
+    for (AlignedTVList tvList : alignedTvLists) {
+      chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
+      chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
+    }
+
+    Statistics<? extends Serializable>[] chunkValueStatistics = new Statistics[dataTypes.size()];
+    for (int column = 0; column < dataTypes.size(); column++) {
+      chunkValueStatistics[column] = Statistics.getStatsByType(dataTypes.get(column));
+      chunkValueStatistics[column].setStartTime(chunkStartTime);
+      chunkValueStatistics[column].setEndTime(chunkEndTime);
+      chunkValueStatistics[column].setCount(1);
+    }
+    valueStatisticsList.add(chunkValueStatistics);
+
+    // init chunk meta
+    Statistics<? extends Serializable> chunkTimeStatistics =
+        Statistics.getStatsByType(TSDataType.VECTOR);
+    chunkTimeStatistics.setStartTime(chunkStartTime);
+    chunkTimeStatistics.setEndTime(chunkEndTime);
+    chunkTimeStatistics.setCount(1);
+    timeStatisticsList.add(chunkTimeStatistics);
+    IChunkMetadata timeChunkMetadata =
+        new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, chunkTimeStatistics);
+    timeChunkMetadata.setModified(true);
+
+    // value columns
+    List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
+    for (int column = 0; column < dataTypes.size(); column++) {
+      IChunkMetadata valueChunkMetadata =
+          new ChunkMetadata(
+              valueChunkNames.get(column),
+              dataTypes.get(column),
+              null,
+              null,
+              0,
+              chunkValueStatistics[column]);
+      valueChunkMetadata.setModified(true);
+      valueChunkMetadataList.add(valueChunkMetadata);
+    }
+
+    IChunkMetadata alignedChunkMetadata =
+        context.isIgnoreAllNullRows()
+            ? new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList)
+            : new TableDeviceChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
+    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
+    alignedChunkMetadata.setVersion(Long.MAX_VALUE);
+    cachedMetaData = alignedChunkMetadata;
+  }
+
   private int count() {
     int count = 0;
     for (TVList list : alignedTvListQueryMap.keySet()) {
@@ -324,6 +401,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             dataTypes,
             columnIndexList,
             alignedTvLists,
+            Ordering.ASC,
+            null,
             timeColumnDeletion,
             valueColumnsDeletionList,
             floatPrecision,

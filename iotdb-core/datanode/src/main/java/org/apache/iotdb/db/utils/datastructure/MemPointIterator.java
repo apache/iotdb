@@ -20,15 +20,30 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
-public interface MemPointIterator extends IPointReader {
-  TsBlock getBatch(int tsBlockIndex);
+public abstract class MemPointIterator implements IPointReader {
 
-  boolean hasNextBatch();
+  protected Filter pushDownFilter;
+  protected PaginationController paginationController;
 
-  TsBlock nextBatch();
+  public abstract TsBlock getBatch(int tsBlockIndex);
 
-  void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times);
+  public abstract boolean hasNextBatch();
+
+  public abstract TsBlock nextBatch();
+
+  public abstract void encodeBatch(
+      IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times);
+
+  public void setPushDownFilter(Filter pushDownFilter) {
+    this.pushDownFilter = pushDownFilter;
+  }
+
+  public void setLimitAndOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
+  }
 }

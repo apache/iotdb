@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -33,6 +34,9 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.TsBlockUtil;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -649,20 +653,24 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public TVListIterator iterator(
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
       int maxNumberOfPointsInPage) {
-    return new TVListIterator(deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
+    return new TVListIterator(
+        globalTimeFilter, deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
   }
 
   /* TVList Iterator */
-  public class TVListIterator implements MemPointIterator {
+  public class TVListIterator extends MemPointIterator {
     protected int index;
     protected int rows;
     protected boolean probeNext;
     protected List<TsBlock> tsBlocks;
 
+    protected final Filter globalTimeFilter;
     private final List<TimeRange> deletionList;
     private final int[] deleteCursor = {0};
     private final int floatPrecision;
@@ -671,11 +679,17 @@ public abstract class TVList implements WALEntryValue {
     // used by nextBatch during query
     protected final int maxNumberOfPointsInPage;
 
+    protected Filter pushDownFilter;
+    protected PaginationController paginationController =
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+
     public TVListIterator(
+        Filter globalTimeFilter,
         List<TimeRange> deletionList,
         Integer floatPrecision,
         TSEncoding encoding,
         int maxNumberOfPointsInPage) {
+      this.globalTimeFilter = globalTimeFilter;
       this.deletionList = deletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encoding = encoding;
@@ -688,9 +702,13 @@ public abstract class TVList implements WALEntryValue {
 
     protected void prepareNext() {
       // skip deleted rows
-      while (index < rows
-          && (isNullValue(getValueIndex(index))
-              || isPointDeleted(getTime(index), deletionList, deleteCursor))) {
+      while (index < rows) {
+        if (!isNullValue(getValueIndex(index))) {
+          long time = getTime(index);
+          if (!isPointDeleted(time, deletionList, deleteCursor) && isTimeSatisfied(time)) {
+            break;
+          }
+        }
         index++;
       }
 
@@ -701,8 +719,15 @@ public abstract class TVList implements WALEntryValue {
       probeNext = true;
     }
 
+    protected boolean isTimeSatisfied(long timestamp) {
+      return globalTimeFilter == null || globalTimeFilter.satisfyRow(timestamp, null);
+    }
+
     @Override
     public boolean hasNextTimeValuePair() {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
       if (!probeNext) {
         prepareNext();
       }
@@ -737,6 +762,9 @@ public abstract class TVList implements WALEntryValue {
 
     @Override
     public boolean hasNextBatch() {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
       return hasNextTimeValuePair();
     }
 
@@ -750,6 +778,7 @@ public abstract class TVList implements WALEntryValue {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
+                && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(index + 1))) {
               builder.getTimeColumnBuilder().writeLong(time);
               builder.getColumnBuilder(0).writeBoolean(getBoolean(index));
@@ -764,6 +793,7 @@ public abstract class TVList implements WALEntryValue {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
+                && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(index + 1))) {
               builder.getTimeColumnBuilder().writeLong(time);
               builder.getColumnBuilder(0).writeInt(getInt(index));
@@ -778,6 +808,7 @@ public abstract class TVList implements WALEntryValue {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
+                && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(index + 1))) {
               builder.getTimeColumnBuilder().writeLong(time);
               builder.getColumnBuilder(0).writeLong(getLong(index));
@@ -791,6 +822,7 @@ public abstract class TVList implements WALEntryValue {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
+                && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(index + 1))) {
               builder.getTimeColumnBuilder().writeLong(time);
               builder
@@ -807,6 +839,7 @@ public abstract class TVList implements WALEntryValue {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
+                && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(index + 1))) {
               builder.getTimeColumnBuilder().writeLong(time);
               builder
@@ -825,6 +858,7 @@ public abstract class TVList implements WALEntryValue {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
+                && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(index + 1))) {
               builder.getTimeColumnBuilder().writeLong(time);
               builder.getColumnBuilder(0).writeBinary(getBinary(index));
@@ -838,6 +872,18 @@ public abstract class TVList implements WALEntryValue {
               String.format("Data type %s is not supported.", dataType));
       }
       TsBlock tsBlock = builder.build();
+      if (pushDownFilter != null) {
+        tsBlock =
+            TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+                tsBlock,
+                new TsBlockBuilder(
+                    Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()),
+                    Collections.singletonList(dataType)),
+                pushDownFilter,
+                paginationController);
+      } else {
+        tsBlock = paginationController.applyTsBlock(tsBlock);
+      }
       tsBlocks.add(tsBlock);
       return tsBlock;
     }
