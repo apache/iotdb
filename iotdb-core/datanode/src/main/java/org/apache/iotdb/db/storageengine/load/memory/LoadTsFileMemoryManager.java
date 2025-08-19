@@ -69,7 +69,7 @@ public class LoadTsFileMemoryManager {
                 + "current load used memory size %s bytes, load requested memory size %s bytes",
             MEMORY_ALLOCATE_MAX_RETRIES,
             QUERY_ENGINE_MEMORY_MANAGER.getAllocateMemoryForOperators(),
-            QUERY_ENGINE_MEMORY_MANAGER.getFreeMemoryForLoadTsFile(),
+            Math.max(0L, QUERY_ENGINE_MEMORY_MANAGER.getFreeMemoryForLoadTsFile()),
             usedMemorySizeInBytes.get(),
             sizeInBytes));
   }
