@@ -54,7 +54,7 @@ public class ImportSchemaTable extends AbstractImportSchema {
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
             .database(database)

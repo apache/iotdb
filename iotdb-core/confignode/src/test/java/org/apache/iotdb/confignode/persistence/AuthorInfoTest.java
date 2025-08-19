@@ -67,7 +67,7 @@ public class AuthorInfoTest {
 
   @BeforeClass
   public static void setup() {
-    authorInfo = new AuthorInfo();
+    authorInfo = new AuthorInfo(null);
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
@@ -127,7 +127,7 @@ public class AuthorInfoTest {
               ConfigPhysicalPlanType.CreateUser,
               "user0",
               "",
-              "passwd",
+              "passwd123456",
               "",
               new HashSet<>(),
               false,
@@ -233,7 +233,7 @@ public class AuthorInfoTest {
             "user0",
             "",
             "",
-            "newpwd",
+            "newpwd123456",
             new HashSet<>(),
             false,
             new ArrayList<>());
@@ -557,7 +557,7 @@ public class AuthorInfoTest {
             ConfigPhysicalPlanType.CreateUser,
             "user0",
             "",
-            "passwd",
+            "passwd123456",
             "",
             new HashSet<>(),
             false,
@@ -656,14 +656,14 @@ public class AuthorInfoTest {
             ConfigPhysicalPlanType.CreateUserWithRawPassword,
             "testuser",
             "",
-            AuthUtils.encryptPassword("password"),
+            AuthUtils.encryptPassword("password123456"),
             "",
             new HashSet<>(),
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    TPermissionInfoResp result = authorInfo.login("testuser", "password");
+    TPermissionInfoResp result = authorInfo.login("testuser", "password123456");
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
   }
 
@@ -688,7 +688,7 @@ public class AuthorInfoTest {
             "",
             Collections.emptySet(),
             false,
-            "password");
+            "password123456");
 
     checkAuthorNonQueryReturn(plan);
 
@@ -751,7 +751,7 @@ public class AuthorInfoTest {
             "",
             Collections.emptySet(),
             false,
-            "password");
+            "password123456");
 
     checkAuthorNonQueryReturn(plan);
     checkAuthorNonQueryReturn(

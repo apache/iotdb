@@ -163,6 +163,7 @@ public class ColumnHeaderConstant {
   public static final String ROLE = "Role";
   public static final String CREATE_TIME = "CreateTime";
   public static final String TSFILE_SIZE = "TsFileSize";
+  public static final String COMPRESSION_RATIO = "CompressionRatio";
 
   // column names for show datanodes
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
@@ -189,6 +190,7 @@ public class ColumnHeaderConstant {
   public static final String SOURCE_COLUMN = "SourceColumn";
   public static final String TARGET_TIMESERIES = "TargetTimeseries";
   public static final String WRITTEN = "Written";
+  public static final String ROWS = "Rows";
 
   // column names for show cq
   public static final String CQID = "CQId";
@@ -224,6 +226,7 @@ public class ColumnHeaderConstant {
   public static final String INTERNAL_ADDRESS_TABLE_MODEL = "internal_address";
   public static final String CREATE_TIME_TABLE_MODEL = "create_time";
   public static final String TS_FILE_SIZE_BYTES_TABLE_MODEL = "tsfile_size_bytes";
+  public static final String COMPRESSION_RATIO_TABLE_MODEL = "compression_ratio";
 
   public static final String CREATION_TIME_TABLE_MODEL = "creation_time";
   public static final String PIPE_SOURCE_TABLE_MODEL = "pipe_source";
@@ -429,7 +432,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(ROLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
-          new ColumnHeader(TSFILE_SIZE, TSDataType.TEXT));
+          new ColumnHeader(TSFILE_SIZE, TSDataType.TEXT),
+          new ColumnHeader(COMPRESSION_RATIO, TSDataType.DOUBLE));
 
   public static final List<ColumnHeader> showAINodesColumnHeaders =
       ImmutableList.of(
@@ -558,14 +562,17 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(SOURCE_COLUMN, TSDataType.TEXT),
           new ColumnHeader(TARGET_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(WRITTEN, TSDataType.INT32));
+          new ColumnHeader(WRITTEN, TSDataType.INT64));
 
   public static final List<ColumnHeader> selectIntoAlignByDeviceColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(SOURCE_DEVICE, TSDataType.TEXT),
           new ColumnHeader(SOURCE_COLUMN, TSDataType.TEXT),
           new ColumnHeader(TARGET_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(WRITTEN, TSDataType.INT32));
+          new ColumnHeader(WRITTEN, TSDataType.INT64));
+
+  public static final List<ColumnHeader> selectIntoTableColumnHeaders =
+      ImmutableList.of(new ColumnHeader(ROWS, TSDataType.INT64));
 
   public static final List<ColumnHeader> getRegionIdColumnHeaders =
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));
@@ -612,9 +619,8 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(MODEL_ID, TSDataType.TEXT),
           new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
-          new ColumnHeader(STATE, TSDataType.TEXT),
-          new ColumnHeader(CONFIGS, TSDataType.TEXT),
-          new ColumnHeader(NOTES, TSDataType.TEXT));
+          new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showLogicalViewColumnHeaders =
       ImmutableList.of(

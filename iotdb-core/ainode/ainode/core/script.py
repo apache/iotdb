@@ -18,131 +18,29 @@
 import os
 import shutil
 import sys
-from datetime import datetime
 
-import psutil
+import torch.multiprocessing as mp
 
-from ainode.core.client import ClientManager
+from ainode.core.ai_node import AINode
 from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import AINODE_SYSTEM_FILE_NAME, TSStatusCode
+from ainode.core.constant import TSStatusCode
 from ainode.core.exception import MissingConfigError
 from ainode.core.log import Logger
-from ainode.core.service import RPCService
+from ainode.core.rpc.client import ClientManager
 from ainode.thrift.common.ttypes import (
-    TAINodeConfiguration,
     TAINodeLocation,
     TEndPoint,
-    TNodeResource,
 )
-from ainode.thrift.confignode.ttypes import TNodeVersionInfo
 
 logger = Logger()
-
-
-def _generate_configuration() -> TAINodeConfiguration:
-    location = TAINodeLocation(
-        AINodeDescriptor().get_config().get_ainode_id(),
-        TEndPoint(
-            AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
-            AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
-        ),
-    )
-    resource = TNodeResource(int(psutil.cpu_count()), int(psutil.virtual_memory()[0]))
-
-    return TAINodeConfiguration(location, resource)
-
-
-def _generate_version_info() -> TNodeVersionInfo:
-    return TNodeVersionInfo(
-        AINodeDescriptor().get_config().get_version_info(),
-        AINodeDescriptor().get_config().get_build_info(),
-    )
-
-
-def _check_path_permission():
-    system_path = AINodeDescriptor().get_config().get_ain_system_dir()
-    if not os.path.exists(system_path):
-        try:
-            os.makedirs(system_path)
-            os.chmod(system_path, 0o777)
-        except PermissionError as e:
-            logger.error(e)
-            raise e
-
-
-def start_ainode():
-    _check_path_permission()
-    system_properties_file = os.path.join(
-        AINodeDescriptor().get_config().get_ain_system_dir(), AINODE_SYSTEM_FILE_NAME
-    )
-    if not os.path.exists(system_properties_file):
-        # If the system.properties file does not exist, the AINode will register to ConfigNode.
-        try:
-            logger.info("IoTDB-AINode is registering to ConfigNode...")
-            ainode_id = (
-                ClientManager()
-                .borrow_config_node_client()
-                .node_register(
-                    AINodeDescriptor().get_config().get_cluster_name(),
-                    _generate_configuration(),
-                    _generate_version_info(),
-                )
-            )
-            AINodeDescriptor().get_config().set_ainode_id(ainode_id)
-            system_properties = {
-                "ainode_id": ainode_id,
-                "cluster_name": AINodeDescriptor().get_config().get_cluster_name(),
-                "iotdb_version": AINodeDescriptor().get_config().get_version_info(),
-                "commit_id": AINodeDescriptor().get_config().get_build_info(),
-                "ain_rpc_address": AINodeDescriptor()
-                .get_config()
-                .get_ain_inference_rpc_address(),
-                "ain_rpc_port": AINodeDescriptor()
-                .get_config()
-                .get_ain_inference_rpc_port(),
-                "config_node_list": AINodeDescriptor()
-                .get_config()
-                .get_ain_target_config_node_list(),
-            }
-            with open(system_properties_file, "w") as f:
-                f.write("#" + str(datetime.now()) + "\n")
-                for key, value in system_properties.items():
-                    f.write(key + "=" + str(value) + "\n")
-
-        except Exception as e:
-            logger.error("IoTDB-AINode failed to register to ConfigNode: {}".format(e))
-            raise e
-    else:
-        # If the system.properties file does exist, the AINode will just restart.
-        try:
-            logger.info("IoTDB-AINode is restarting...")
-            ClientManager().borrow_config_node_client().node_restart(
-                AINodeDescriptor().get_config().get_cluster_name(),
-                _generate_configuration(),
-                _generate_version_info(),
-            )
-
-        except Exception as e:
-            logger.error("IoTDB-AINode failed to restart: {}".format(e))
-            raise e
-
-    rpc_service = RPCService()
-    rpc_service.start()
-    rpc_service.join(1)
-    if rpc_service.exit_code != 0:
-        return
-
-    logger.info("IoTDB-AINode has successfully started.")
 
 
 def remove_ainode(arguments):
     # Delete the current node
     if len(arguments) == 2:
         target_ainode_id = AINodeDescriptor().get_config().get_ainode_id()
-        target_rpc_address = (
-            AINodeDescriptor().get_config().get_ain_inference_rpc_address()
-        )
-        target_rpc_port = AINodeDescriptor().get_config().get_ain_inference_rpc_port()
+        target_rpc_address = AINodeDescriptor().get_config().get_ain_rpc_address()
+        target_rpc_port = AINodeDescriptor().get_config().get_ain_rpc_port()
 
     # Delete the node with a given id
     elif len(arguments) == 3:
@@ -188,11 +86,15 @@ def main():
     command = arguments[1]
     if command == "start":
         try:
+            mp.set_start_method("spawn", force=True)
+            logger.info(f"Current multiprocess start method: {mp.get_start_method()}")
             logger.info("IoTDB-AINode is starting...")
-            start_ainode()
+            ai_node = AINode()
+            ai_node.start()
         except Exception as e:
             logger.error("Start AINode failed, because of: {}".format(e))
             sys.exit(1)
+    # TODO: remove the following function, and add a destroy script
     elif command == "remove":
         try:
             logger.info("Removing AINode...")

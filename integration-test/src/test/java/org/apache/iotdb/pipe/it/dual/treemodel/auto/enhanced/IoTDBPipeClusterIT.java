@@ -48,6 +48,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -76,7 +78,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     receiverEnv
         .getConfig()
@@ -86,7 +91,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -124,7 +131,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
               "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -160,14 +168,15 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         TestUtils.assertDataEventuallyOnEnv(
             receiverEnv,
             nodeWrapper,
-            "select count(*) from root.**",
+            "select count(*) from root.db.**",
             "count(root.db.d1.s1),",
             Collections.singleton("2,"),
             600);
       }
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"))) {
+          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"),
+          null)) {
         return;
       }
 
@@ -183,7 +192,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           nodeWrapper,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("3,"),
           600);
@@ -219,7 +228,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
               "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -255,19 +265,20 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"))) {
+          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
@@ -304,7 +315,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
+          senderEnv,
+          Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -393,7 +406,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d2(time, s1) values (1, 1)", "flush"))) {
+          senderEnv,
+          Arrays.asList("insert into root.db.d2(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -436,7 +451,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
+          senderEnv,
+          Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -494,7 +511,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d2(time, s1) values (1, 1)", "flush"))) {
+          senderEnv,
+          Arrays.asList("insert into root.db.d2(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -558,6 +577,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(30, showPipeResult.size());
     }
   }
@@ -591,19 +611,42 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       final AtomicInteger succeedNum = new AtomicInteger(0);
+
+      // ensure at least one insert happens before adding node so that the time series can be
+      // created
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", 0), null)) {
+        succeedNum.incrementAndGet();
+      }
       final Thread t =
           new Thread(
               () -> {
+                Connection connection = null;
                 try {
-                  for (int i = 0; i < 100; ++i) {
+                  connection = senderEnv.getConnection();
+                } catch (SQLException e) {
+                  // ignore
+                }
+                try {
+
+                  for (int i = 1; i < 100; ++i) {
                     if (TestUtils.tryExecuteNonQueryWithRetry(
                         senderEnv,
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
+                        connection)) {
                       succeedNum.incrementAndGet();
                     }
                     Thread.sleep(100);
                   }
                 } catch (final InterruptedException ignored) {
+                } finally {
+                  if (connection != null) {
+                    try {
+                      connection.close();
+                    } catch (SQLException e) {
+                      // ignore
+                    }
+                  }
                 }
               });
       t.start();
@@ -614,7 +657,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         return;
       }
       t.join();
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
         return;
       }
 
@@ -662,10 +705,14 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       int succeedNum = 0;
-      for (int i = 0; i < 100; ++i) {
-        if (TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-          succeedNum++;
+      try (Connection connection = senderEnv.getConnection()) {
+        for (int i = 0; i < 100; ++i) {
+          if (TestUtils.tryExecuteNonQueryWithRetry(
+              senderEnv,
+              String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
+              connection)) {
+            succeedNum++;
+          }
         }
       }
 
@@ -676,7 +723,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
         return;
       }
 
@@ -729,11 +776,14 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       int succeedNum = 0;
-      for (int i = 0; i < 100; ++i) {
-        if (TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000))) {
-          succeedNum++;
+      try (Connection connection = senderEnv.getConnection()) {
+        for (int i = 0; i < 100; ++i) {
+          if (TestUtils.tryExecuteNonQueryWithRetry(
+              senderEnv,
+              String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000),
+              connection)) {
+            succeedNum++;
+          }
         }
       }
 
@@ -748,7 +798,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
         return;
       }
 
@@ -759,6 +809,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           Collections.singleton(succeedNum + ","));
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
@@ -794,13 +845,18 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     }
 
     int succeedNum = 0;
-    for (int i = 0; i < 100; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000))) {
-        succeedNum++;
+    try (Connection connection = senderEnv.getConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        if (TestUtils.tryExecuteNonQueryWithRetry(
+            senderEnv,
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000),
+            connection)) {
+          succeedNum++;
+        }
       }
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
       return;
     }
 
@@ -813,7 +869,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.**",
+        "select count(*) from root.db.**",
         "count(root.db.d1.s1),",
         Collections.singleton(succeedNum + ","));
   }
@@ -902,6 +958,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -974,9 +1031,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
       showPipeResult =
           client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
     }
   }
@@ -996,7 +1055,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d1(time, s1) values (0, 1)",
               "insert into root.db.d1(time, s1) values (-1, 2)",
               "insert into root.db.d1(time, s1) values (1960-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -1023,7 +1083,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
 
@@ -1033,13 +1093,14 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
               // Test the correctness of insertRowsNode transmission
               "insert into root.db.d1(time, s1) values (-122, 3)",
               "insert into root.db.d1(time, s1) values (-123, 3), (now(), 3)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("6,"));
     }

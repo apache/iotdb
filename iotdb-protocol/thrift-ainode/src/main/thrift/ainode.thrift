@@ -25,16 +25,18 @@ struct TDeleteModelReq {
   1: required string modelId
 }
 
-struct TAIHeartbeatReq{
+struct TAIHeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needSamplingLoad
+  3: optional bool activated
 }
 
-struct TAIHeartbeatResp{
+struct TAIHeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
   3: optional string statusReason
   4: optional common.TLoadSample loadSample
+  5: optional string activateStatus
 }
 
 struct TRegisterModelReq {
@@ -69,7 +71,7 @@ struct TWindowParams {
 
 struct TInferenceResp {
   1: required common.TSStatus status
-  2: required list<binary> inferenceResult
+  2: optional list<binary> inferenceResult
 }
 
 struct IDataSchema {
@@ -80,10 +82,9 @@ struct IDataSchema {
 struct TTrainingReq {
   1: required string dbType
   2: required string modelId
-  3: required string modelType
+  3: required string existingModelId
   4: optional list<IDataSchema> targetDataSchema;
   5: optional map<string, string> parameters;
-  6: optional string existingModelId
 }
 
 struct TForecastReq {
@@ -95,12 +96,27 @@ struct TForecastReq {
 
 struct TForecastResp {
   1: required common.TSStatus status
-  2: required binary forecastResult
+  2: optional binary forecastResult
+}
+
+struct TShowModelsReq {
+  1: optional string modelId
+}
+
+struct TShowModelsResp {
+  1: required common.TSStatus status
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
 }
 
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
+  common.TSStatus stopAINode()
+
+  TShowModelsResp showModels(TShowModelsReq req)
 
   common.TSStatus deleteModel(TDeleteModelReq req)
 

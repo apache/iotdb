@@ -17,6 +17,7 @@
  * under the License.
  */
 include "common.thrift"
+include "client.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
 namespace py iotdb.thrift.datanode
 
@@ -310,17 +311,11 @@ struct TDataNodeHeartbeatResp {
   14: optional list<bool> pipeCompletedList
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
+  17: optional map<i32, i64> dataRegionRawDataSize
 }
 
 struct TPipeHeartbeatReq {
   1: required i64 heartbeatId
-}
-
-struct TPipeHeartbeatResp {
-  1: required list<binary> pipeMetaList
-  2: optional list<bool> pipeCompletedList
-  3: optional list<i64> pipeRemainingEventCountList
-  4: optional list<double> pipeRemainingTimeList
 }
 
 enum TSchemaLimitLevel{
@@ -1118,7 +1113,7 @@ service IDataNodeRPCService {
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds
   **/
-  TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
+  common.TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
 
  /**
   * Execute CQ on DataNode
@@ -1208,6 +1203,9 @@ service IDataNodeRPCService {
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
+
+  /** to write audit log or other events as time series **/
+  common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
 }
 
 service MPPDataExchangeService {

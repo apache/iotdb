@@ -23,14 +23,27 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 public class LastDescAccumulator extends LastAccumulator {
+  private final boolean isTimeColumn;
+  private final boolean isMeasurementColumn;
 
-  public LastDescAccumulator(TSDataType seriesDataType, boolean isTimeColumn) {
-    super(seriesDataType, isTimeColumn);
+  public LastDescAccumulator(
+      TSDataType seriesDataType, boolean isTimeColumn, boolean isMeasurementColumn) {
+    super(seriesDataType);
+    this.isTimeColumn = isTimeColumn;
+    this.isMeasurementColumn = isMeasurementColumn;
+  }
+
+  public boolean isTimeColumn() {
+    return this.isTimeColumn;
+  }
+
+  public boolean isMeasurementColumn() {
+    return this.isMeasurementColumn;
   }
 
   @Override
   public TableAccumulator copy() {
-    return new LastDescAccumulator(seriesDataType, isTimeColumn);
+    return new LastDescAccumulator(seriesDataType, isTimeColumn, isMeasurementColumn);
   }
 
   @Override

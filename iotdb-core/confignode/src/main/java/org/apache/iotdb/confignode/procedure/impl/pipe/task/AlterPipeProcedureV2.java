@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -102,17 +102,17 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final boolean checkSource =
         new PipeParameters(alterPipeRequest.getExtractorAttributes())
             .hasAnyAttributes(
-                PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
-                PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
-                PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-                PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY);
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+                PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+                PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+                PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
     final boolean checkSink =
         new PipeParameters(alterPipeRequest.getConnectorAttributes())
             .hasAnyAttributes(
-                PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
-                PipeConnectorConstant.SINK_IOTDB_USER_KEY,
-                PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-                PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY);
+                PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+                PipeSinkConstant.SINK_IOTDB_USER_KEY,
+                PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
 
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 
@@ -167,11 +167,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           (taskId, pipeTaskMeta) -> {
             updatedConsensusGroupIdToTaskMetaMap.put(
                 taskId,
-                new PipeTaskMeta(
-                    pipeTaskMeta.getProgressIndex(),
-                    pipeTaskMeta.getLeaderNodeId(),
-                    taskId,
-                    false));
+                new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId()));
           });
     } else {
       // data regions & schema regions
@@ -192,11 +188,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   // Pipe only collect user's data, filter metric database here.
                   updatedConsensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
-                      new PipeTaskMeta(
-                          currentPipeTaskMeta.getProgressIndex(),
-                          regionLeaderNodeId,
-                          regionGroupId.getId(),
-                          false));
+                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
                 }
               });
 
@@ -212,9 +204,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             new PipeTaskMeta(
                 configRegionTaskMeta.getProgressIndex(),
                 // The leader of the config region is the config node itself
-                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-                configRegionTaskMeta.getProgressIndex().hashCode(),
-                false));
+                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
       }
     }
 

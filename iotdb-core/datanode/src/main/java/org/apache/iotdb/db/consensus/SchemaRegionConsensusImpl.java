@@ -77,6 +77,11 @@ public class SchemaRegionConsensusImpl {
                       .setConsensusGroupType(TConsensusGroupType.SchemaRegion)
                       .setRatisConfig(
                           RatisConfig.newBuilder()
+                              .setUtils(
+                                  RatisConfig.Utils.newBuilder()
+                                      .setTransferLeaderTimeoutMs(
+                                          CONF.getRatisTransferLeaderTimeoutMs())
+                                      .build())
                               .setSnapshot(
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(

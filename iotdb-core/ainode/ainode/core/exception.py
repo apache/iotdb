@@ -17,7 +17,7 @@
 #
 import re
 
-from ainode.core.constant import DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
+from ainode.core.constant import MODEL_CONFIG_FILE_IN_YAML, MODEL_WEIGHTS_FILE_IN_PT
 
 
 class _BaseError(Exception):
@@ -77,7 +77,7 @@ class UnsupportedError(_BaseError):
 class InvalidUriError(_BaseError):
     def __init__(self, uri: str):
         self.message = "Invalid uri: {}, there are no {} or {} under this uri.".format(
-            uri, DEFAULT_MODEL_FILE_NAME, DEFAULT_CONFIG_FILE_NAME
+            uri, MODEL_WEIGHTS_FILE_IN_PT, MODEL_CONFIG_FILE_IN_YAML
         )
 
 
@@ -94,6 +94,11 @@ class InferenceModelInternalError(_BaseError):
 class BuiltInModelNotSupportError(_BaseError):
     def __init__(self, msg: str):
         self.message = "Built-in model not support: {0}".format(msg)
+
+
+class BuiltInModelDeletionError(_BaseError):
+    def __init__(self, model_id: str):
+        self.message = "Cannot delete built-in model: {0}".format(model_id)
 
 
 class WrongAttributeTypeError(_BaseError):

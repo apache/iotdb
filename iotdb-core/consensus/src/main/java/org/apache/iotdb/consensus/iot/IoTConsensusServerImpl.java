@@ -361,7 +361,7 @@ public class IoTConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     try {
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
-      File targetFile = new File(storageDir, targetFilePath);
+      File targetFile = getSnapshotPath(targetFilePath);
       Path parentDir = Paths.get(targetFile.getParent());
       if (!Files.exists(parentDir)) {
         Files.createDirectories(parentDir);
@@ -408,7 +408,23 @@ public class IoTConsensusServerImpl {
 
   public void loadSnapshot(String snapshotId) {
     // TODO: (xingtanzjr) throw exception if the snapshot load failed
-    stateMachine.loadSnapshot(new File(storageDir, snapshotId));
+    stateMachine.loadSnapshot(getSnapshotPath(snapshotId));
+  }
+
+  private File getSnapshotPath(String snapshotRelativePath) {
+    File storageDirFile = new File(storageDir);
+    File snapshotDir = new File(storageDir, snapshotRelativePath);
+    try {
+      if (!snapshotDir
+          .getCanonicalFile()
+          .toPath()
+          .startsWith(storageDirFile.getCanonicalFile().toPath())) {
+        throw new IllegalArgumentException("Invalid snapshotRelativePath: " + snapshotRelativePath);
+      }
+    } catch (IOException e) {
+      throw new IllegalArgumentException(e);
+    }
+    return snapshotDir;
   }
 
   @FunctionalInterface
@@ -823,7 +839,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
-    File snapshotDir = new File(storageDir, snapshotId);
+    File snapshotDir = getSnapshotPath(snapshotId);
     if (snapshotDir.exists()) {
       try {
         FileUtils.deleteDirectory(snapshotDir);

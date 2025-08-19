@@ -93,6 +93,8 @@ struct TRatisConfig {
 
   33: required i64 schemaRegionPeriodicSnapshotInterval
   34: required i64 dataRegionPeriodicSnapshotInterval
+
+  35: required i32 ratisTransferLeaderTimeoutMs;
 }
 
 struct TCQConfig {
@@ -721,6 +723,7 @@ struct TRegionInfo {
   10: optional i64 createTime
   11: optional string internalAddress
   12: optional i64 tsFileSize
+  13: optional i64 rawDataSize
 }
 
 struct TShowRegionResp {
@@ -1063,7 +1066,10 @@ struct TShowModelReq {
 
 struct TShowModelResp {
   1: required common.TSStatus status
-  2: required list<binary> modelInfoList
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
 }
 
 struct TGetModelInfoReq {
@@ -1086,8 +1092,7 @@ struct TUpdateModelInfoReq {
 }
 
 struct TDataSchemaForTable{
-    1: required list<string> databaseList
-    2: required list<string> tableList
+    1: required string targetSql
 }
 
 struct TDataSchemaForTree{
@@ -1096,14 +1101,12 @@ struct TDataSchemaForTree{
 
 struct TCreateTrainingReq {
     1: required string modelId
-    2: required string modelType
-    3: required bool isTableModel
+    2: required bool isTableModel
+    3: required string existingModelId
     4: optional TDataSchemaForTable dataSchemaForTable
     5: optional TDataSchemaForTree dataSchemaForTree
-    6: optional bool useAllData
-    7: optional map<string, string> parameters
-    8: optional string existingModelId
-    9: optional list<list<i64>> timeRanges
+    6: optional map<string, string> parameters
+    7: optional list<list<i64>> timeRanges
 }
 
 // ====================================================
@@ -1172,7 +1175,7 @@ struct TAINodeRestartResp{
 }
 
 struct TAINodeRemoveReq{
-  1: required common.TAINodeLocation aiNodeLocation
+  1: optional common.TAINodeLocation aiNodeLocation
 }
 
 // ====================================================
@@ -1510,6 +1513,8 @@ service IConfigNodeRPCService {
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
 
   TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
+
+  TPermissionInfoResp getUser(string userName);
 
 
 
@@ -2010,6 +2015,9 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  /** Push heartbeat in shutdown */
+  common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
 
   // ======================================================
   // Table Or View

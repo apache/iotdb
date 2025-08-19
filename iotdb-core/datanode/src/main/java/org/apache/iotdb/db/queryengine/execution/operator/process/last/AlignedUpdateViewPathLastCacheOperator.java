@@ -41,14 +41,16 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
       TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean needUpdateNullEntry,
-      String outputViewPath) {
+      String outputViewPath,
+      boolean deviceInMultiRegion) {
     super(
         operatorContext,
         child,
         seriesPath,
         treeDeviceSchemaCacheManager,
         needUpdateCache,
-        needUpdateNullEntry);
+        needUpdateNullEntry,
+        deviceInMultiRegion);
     checkArgument(seriesPath.getMeasurementList().size() == 1);
     this.outputViewPath = outputViewPath;
   }
@@ -56,8 +58,8 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
   @Override
   protected void appendLastValueToTsBlockBuilder(
       long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, outputViewPath, lastValue.getStringValue(), type);
+    LastQueryUtil.appendLastValueRespectBlob(
+        tsBlockBuilder, lastTime, outputViewPath, lastValue, type);
   }
 
   @Override

@@ -34,9 +34,9 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -399,7 +399,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       PipeParameters extractorParameters = pipeMeta.getStaticMeta().getExtractorParameters();
       final String extractorPluginName =
           extractorParameters.getStringOrDefault(
-              Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+              Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
               BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
       if (pluginName.equals(extractorPluginName)) {
         String exceptionMessage =
@@ -423,7 +423,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       PipeParameters connectorParameters = pipeMeta.getStaticMeta().getConnectorParameters();
       final String connectorPluginName =
           connectorParameters.getStringOrDefault(
-              Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+              Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
               IOTDB_THRIFT_CONNECTOR.getPipePluginName());
       if (pluginName.equals(connectorPluginName)) {
         String exceptionMessage =
@@ -627,11 +627,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
                                   consensusGroupId.getId(),
-                                  new PipeTaskMeta(
-                                      MinimumProgressIndex.INSTANCE,
-                                      newLeader,
-                                      consensusGroupId.getId(),
-                                      false));
+                                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or
@@ -805,7 +801,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
                   // Mark the status of the pipe with exception as stopped
                   runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                  runtimeMeta.onSetPipeDroppedOrStopped();
                   runtimeMeta.setIsStoppedByRuntimeException(true);
 
                   final Map<Integer, PipeRuntimeException> exceptionMap =

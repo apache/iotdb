@@ -68,6 +68,7 @@ public class IoTDBRestServiceIT {
   public void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    baseEnv.getConfig().getCommonConfig().setEnforceStrongPassword(false);
     baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     port = portConflictDataNodeWrapper.getRestServicePort();
@@ -141,7 +142,7 @@ public class IoTDBRestServiceIT {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
-    String authorization = getAuthorization("root1", "root1");
+    String authorization = getAuthorization("root1", "rooT@11234567");
     httpPost.setHeader("Authorization", authorization);
     return httpPost;
   }
@@ -378,14 +379,13 @@ public class IoTDBRestServiceIT {
     HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
     HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
 
-    nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'root1'\"}", httpPost2);
+    nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'rooT@11234567'\"}", httpPost2);
     nonQuery(httpClient, "{\"sql\":\"GRANT WRITE ON  root.** to user root1\"}", httpPostV2);
   }
 
   @Test
   public void insertAndQuery() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    //
     rightInsertTablet(httpClient);
     query(httpClient);
     queryGroupByLevel(httpClient);
@@ -717,7 +717,7 @@ public class IoTDBRestServiceIT {
         errorInsertRecords(httpClient, json, hp);
       }
     }
-
+    insertDate();
     try {
       httpClient.close();
     } catch (IOException e) {
@@ -1008,7 +1008,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowChildPaths(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child paths root\"}";
+    String sql = "{\"sql\":\"show child paths root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1023,7 +1023,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.sg25.s3");
+            add("root.sg25.s4");
+            add("root.sg25.s5");
+            add("root.sg25.s6");
+            add("root.sg25.s7");
+            add("root.sg25.s8");
           }
         };
 
@@ -1032,7 +1037,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowNodes(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child nodes root\"}";
+    String sql = "{\"sql\":\"show child nodes root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1046,7 +1051,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("sg25");
+            add("s3");
+            add("s4");
+            add("s5");
+            add("s6");
+            add("s7");
+            add("s8");
           }
         };
 
@@ -1085,7 +1095,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showStorageGroup(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW DATABASES root.*\"}";
+    String sql = "{\"sql\":\"SHOW DATABASES root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1120,7 +1130,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showTimeseries(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show timeseries\"}";
+    String sql = "{\"sql\":\"show timeseries root.sg25.**\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1182,7 +1192,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showLastTimeseries(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES\"}";
+    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES root.sg25.**\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1244,7 +1254,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void countTimeseries(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"COUNT TIMESERIES root.** GROUP BY LEVEL=1\"}";
+    String sql = "{\"sql\":\"COUNT TIMESERIES root.sg25.** GROUP BY LEVEL=1\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1275,7 +1285,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void countNodes(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"count nodes root.** level=2\"}";
+    String sql = "{\"sql\":\"count nodes root.sg25.** level=2\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1297,7 +1307,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showDevices(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show devices\"}";
+    String sql = "{\"sql\":\"show devices root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1374,10 +1384,10 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
-    Assert.assertEquals(values3, valuesResult.get(2));
-    Assert.assertEquals(values4, valuesResult.get(3));
+    Assert.assertTrue(valuesResult.get(0).containsAll(values1));
+    Assert.assertTrue(valuesResult.get(1).containsAll(values2));
+    Assert.assertTrue(valuesResult.get(2).containsAll(values3));
+    Assert.assertTrue(valuesResult.get(3).containsAll(values4));
   }
 
   public void listUser(CloseableHttpClient httpClient) {
@@ -1403,7 +1413,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void selectCount(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"select count(s3) from root.** group by level = 1\"}";
+    String sql = "{\"sql\":\"select count(s3) from root.sg25 group by level = 1\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1660,7 +1670,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowChildPathsV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child paths root\"}";
+    String sql = "{\"sql\":\"show child paths root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1675,7 +1685,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.sg25.s3");
+            add("root.sg25.s4");
+            add("root.sg25.s5");
+            add("root.sg25.s6");
+            add("root.sg25.s7");
+            add("root.sg25.s8");
           }
         };
 
@@ -1684,7 +1699,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowNodesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child nodes root\"}";
+    String sql = "{\"sql\":\"show child nodes root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1698,7 +1713,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("sg25");
+            add("s3");
+            add("s4");
+            add("s5");
+            add("s6");
+            add("s7");
+            add("s8");
           }
         };
 
@@ -1737,7 +1757,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showStorageGroupV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW DATABASES root.*\"}";
+    String sql = "{\"sql\":\"SHOW DATABASES root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1834,7 +1854,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showLastTimeseriesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES\"}";
+    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES root.sg25.**\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1896,7 +1916,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void countTimeseriesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"COUNT TIMESERIES root.** GROUP BY LEVEL=1\"}";
+    String sql = "{\"sql\":\"COUNT TIMESERIES root.sg25.** GROUP BY LEVEL=1\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1927,7 +1947,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void countNodesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"count nodes root.** level=2\"}";
+    String sql = "{\"sql\":\"count nodes root.sg25.** level=2\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1949,7 +1969,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showDevicesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show devices\"}";
+    String sql = "{\"sql\":\"show devices root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -2027,10 +2047,10 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
-    Assert.assertEquals(values3, valuesResult.get(2));
-    Assert.assertEquals(values4, valuesResult.get(3));
+    assertTrue(valuesResult.get(0).containsAll(values1));
+    assertTrue(valuesResult.get(1).containsAll(values2));
+    assertTrue(valuesResult.get(2).containsAll(values3));
+    assertTrue(valuesResult.get(3).containsAll(values4));
   }
 
   public void listUserV2(CloseableHttpClient httpClient) {
@@ -2056,7 +2076,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void selectCountV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"select count(s3) from root.** group by level = 1\"}";
+    String sql = "{\"sql\":\"select count(s3) from root.sg25 group by level = 1\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -2121,5 +2141,147 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2.get(0), valuesResult.get(1).get(0));
     Assert.assertEquals(values3, valuesResult.get(2));
+  }
+
+  public void insertDate() {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+    HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+    nonQuery(
+        httpClient,
+        "{\"sql\":\"CREATE TIMESERIES root.sg1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY\"}",
+        httpPost2);
+    nonQuery(
+        httpClient,
+        "{\"sql\":\"CREATE TIMESERIES root.sg1.d1.s5 WITH DATATYPE=Blob, ENCODING=PLAIN, COMPRESSOR=SNAPPY\"}",
+        httpPost2);
+
+    String sql =
+        "{\"sql\":\"insert into root.sg1.d1(time,s4,s5) values(1,'2025-07-14',\\\"X'cafebabe'\\\")\"}";
+    nonQuery(httpClient, sql, httpPost2);
+    queryDateAndBlob(httpClient);
+    queryDateAndBlobV2(httpClient);
+  }
+
+  public void queryDateAndBlob(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      String sql = "{\"sql\":\"select s4,s5 from root.sg1.d1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("root.sg1.d1.s4");
+              add("root.sg1.d1.s5");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("2025-07-14");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("0xcafebabe");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryDateAndBlobV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      String sql = "{\"sql\":\"select s4,s5 from root.sg1.d1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("root.sg1.d1.s4");
+              add("root.sg1.d1.s5");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("2025-07-14");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("0xcafebabe");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
   }
 }

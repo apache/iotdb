@@ -375,13 +375,14 @@ public class PipeConsensus implements IConsensus {
         if (!stateMachineMap.containsKey(groupId)) {
           throw new ConsensusGroupNotExistException(groupId);
         }
-
+        LOGGER.info("[{}] start to delete local peer for group {}", CLASS_NAME, groupId);
         final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
         consensus.clear();
         stateMachineMap.remove(groupId);
 
         FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
         KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
+        LOGGER.info("[{}] finish deleting local peer for group {}", CLASS_NAME, groupId);
       } finally {
         stateMachineMapLock.readLock().unlock();
       }

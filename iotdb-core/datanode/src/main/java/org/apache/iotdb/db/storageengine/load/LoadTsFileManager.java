@@ -56,6 +56,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -203,7 +204,7 @@ public class LoadTsFileManager {
   }
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
-      throws IOException {
+      throws IOException, PageException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
@@ -222,12 +223,14 @@ public class LoadTsFileManager {
               uuid,
               o -> {
                 try {
-                  return new TsFileWriterManager(new File(getNextFolder(), uuid));
+                  return getFolderManager()
+                      .getNextWithRetry(folder -> new TsFileWriterManager(new File(folder, uuid)));
                 } catch (DiskSpaceInsufficientException e) {
                   exception.set(e);
                   return null;
                 }
               });
+
       if (exception.get() != null || writerManager == null) {
         throw new IOException(
             "Failed to create TsFileWriterManager for uuid "
@@ -255,7 +258,7 @@ public class LoadTsFileManager {
     }
   }
 
-  private String getNextFolder() throws DiskSpaceInsufficientException {
+  private FolderManager getFolderManager() throws DiskSpaceInsufficientException {
     if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
       synchronized (FOLDER_MANAGER) {
         if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
@@ -263,7 +266,7 @@ public class LoadTsFileManager {
           FOLDER_MANAGER.set(
               new FolderManager(
                   Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
-          return FOLDER_MANAGER.get().getNextFolder();
+          return FOLDER_MANAGER.get();
         }
       }
     }
@@ -274,12 +277,12 @@ public class LoadTsFileManager {
           FOLDER_MANAGER.set(
               new FolderManager(
                   Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
-          return FOLDER_MANAGER.get().getNextFolder();
+          return FOLDER_MANAGER.get();
         }
       }
     }
 
-    return FOLDER_MANAGER.get().getNextFolder();
+    return FOLDER_MANAGER.get();
   }
 
   public boolean loadAll(
@@ -412,7 +415,8 @@ public class LoadTsFileManager {
      * BatchedAlignedChunkData, it may result in no data for the time column in the new file.
      */
     @SuppressWarnings("squid:S3824")
-    private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
+    private void write(DataPartitionInfo partitionInfo, ChunkData chunkData)
+        throws IOException, PageException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
@@ -530,6 +534,7 @@ public class LoadTsFileManager {
 
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
+        tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         endTsFileResource(
             writer,
             tsFileResource,

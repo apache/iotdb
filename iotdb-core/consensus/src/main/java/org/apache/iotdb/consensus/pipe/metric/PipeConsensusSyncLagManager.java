@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.consensus.pipe.metric;
 
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSink;
 
 import java.util.Map;
 import java.util.Optional;
@@ -36,8 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PipeConsensusSyncLagManager {
   long syncLag = Long.MIN_VALUE;
   ReentrantLock lock = new ReentrantLock();
-  Map<ConsensusPipeName, ConsensusPipeConnector> consensusPipe2ConnectorMap =
-      new ConcurrentHashMap<>();
+  Map<ConsensusPipeName, ConsensusPipeSink> consensusPipe2ConnectorMap = new ConcurrentHashMap<>();
 
   /**
    * pinnedCommitIndex - currentReplicateProgress. If res <= 0, indicating that replication is
@@ -47,10 +46,8 @@ public class PipeConsensusSyncLagManager {
       ConsensusPipeName consensusPipeName, long pinnedCommitIndex) {
     return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
         .map(
-            consensusPipeConnector ->
-                Math.max(
-                    pinnedCommitIndex - consensusPipeConnector.getConsensusPipeReplicateProgress(),
-                    0L))
+            consensusPipeSink ->
+                Math.max(pinnedCommitIndex - consensusPipeSink.getFollowerApplyProgress(), 0L))
         .orElse(0L);
   }
 
@@ -61,25 +58,25 @@ public class PipeConsensusSyncLagManager {
   public long getSyncLagForSpecificConsensusPipe(ConsensusPipeName consensusPipeName) {
     return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
         .map(
-            consensusPipeConnector -> {
-              long userWriteProgress = consensusPipeConnector.getConsensusPipeCommitProgress();
-              long replicateProgress = consensusPipeConnector.getConsensusPipeReplicateProgress();
+            consensusPipeSink -> {
+              long userWriteProgress = consensusPipeSink.getLeaderReplicateProgress();
+              long replicateProgress = consensusPipeSink.getFollowerApplyProgress();
               return Math.max(userWriteProgress - replicateProgress, 0L);
             })
         .orElse(0L);
   }
 
-  public long getCurrentCommitIndex(ConsensusPipeName consensusPipeName) {
+  public long getCurrentLeaderReplicateIndex(ConsensusPipeName consensusPipeName) {
     return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
-        .map(ConsensusPipeConnector::getConsensusPipeCommitProgress)
+        .map(ConsensusPipeSink::getLeaderReplicateProgress)
         .orElse(0L);
   }
 
   public void addConsensusPipeConnector(
-      ConsensusPipeName consensusPipeName, ConsensusPipeConnector consensusPipeConnector) {
+      ConsensusPipeName consensusPipeName, ConsensusPipeSink consensusPipeSink) {
     lock.lock();
     try {
-      consensusPipe2ConnectorMap.put(consensusPipeName, consensusPipeConnector);
+      consensusPipe2ConnectorMap.put(consensusPipeName, consensusPipeSink);
     } finally {
       lock.unlock();
     }

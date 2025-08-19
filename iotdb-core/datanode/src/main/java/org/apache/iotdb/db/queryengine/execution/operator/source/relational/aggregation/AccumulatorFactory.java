@@ -70,6 +70,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -78,6 +79,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST_BY;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isMeasurementColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 
@@ -91,6 +93,7 @@ public class AccumulatorFactory {
       Map<String, String> inputAttributes,
       boolean ascending,
       String timeColumnName,
+      Set<String> measurementColumnNames,
       boolean distinct) {
     TableAccumulator result;
 
@@ -100,20 +103,20 @@ public class AccumulatorFactory {
     } else if ((LAST_BY.getFunctionName().equals(functionName)
             || FIRST_BY.getFunctionName().equals(functionName))
         && inputExpressions.size() > 1) {
-      boolean xIsTimeColumn = false;
-      boolean yIsTimeColumn = false;
-      if (isTimeColumn(inputExpressions.get(1), timeColumnName)) {
-        yIsTimeColumn = true;
-      } else if (isTimeColumn(inputExpressions.get(0), timeColumnName)) {
-        xIsTimeColumn = true;
-      }
+      boolean xIsTimeColumn = isTimeColumn(inputExpressions.get(0), timeColumnName);
+      boolean yIsTimeColumn = isTimeColumn(inputExpressions.get(1), timeColumnName);
       if (LAST_BY.getFunctionName().equals(functionName)) {
         result =
             ascending
                 ? new LastByAccumulator(
                     inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
                 : new LastByDescAccumulator(
-                    inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
+                    inputDataTypes.get(0),
+                    inputDataTypes.get(1),
+                    xIsTimeColumn,
+                    yIsTimeColumn,
+                    isMeasurementColumn(inputExpressions.get(0), measurementColumnNames),
+                    isMeasurementColumn(inputExpressions.get(1), measurementColumnNames));
       } else {
         result =
             ascending
@@ -123,10 +126,12 @@ public class AccumulatorFactory {
                     inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
     } else if (LAST.getFunctionName().equals(functionName)) {
-      boolean isTimeColumn = isTimeColumn(inputExpressions.get(0), timeColumnName);
       return ascending
-          ? new LastAccumulator(inputDataTypes.get(0), isTimeColumn)
-          : new LastDescAccumulator(inputDataTypes.get(0), isTimeColumn);
+          ? new LastAccumulator(inputDataTypes.get(0))
+          : new LastDescAccumulator(
+              inputDataTypes.get(0),
+              isTimeColumn(inputExpressions.get(0), timeColumnName),
+              isMeasurementColumn(inputExpressions.get(0), measurementColumnNames));
     } else {
       result =
           createBuiltinAccumulator(
@@ -280,8 +285,8 @@ public class AccumulatorFactory {
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return ascending
-            ? new LastAccumulator(inputDataTypes.get(0), false)
-            : new LastDescAccumulator(inputDataTypes.get(0), false);
+            ? new LastAccumulator(inputDataTypes.get(0))
+            : new LastDescAccumulator(inputDataTypes.get(0), false, false);
       case FIRST:
         return ascending
             ? new FirstAccumulator(inputDataTypes.get(0))
@@ -293,7 +298,8 @@ public class AccumulatorFactory {
       case LAST_BY:
         return ascending
             ? new LastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false)
-            : new LastByDescAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
+            : new LastByDescAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), false, false, false, false);
       case FIRST_BY:
         return ascending
             ? new FirstByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false)

@@ -160,7 +160,7 @@ public class IoTDBTimeDurationIT {
     expectedHeader = new String[] {"time_duration(root.db1.*.s1),time_duration(root.db.*.s1)"};
     retArray = new String[] {"8,8,"};
     resultSetEqualTest(
-        "select time_duration(s1) from root.** where time < 10 group by level=1",
+        "select time_duration(s1) from root.db1.**,root.db.** where time < 10 group by level=1",
         expectedHeader,
         retArray);
 
@@ -224,23 +224,25 @@ public class IoTDBTimeDurationIT {
           "1677570931,1677570938,1677570933,1677570933,1677570932,1677570938,1677570933,1677570933,"
         };
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.**", expectedHeader, retArray);
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.**",
+        expectedHeader,
+        retArray);
 
     // order by time desc
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** order by time desc",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** order by time desc",
         expectedHeader,
         retArray);
 
     // order by time asc
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** order by time asc",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** order by time asc",
         expectedHeader,
         retArray);
 
     // limit
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** limit 3",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** limit 3",
         expectedHeader,
         retArray);
 
@@ -254,7 +256,7 @@ public class IoTDBTimeDurationIT {
           "root.db1.d2,1677570938,1677570938,"
         };
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** align by device",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** align by device",
         expectedHeader,
         retArray);
 
@@ -268,7 +270,7 @@ public class IoTDBTimeDurationIT {
           "1677570931,1677570938,1677570933,1677570933,1677570932,1677570938,1677570933,1677570933,"
         };
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** align by time",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** align by time",
         expectedHeader,
         retArray);
 
@@ -279,7 +281,7 @@ public class IoTDBTimeDurationIT {
         };
     retArray = new String[] {"1677570938,1677570933,1677570938,1677570933,"};
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** group by level=1",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** group by level=1",
         expectedHeader,
         retArray);
 
@@ -302,7 +304,7 @@ public class IoTDBTimeDurationIT {
     retArray = new String[] {"1,7,9,9,9,8,9,9,9,", "1677570934,0,0,0,0,0,0,0,0,"};
     // ignore = true
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** group by session(100ms)",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** group by session(100ms)",
         expectedHeader,
         retArray);
 
@@ -324,7 +326,7 @@ public class IoTDBTimeDurationIT {
           "1677570934,0,null,0,0,0,null,0,0,"
         };
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** group by variation(root.db.d1.s1)",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** group by variation(root.db.d1.s1)",
         expectedHeader,
         retArray);
 
@@ -336,7 +338,7 @@ public class IoTDBTimeDurationIT {
     retArray =
         new String[] {"1,1677570931,9,1677570933,1677570933,1677570931,9,1677570933,1677570933,"};
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** group by condition(root.db.d2.s1 > 10,KEEP>=1,ignoreNull=true)",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** group by condition(root.db.d2.s1 > 10,KEEP>=1,ignoreNull=true)",
         expectedHeader,
         retArray);
 
@@ -344,7 +346,9 @@ public class IoTDBTimeDurationIT {
     expectedHeader = new String[] {"city", "time_duration(s1)"};
     retArray = new String[] {"Beijing,1677570933,", "Nanjing,1677570938,"};
     resultSetEqualTest(
-        "select time_duration(s1) from root.** group by tags(city)", expectedHeader, retArray);
+        "select time_duration(s1) from root.db1.**,root.db.** group by tags(city)",
+        expectedHeader,
+        retArray);
 
     // group by time
     expectedHeader =
@@ -353,7 +357,7 @@ public class IoTDBTimeDurationIT {
         };
     retArray = new String[] {"1,1,3,3,3,3,4,4,4,", "6,3,2,3,3,3,3,3,3,"};
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** group by time([1,10),5ms)",
+        "select time_duration(s1),time_duration(s2) from root.db1.**,root.db.** group by time([1,10),5ms)",
         expectedHeader,
         retArray);
   }

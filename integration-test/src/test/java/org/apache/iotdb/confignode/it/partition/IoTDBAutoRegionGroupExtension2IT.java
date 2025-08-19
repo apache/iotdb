@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -147,6 +148,8 @@ public class IoTDBAutoRegionGroupExtension2IT {
 
       // Check DataRegionGroups
       TShowRegionResp resp = client.showRegion(new TShowRegionReq());
+      resp.getRegionInfoList()
+          .removeIf(r -> r.getDatabase().startsWith(SystemConstant.SYSTEM_DATABASE));
       Map<Integer, AtomicInteger> counter = new HashMap<>();
       resp.getRegionInfoList()
           .forEach(

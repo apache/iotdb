@@ -137,7 +137,7 @@ public class QueryStatement extends AuthorityInformationStatement {
   private boolean isResultSetEmpty = false;
 
   // [IoTDB-AI] used for model inference, which will be removed in the future
-  private String modelName;
+  private String modelId;
   private boolean hasModelInference = false;
   private boolean generateTime = false;
   private InferenceWindow inferenceWindow = null;
@@ -151,12 +151,12 @@ public class QueryStatement extends AuthorityInformationStatement {
     return generateTime;
   }
 
-  public void setModelName(String modelName) {
-    this.modelName = modelName;
+  public void setModelId(String modelId) {
+    this.modelId = modelId;
   }
 
-  public String getModelName() {
-    return modelName;
+  public String getModelId() {
+    return modelId;
   }
 
   public void setHasModelInference(boolean hasModelInference) {

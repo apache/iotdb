@@ -20,19 +20,30 @@ import os
 from ainode.core.constant import (
     AINODE_BUILD_INFO,
     AINODE_BUILTIN_MODELS_DIR,
+    AINODE_CLUSTER_INGRESS_ADDRESS,
+    AINODE_CLUSTER_INGRESS_PASSWORD,
+    AINODE_CLUSTER_INGRESS_PORT,
+    AINODE_CLUSTER_INGRESS_TIME_ZONE,
+    AINODE_CLUSTER_INGRESS_USERNAME,
     AINODE_CLUSTER_NAME,
     AINODE_CONF_DIRECTORY_NAME,
     AINODE_CONF_FILE_NAME,
     AINODE_CONF_GIT_FILE_NAME,
     AINODE_CONF_POM_FILE_NAME,
-    AINODE_INFERENCE_RPC_ADDRESS,
-    AINODE_INFERENCE_RPC_PORT,
+    AINODE_INFERENCE_BATCH_INTERVAL_IN_MS,
+    AINODE_INFERENCE_EXTRA_MEMORY_RATIO,
+    AINODE_INFERENCE_MAX_PREDICT_LENGTH,
+    AINODE_INFERENCE_MEMORY_USAGE_RATIO,
+    AINODE_INFERENCE_MODEL_MEM_USAGE_MAP,
     AINODE_LOG_DIR,
     AINODE_MODELS_DIR,
     AINODE_ROOT_CONF_DIRECTORY_NAME,
     AINODE_ROOT_DIR,
+    AINODE_RPC_ADDRESS,
+    AINODE_RPC_PORT,
     AINODE_SYSTEM_DIR,
     AINODE_SYSTEM_FILE_NAME,
+    AINODE_TARGET_CONFIG_NODE_LIST,
     AINODE_THRIFT_COMPRESSION_ENABLED,
     AINODE_VERSION_INFO,
 )
@@ -46,10 +57,37 @@ logger = Logger()
 
 class AINodeConfig(object):
     def __init__(self):
-        # Used for connection of DataNode/ConfigNode clients
-        self._ain_inference_rpc_address: str = AINODE_INFERENCE_RPC_ADDRESS
-        self._ain_inference_rpc_port: int = AINODE_INFERENCE_RPC_PORT
+        self._version_info = AINODE_VERSION_INFO
+        self._build_info = AINODE_BUILD_INFO
 
+        # Cluster configuration
+        self._ainode_id = 0
+        self._cluster_name = AINODE_CLUSTER_NAME
+        self._ain_target_config_node_list: TEndPoint = AINODE_TARGET_CONFIG_NODE_LIST
+        self._ain_rpc_address: str = AINODE_RPC_ADDRESS
+        self._ain_rpc_port: int = AINODE_RPC_PORT
+        self._ain_cluster_ingress_address = AINODE_CLUSTER_INGRESS_ADDRESS
+        self._ain_cluster_ingress_port = AINODE_CLUSTER_INGRESS_PORT
+        self._ain_cluster_ingress_username = AINODE_CLUSTER_INGRESS_USERNAME
+        self._ain_cluster_ingress_password = AINODE_CLUSTER_INGRESS_PASSWORD
+        self._ain_cluster_ingress_time_zone = AINODE_CLUSTER_INGRESS_TIME_ZONE
+
+        # Inference configuration
+        self._ain_inference_batch_interval_in_ms: int = (
+            AINODE_INFERENCE_BATCH_INTERVAL_IN_MS
+        )
+        self._ain_inference_max_predict_length: int = (
+            AINODE_INFERENCE_MAX_PREDICT_LENGTH
+        )
+        self._ain_inference_model_mem_usage_map: dict[str, int] = (
+            AINODE_INFERENCE_MODEL_MEM_USAGE_MAP
+        )
+        self._ain_inference_memory_usage_ratio: float = (
+            AINODE_INFERENCE_MEMORY_USAGE_RATIO
+        )
+        self._ain_inference_extra_memory_ratio: float = (
+            AINODE_INFERENCE_EXTRA_MEMORY_RATIO
+        )
         # log directory
         self._ain_logs_dir: str = AINODE_LOG_DIR
 
@@ -66,16 +104,6 @@ class AINodeConfig(object):
 
         # Cache number of model storage to avoid repeated loading
         self._ain_model_storage_cache_size = 30
-
-        # Target ConfigNode to be connected by AINode
-        self._ain_target_config_node_list: TEndPoint = TEndPoint("127.0.0.1", 10710)
-
-        # use for node management
-        self._ainode_id = 0
-        self._cluster_name = AINODE_CLUSTER_NAME
-
-        self._version_info = AINODE_VERSION_INFO
-        self._build_info = AINODE_BUILD_INFO
 
     def get_cluster_name(self) -> str:
         return self._cluster_name
@@ -107,17 +135,57 @@ class AINodeConfig(object):
     def set_version_info(self, version_info: str) -> None:
         self._version_info = version_info
 
-    def get_ain_inference_rpc_address(self) -> str:
-        return self._ain_inference_rpc_address
+    def get_ain_rpc_address(self) -> str:
+        return self._ain_rpc_address
 
-    def set_ain_inference_rpc_address(self, ain_inference_rpc_address: str) -> None:
-        self._ain_inference_rpc_address = ain_inference_rpc_address
+    def set_ain_rpc_address(self, ain_rpc_address: str) -> None:
+        self._ain_rpc_address = ain_rpc_address
 
-    def get_ain_inference_rpc_port(self) -> int:
-        return self._ain_inference_rpc_port
+    def get_ain_rpc_port(self) -> int:
+        return self._ain_rpc_port
 
-    def set_ain_inference_rpc_port(self, ain_inference_rpc_port: int) -> None:
-        self._ain_inference_rpc_port = ain_inference_rpc_port
+    def set_ain_rpc_port(self, ain_rpc_port: int) -> None:
+        self._ain_rpc_port = ain_rpc_port
+
+    def get_ain_inference_batch_interval_in_ms(self) -> int:
+        return self._ain_inference_batch_interval_in_ms
+
+    def set_ain_inference_batch_interval_in_ms(
+        self, ain_inference_batch_interval_in_ms: int
+    ) -> None:
+        self._ain_inference_batch_interval_in_ms = ain_inference_batch_interval_in_ms
+
+    def get_ain_inference_max_predict_length(self) -> int:
+        return self._ain_inference_max_predict_length
+
+    def set_ain_inference_max_predict_length(
+        self, ain_inference_max_predict_length: int
+    ) -> None:
+        self._ain_inference_max_predict_length = ain_inference_max_predict_length
+
+    def get_ain_inference_model_mem_usage_map(self) -> dict[str, int]:
+        return self._ain_inference_model_mem_usage_map
+
+    def set_ain_inference_model_mem_usage_map(
+        self, ain_inference_model_mem_usage_map: dict[str, int]
+    ) -> None:
+        self._ain_inference_model_mem_usage_map = ain_inference_model_mem_usage_map
+
+    def get_ain_inference_memory_usage_ratio(self) -> float:
+        return self._ain_inference_memory_usage_ratio
+
+    def set_ain_inference_memory_usage_ratio(
+        self, ain_inference_memory_usage_ratio: float
+    ) -> None:
+        self._ain_inference_memory_usage_ratio = ain_inference_memory_usage_ratio
+
+    def get_ain_inference_extra_memory_ratio(self) -> float:
+        return self._ain_inference_extra_memory_ratio
+
+    def set_ain_inference_extra_memory_ratio(
+        self, ain_inference_extra_memory_ratio: float
+    ) -> None:
+        self._ain_inference_extra_memory_ratio = ain_inference_extra_memory_ratio
 
     def get_ain_logs_dir(self) -> str:
         return self._ain_logs_dir
@@ -161,6 +229,42 @@ class AINodeConfig(object):
         self._ain_target_config_node_list = parse_endpoint_url(
             ain_target_config_node_list
         )
+
+    def get_ain_cluster_ingress_address(self) -> str:
+        return self._ain_cluster_ingress_address
+
+    def set_ain_cluster_ingress_address(self, ain_cluster_ingress_address: str) -> None:
+        self._ain_cluster_ingress_address = ain_cluster_ingress_address
+
+    def get_ain_cluster_ingress_port(self) -> int:
+        return self._ain_cluster_ingress_port
+
+    def set_ain_cluster_ingress_port(self, ain_cluster_ingress_port: int) -> None:
+        self._ain_cluster_ingress_port = ain_cluster_ingress_port
+
+    def get_ain_cluster_ingress_username(self) -> str:
+        return self._ain_cluster_ingress_username
+
+    def set_ain_cluster_ingress_username(
+        self, ain_cluster_ingress_username: str
+    ) -> None:
+        self._ain_cluster_ingress_username = ain_cluster_ingress_username
+
+    def get_ain_cluster_ingress_password(self) -> str:
+        return self._ain_cluster_ingress_password
+
+    def set_ain_cluster_ingress_password(
+        self, ain_cluster_ingress_password: str
+    ) -> None:
+        self._ain_cluster_ingress_password = ain_cluster_ingress_password
+
+    def get_ain_cluster_ingress_time_zone(self) -> str:
+        return self._ain_cluster_ingress_time_zone
+
+    def set_ain_cluster_ingress_time_zone(
+        self, ain_cluster_ingress_time_zone: str
+    ) -> None:
+        self._ain_cluster_ingress_time_zone = ain_cluster_ingress_time_zone
 
 
 @singleton
@@ -214,14 +318,30 @@ class AINodeDescriptor(object):
 
             config_keys = file_configs.keys()
 
-            if "ain_inference_rpc_address" in config_keys:
-                self._config.set_ain_inference_rpc_address(
-                    file_configs["ain_inference_rpc_address"]
+            if "ain_rpc_address" in config_keys:
+                self._config.set_ain_rpc_address(file_configs["ain_rpc_address"])
+
+            if "ain_rpc_port" in config_keys:
+                self._config.set_ain_rpc_port(int(file_configs["ain_rpc_port"]))
+
+            if "ain_inference_batch_interval_in_ms" in config_keys:
+                self._config.set_ain_inference_batch_interval_in_ms(
+                    int(file_configs["ain_inference_batch_interval_in_ms"])
                 )
 
-            if "ain_inference_rpc_port" in config_keys:
-                self._config.set_ain_inference_rpc_port(
-                    int(file_configs["ain_inference_rpc_port"])
+            if "ain_inference_model_mem_usage_map" in config_keys:
+                self._config.set_ain_inference_model_mem_usage_map(
+                    eval(file_configs["ain_inference_model_mem_usage_map"])
+                )
+
+            if "ain_inference_memory_usage_ratio" in config_keys:
+                self._config.set_ain_inference_memory_usage_ratio(
+                    float(file_configs["ain_inference_memory_usage_ratio"])
+                )
+
+            if "ain_inference_extra_memory_ratio" in config_keys:
+                self._config.set_ain_inference_extra_memory_ratio(
+                    float(file_configs["ain_inference_extra_memory_ratio"])
                 )
 
             if "ain_models_dir" in config_keys:
@@ -246,8 +366,30 @@ class AINodeDescriptor(object):
             if "ain_logs_dir" in config_keys:
                 log_dir = file_configs["ain_logs_dir"]
                 self._config.set_ain_logs_dir(log_dir)
-                Logger(log_dir=log_dir).info(
-                    f"Successfully load config from {conf_file}."
+
+            if "ain_cluster_ingress_address" in config_keys:
+                self._config.set_ain_cluster_ingress_address(
+                    file_configs["ain_cluster_ingress_address"]
+                )
+
+            if "ain_cluster_ingress_port" in config_keys:
+                self._config.set_ain_cluster_ingress_port(
+                    int(file_configs["ain_cluster_ingress_port"])
+                )
+
+            if "ain_cluster_ingress_username" in config_keys:
+                self._config.set_ain_cluster_ingress_username(
+                    file_configs["ain_cluster_ingress_username"]
+                )
+
+            if "ain_cluster_ingress_password" in config_keys:
+                self._config.set_ain_cluster_ingress_password(
+                    file_configs["ain_cluster_ingress_password"]
+                )
+
+            if "ain_cluster_ingress_time_zone" in config_keys:
+                self._config.set_ain_cluster_ingress_time_zone(
+                    file_configs["ain_cluster_ingress_time_zone"]
                 )
 
         except BadNodeUrlError:

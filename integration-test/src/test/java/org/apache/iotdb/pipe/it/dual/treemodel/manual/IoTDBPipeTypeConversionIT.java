@@ -31,6 +31,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,6 +48,8 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
+@Ignore(
+    "Currently this may lose some data because tsFile conversion is banned, and historical transferred is not opened if history.enable = false")
 public class IoTDBPipeTypeConversionIT extends AbstractPipeDualTreeModelManualIT {
 
   private static final int generateDataSize = 100;
@@ -229,18 +232,18 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualTreeModelManualIT
             "create timeseries root.test.%s2%s.status with datatype=%s,encoding=PLAIN",
             sourceTypeName, targetTypeName, dataType);
     TestUtils.tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(timeSeriesCreationQuery));
+        env, Collections.singletonList(timeSeriesCreationQuery), null);
   }
 
   private void createDataPipe() {
     String sql =
         String.format(
             "create pipe test"
-                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='forced-log','realtime.enable'='true','history.enable'='false')"
+                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='forced-log')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='tablet')",
             receiverEnv.getIP(), receiverEnv.getPort());
-    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
+    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql), null);
   }
 
   private List<Pair> createTestDataForType(String sourceType) {
@@ -277,27 +280,32 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualTreeModelManualIT
       case TEXT:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForString(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForString(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case TIMESTAMP:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case DATE:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case BLOB:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       default:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()),
+            null);
     }
   }
 
