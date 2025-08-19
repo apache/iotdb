@@ -1030,7 +1030,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       int dbLevel = db.getNodes().length;
       // For the path of 'root.**', we can only get the root level in this place
       // In this case, we still need to support deviceId such as 'root.db'
-      // The relevant deviceId must be two level, but we can't get it now
+      // The relevant deviceId must be two level db, but we can't get it now
       if (dbLevel == 1 || dbLevel == 2) {
         return new TwoLevelDBExtractor(treeDBName.length());
       } else if (dbLevel == 3) {
