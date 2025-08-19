@@ -276,76 +276,83 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return () ->
-        new Iterator<TabletInsertionEvent>() {
+    if (tabletInsertionIterable == null) {
+      tabletInsertionIterable =
+          () ->
+              new Iterator<TabletInsertionEvent>() {
 
-          private TsFileInsertionQueryDataTabletIterator tabletIterator = null;
+                private TsFileInsertionQueryDataTabletIterator tabletIterator = null;
 
-          @Override
-          public boolean hasNext() {
-            while (tabletIterator == null || !tabletIterator.hasNext()) {
-              if (!deviceMeasurementsMapIterator.hasNext()) {
-                close();
-                return false;
-              }
+                @Override
+                public boolean hasNext() {
+                  while (tabletIterator == null || !tabletIterator.hasNext()) {
+                    if (!deviceMeasurementsMapIterator.hasNext()) {
+                      close();
+                      return false;
+                    }
 
-              final Map.Entry<IDeviceID, List<String>> entry = deviceMeasurementsMapIterator.next();
+                    final Map.Entry<IDeviceID, List<String>> entry =
+                        deviceMeasurementsMapIterator.next();
 
-              try {
-                tabletIterator =
-                    new TsFileInsertionQueryDataTabletIterator(
-                        tsFileReader,
-                        measurementDataTypeMap,
-                        ((PlainDeviceID) entry.getKey()).toStringID(),
-                        entry.getValue(),
-                        timeFilterExpression,
-                        allocatedMemoryBlockForTablet);
-              } catch (final Exception e) {
-                close();
-                throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
-              }
-            }
+                    try {
+                      tabletIterator =
+                          new TsFileInsertionQueryDataTabletIterator(
+                              tsFileReader,
+                              measurementDataTypeMap,
+                              ((PlainDeviceID) entry.getKey()).toStringID(),
+                              entry.getValue(),
+                              timeFilterExpression,
+                              allocatedMemoryBlockForTablet);
+                    } catch (final Exception e) {
+                      close();
+                      throw new PipeException(
+                          "failed to create TsFileInsertionDataTabletIterator", e);
+                    }
+                  }
 
-            return true;
-          }
+                  return true;
+                }
 
-          @Override
-          public TabletInsertionEvent next() {
-            if (!hasNext()) {
-              close();
-              throw new NoSuchElementException();
-            }
+                @Override
+                public TabletInsertionEvent next() {
+                  if (!hasNext()) {
+                    close();
+                    throw new NoSuchElementException();
+                  }
 
-            final Tablet tablet = tabletIterator.next();
-            final boolean isAligned =
-                deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.deviceId), false);
+                  final Tablet tablet = tabletIterator.next();
+                  final boolean isAligned =
+                      deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.deviceId), false);
 
-            final TabletInsertionEvent next;
-            if (!hasNext()) {
-              next =
-                  new PipeRawTabletInsertionEvent(
-                      tablet,
-                      isAligned,
-                      sourceEvent != null ? sourceEvent.getPipeName() : null,
-                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-                      pipeTaskMeta,
-                      sourceEvent,
-                      true);
-              close();
-            } else {
-              next =
-                  new PipeRawTabletInsertionEvent(
-                      tablet,
-                      isAligned,
-                      sourceEvent != null ? sourceEvent.getPipeName() : null,
-                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-                      pipeTaskMeta,
-                      sourceEvent,
-                      false);
-            }
-            return next;
-          }
-        };
+                  final TabletInsertionEvent next;
+                  if (!hasNext()) {
+                    next =
+                        new PipeRawTabletInsertionEvent(
+                            tablet,
+                            isAligned,
+                            sourceEvent != null ? sourceEvent.getPipeName() : null,
+                            sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                            pipeTaskMeta,
+                            sourceEvent,
+                            true);
+                    close();
+                  } else {
+                    next =
+                        new PipeRawTabletInsertionEvent(
+                            tablet,
+                            isAligned,
+                            sourceEvent != null ? sourceEvent.getPipeName() : null,
+                            sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                            pipeTaskMeta,
+                            sourceEvent,
+                            false);
+                  }
+                  return next;
+                }
+              };
+    }
+
+    return tabletInsertionIterable;
   }
 
   @Override
