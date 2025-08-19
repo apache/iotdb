@@ -58,12 +58,18 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   protected void maybeReleaseTvList(TVList tvList) {
     long startTimeInMs = System.currentTimeMillis();
     boolean succeed = false;
+    int retryCount = 0;
     while (!succeed) {
       try {
         tryReleaseTvList(tvList);
         succeed = true;
       } catch (MemoryNotEnoughException ex) {
-        LOGGER.warn("Failed to transfer tvlist memory owner to query engine, {}", ex.getMessage());
+        // print log every 5 seconds
+        if (retryCount % 50 == 0) {
+          LOGGER.warn(
+              "Failed to transfer tvlist memory owner to query engine, {}", ex.getMessage());
+        }
+        retryCount++;
         long waitQueryInMs = System.currentTimeMillis() - startTimeInMs;
         if (waitQueryInMs > MAX_WAIT_QUERY_MS) {
           // Abort first query in the list. When all queries in the list have been aborted,
