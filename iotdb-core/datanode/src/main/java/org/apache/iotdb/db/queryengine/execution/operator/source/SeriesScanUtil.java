@@ -816,10 +816,10 @@ public class SeriesScanUtil implements Accountable {
             newValueColumns[i] = valueColumns[i];
           } else if (sourceType == TSDataType.INT32) {
             newValueColumns[i] =
-                new DoubleColumn(
+                new LongColumn(
                     positionCount,
                     Optional.of(new boolean[positionCount]),
-                    new double[positionCount]);
+                    new long[positionCount]);
 
             for (int j = 0; j < valueColumns[i].getInts().length; j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
