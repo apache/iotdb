@@ -356,7 +356,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "show devices root.ln.wf01.wt02",
           "Device,IsAligned,Template,TTL(ms),",
-          Collections.singleton("root.ln.wf01.wt02,true,null,INF,"));
+          Collections.singleton("root.ln.wf01.wt02,true,null,INF,"),
+          handleFailure);
     }
   }
 
