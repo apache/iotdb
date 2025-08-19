@@ -197,6 +197,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     try {
       final long startTime = System.nanoTime();
       final short rawRequestType = req.getType();
+      final PipeDataNodeReceiverMetrics metrics = PipeDataNodeReceiverMetrics.getInstance();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
         if (requestType != PipeRequestType.TRANSFER_SLICE) {
@@ -217,8 +218,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferHandshakeV1(
                     PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordHandshakeDatanodeV1Timer(System.nanoTime() - startTime);
+                metrics.recordHandshakeDatanodeV1Timer(System.nanoTime() - startTime);
+                metrics.markHandshakeDatanodeV1Size(req.body.limit());
               }
             }
           case HANDSHAKE_DATANODE_V2:
@@ -235,8 +236,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferHandshakeV2(
                     PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordHandshakeDatanodeV2Timer(System.nanoTime() - startTime);
+                metrics.recordHandshakeDatanodeV2Timer(System.nanoTime() - startTime);
+                metrics.markHandshakeDatanodeV2Size(req.body.limit());
               }
             }
           case TRANSFER_TABLET_INSERT_NODE:
@@ -244,10 +245,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return handleTransferTabletInsertNode(
                     PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req));
-
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletInsertNodeTimer(System.nanoTime() - startTime);
+                metrics.recordTransferTabletInsertNodeTimer(System.nanoTime() - startTime);
+                metrics.markTransferTabletInsertNodeSize(req.body.limit());
               }
             }
           case TRANSFER_TABLET_INSERT_NODE_V2:
@@ -256,8 +256,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferTabletInsertNode(
                     PipeTransferTabletInsertNodeReqV2.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletInsertNodeV2Timer(System.nanoTime() - startTime);
+                metrics.recordTransferTabletInsertNodeV2Timer(System.nanoTime() - startTime);
+                metrics.markTransferTabletInsertNodeV2Size(req.body.limit());
               }
             }
           case TRANSFER_TABLET_RAW:
@@ -265,8 +265,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return handleTransferTabletRaw(PipeTransferTabletRawReq.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletRawTimer(System.nanoTime() - startTime);
+                metrics.recordTransferTabletRawTimer(System.nanoTime() - startTime);
+                metrics.markTransferTabletRawSize(req.body.limit());
               }
             }
           case TRANSFER_TABLET_RAW_V2:
@@ -275,8 +275,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferTabletRaw(
                     PipeTransferTabletRawReqV2.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletRawV2Timer(System.nanoTime() - startTime);
+                metrics.recordTransferTabletRawV2Timer(System.nanoTime() - startTime);
+                metrics.markTransferTabletRawV2Size(req.body.limit());
               }
             }
           case TRANSFER_TABLET_BINARY:
@@ -285,8 +285,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferTabletBinary(
                     PipeTransferTabletBinaryReq.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletBinaryTimer(System.nanoTime() - startTime);
+                metrics.recordTransferTabletBinaryTimer(System.nanoTime() - startTime);
+                metrics.markTransferTabletBinarySize(req.body.limit());
               }
             }
           case TRANSFER_TABLET_BINARY_V2:
@@ -295,8 +295,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferTabletBinary(
                     PipeTransferTabletBinaryReqV2.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletBinaryV2Timer(System.nanoTime() - startTime);
+                metrics.recordTransferTabletBinaryV2Timer(System.nanoTime() - startTime);
+                metrics.markTransferTabletBinaryV2Size(req.body.limit());
               }
             }
           case TRANSFER_TABLET_BATCH:
@@ -305,8 +305,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferTabletBatch(
                     PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletBatchTimer(System.nanoTime() - startTime);
+                metrics.recordTransferTabletBatchTimer(System.nanoTime() - startTime);
+                metrics.markTransferTabletBatchSize(req.body.limit());
               }
             }
           case TRANSFER_TABLET_BATCH_V2:
@@ -315,8 +315,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferTabletBatchV2(
                     PipeTransferTabletBatchReqV2.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletBatchV2Timer(System.nanoTime() - startTime);
+                metrics.recordTransferTabletBatchV2Timer(System.nanoTime() - startTime);
+                metrics.markTransferTabletBatchV2Size(req.body.limit());
               }
             }
           case TRANSFER_TS_FILE_PIECE:
@@ -327,8 +327,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     true);
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTsFilePieceTimer(System.nanoTime() - startTime);
+                metrics.recordTransferTsFilePieceTimer(System.nanoTime() - startTime);
+                metrics.markTransferTsFilePieceSize(req.body.limit());
               }
             }
           case TRANSFER_TS_FILE_SEAL:
@@ -337,8 +337,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferFileSealV1(
                     PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTsFileSealTimer(System.nanoTime() - startTime);
+                metrics.recordTransferTsFileSealTimer(System.nanoTime() - startTime);
+                metrics.markTransferTsFileSealSize(req.body.limit());
               }
             }
           case TRANSFER_TS_FILE_PIECE_WITH_MOD:
@@ -348,10 +348,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     false);
-
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTsFilePieceWithModTimer(System.nanoTime() - startTime);
+                metrics.recordTransferTsFilePieceWithModTimer(System.nanoTime() - startTime);
+                metrics.markTransferTsFilePieceWithModSize(req.body.limit());
               }
             }
           case TRANSFER_TS_FILE_SEAL_WITH_MOD:
@@ -360,8 +359,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferFileSealV2(
                     PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTsFileSealWithModTimer(System.nanoTime() - startTime);
+                metrics.recordTransferTsFileSealWithModTimer(System.nanoTime() - startTime);
+                metrics.markTransferTsFileSealWithModSize(req.body.limit());
               }
             }
           case TRANSFER_PLAN_NODE:
@@ -369,8 +368,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferSchemaPlanTimer(System.nanoTime() - startTime);
+                metrics.recordTransferSchemaPlanTimer(System.nanoTime() - startTime);
+                metrics.markTransferSchemaPlanSize(req.body.limit());
               }
             }
           case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
@@ -380,10 +379,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     false);
-
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferSchemaSnapshotPieceTimer(System.nanoTime() - startTime);
+                metrics.recordTransferSchemaSnapshotPieceTimer(System.nanoTime() - startTime);
+                metrics.markTransferSchemaSnapshotPieceSize(req.body.limit());
               }
             }
           case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
@@ -391,10 +389,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return handleTransferFileSealV2(
                     PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
-
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferSchemaSnapshotSealTimer(System.nanoTime() - startTime);
+                metrics.recordTransferSchemaSnapshotSealTimer(System.nanoTime() - startTime);
+                metrics.markTransferSchemaSnapshotSealSize(req.body.limit());
               }
             }
           case HANDSHAKE_CONFIGNODE_V1:
@@ -408,8 +405,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 // then transferred to ConfigNode receiver to execute.
                 return handleTransferConfigPlan(req);
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
+                metrics.recordTransferConfigPlanTimer(System.nanoTime() - startTime);
+                metrics.markTransferConfigPlanSize(req.body.limit());
               }
             }
           case TRANSFER_SLICE:
@@ -417,8 +414,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return handleTransferSlice(PipeTransferSliceReq.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferSliceTimer(System.nanoTime() - startTime);
+                metrics.recordTransferSliceTimer(System.nanoTime() - startTime);
+                metrics.markTransferSliceSize(req.body.limit());
               }
             }
           case TRANSFER_COMPRESSED:
@@ -426,8 +423,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
               } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferCompressedTimer(System.nanoTime() - startTime);
+                metrics.recordTransferCompressedTimer(System.nanoTime() - startTime);
+                metrics.markTransferCompressedSize(req.body.limit());
               }
             }
           default:
