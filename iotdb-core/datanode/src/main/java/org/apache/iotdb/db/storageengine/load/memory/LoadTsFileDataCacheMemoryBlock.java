@@ -101,7 +101,6 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
       return false;
     }
 
-    MEMORY_MANAGER.releaseToQuery(shrinkMemoryInBytes);
     limitedMemorySizeInBytes.addAndGet(-shrinkMemoryInBytes);
     return true;
   }
