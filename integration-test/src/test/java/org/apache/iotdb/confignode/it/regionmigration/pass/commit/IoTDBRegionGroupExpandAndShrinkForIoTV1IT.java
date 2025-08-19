@@ -381,7 +381,7 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       int targetDataNode)
       throws Exception {
     String command = buildMultiRegionCommand(MULTI_EXPAND_FORMAT, regionIds, targetDataNode);
-    
+
     Predicate<TShowRegionResp> expandPredicate =
         tShowRegionResp -> {
           Map<Integer, Set<Integer>> newRegionMap =
@@ -395,8 +395,14 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
         };
 
     executeMultiRegionOperation(
-        statement, client, command, regionIds, expandPredicate,
-        Optional.of(targetDataNode), Optional.empty(), "expand");
+        statement,
+        client,
+        command,
+        regionIds,
+        expandPredicate,
+        Optional.of(targetDataNode),
+        Optional.empty(),
+        "expand");
   }
 
   private void multiRegionGroupShrink(
@@ -406,7 +412,7 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       int targetDataNode)
       throws Exception {
     String command = buildMultiRegionCommand(MULTI_SHRINK_FORMAT, regionIds, targetDataNode);
-    
+
     Predicate<TShowRegionResp> shrinkPredicate =
         tShowRegionResp -> {
           Map<Integer, Set<Integer>> newRegionMap =
@@ -420,11 +426,18 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
         };
 
     executeMultiRegionOperation(
-        statement, client, command, regionIds, shrinkPredicate,
-        Optional.empty(), Optional.of(targetDataNode), "shrink");
+        statement,
+        client,
+        command,
+        regionIds,
+        shrinkPredicate,
+        Optional.empty(),
+        Optional.of(targetDataNode),
+        "shrink");
   }
 
-  private String buildMultiRegionCommand(String format, List<Integer> regionIds, int targetDataNode) {
+  private String buildMultiRegionCommand(
+      String format, List<Integer> regionIds, int targetDataNode) {
     String regionIdStr = regionIds.stream().map(String::valueOf).collect(Collectors.joining(","));
     return String.format(format, regionIdStr, targetDataNode);
   }
@@ -438,7 +451,7 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       Optional<Integer> expectedDataNode,
       Optional<Integer> notExpectedDataNode,
       String operationType) {
-    
+
     LOGGER.info("Executing multi-region {} command: {}", operationType, command);
 
     Awaitility.await()
@@ -456,28 +469,30 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
                 if (errorMessage != null
                     && errorMessage.contains("successfully submitted")
                     && errorMessage.contains("failed to submit")) {
-                  LOGGER.warn("Multi-region {} partially succeeded: {}", operationType, errorMessage);
+                  LOGGER.warn(
+                      "Multi-region {} partially succeeded: {}", operationType, errorMessage);
                   return true;
                 }
                 LOGGER.warn(
-                    "Multi-region {} command execution failed, retrying: {}", operationType, errorMessage);
+                    "Multi-region {} command execution failed, retrying: {}",
+                    operationType,
+                    errorMessage);
                 return false;
               }
             });
 
     // Use the first region for awaitUntilSuccess (framework limitation)
-    awaitUntilSuccess(
-        client,
-        regionIds.get(0),
-        predicate,
-        expectedDataNode,
-        notExpectedDataNode);
+    awaitUntilSuccess(client, regionIds.get(0), predicate, expectedDataNode, notExpectedDataNode);
 
-    String targetDescription = expectedDataNode.isPresent() ? 
-        "to DataNode " + expectedDataNode.get() : 
-        "from DataNode " + notExpectedDataNode.get();
-    LOGGER.info("Regions {} have {} {}", regionIds, 
-        operationType.equals("expand") ? "expanded" : "shrunk", targetDescription);
+    String targetDescription =
+        expectedDataNode.isPresent()
+            ? "to DataNode " + expectedDataNode.get()
+            : "from DataNode " + notExpectedDataNode.get();
+    LOGGER.info(
+        "Regions {} have {} {}",
+        regionIds,
+        operationType.equals("expand") ? "expanded" : "shrunk",
+        targetDescription);
   }
 
   private int findDataNodeNotContainsAnyRegion(
