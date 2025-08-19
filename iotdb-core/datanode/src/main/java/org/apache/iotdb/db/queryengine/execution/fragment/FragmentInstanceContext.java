@@ -456,10 +456,6 @@ public class FragmentInstanceContext extends QueryContext {
     return dataNodeQueryContext;
   }
 
-  public void setDataNodeQueryContext(DataNodeQueryContext dataNodeQueryContext) {
-    this.dataNodeQueryContext = dataNodeQueryContext;
-  }
-
   public FragmentInstanceInfo getInstanceInfo() {
     FragmentInstanceState state = stateMachine.getState();
     long endTime = getEndTime();
@@ -949,7 +945,7 @@ public class FragmentInstanceContext extends QueryContext {
         .updatePageReaderMemoryUsage(getQueryStatistics().getPageReaderMaxUsedMemorySize().get());
   }
 
-  private synchronized void releaseDataNodeQueryContext() {
+  private void releaseDataNodeQueryContext() {
     if (dataNodeQueryContextMap == null) {
       // this process is in fetch schema, nothing need to release
       return;
