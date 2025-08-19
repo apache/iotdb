@@ -54,7 +54,7 @@ public class ExtendRegion extends Statement {
       return false;
     }
     ExtendRegion another = (ExtendRegion) obj;
-    return regionIds == another.regionIds && dataNodeId == another.dataNodeId;
+    return regionIds.equals(another.regionIds) && dataNodeId == another.dataNodeId;
   }
 
   @Override

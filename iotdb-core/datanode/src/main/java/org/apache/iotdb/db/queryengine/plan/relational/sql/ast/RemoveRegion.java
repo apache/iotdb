@@ -54,7 +54,7 @@ public class RemoveRegion extends Statement {
       return false;
     }
     RemoveRegion another = (RemoveRegion) obj;
-    return regionIds == another.regionIds && dataNodeId == another.dataNodeId;
+    return regionIds.equals(another.regionIds) && dataNodeId == another.dataNodeId;
   }
 
   @Override
