@@ -870,7 +870,8 @@ public abstract class AlignedTVList extends TVList {
       TSStatus[] results, int idx, int elementIdx, int length) {
     int start = elementIdx & 7;
     int totalBits = start + length;
-    BitMap bitmap = new BitMap((totalBits + 7) >> 3);
+    int size = (totalBits + 7) >> 3;
+    BitMap bitmap = new BitMap(size, new byte[size]);
 
     if (results == null) {
       return bitmap.getByteArray();
@@ -946,14 +947,14 @@ public abstract class AlignedTVList extends TVList {
     if (bitMaps.get(columnIndex) == null) {
       List<BitMap> columnBitMaps = new ArrayList<>(values.get(columnIndex).size());
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
-        columnBitMaps.add(new BitMap(ARRAY_SIZE));
+        columnBitMaps.add(new BitMap(ARRAY_SIZE, new byte[ARRAY_SIZE]));
       }
       bitMaps.set(columnIndex, columnBitMaps);
     }
 
     // if the bitmap in arrayIndex is null, init the bitmap
     if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
-      bitMaps.get(columnIndex).set(arrayIndex, new BitMap(ARRAY_SIZE));
+      bitMaps.get(columnIndex).set(arrayIndex, new BitMap(ARRAY_SIZE, new byte[ARRAY_SIZE]));
     }
 
     return bitMaps.get(columnIndex).get(arrayIndex);
