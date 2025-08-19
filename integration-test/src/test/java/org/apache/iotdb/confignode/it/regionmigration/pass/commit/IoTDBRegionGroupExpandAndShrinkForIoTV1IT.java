@@ -70,7 +70,7 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
    * <p>4. Check
    */
   @Test
-  public void normal1C5DTest() throws Exception {
+  public void singleRegionTest() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -380,36 +380,9 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       List<Integer> regionIds,
       int targetDataNode)
       throws Exception {
-    String regionIdStr = regionIds.stream().map(String::valueOf).collect(Collectors.joining(","));
-    String command = String.format(MULTI_EXPAND_FORMAT, regionIdStr, targetDataNode);
-
-    LOGGER.info("Executing multi-region expand command: {}", command);
-
-    Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
-        .pollInterval(2, TimeUnit.SECONDS)
-        .until(
-            () -> {
-              try {
-                statement.execute(command);
-                return true;
-              } catch (Exception e) {
-                String errorMessage = e.getMessage();
-                // If error message contains both "successfully submitted" and "failed to submit",
-                // consider it as partial success and continue
-                if (errorMessage != null
-                    && errorMessage.contains("successfully submitted")
-                    && errorMessage.contains("failed to submit")) {
-                  LOGGER.warn("Multi-region expand partially succeeded: {}", errorMessage);
-                  return true;
-                }
-                LOGGER.warn(
-                    "Multi-region expand command execution failed, retrying: {}", errorMessage);
-                return false;
-              }
-            });
-
-    Predicate<TShowRegionResp> multiExpandPredicate =
+    String command = buildMultiRegionCommand(MULTI_EXPAND_FORMAT, regionIds, targetDataNode);
+    
+    Predicate<TShowRegionResp> expandPredicate =
         tShowRegionResp -> {
           Map<Integer, Set<Integer>> newRegionMap =
               getRunningRegionMap(tShowRegionResp.getRegionInfoList());
@@ -421,15 +394,9 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
                   });
         };
 
-    // Use the first region for awaitUntilSuccess (framework limitation)
-    awaitUntilSuccess(
-        client,
-        regionIds.get(0),
-        multiExpandPredicate,
-        Optional.of(targetDataNode),
-        Optional.empty());
-
-    LOGGER.info("Regions {} have expanded to DataNode {}", regionIds, targetDataNode);
+    executeMultiRegionOperation(
+        statement, client, command, regionIds, expandPredicate,
+        Optional.of(targetDataNode), Optional.empty(), "expand");
   }
 
   private void multiRegionGroupShrink(
@@ -438,10 +405,41 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       List<Integer> regionIds,
       int targetDataNode)
       throws Exception {
-    String regionIdStr = regionIds.stream().map(String::valueOf).collect(Collectors.joining(","));
-    String command = String.format(MULTI_SHRINK_FORMAT, regionIdStr, targetDataNode);
+    String command = buildMultiRegionCommand(MULTI_SHRINK_FORMAT, regionIds, targetDataNode);
+    
+    Predicate<TShowRegionResp> shrinkPredicate =
+        tShowRegionResp -> {
+          Map<Integer, Set<Integer>> newRegionMap =
+              getRegionMap(tShowRegionResp.getRegionInfoList());
+          return regionIds.stream()
+              .allMatch(
+                  regionId -> {
+                    Set<Integer> dataNodes = newRegionMap.get(regionId);
+                    return dataNodes == null || !dataNodes.contains(targetDataNode);
+                  });
+        };
 
-    LOGGER.info("Executing multi-region shrink command: {}", command);
+    executeMultiRegionOperation(
+        statement, client, command, regionIds, shrinkPredicate,
+        Optional.empty(), Optional.of(targetDataNode), "shrink");
+  }
+
+  private String buildMultiRegionCommand(String format, List<Integer> regionIds, int targetDataNode) {
+    String regionIdStr = regionIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+    return String.format(format, regionIdStr, targetDataNode);
+  }
+
+  private void executeMultiRegionOperation(
+      Statement statement,
+      SyncConfigNodeIServiceClient client,
+      String command,
+      List<Integer> regionIds,
+      Predicate<TShowRegionResp> predicate,
+      Optional<Integer> expectedDataNode,
+      Optional<Integer> notExpectedDataNode,
+      String operationType) {
+    
+    LOGGER.info("Executing multi-region {} command: {}", operationType, command);
 
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)
@@ -458,36 +456,28 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
                 if (errorMessage != null
                     && errorMessage.contains("successfully submitted")
                     && errorMessage.contains("failed to submit")) {
-                  LOGGER.warn("Multi-region shrink partially succeeded: {}", errorMessage);
+                  LOGGER.warn("Multi-region {} partially succeeded: {}", operationType, errorMessage);
                   return true;
                 }
                 LOGGER.warn(
-                    "Multi-region shrink command execution failed, retrying: {}", errorMessage);
+                    "Multi-region {} command execution failed, retrying: {}", operationType, errorMessage);
                 return false;
               }
             });
-
-    Predicate<TShowRegionResp> multiShrinkPredicate =
-        tShowRegionResp -> {
-          Map<Integer, Set<Integer>> newRegionMap =
-              getRegionMap(tShowRegionResp.getRegionInfoList());
-          return regionIds.stream()
-              .allMatch(
-                  regionId -> {
-                    Set<Integer> dataNodes = newRegionMap.get(regionId);
-                    return dataNodes == null || !dataNodes.contains(targetDataNode);
-                  });
-        };
 
     // Use the first region for awaitUntilSuccess (framework limitation)
     awaitUntilSuccess(
         client,
         regionIds.get(0),
-        multiShrinkPredicate,
-        Optional.empty(),
-        Optional.of(targetDataNode));
+        predicate,
+        expectedDataNode,
+        notExpectedDataNode);
 
-    LOGGER.info("Regions {} have shrunk from DataNode {}", regionIds, targetDataNode);
+    String targetDescription = expectedDataNode.isPresent() ? 
+        "to DataNode " + expectedDataNode.get() : 
+        "from DataNode " + notExpectedDataNode.get();
+    LOGGER.info("Regions {} have {} {}", regionIds, 
+        operationType.equals("expand") ? "expanded" : "shrunk", targetDescription);
   }
 
   private int findDataNodeNotContainsAnyRegion(
