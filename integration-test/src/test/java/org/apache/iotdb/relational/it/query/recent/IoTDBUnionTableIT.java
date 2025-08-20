@@ -102,6 +102,15 @@ public class IoTDBUnionTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    // result correction test for union with predicate
+    retArray =
+        new String[] {"1970-01-01T00:00:00.002Z,d1,2,2.0,", "1970-01-01T00:00:00.003Z,d1,3,3.0,"};
+    tableResultSetEqualTest(
+        "select * from ((select * from table1) union all (select * from table2)) where s1>1 order by time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
