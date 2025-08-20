@@ -59,7 +59,7 @@ public class RemoveRegion extends Statement {
 
   @Override
   public String toString() {
-    return String.format("remove region %d from %d", regionIds, dataNodeId);
+    return String.format("remove region %s from %d", regionIds, dataNodeId);
   }
 
   @Override
