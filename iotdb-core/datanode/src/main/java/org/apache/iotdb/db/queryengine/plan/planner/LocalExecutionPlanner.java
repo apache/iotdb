@@ -278,7 +278,7 @@ public class LocalExecutionPlanner {
         <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
       final long result =
           OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
-      if (result < 0) {
+      if (result <= 0) {
         return 0;
       }
       OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(result);
