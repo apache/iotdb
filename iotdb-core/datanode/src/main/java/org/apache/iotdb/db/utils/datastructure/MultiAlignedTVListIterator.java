@@ -70,6 +70,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
       List<TSEncoding> encodingList,
       boolean ignoreAllNullRows,
       int maxNumberOfPointsInPage) {
+    super(scanOrder);
     this.tsDataTypeList = tsDataTypeList;
     this.columnIndexList = columnIndexList;
     this.alignedTvListIterators = new ArrayList<>(alignedTvLists.size());

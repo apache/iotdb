@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -27,8 +29,14 @@ import org.apache.tsfile.write.chunk.IChunkWriter;
 
 public abstract class MemPointIterator implements IPointReader {
 
+  protected final Ordering scanOrder;
   protected Filter pushDownFilter;
-  protected PaginationController paginationController;
+  protected PaginationController paginationController =
+      PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+
+  public MemPointIterator(Ordering scanOrder) {
+    this.scanOrder = scanOrder;
+  }
 
   public abstract TsBlock getBatch(int tsBlockIndex);
 

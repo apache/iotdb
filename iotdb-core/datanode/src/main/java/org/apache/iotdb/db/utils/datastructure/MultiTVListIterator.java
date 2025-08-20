@@ -62,6 +62,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
       Integer floatPrecision,
       TSEncoding encoding,
       int maxNumberOfPointsInPage) {
+    super(scanOrder);
     this.tsDataType = tsDataType;
     this.tvListIterators = new ArrayList<>(tvLists.size());
     for (int i = 0; i < tvLists.size(); i++) {

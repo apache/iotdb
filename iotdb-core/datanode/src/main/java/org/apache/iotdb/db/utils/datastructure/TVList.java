@@ -36,7 +36,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
 import org.apache.tsfile.read.filter.basic.Filter;
-import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -206,6 +205,14 @@ public abstract class TVList implements WALEntryValue {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
+  public long getTime(int index, Ordering ordering) {
+    if (ordering.isAscending()) {
+      return getTime(index);
+    } else {
+      return getTime(rowCount - 1 - index);
+    }
+  }
+
   protected void set(int src, int dest) {
     long srcT = getTime(src);
     int srcV = getValueIndex(src);
@@ -251,6 +258,10 @@ public abstract class TVList implements WALEntryValue {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     return indices.get(arrayIndex)[elementIndex];
+  }
+
+  public int getValueIndex(int index, Ordering ordering) {
+    return ordering.isAscending() ? getValueIndex(index) : getValueIndex(rowCount - 1 - index);
   }
 
   protected void markNullValue(int arrayIndex, int elementIndex) {
@@ -376,6 +387,30 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public boolean getBoolean(int index) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public long getLong(int index, Ordering ordering) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public int getInt(int index, Ordering ordering) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public float getFloat(int index, Ordering ordering) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public double getDouble(int index, Ordering ordering) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public Binary getBinary(int index, Ordering ordering) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public boolean getBoolean(int index, Ordering ordering) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -535,6 +570,8 @@ public abstract class TVList implements WALEntryValue {
   /** for log */
   public abstract TimeValuePair getTimeValuePair(int index);
 
+  public abstract TimeValuePair getTimeValuePair(int index, Ordering ordering);
+
   protected abstract TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
@@ -660,7 +697,12 @@ public abstract class TVList implements WALEntryValue {
       TSEncoding encoding,
       int maxNumberOfPointsInPage) {
     return new TVListIterator(
-        globalTimeFilter, deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
+        scanOrder,
+        globalTimeFilter,
+        deletionList,
+        floatPrecision,
+        encoding,
+        maxNumberOfPointsInPage);
   }
 
   /* TVList Iterator */
@@ -679,16 +721,14 @@ public abstract class TVList implements WALEntryValue {
     // used by nextBatch during query
     protected final int maxNumberOfPointsInPage;
 
-    protected Filter pushDownFilter;
-    protected PaginationController paginationController =
-        PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
-
     public TVListIterator(
+        Ordering scanOrder,
         Filter globalTimeFilter,
         List<TimeRange> deletionList,
         Integer floatPrecision,
         TSEncoding encoding,
         int maxNumberOfPointsInPage) {
+      super(scanOrder);
       this.globalTimeFilter = globalTimeFilter;
       this.deletionList = deletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
@@ -703,9 +743,10 @@ public abstract class TVList implements WALEntryValue {
     protected void prepareNext() {
       // skip deleted rows
       while (index < rows) {
-        if (!isNullValue(getValueIndex(index))) {
-          long time = getTime(index);
-          if (!isPointDeleted(time, deletionList, deleteCursor) && isTimeSatisfied(time)) {
+        if (!isNullValue(getValueIndex(index, scanOrder))) {
+          long time = getTime(index, scanOrder);
+          if (!isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+              && isTimeSatisfied(time)) {
             break;
           }
         }
@@ -713,7 +754,7 @@ public abstract class TVList implements WALEntryValue {
       }
 
       // skip duplicated timestamp
-      while (index + 1 < rows && getTime(index + 1) == getTime(index)) {
+      while (index + 1 < rows && getTime(index + 1, scanOrder) == getTime(index, scanOrder)) {
         index++;
       }
       probeNext = true;
@@ -739,7 +780,7 @@ public abstract class TVList implements WALEntryValue {
       if (!hasNextTimeValuePair()) {
         return null;
       }
-      TimeValuePair tvp = getTimeValuePair(index);
+      TimeValuePair tvp = getTimeValuePair(index, scanOrder);
       next();
       return tvp;
     }
@@ -749,7 +790,7 @@ public abstract class TVList implements WALEntryValue {
       if (!hasNextTimeValuePair()) {
         return null;
       }
-      return getTimeValuePair(index);
+      return getTimeValuePair(index, scanOrder);
     }
 
     @Override
@@ -775,13 +816,13 @@ public abstract class TVList implements WALEntryValue {
       switch (dataType) {
         case BOOLEAN:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
+            long time = getTime(index, scanOrder);
+            if (!isNullValue(getValueIndex(index, scanOrder))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
-                && (index == rows - 1 || time != getTime(index + 1))) {
+                && (index == rows - 1 || time != getTime(index + 1, scanOrder))) {
               builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeBoolean(getBoolean(index));
+              builder.getColumnBuilder(0).writeBoolean(getBoolean(index, scanOrder));
               builder.declarePosition();
             }
             index++;
@@ -790,13 +831,13 @@ public abstract class TVList implements WALEntryValue {
         case INT32:
         case DATE:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
+            long time = getTime(index, scanOrder);
+            if (!isNullValue(getValueIndex(index, scanOrder))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
-                && (index == rows - 1 || time != getTime(index + 1))) {
+                && (index == rows - 1 || time != getTime(index + 1, scanOrder))) {
               builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeInt(getInt(index));
+              builder.getColumnBuilder(0).writeInt(getInt(index, scanOrder));
               builder.declarePosition();
             }
             index++;
@@ -805,13 +846,13 @@ public abstract class TVList implements WALEntryValue {
         case INT64:
         case TIMESTAMP:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
+            long time = getTime(index, scanOrder);
+            if (!isNullValue(getValueIndex(index, scanOrder))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
-                && (index == rows - 1 || time != getTime(index + 1))) {
+                && (index == rows - 1 || time != getTime(index + 1, scanOrder))) {
               builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeLong(getLong(index));
+              builder.getColumnBuilder(0).writeLong(getLong(index, scanOrder));
               builder.declarePosition();
             }
             index++;
@@ -819,16 +860,17 @@ public abstract class TVList implements WALEntryValue {
           break;
         case FLOAT:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
+            long time = getTime(index, scanOrder);
+            if (!isNullValue(getValueIndex(index, scanOrder))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
-                && (index == rows - 1 || time != getTime(index + 1))) {
+                && (index == rows - 1 || time != getTime(index + 1, scanOrder))) {
               builder.getTimeColumnBuilder().writeLong(time);
               builder
                   .getColumnBuilder(0)
                   .writeFloat(
-                      roundValueWithGivenPrecision(getFloat(index), floatPrecision, encoding));
+                      roundValueWithGivenPrecision(
+                          getFloat(index, scanOrder), floatPrecision, encoding));
               builder.declarePosition();
             }
             index++;
@@ -836,16 +878,17 @@ public abstract class TVList implements WALEntryValue {
           break;
         case DOUBLE:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
+            long time = getTime(index, scanOrder);
+            if (!isNullValue(getValueIndex(index, scanOrder))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
-                && (index == rows - 1 || time != getTime(index + 1))) {
+                && (index == rows - 1 || time != getTime(index + 1, scanOrder))) {
               builder.getTimeColumnBuilder().writeLong(time);
               builder
                   .getColumnBuilder(0)
                   .writeDouble(
-                      roundValueWithGivenPrecision(getDouble(index), floatPrecision, encoding));
+                      roundValueWithGivenPrecision(
+                          getDouble(index, scanOrder), floatPrecision, encoding));
               builder.declarePosition();
             }
             index++;
@@ -855,13 +898,13 @@ public abstract class TVList implements WALEntryValue {
         case BLOB:
         case STRING:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
+            long time = getTime(index, scanOrder);
+            if (!isNullValue(getValueIndex(index, scanOrder))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
-                && (index == rows - 1 || time != getTime(index + 1))) {
+                && (index == rows - 1 || time != getTime(index + 1, scanOrder))) {
               builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeBinary(getBinary(index));
+              builder.getColumnBuilder(0).writeBinary(getBinary(index, scanOrder));
               builder.declarePosition();
             }
             index++;
@@ -976,7 +1019,7 @@ public abstract class TVList implements WALEntryValue {
       if (!hasCurrent()) {
         return Long.MIN_VALUE;
       }
-      return getTime(index);
+      return getTime(index, scanOrder);
     }
 
     public int getIndex() {

@@ -93,7 +93,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
                 && isPointDeleted(
                     currentTime,
                     valueColumnsDeletionList.get(columnIndex),
-                    valueColumnDeleteCursor.get(columnIndex)))
+                    valueColumnDeleteCursor.get(columnIndex),
+                    scanOrder))
             || iterator.isNullValue(rowIndices[columnIndex], columnIndex)) {
           bitMap.mark(columnIndex);
         }

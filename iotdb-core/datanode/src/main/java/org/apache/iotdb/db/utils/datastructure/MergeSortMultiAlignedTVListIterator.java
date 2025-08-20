@@ -149,7 +149,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
               && isPointDeleted(
                   currentTime,
                   valueColumnsDeletionList.get(columnIndex),
-                  valueColumnDeleteCursor.get(columnIndex))) {
+                  valueColumnDeleteCursor.get(columnIndex),
+                  scanOrder)) {
             iteratorIndices[columnIndex] = -1;
             bitMap.mark(columnIndex);
           }

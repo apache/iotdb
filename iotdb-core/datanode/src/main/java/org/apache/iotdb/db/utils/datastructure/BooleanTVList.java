@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -113,6 +114,11 @@ public abstract class BooleanTVList extends TVList {
   }
 
   @Override
+  public boolean getBoolean(int index, Ordering ordering) {
+    return ordering.isAscending() ? getBoolean(index) : getBoolean(rowCount - 1 - index);
+  }
+
+  @Override
   protected void clearValue() {
     if (values != null) {
       for (boolean[] dataArray : values) {
@@ -137,6 +143,13 @@ public abstract class BooleanTVList extends TVList {
   public TimeValuePair getTimeValuePair(int index) {
     return new TimeValuePair(
         getTime(index), TsPrimitiveType.getByType(TSDataType.BOOLEAN, getBoolean(index)));
+  }
+
+  @Override
+  public TimeValuePair getTimeValuePair(int index, Ordering ordering) {
+    return ordering.isAscending()
+        ? getTimeValuePair(index)
+        : getTimeValuePair(rowCount - 1 - index);
   }
 
   @Override
