@@ -123,7 +123,7 @@ class AutoCreateSchemaExecutor {
             dataTypesOfMissingMeasurement.add(tsDataType);
             encodingsOfMissingMeasurement.add(getDefaultEncoding(tsDataType));
             compressionTypesOfMissingMeasurement.add(
-                TSFileDescriptor.getInstance().getConfig().getCompressor());
+                TSFileDescriptor.getInstance().getConfig().getCompressor(tsDataType));
           }
         });
 
@@ -180,7 +180,9 @@ class AutoCreateSchemaExecutor {
                   measurements[measurementIndex],
                   tsDataTypes[measurementIndex],
                   getDefaultEncoding(tsDataTypes[measurementIndex]),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor());
+                  TSFileDescriptor.getInstance()
+                      .getConfig()
+                      .getCompressor(tsDataTypes[measurementIndex]));
             }
             return v;
           });
@@ -345,7 +347,9 @@ class AutoCreateSchemaExecutor {
                         ? getDefaultEncoding(tsDataTypes[measurementIndex])
                         : encodings[measurementIndex],
                     compressionTypes == null
-                        ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                        ? TSFileDescriptor.getInstance()
+                            .getConfig()
+                            .getCompressor(tsDataTypes[measurementIndex])
                         : compressionTypes[measurementIndex]);
               }
               return v;
@@ -389,7 +393,8 @@ class AutoCreateSchemaExecutor {
                       && compressionTypesList.get(finalDeviceIndex1) != null) {
                     compressionType = compressionTypesList.get(finalDeviceIndex1)[index];
                   } else {
-                    compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+                    compressionType =
+                        TSFileDescriptor.getInstance().getConfig().getCompressor(dataType);
                   }
                   templateExtendInfo.addMeasurement(
                       measurement, dataType, encoding, compressionType);

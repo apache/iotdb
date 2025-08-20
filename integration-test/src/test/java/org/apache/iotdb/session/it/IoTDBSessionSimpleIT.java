@@ -2222,6 +2222,7 @@ public class IoTDBSessionSimpleIT {
   @Test
   public void testAlterDefaultCompression()
       throws IoTDBConnectionException, StatementExecutionException {
+    // auto-create
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<TSDataType> types =
           Arrays.asList(
@@ -2288,11 +2289,188 @@ public class IoTDBSessionSimpleIT {
             String.format("SET CONFIGURATION '%s_compressor'='GZIP'", configName));
       }
 
-      String device2 = "root.test.d1";
+      String device2 = "root.test.d2";
       session.insertRecord(device2, 0, measurements, types, values);
 
       try (SessionDataSet dataSet =
           session.executeQueryStatement("SHOW TIMESERIES root.test.d2.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("GZIP", compressionField.getStringValue());
+        }
+      }
+    }
+
+    // manual create
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<TSDataType> types =
+          Arrays.asList(
+              TSDataType.BOOLEAN,
+              TSDataType.INT32,
+              TSDataType.DATE,
+              TSDataType.INT64,
+              TSDataType.TIMESTAMP,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.TEXT,
+              TSDataType.STRING,
+              TSDataType.BLOB);
+      List<String> measurements =
+          types.stream().map(dataType -> "__" + dataType.toString()).collect(Collectors.toList());
+
+      String device3 = "root.test.d3";
+      for (int i = 0; i < types.size(); i++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "CREATE TIMESERIES %s.%s WITH DATATYPE=%s",
+                device3, measurements.get(i), types.get(i)));
+      }
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d3.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("GZIP", compressionField.getStringValue());
+        }
+      }
+
+      for (TSDataType type : types) {
+        String configName = null;
+        switch (type) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case TEXT:
+          case BOOLEAN:
+            configName = type.name().toLowerCase();
+            break;
+          case STRING:
+          case BLOB:
+            configName = "text";
+            break;
+          case DATE:
+            configName = "int32";
+            break;
+          case TIMESTAMP:
+            configName = "int64";
+            break;
+        }
+        session.executeNonQueryStatement(
+            String.format("SET CONFIGURATION '%s_compressor'='LZ4'", configName));
+      }
+
+      String device4 = "root.test.d4";
+      for (int i = 0; i < types.size(); i++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "CREATE TIMESERIES %s.%s WITH DATATYPE=%s",
+                device4, measurements.get(i), types.get(i)));
+      }
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d4.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("LZ4", compressionField.getStringValue());
+        }
+      }
+    }
+
+    // template
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<TSDataType> types =
+          Arrays.asList(
+              TSDataType.BOOLEAN,
+              TSDataType.INT32,
+              TSDataType.DATE,
+              TSDataType.INT64,
+              TSDataType.TIMESTAMP,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.TEXT,
+              TSDataType.STRING,
+              TSDataType.BLOB);
+      List<String> measurements =
+          types.stream().map(dataType -> "__" + dataType.toString()).collect(Collectors.toList());
+      List<Object> values =
+          Arrays.asList(
+              false,
+              1,
+              LocalDate.of(1000, 1, 1),
+              1L,
+              1L,
+              1.0f,
+              1.0,
+              new Binary("1".getBytes(StandardCharsets.UTF_8)),
+              new Binary("1".getBytes(StandardCharsets.UTF_8)),
+              new Binary("1".getBytes(StandardCharsets.UTF_8)));
+
+      String createTemplateSql = "CREATE DEVICE TEMPLATE t1 (";
+      for (int i = 0; i < types.size(); i++) {
+        createTemplateSql += measurements.get(i) + " " + types.get(i).name();
+        if (i != types.size() - 1) {
+          createTemplateSql += ",";
+        }
+      }
+      createTemplateSql += ")";
+      session.executeNonQueryStatement(createTemplateSql);
+
+      session.executeNonQueryStatement("SET DEVICE TEMPLATE t1 TO root.test.d5");
+      String device5 = "root.test.d5";
+      session.insertRecord(device5, 0, measurements, types, values);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d5.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("LZ4", compressionField.getStringValue());
+        }
+      }
+
+      for (TSDataType type : types) {
+        String configName = null;
+        switch (type) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case TEXT:
+          case BOOLEAN:
+            configName = type.name().toLowerCase();
+            break;
+          case STRING:
+          case BLOB:
+            configName = "text";
+            break;
+          case DATE:
+            configName = "int32";
+            break;
+          case TIMESTAMP:
+            configName = "int64";
+            break;
+        }
+        session.executeNonQueryStatement(
+            String.format("SET CONFIGURATION '%s_compressor'='GZIP'", configName));
+      }
+
+      createTemplateSql = createTemplateSql.replace("t1", "t2");
+      session.executeNonQueryStatement(createTemplateSql);
+      session.executeNonQueryStatement("SET DEVICE TEMPLATE t2 TO root.test.d6");
+
+      String device6 = "root.test.d6";
+      session.insertRecord(device6, 0, measurements, types, values);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d6.**")) {
         int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
         while (dataSet.hasNext()) {
           RowRecord rec = dataSet.next();

@@ -338,7 +338,7 @@ public class TableHeaderSchemaValidator {
                     columnName,
                     dataType,
                     getDefaultEncoding(dataType),
-                    TSFileDescriptor.getInstance().getConfig().getCompressor())
+                    TSFileDescriptor.getInstance().getConfig().getCompressor(dataType))
                 // Unknown appears only for tree view field when the type needs auto-detection
                 // Skip encoding & compressors because view query does not need these
                 : new FieldColumnSchema(columnName, dataType);
@@ -415,7 +415,7 @@ public class TableHeaderSchemaValidator {
                   inputColumn.getName(),
                   dataType,
                   getDefaultEncoding(dataType),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor()));
+                  TSFileDescriptor.getInstance().getConfig().getCompressor(dataType)));
           break;
         case TIME:
           throw new SemanticException(
