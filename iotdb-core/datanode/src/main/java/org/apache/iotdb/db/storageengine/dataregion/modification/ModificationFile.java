@@ -304,10 +304,6 @@ public class ModificationFile implements AutoCloseable {
       }
       if (nextEntry == null) {
         try {
-          if (inputStream.available() == 0) {
-            close();
-            return false;
-          }
           nextEntry = ModEntry.createFrom(inputStream);
         } catch (EOFException e) {
           close();

@@ -17,25 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.exception;
+package org.apache.iotdb.commons.enums;
 
-import java.util.Optional;
-
-public class RatisRequestFailedException extends ConsensusException {
-
-  public RatisRequestFailedException(Exception cause) {
-    super(
-        "Ratis request failed "
-            + Optional.ofNullable(cause).map(Exception::getMessage).orElse("Unknown"),
-        cause);
-  }
-
-  public RatisRequestFailedException(String message, Exception cause) {
-    super(
-        "Ratis request failed: "
-            + message
-            + ". "
-            + Optional.ofNullable(cause).map(Exception::getMessage).orElse("Unknown"),
-        cause);
-  }
+public enum ReadConsistencyLevel {
+  STRONG,
+  WEAK
 }
