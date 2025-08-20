@@ -772,7 +772,7 @@ public abstract class TVList implements WALEntryValue {
       if (!probeNext) {
         prepareNext();
       }
-      return index < rows;
+      return index < rows && !isCurrentTimeExceedTimeRange(getTime(index, scanOrder));
     }
 
     @Override

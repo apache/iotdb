@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -33,6 +34,7 @@ public abstract class MemPointIterator implements IPointReader {
   protected Filter pushDownFilter;
   protected PaginationController paginationController =
       PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+  protected TimeRange timeRange;
 
   public MemPointIterator(Ordering scanOrder) {
     this.scanOrder = scanOrder;
@@ -53,5 +55,14 @@ public abstract class MemPointIterator implements IPointReader {
 
   public void setLimitAndOffset(PaginationController paginationController) {
     this.paginationController = paginationController;
+  }
+
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    this.timeRange = timeRange;
+  }
+
+  protected boolean isCurrentTimeExceedTimeRange(long time) {
+    return timeRange != null
+        && (scanOrder.isAscending() ? (time > timeRange.getMax()) : (time < timeRange.getMin()));
   }
 }

@@ -306,9 +306,33 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
     long chunkStartTime = Long.MAX_VALUE;
     long chunkEndTime = Long.MIN_VALUE;
+    long rowNum = 0;
     for (AlignedTVList tvList : alignedTvLists) {
       chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
       chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
+      rowNum += tvList.rowCount();
+    }
+
+    int pageNum = (int) Math.min(100, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_PAGE / 10));
+    long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
+    for (int i = 0; i < pageNum; i++) {
+      long pageStartTime = chunkStartTime + i * timeInterval;
+      long pageEndTime = (i == pageNum - 1) ? chunkEndTime : (pageStartTime + timeInterval - 1);
+
+      Statistics<? extends Serializable>[] pageValueStatistics = new Statistics[dataTypes.size()];
+      for (int column = 0; column < dataTypes.size(); column++) {
+        pageValueStatistics[column] = Statistics.getStatsByType(dataTypes.get(column));
+        pageValueStatistics[column].setStartTime(pageStartTime);
+        pageValueStatistics[column].setEndTime(pageEndTime);
+        pageValueStatistics[column].setCount(1);
+      }
+      valueStatisticsList.add(pageValueStatistics);
+      Statistics<? extends Serializable> pageTimeStatistics =
+          Statistics.getStatsByType(TSDataType.VECTOR);
+      timeStatisticsList.add(pageTimeStatistics);
+      pageTimeStatistics.setStartTime(pageStartTime);
+      pageTimeStatistics.setEndTime(pageEndTime);
+      pageTimeStatistics.setCount(1);
     }
 
     Statistics<? extends Serializable>[] chunkValueStatistics = new Statistics[dataTypes.size()];
@@ -318,7 +342,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       chunkValueStatistics[column].setEndTime(chunkEndTime);
       chunkValueStatistics[column].setCount(1);
     }
-    valueStatisticsList.add(chunkValueStatistics);
 
     // init chunk meta
     Statistics<? extends Serializable> chunkTimeStatistics =
@@ -326,7 +349,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     chunkTimeStatistics.setStartTime(chunkStartTime);
     chunkTimeStatistics.setEndTime(chunkEndTime);
     chunkTimeStatistics.setCount(1);
-    timeStatisticsList.add(chunkTimeStatistics);
     IChunkMetadata timeChunkMetadata =
         new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, chunkTimeStatistics);
     timeChunkMetadata.setModified(true);

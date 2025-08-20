@@ -47,6 +47,7 @@ import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
@@ -613,20 +614,7 @@ public class SeriesScanUtil implements Accountable {
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     if (chunkLoader instanceof MemChunkLoader) {
-      ReadOnlyMemChunk readOnlyMemChunk = ((MemChunkLoader) chunkLoader).getReadOnlyMemChunk();
-      VersionPageReader versionPageReader =
-          new LazyMemVersionPageReader(
-              context,
-              timestampInFileName,
-              chunkMetaData.getVersion(),
-              chunkMetaData.getOffsetOfChunkHeader(),
-              readOnlyMemChunk,
-              chunkMetaData.isSeq());
-      if (chunkMetaData.isSeq()) {
-        seqPageReaders.add(versionPageReader);
-      } else {
-        unSeqPageReaders.add(versionPageReader);
-      }
+      unpackOneMemChunkMetaData(chunkMetaData, (MemChunkLoader) chunkLoader, timestampInFileName);
       return;
     }
     List<IPageReader> pageReaderList =
@@ -670,6 +658,34 @@ public class SeriesScanUtil implements Accountable {
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
                       false)));
+    }
+  }
+
+  private void unpackOneMemChunkMetaData(
+      IChunkMetadata chunkMetaData, MemChunkLoader chunkLoader, long timestampInFileName) {
+    ReadOnlyMemChunk readOnlyMemChunk = chunkLoader.getReadOnlyMemChunk();
+    boolean isAligned = readOnlyMemChunk instanceof AlignedReadOnlyMemChunk;
+    List<Statistics<? extends Serializable>> statisticsList =
+        isAligned
+            ? ((AlignedReadOnlyMemChunk) readOnlyMemChunk).getTimeStatisticsList()
+            : readOnlyMemChunk.getPageStatisticsList();
+    MemPointIterator memPointIterator = readOnlyMemChunk.getMemPointIterator();
+    for (Statistics<? extends Serializable> statistics : statisticsList) {
+      VersionPageReader versionPageReader =
+          new LazyMemVersionPageReader(
+              context,
+              timestampInFileName,
+              chunkMetaData.getVersion(),
+              chunkMetaData.getOffsetOfChunkHeader(),
+              isAligned,
+              statistics,
+              memPointIterator,
+              chunkMetaData.isSeq());
+      if (chunkMetaData.isSeq()) {
+        seqPageReaders.add(versionPageReader);
+      } else {
+        unSeqPageReaders.add(versionPageReader);
+      }
     }
   }
 
@@ -757,6 +773,8 @@ public class SeriesScanUtil implements Accountable {
         firstPageReader.setLimitOffset(paginationController);
         LazyMemVersionPageReader lazyMemVersionPageReader =
             (LazyMemVersionPageReader) firstPageReader;
+        lazyMemVersionPageReader.setCurrentPageTimeRangeToMemPointIterator();
+        lazyMemVersionPageReader.setInited();
         TsBlock tsBlock =
             lazyMemVersionPageReader.hasNextBatch() ? lazyMemVersionPageReader.nextBatch() : null;
         if (!lazyMemVersionPageReader.hasNextBatch()) {
@@ -1088,7 +1106,10 @@ public class SeriesScanUtil implements Accountable {
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     IPointReader pointReader;
     if (pageReader instanceof LazyMemVersionPageReader) {
-      pointReader = ((LazyMemVersionPageReader) pageReader).getPointReader();
+      LazyMemVersionPageReader lazyMemPageReader = (LazyMemVersionPageReader) pageReader;
+      lazyMemPageReader.setCurrentPageTimeRangeToMemPointIterator();
+      lazyMemPageReader.setInited();
+      pointReader = lazyMemPageReader.getPointReader();
     } else {
       pointReader = getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending()));
     }
@@ -1287,13 +1308,13 @@ public class SeriesScanUtil implements Accountable {
   }
 
   protected static class VersionPageReader {
-    private final QueryContext context;
-    private final MergeReaderPriority version;
-    private final IPageReader data;
+    protected final QueryContext context;
+    protected final MergeReaderPriority version;
+    protected final IPageReader data;
 
-    private final boolean isSeq;
-    private final boolean isAligned;
-    private final boolean isMem;
+    protected final boolean isSeq;
+    protected final boolean isAligned;
+    protected final boolean isMem;
 
     VersionPageReader(
         QueryContext context,
@@ -1393,26 +1414,22 @@ public class SeriesScanUtil implements Accountable {
 
   protected static class LazyMemVersionPageReader extends VersionPageReader {
 
-    private final ReadOnlyMemChunk readOnlyMemChunk;
+    private final Statistics<? extends Serializable> statistics;
     private final MemPointIterator memPointIterator;
+    private boolean inited = false;
 
     LazyMemVersionPageReader(
         QueryContext context,
         long fileTimestamp,
         long version,
         long offset,
-        ReadOnlyMemChunk readOnlyMemChunk,
+        boolean isAligned,
+        Statistics<? extends Serializable> statistics,
+        MemPointIterator memPointIterator,
         boolean isSeq) {
-      super(
-          context,
-          fileTimestamp,
-          version,
-          offset,
-          isSeq,
-          readOnlyMemChunk instanceof AlignedReadOnlyMemChunk,
-          true);
-      this.readOnlyMemChunk = readOnlyMemChunk;
-      this.memPointIterator = readOnlyMemChunk.getMemPointIterator();
+      super(context, fileTimestamp, version, offset, isSeq, isAligned, true);
+      this.statistics = statistics;
+      this.memPointIterator = memPointIterator;
     }
 
     public IPointReader getPointReader() {
@@ -1423,33 +1440,51 @@ public class SeriesScanUtil implements Accountable {
       return memPointIterator.hasNextBatch();
     }
 
+    public void setCurrentPageTimeRangeToMemPointIterator() {
+      if (inited) {
+        return;
+      }
+      this.memPointIterator.setCurrentPageTimeRange(
+          new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
+    }
+
     public TsBlock nextBatch() {
       return memPointIterator.nextBatch();
     }
 
     @Override
     Statistics getStatistics() {
-      return readOnlyMemChunk.getChunkMetaData().getStatistics();
+      return statistics;
     }
 
     @Override
     Statistics getTimeStatistics() {
-      return readOnlyMemChunk.getChunkMetaData().getStatistics();
+      return statistics;
     }
 
     @Override
     void addPushDownFilter(Filter pushDownFilter) {
+      if (inited) {
+        return;
+      }
       memPointIterator.setPushDownFilter(pushDownFilter);
     }
 
     @Override
     public void setLimitOffset(PaginationController paginationController) {
+      if (inited) {
+        return;
+      }
       memPointIterator.setLimitAndOffset(paginationController);
     }
 
     @Override
     boolean isModified() {
       return true;
+    }
+
+    public void setInited() {
+      inited = true;
     }
   }
 

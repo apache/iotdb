@@ -1775,7 +1775,7 @@ public abstract class AlignedTVList extends TVList {
       if (findValidRow && selectedIndices.length > 0) {
         index = Arrays.stream(selectedIndices).min().getAsInt();
       }
-      return index < rows;
+      return index < rows && !isCurrentTimeExceedTimeRange(getTime(index, scanOrder));
     }
 
     @Override
@@ -1792,7 +1792,8 @@ public abstract class AlignedTVList extends TVList {
       int startIndex = index;
       // time column
       for (; index < rows; index++) {
-        if (validRowCount >= maxNumberOfPointsInPage) {
+        long time = getTime(index, scanOrder);
+        if (validRowCount >= maxNumberOfPointsInPage || isCurrentTimeExceedTimeRange(time)) {
           break;
         }
         // skip empty row
@@ -1800,7 +1801,6 @@ public abstract class AlignedTVList extends TVList {
             && allValueColDeletedMap.isMarked(getValueIndex(index, scanOrder))) {
           continue;
         }
-        long time = getTime(index, scanOrder);
         if (isTimeDeleted(index, scanOrder) || !isTimeSatisfied(time)) {
           continue;
         }

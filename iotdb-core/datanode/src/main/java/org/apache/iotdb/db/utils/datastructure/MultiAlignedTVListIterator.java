@@ -104,7 +104,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     if (!probeNext) {
       prepareNext();
     }
-    return hasNext;
+    return hasNext && !isCurrentTimeExceedTimeRange(currentTime);
   }
 
   @Override

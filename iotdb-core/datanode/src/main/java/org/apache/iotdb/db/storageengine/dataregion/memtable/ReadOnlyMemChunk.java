@@ -233,20 +233,29 @@ public class ReadOnlyMemChunk {
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
     long chunkStartTime = Long.MAX_VALUE;
     long chunkEndTime = Long.MIN_VALUE;
+    long rowNum = 0;
     for (TVList tvList : tvLists) {
       chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
       chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
+      rowNum += tvList.rowCount();
     }
     chunkStatistics.setStartTime(chunkStartTime);
     chunkStatistics.setEndTime(chunkEndTime);
     chunkStatistics.setCount(1);
     cachedMetaData = new ChunkMetadata(measurementUid, dataType, null, null, 0, chunkStatistics);
 
-    Statistics<? extends Serializable> pageStats = Statistics.getStatsByType(dataType);
-    pageStats.setStartTime(chunkStartTime);
-    pageStats.setEndTime(chunkEndTime);
-    pageStats.setCount(1);
-    pageStatisticsList.add(pageStats);
+    int pageNum = (int) Math.min(100, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_PAGE / 10));
+    long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
+    for (int i = 0; i < pageNum; i++) {
+      long pageStartTime = chunkStartTime + i * timeInterval;
+      long pageEndTime = (i == pageNum - 1) ? chunkEndTime : (pageStartTime + timeInterval - 1);
+
+      Statistics<? extends Serializable> pageStats = Statistics.getStatsByType(dataType);
+      pageStats.setStartTime(pageStartTime);
+      pageStats.setEndTime(pageEndTime);
+      pageStats.setCount(1);
+      pageStatisticsList.add(pageStats);
+    }
 
     cachedMetaData.setChunkLoader(new MemChunkLoader(context, this));
     cachedMetaData.setVersion(Long.MAX_VALUE);
