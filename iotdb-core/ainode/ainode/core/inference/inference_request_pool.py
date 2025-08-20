@@ -20,6 +20,7 @@ import gc
 import random
 import threading
 import time
+from enum import Enum
 
 import numpy as np
 import torch
@@ -31,6 +32,12 @@ from ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
 from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
+
+
+class PoolState(Enum):
+    INITIALIZING = "INITIALIZING"
+    RUNNING = "RUNNING"
+    STOPPING = "STOPPING"
 
 
 class InferenceRequestPool(mp.Process):
