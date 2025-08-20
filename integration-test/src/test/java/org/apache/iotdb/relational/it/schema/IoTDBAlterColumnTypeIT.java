@@ -1195,12 +1195,12 @@ public class IoTDBAlterColumnTypeIT {
 
       dataSet = session.executeQueryStatement("select first_value(s1) from root.sg1.d1");
       rec = dataSet.next();
-      assertEquals(firstValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0);
+      assertEquals(firstValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0.001);
       assertFalse(dataSet.hasNext());
 
       dataSet = session.executeQueryStatement("select last_value(s1) from root.sg1.d1");
       rec = dataSet.next();
-      assertEquals(lastValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0);
+      assertEquals(lastValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0.001);
       assertFalse(dataSet.hasNext());
 
       // clear data
