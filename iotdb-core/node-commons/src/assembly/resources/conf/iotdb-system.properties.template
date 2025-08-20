@@ -980,32 +980,32 @@ default_text_encoding=PLAIN
 # BOOLEAN compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-boolean_compressor=lz4
+boolean_compressor=LZ4
 
 # INT32/DATE compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-int32_compressor=lz4
+int32_compressor=LZ4
 
 # INT64/TIMESTAMP compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-int64_compressor=lz4
+int64_compressor=LZ4
 
 # FLOAT compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-float_compressor=lz4
+float_compressor=LZ4
 
 # DOUBLE compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-double_compressor=lz4
+double_compressor=LZ4
 
 # TEXT/BINARY/BLOB compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-text_compressor=lz4
+text_compressor=LZ4
 
 ####################
 ### Query Configurations
