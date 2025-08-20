@@ -964,7 +964,12 @@ public class DataRegion implements IDataRegionForQuery {
         new SealedTsFileRecoverPerformer(sealedTsFile)) {
       recoverPerformer.recover();
       sealedTsFile.close();
-      tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
+      if (!TsFileValidator.getInstance().validateTsFile(sealedTsFile)) {
+        sealedTsFile.remove();
+        tsFileManager.remove(sealedTsFile, sealedTsFile.isSeq());
+      } else {
+        tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
+      }
     } catch (Throwable e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
     } finally {
@@ -1075,7 +1080,9 @@ public class DataRegion implements IDataRegionForQuery {
                     lastFlushTimeMap.getMemSize(partitionId)));
       }
       for (TsFileResource tsFileResource : resourceList) {
-        updateDeviceLastFlushTime(tsFileResource);
+        if (!tsFileResource.isDeleted()) {
+          updateDeviceLastFlushTime(tsFileResource);
+        }
       }
       TimePartitionManager.getInstance()
           .updateAfterFlushing(
