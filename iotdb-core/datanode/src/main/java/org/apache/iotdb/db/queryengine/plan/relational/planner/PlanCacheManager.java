@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 
@@ -50,23 +51,25 @@ public class PlanCacheManager {
 
   public void cacheValue(
       String cachedKey,
-      PlanNode planNodeTree,
+      PlanNode planNode,
+      List<DeviceTableScanNode> scanNodes,
       List<Literal> literalReference,
       DatasetHeader header,
       HashMap<Symbol, Type> symbolMap,
-      Map<Symbol, ColumnSchema> assignments,
-      List<Expression> expressionList,
-      List<String> columnAttributes) {
+      List<List<Expression>> metadataExpressionLists,
+      List<List<String>> attributeColumnsLists,
+      List<Map<Symbol, ColumnSchema>> assignmentsLists) {
     planCache.put(
         cachedKey,
         new CachedValue(
-            planNodeTree,
+            planNode,
+            scanNodes,
             literalReference,
             header,
             symbolMap,
-            assignments,
-            expressionList,
-            columnAttributes));
+            metadataExpressionLists,
+            attributeColumnsLists,
+            assignmentsLists));
   }
 
   public CachedValue getCachedValue(String cacheKey) {

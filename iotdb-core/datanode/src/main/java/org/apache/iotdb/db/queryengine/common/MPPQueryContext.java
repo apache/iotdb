@@ -31,12 +31,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryRe
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -434,41 +435,36 @@ public class MPPQueryContext {
     this.userQuery = userQuery;
   }
 
-  // TODO temporary for plan cache will be optimized
-  List<Expression> metaDataExpressionList;
-  List<String> attributeColumns;
-  List<Literal> literalList;
-  Map<Symbol, ColumnSchema> assignments;
+  // ================== Plan cache related ==================
+  // the outer list corresponds one-to-one with scanNodes
+  private final List<List<Expression>> metadataExpressionLists = new ArrayList<>();
+  private final List<List<String>> attributeColumnsLists = new ArrayList<>();
+  private final List<Map<Symbol, ColumnSchema>> assignmentsLists = new ArrayList<>();
 
-  public void setAssignments(Map<Symbol, ColumnSchema> assignments) {
-    this.assignments = assignments;
+  // ================== Getter ==================
+  public List<List<Expression>> getMetadataExpressionLists() {
+    return metadataExpressionLists;
   }
 
-  public void setAttributeColumns(List<String> attributeColumns) {
-    this.attributeColumns = attributeColumns;
+  public List<List<String>> getAttributeColumnsLists() {
+    return attributeColumnsLists;
   }
 
-  public void setMetaDataExpressionList(List<Expression> metaDataExpressionList) {
-    this.metaDataExpressionList = metaDataExpressionList;
+  public List<Map<Symbol, ColumnSchema>> getAssignmentsLists() {
+    return assignmentsLists;
   }
 
-  public void setLiteralList(List<Literal> literalList) {
-    this.literalList = literalList;
+  // ================== Add methods ==================
+  public void addMetadataExpressionList(List<Expression> expressions) {
+    metadataExpressionLists.add(
+        expressions != null ? new ArrayList<>(expressions) : Collections.emptyList());
   }
 
-  public Map<Symbol, ColumnSchema> getAssignments() {
-    return assignments;
+  public void addAttributeColumnsList(List<String> columns) {
+    attributeColumnsLists.add(columns != null ? new ArrayList<>(columns) : Collections.emptyList());
   }
 
-  public List<Expression> getMetaDataExpressionList() {
-    return metaDataExpressionList;
-  }
-
-  public List<String> getAttributeColumns() {
-    return attributeColumns;
-  }
-
-  public List<Literal> getLiteralList() {
-    return literalList;
+  public void addAssignmentsList(Map<Symbol, ColumnSchema> assignments) {
+    assignmentsLists.add(assignments != null ? assignments : Collections.emptyMap());
   }
 }

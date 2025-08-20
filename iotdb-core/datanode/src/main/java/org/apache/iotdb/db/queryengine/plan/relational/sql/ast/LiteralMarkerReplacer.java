@@ -36,8 +36,10 @@ public class LiteralMarkerReplacer extends AstVisitor<Void, Void> {
 
   @Override
   protected Void visitNode(Node node, Void context) {
-    throw new UnsupportedOperationException(
-        "visitNode of Node {" + node.getClass() + "} is not supported in LiteralMarkerReplacer");
+    //    throw new UnsupportedOperationException(
+    //        "visitNode of Node {" + node.getClass() + "} is not supported in
+    // LiteralMarkerReplacer");
+    return null;
   }
 
   @Override
@@ -49,6 +51,7 @@ public class LiteralMarkerReplacer extends AstVisitor<Void, Void> {
   @Override
   protected Void visitQuerySpecification(QuerySpecification node, Void context) {
     node.getSelect().accept(this, context);
+    node.getFrom().ifPresent(from -> from.accept(this, context));
     node.getWhere().ifPresent(where -> where.accept(this, context));
     node.getGroupBy().ifPresent(groupBy -> groupBy.accept(this, context));
     node.getHaving().ifPresent(having -> having.accept(this, context));
@@ -99,6 +102,23 @@ public class LiteralMarkerReplacer extends AstVisitor<Void, Void> {
   @Override
   protected Void visitOffset(Offset node, Void context) {
     node.getRowCount().accept(this, context);
+    return context;
+  }
+
+  @Override
+  protected Void visitJoin(Join node, Void context) {
+    node.getLeft().accept(this, context);
+    node.getRight().accept(this, context);
+
+    // If there is an ON condition, continue the recursion
+    node.getCriteria()
+        .ifPresent(
+            criteria -> {
+              if (criteria instanceof JoinOn) {
+                ((JoinOn) criteria).getExpression().accept(this, context);
+              }
+            });
+
     return context;
   }
 

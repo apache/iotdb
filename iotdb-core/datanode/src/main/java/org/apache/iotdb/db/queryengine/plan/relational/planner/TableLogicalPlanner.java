@@ -123,12 +123,12 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.CachedValue.cloneMetadataExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.CachedValue.clonePlanWithNewLiterals;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.CachedValue.collectDeviceTableScanNodes;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.visibleFields;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode.COLUMN_NAME_PREFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
@@ -227,85 +227,48 @@ public class TableLogicalPlanner {
   }
 
   /** The metadataExpression in cachedValue needs to be used to update the scanNode in planNode */
-  private void adjustBySchema(PlanNode planNode, CachedValue cachedValue, Analysis analysis) {
-    if (!(planNode instanceof DeviceTableScanNode)) {
-      for (PlanNode child : planNode.getChildren()) {
-        adjustBySchema(child, cachedValue, analysis);
-      }
-      return;
-    }
-    long startTime = System.nanoTime();
-    DeviceTableScanNode deviceTableScanNode = (DeviceTableScanNode) planNode;
-    final Map<String, List<DeviceEntry>> deviceEntriesMap =
-        metadata.indexScan(
-            deviceTableScanNode.getQualifiedObjectName(),
-            cachedValue.getMetadataExpressionList().stream()
-                .map(
-                    expression ->
-                        ReplaceSymbolInExpression.transform(
-                            expression, cachedValue.getAssignments()))
-                .collect(Collectors.toList()),
-            cachedValue.getAttributeColumns(),
-            queryContext);
-    if (deviceEntriesMap.size() > 1) {
-      throw new SemanticException("Tree device view with multiple databases is unsupported yet.");
-    }
-    final String deviceDatabase =
-        !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
-    final List<DeviceEntry> deviceEntries =
-        Objects.nonNull(deviceDatabase)
-            ? deviceEntriesMap.get(deviceDatabase)
-            : Collections.emptyList(); // metadataExpressionList 没有更新导致 indexScan 拉取错误
-    deviceTableScanNode.setDeviceEntries(deviceEntries);
+  private void adjustSchema(
+      DeviceTableScanNode scanNode,
+      List<Expression> metaExprs,
+      List<String> attributeCols,
+      Map<Symbol, ColumnSchema> assignments,
+      Analysis analysis) {
 
-    final long schemaFetchCost = System.nanoTime() - startTime;
+    long startTime = System.nanoTime();
+
+    Map<String, List<DeviceEntry>> deviceEntriesMap =
+        metadata.indexScan(
+            scanNode.getQualifiedObjectName(), metaExprs, attributeCols, queryContext);
+
+    String deviceDatabase =
+        !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
+    List<DeviceEntry> deviceEntries =
+        deviceDatabase != null ? deviceEntriesMap.get(deviceDatabase) : Collections.emptyList();
+    scanNode.setDeviceEntries(deviceEntries);
+
+    Filter timeFilter =
+        scanNode
+            .getTimePredicate()
+            .map(v -> v.accept(new ConvertPredicateToTimeFilterVisitor(), null))
+            .orElse(null);
+    scanNode.setTimeFilter(timeFilter);
+
+    DataPartition dataPartition =
+        fetchDataPartitionByDevices(
+            scanNode instanceof TreeDeviceViewScanNode
+                ? ((TreeDeviceViewScanNode) scanNode).getTreeDBName()
+                : scanNode.getQualifiedObjectName().getDatabaseName(),
+            deviceEntries,
+            timeFilter);
+    analysis.upsertDataPartition(dataPartition);
+
+    long schemaFetchCost = System.nanoTime() - startTime;
     QueryPlanCostMetricSet.getInstance().recordTablePlanCost(SCHEMA_FETCHER, schemaFetchCost);
     queryContext.setFetchSchemaCost(schemaFetchCost);
 
-    if (deviceEntries.isEmpty()) {
-      if (analysis.noAggregates() && !analysis.hasJoinNode()) {
-        // no device entries, queries(except aggregation and join) can be finished
-        analysis.setEmptyDataSource(true);
-        analysis.setFinishQueryAfterAnalyze();
-      }
-    } else {
-      final Filter timeFilter =
-          deviceTableScanNode
-              .getTimePredicate()
-              .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
-              .orElse(null);
-
-      deviceTableScanNode.setTimeFilter(timeFilter);
-
-      startTime = System.nanoTime();
-      final DataPartition dataPartition =
-          fetchDataPartitionByDevices(
-              // for tree view, we need to pass actual tree db name to this method
-              deviceTableScanNode instanceof TreeDeviceViewScanNode
-                  ? ((TreeDeviceViewScanNode) deviceTableScanNode).getTreeDBName()
-                  : deviceTableScanNode.getQualifiedObjectName().getDatabaseName(),
-              deviceEntries,
-              timeFilter);
-
-      if (dataPartition.getDataPartitionMap().size() > 1) {
-        throw new IllegalStateException(
-            "Table model can only process data only in one database yet!");
-      }
-
-      if (dataPartition.getDataPartitionMap().isEmpty()) {
-        if (analysis.noAggregates() && !analysis.hasJoinNode()) {
-          // no data partitions, queries(except aggregation and join) can be finished
-          analysis.setEmptyDataSource(true);
-          analysis.setFinishQueryAfterAnalyze();
-        }
-      } else {
-        analysis.upsertDataPartition(dataPartition);
-      }
-
-      final long fetchPartitionCost = System.nanoTime() - startTime;
-      QueryPlanCostMetricSet.getInstance()
-          .recordTablePlanCost(PARTITION_FETCHER, fetchPartitionCost);
-      queryContext.setFetchPartitionCost(fetchPartitionCost);
+    if (deviceEntries.isEmpty() && analysis.noAggregates() && !analysis.hasJoinNode()) {
+      analysis.setEmptyDataSource(true);
+      analysis.setFinishQueryAfterAnalyze();
     }
   }
 
@@ -338,21 +301,38 @@ public class TableLogicalPlanner {
             new CachedValue.ClonerContext(queryContext.getQueryId(), literalList);
         PlanNode newPlan = clonePlanWithNewLiterals(cachedValue.getPlanNode(), clonerContext);
         // Clone the metadata expressions with new literals
-        List<Expression> newMetadataExpressions =
-            cloneMetadataExpressions(cachedValue.getMetadataExpressionList(), literalList);
+        List<List<Expression>> newMetadataExpressionLists = new ArrayList<>();
+        if (cachedValue.getMetadataExpressionLists() != null) {
+          for (List<Expression> exprList : cachedValue.getMetadataExpressionLists()) {
+            if (exprList != null) {
+              newMetadataExpressionLists.add(cloneMetadataExpressions(exprList, literalList));
+            } else {
+              // occupy an empty list and maintain a one-to-one correspondence with scanNodes
+              newMetadataExpressionLists.add(new ArrayList<>());
+            }
+          }
+        }
 
-        // Create a new CachedValue with cloned PlanNode and metadata
-        CachedValue newCachedValue =
-            new CachedValue(
-                newPlan,
-                literalList,
-                cachedValue.getRespHeader(),
-                cachedValue.getSymbolMap(),
-                cachedValue.getAssignments(),
-                newMetadataExpressions,
-                cachedValue.getAttributeColumns());
+        List<DeviceTableScanNode> scanNodes = collectDeviceTableScanNodes(newPlan);
 
-        adjustBySchema(newPlan, newCachedValue, analysis);
+        for (int i = 0; i < scanNodes.size(); i++) {
+          DeviceTableScanNode scanNode = scanNodes.get(i);
+
+          List<Expression> metaExprs =
+              i < newMetadataExpressionLists.size()
+                  ? newMetadataExpressionLists.get(i)
+                  : Collections.emptyList();
+          List<String> attributeCols =
+              i < cachedValue.getAttributeColumnsLists().size()
+                  ? cachedValue.getAttributeColumnsLists().get(i)
+                  : Collections.emptyList();
+          Map<Symbol, ColumnSchema> assignments =
+              i < cachedValue.getAssignmentsLists().size()
+                  ? cachedValue.getAssignmentsLists().get(i)
+                  : Collections.emptyMap();
+
+          adjustSchema(scanNode, metaExprs, attributeCols, assignments, analysis);
+        }
 
         logger.info(
             "Logical plan is cached, adjustment cost time: {}", System.nanoTime() - curTime);
@@ -399,16 +379,22 @@ public class TableLogicalPlanner {
       QueryPlanCostMetricSet.getInstance()
           .recordTablePlanCost(LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
 
+      CachedValue.ClonerContext clonerContext =
+          new CachedValue.ClonerContext(queryContext.getQueryId(), literalReference);
+      PlanNode clonedPlan = clonePlanWithNewLiterals(planNode, clonerContext);
+      List<DeviceTableScanNode> scanNodes = collectDeviceTableScanNodes(clonedPlan);
+
       PlanCacheManager.getInstance()
           .cacheValue(
               cachedKey,
-              planNode,
+              clonedPlan,
+              scanNodes,
               literalReference,
               analysis.getRespDatasetHeader(),
               symbolAllocator.cloneSymbolMap(),
-              queryContext.getAssignments(),
-              queryContext.getMetaDataExpressionList(),
-              queryContext.getAttributeColumns());
+              queryContext.getMetadataExpressionLists(),
+              queryContext.getAttributeColumnsLists(),
+              queryContext.getAssignmentsLists());
     }
     logger.info(
         "Logical plan is generated, fetch schema cost time: {}",
