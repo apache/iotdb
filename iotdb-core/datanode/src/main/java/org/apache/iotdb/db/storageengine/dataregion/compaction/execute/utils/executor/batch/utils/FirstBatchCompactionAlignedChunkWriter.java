@@ -101,7 +101,8 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
-    CompressionType timeCompression = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    CompressionType timeCompression =
+        TSFileDescriptor.getInstance().getConfig().getCompressor(timeType);
     timeChunkWriter =
         new FirstBatchCompactionTimeChunkWriter(
             "",
