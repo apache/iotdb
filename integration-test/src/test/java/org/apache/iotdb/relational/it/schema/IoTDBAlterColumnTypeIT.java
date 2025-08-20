@@ -20,6 +20,7 @@
 package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -1904,5 +1905,21 @@ public class IoTDBAlterColumnTypeIT {
       deviceSchemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
       deviceColumnIndices.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(i);
     }
+  }
+
+  @Test
+  public void testUsingSameColumn() {
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.TIMESTAMP, TSDataType.INT64));
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.INT64, TSDataType.TIMESTAMP));
+
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.DATE, TSDataType.INT32));
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.INT32, TSDataType.DATE));
+
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.TEXT, TSDataType.BLOB));
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.TEXT, TSDataType.STRING));
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.BLOB, TSDataType.TEXT));
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.BLOB, TSDataType.STRING));
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.STRING, TSDataType.BLOB));
+    assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.STRING, TSDataType.TEXT));
   }
 }

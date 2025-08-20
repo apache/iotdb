@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeRead
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -72,7 +73,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -141,13 +141,6 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(TimeOrderUtils.class)
           + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
           + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
-
-  private static final List<TSDataType> INT_SAME_ORIGIN_LIST =
-      Arrays.asList(TSDataType.DATE, TSDataType.INT32);
-  private static final List<TSDataType> LONG_SAME_ORIGIN_LIST =
-      Arrays.asList(TSDataType.TIMESTAMP, TSDataType.INT64);
-  private static final List<TSDataType> TEXT_SAME_ORIGIN_LIST =
-      Arrays.asList(TSDataType.STRING, TSDataType.BLOB, TSDataType.TEXT);
 
   public SeriesScanUtil(
       IFullPath seriesPath,
@@ -775,7 +768,7 @@ public class SeriesScanUtil implements Accountable {
         TSDataType finalDataType =
             isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
         if ((valueColumns[i].getDataType() != finalDataType)
-            && isSameOrigin(valueColumns[i].getDataType(), finalDataType)) {
+            && SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)) {
           isTypeInconsistent = true;
           break;
         }
@@ -948,7 +941,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case TEXT:
-          if (isSameOrigin(sourceType, TSDataType.TEXT)) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.TEXT)) {
             newValueColumns[i] = valueColumns[i];
           } else {
             newValueColumns[i] =
@@ -962,7 +955,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case TIMESTAMP:
-          if (isSameOrigin(sourceType, TSDataType.TIMESTAMP)) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.TIMESTAMP)) {
             newValueColumns[i] = valueColumns[i];
           } else if (sourceType == TSDataType.INT32) {
             newValueColumns[i] =
@@ -992,7 +985,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case DATE:
-          if (isSameOrigin(sourceType, TSDataType.DATE)) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.DATE)) {
             newValueColumns[i] = valueColumns[i];
           } else {
             newValueColumns[i] =
@@ -1004,7 +997,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case BLOB:
-          if (isSameOrigin(sourceType, TSDataType.BLOB)) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.BLOB)) {
             newValueColumns[i] = valueColumns[i];
           } else {
             newValueColumns[i] =
@@ -1018,7 +1011,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case STRING:
-          if (isSameOrigin(sourceType, TSDataType.STRING)) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.STRING)) {
             newValueColumns[i] = valueColumns[i];
           } else {
             newValueColumns[i] =
@@ -1040,18 +1033,6 @@ public class SeriesScanUtil implements Accountable {
 
     tsBlock = new TsBlock(tsBlock.getTimeColumn(), newValueColumns);
     return tsBlock;
-  }
-
-  private boolean isSameOrigin(TSDataType originalDataType, TSDataType dataType) {
-    if (originalDataType == dataType) {
-      return true;
-    }
-    return (INT_SAME_ORIGIN_LIST.contains(dataType)
-            && INT_SAME_ORIGIN_LIST.contains(originalDataType))
-        || (LONG_SAME_ORIGIN_LIST.contains(dataType)
-            && LONG_SAME_ORIGIN_LIST.contains(originalDataType))
-        || (TEXT_SAME_ORIGIN_LIST.contains(dataType)
-            && TEXT_SAME_ORIGIN_LIST.contains(originalDataType));
   }
 
   private TsBlock applyPushDownFilterAndLimitOffset(
