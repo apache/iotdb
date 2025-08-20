@@ -365,7 +365,6 @@ public class FileLoaderUtils {
     for (int i = 0, size = valueColumnMetadataList.size(); i < size; i++) {
       TimeseriesMetadata valueColumnMetadata = valueColumnMetadataList.get(i);
       if (valueColumnMetadata != null) {
-
         List<ModEntry> modifications =
             context.getPathModifications(
                 resource, alignedPath.getDeviceId(), valueColumnMetadata.getMeasurementId());
