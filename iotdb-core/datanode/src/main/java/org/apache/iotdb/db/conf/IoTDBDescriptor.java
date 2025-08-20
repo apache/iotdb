@@ -1791,6 +1791,31 @@ public class IoTDBDescriptor {
                     "max_tsblock_line_number",
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "max_tsblock_line_number"))));
+
+    String booleanCompressor = properties.getProperty("boolean_compressor");
+    if (booleanCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setBooleanCompression(booleanCompressor);
+    }
+    String int32Compressor = properties.getProperty("int32_compressor");
+    if (int32Compressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setInt32Compression(int32Compressor);
+    }
+    String int64Compressor = properties.getProperty("int64_compressor");
+    if (int64Compressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setInt64Compression(int64Compressor);
+    }
+    String floatCompressor = properties.getProperty("float_compressor");
+    if (floatCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setFloatCompression(floatCompressor);
+    }
+    String doubleCompressor = properties.getProperty("double_compressor");
+    if (doubleCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setDoubleCompression(doubleCompressor);
+    }
+    String textCompressor = properties.getProperty("text_compressor");
+    if (textCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setTextCompression(textCompressor);
+    }
   }
 
   // Mqtt related
