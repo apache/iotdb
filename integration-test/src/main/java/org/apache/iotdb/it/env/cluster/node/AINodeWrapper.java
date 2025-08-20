@@ -22,15 +22,22 @@ package org.apache.iotdb.it.env.cluster.node;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
+import org.apache.commons.io.file.PathUtils;
 import org.slf4j.Logger;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.AI_NODE_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
@@ -51,6 +58,8 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   private static final String PROPERTIES_FILE = "iotdb-ainode.properties";
   public static final String CONFIG_PATH = "conf";
   public static final String SCRIPT_PATH = "sbin";
+  public static final String BUILT_IN_MODEL_PATH = "data/ainode/models/weights";
+  public static final String CACHE_BUILT_IN_MODEL_PATH = "/tmp/data/ainode/models/weights";
 
   private void replaceAttribute(String[] keys, String[] values, String filePath) {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
@@ -114,6 +123,39 @@ public class AINodeWrapper extends AbstractNodeWrapper {
             Integer.toString(this.clusterIngressPort)
           },
           propertiesFile);
+
+      // copy built-in LTSM
+      String builtInModelPath = filePrefix + File.separator + BUILT_IN_MODEL_PATH;
+      new File(builtInModelPath).mkdirs();
+      try {
+        if (new File(builtInModelPath).exists()) {
+          PathUtils.deleteDirectory(Paths.get(builtInModelPath));
+        }
+      } catch (NoSuchFileException e) {
+        // ignored
+      }
+      try (Stream<Path> s = Files.walk(Paths.get(CACHE_BUILT_IN_MODEL_PATH))) {
+        s.forEach(
+            source -> {
+              Path destination =
+                  Paths.get(
+                      builtInModelPath,
+                      source.toString().substring(CACHE_BUILT_IN_MODEL_PATH.length()));
+              logger.info("AINode copying model weights from {} to {}", source, destination);
+              try {
+                Files.copy(
+                    source,
+                    destination,
+                    LinkOption.NOFOLLOW_LINKS,
+                    StandardCopyOption.COPY_ATTRIBUTES);
+              } catch (IOException e) {
+                logger.error("AINode got error copying model weights", e);
+                throw new RuntimeException(e);
+              }
+            });
+      } catch (Exception e) {
+        logger.error("AINode got error copying model weights", e);
+      }
 
       // start AINode
       List<String> startCommand = new ArrayList<>();

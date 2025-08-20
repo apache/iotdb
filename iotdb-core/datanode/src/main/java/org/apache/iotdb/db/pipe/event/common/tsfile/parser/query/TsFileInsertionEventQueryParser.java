@@ -277,111 +277,118 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return () ->
-        new Iterator<TabletInsertionEvent>() {
+    if (tabletInsertionIterable == null) {
+      tabletInsertionIterable =
+          () ->
+              new Iterator<TabletInsertionEvent>() {
 
-          private TsFileInsertionEventQueryParserTabletIterator tabletIterator = null;
+                private TsFileInsertionEventQueryParserTabletIterator tabletIterator = null;
 
-          @Override
-          public boolean hasNext() {
-            while (tabletIterator == null || !tabletIterator.hasNext()) {
-              if (!deviceMeasurementsMapIterator.hasNext()) {
-                close();
-                return false;
-              }
+                @Override
+                public boolean hasNext() {
+                  while (tabletIterator == null || !tabletIterator.hasNext()) {
+                    if (!deviceMeasurementsMapIterator.hasNext()) {
+                      close();
+                      return false;
+                    }
 
-              final Map.Entry<IDeviceID, List<String>> entry = deviceMeasurementsMapIterator.next();
+                    final Map.Entry<IDeviceID, List<String>> entry =
+                        deviceMeasurementsMapIterator.next();
 
-              try {
-                tabletIterator =
-                    new TsFileInsertionEventQueryParserTabletIterator(
-                        tsFileReader,
-                        measurementDataTypeMap,
-                        entry.getKey(),
-                        entry.getValue(),
-                        timeFilterExpression,
-                        allocatedMemoryBlockForTablet);
-              } catch (final Exception e) {
-                close();
-                throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
-              }
-            }
+                    try {
+                      tabletIterator =
+                          new TsFileInsertionEventQueryParserTabletIterator(
+                              tsFileReader,
+                              measurementDataTypeMap,
+                              entry.getKey(),
+                              entry.getValue(),
+                              timeFilterExpression,
+                              allocatedMemoryBlockForTablet);
+                    } catch (final Exception e) {
+                      close();
+                      throw new PipeException(
+                          "failed to create TsFileInsertionDataTabletIterator", e);
+                    }
+                  }
 
-            return true;
-          }
+                  return true;
+                }
 
-          @Override
-          public TabletInsertionEvent next() {
-            if (!hasNext()) {
-              close();
-              throw new NoSuchElementException();
-            }
+                @Override
+                public TabletInsertionEvent next() {
+                  if (!hasNext()) {
+                    close();
+                    throw new NoSuchElementException();
+                  }
 
-            final Tablet tablet = tabletIterator.next();
-            final boolean isAligned =
-                deviceIsAlignedMap.getOrDefault(
-                    IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);
+                  final Tablet tablet = tabletIterator.next();
+                  final boolean isAligned =
+                      deviceIsAlignedMap.getOrDefault(
+                          IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);
 
-            final TabletInsertionEvent next;
-            if (!hasNext()) {
-              next =
-                  sourceEvent == null
-                      ? new PipeRawTabletInsertionEvent(
-                          null,
-                          null,
-                          null,
-                          null,
-                          tablet,
-                          isAligned,
-                          null,
-                          0,
-                          pipeTaskMeta,
-                          sourceEvent,
-                          true)
-                      : new PipeRawTabletInsertionEvent(
-                          sourceEvent.getRawIsTableModelEvent(),
-                          sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                          sourceEvent.getRawTableModelDataBase(),
-                          sourceEvent.getRawTreeModelDataBase(),
-                          tablet,
-                          isAligned,
-                          sourceEvent.getPipeName(),
-                          sourceEvent.getCreationTime(),
-                          pipeTaskMeta,
-                          sourceEvent,
-                          true);
-              close();
-            } else {
-              next =
-                  sourceEvent == null
-                      ? new PipeRawTabletInsertionEvent(
-                          null,
-                          null,
-                          null,
-                          null,
-                          tablet,
-                          isAligned,
-                          null,
-                          0,
-                          pipeTaskMeta,
-                          sourceEvent,
-                          false)
-                      : new PipeRawTabletInsertionEvent(
-                          sourceEvent.getRawIsTableModelEvent(),
-                          sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                          sourceEvent.getRawTableModelDataBase(),
-                          sourceEvent.getRawTreeModelDataBase(),
-                          tablet,
-                          isAligned,
-                          sourceEvent.getPipeName(),
-                          sourceEvent.getCreationTime(),
-                          pipeTaskMeta,
-                          sourceEvent,
-                          false);
-            }
-            return next;
-          }
-        };
+                  final TabletInsertionEvent next;
+                  if (!hasNext()) {
+                    next =
+                        sourceEvent == null
+                            ? new PipeRawTabletInsertionEvent(
+                                null,
+                                null,
+                                null,
+                                null,
+                                tablet,
+                                isAligned,
+                                null,
+                                0,
+                                pipeTaskMeta,
+                                sourceEvent,
+                                true)
+                            : new PipeRawTabletInsertionEvent(
+                                sourceEvent.getRawIsTableModelEvent(),
+                                sourceEvent.getSourceDatabaseNameFromDataRegion(),
+                                sourceEvent.getRawTableModelDataBase(),
+                                sourceEvent.getRawTreeModelDataBase(),
+                                tablet,
+                                isAligned,
+                                sourceEvent.getPipeName(),
+                                sourceEvent.getCreationTime(),
+                                pipeTaskMeta,
+                                sourceEvent,
+                                true);
+                    close();
+                  } else {
+                    next =
+                        sourceEvent == null
+                            ? new PipeRawTabletInsertionEvent(
+                                null,
+                                null,
+                                null,
+                                null,
+                                tablet,
+                                isAligned,
+                                null,
+                                0,
+                                pipeTaskMeta,
+                                sourceEvent,
+                                false)
+                            : new PipeRawTabletInsertionEvent(
+                                sourceEvent.getRawIsTableModelEvent(),
+                                sourceEvent.getSourceDatabaseNameFromDataRegion(),
+                                sourceEvent.getRawTableModelDataBase(),
+                                sourceEvent.getRawTreeModelDataBase(),
+                                tablet,
+                                isAligned,
+                                sourceEvent.getPipeName(),
+                                sourceEvent.getCreationTime(),
+                                pipeTaskMeta,
+                                sourceEvent,
+                                false);
+                  }
+                  return next;
+                }
+              };
+    }
+
+    return tabletInsertionIterable;
   }
 
   @Override

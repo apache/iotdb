@@ -582,7 +582,10 @@ public class TableLogicalPlanner {
           ClusterPartitionFetcher.getInstance().getSchemaPartition(tree));
 
       if (analysis.getSchemaPartitionInfo().getSchemaPartitionMap().size() > 1) {
-        throw new SemanticException("Tree device view with multiple databases is unsupported yet.");
+        throw new SemanticException(
+            "Tree device view with multiple databases("
+                + analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet()
+                + ") is unsupported yet.");
       }
     } else {
       analysis.setSchemaPartitionInfo(

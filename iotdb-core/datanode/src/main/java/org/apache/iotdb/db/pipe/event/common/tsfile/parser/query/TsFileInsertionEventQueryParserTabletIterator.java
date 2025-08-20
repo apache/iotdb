@@ -62,6 +62,8 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
 
   private final PipeMemoryBlock allocatedBlockForTablet;
 
+  private RowRecord rowRecord;
+
   TsFileInsertionEventQueryParserTabletIterator(
       final TsFileReader tsFileReader,
       final Map<String, TSDataType> measurementDataTypeMap,
@@ -135,16 +137,15 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
               // Used for tree model
               deviceId.toString(), schemas, 1);
       tablet.initBitMaps();
-      // Ignore the memory cost of tablet
-      PipeDataNodeResourceManager.memory().forceResize(allocatedBlockForTablet, 0);
       return tablet;
     }
 
     boolean isFirstRow = true;
     while (queryDataSet.hasNext()) {
-      final RowRecord rowRecord = queryDataSet.next();
+      final RowRecord rowRecord = this.rowRecord != null ? this.rowRecord : queryDataSet.next();
       if (isFirstRow) {
         // Calculate row count and memory size of the tablet based on the first row
+        this.rowRecord = rowRecord; // Save the first row for later use
         Pair<Integer, Integer> rowCountAndMemorySize =
             PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(rowRecord);
         tablet =
@@ -152,8 +153,11 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
                 // Used for tree model
                 deviceId.toString(), schemas, rowCountAndMemorySize.getLeft());
         tablet.initBitMaps();
-        PipeDataNodeResourceManager.memory()
-            .forceResize(allocatedBlockForTablet, rowCountAndMemorySize.getRight());
+        if (allocatedBlockForTablet.getMemoryUsageInBytes() < rowCountAndMemorySize.getRight()) {
+          PipeDataNodeResourceManager.memory()
+              .forceResize(allocatedBlockForTablet, rowCountAndMemorySize.getRight());
+        }
+        this.rowRecord = null; // Clear the saved first row
         isFirstRow = false;
       }
 
