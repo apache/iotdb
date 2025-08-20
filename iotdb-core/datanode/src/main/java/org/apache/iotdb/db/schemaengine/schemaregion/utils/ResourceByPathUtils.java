@@ -283,7 +283,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
       if (!memChunk.isEmpty()) {
         memChunk.sortTvLists();
-        memChunk.initChunkMetaFromTVLists2(scanOrder, globalTimeFilter);
+        memChunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
         startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
         endTime = Math.max(endTime, memChunk.getChunkMetaData().getEndTime());
         AbstractAlignedChunkMetadata alignedChunkMetadata =
@@ -514,7 +514,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
       if (!memChunk.isEmpty()) {
         memChunk.sortTvLists();
-        memChunk.initChunkMetaFromTVLists2(scanOrder, globalTimeFilter);
+        memChunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
         startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
         endTime = Math.max(endTime, memChunk.getChunkMetaData().getEndTime());
       }

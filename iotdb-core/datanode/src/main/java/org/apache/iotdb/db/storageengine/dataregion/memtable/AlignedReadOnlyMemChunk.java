@@ -283,7 +283,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   }
 
   @Override
-  public void initChunkMetaFromTVLists2(Ordering scanOrder, Filter globalTimeFilter) {
+  public void initChunkMetaFromTVListsWithFakeStatistics(
+      Ordering scanOrder, Filter globalTimeFilter) {
     // create MergeSortAlignedTVListIterator
     List<AlignedTVList> alignedTvLists =
         alignedTvListQueryMap.keySet().stream()
@@ -307,10 +308,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     long chunkStartTime = Long.MAX_VALUE;
     long chunkEndTime = Long.MIN_VALUE;
     long rowNum = 0;
-    for (AlignedTVList tvList : alignedTvLists) {
+    for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
+      TVList tvList = entry.getKey();
       chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
       chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
-      rowNum += tvList.rowCount();
+      rowNum += entry.getValue();
     }
 
     int pageNum = (int) Math.min(100, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_PAGE / 10));
@@ -321,34 +323,24 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
       Statistics<? extends Serializable>[] pageValueStatistics = new Statistics[dataTypes.size()];
       for (int column = 0; column < dataTypes.size(); column++) {
-        pageValueStatistics[column] = Statistics.getStatsByType(dataTypes.get(column));
-        pageValueStatistics[column].setStartTime(pageStartTime);
-        pageValueStatistics[column].setEndTime(pageEndTime);
-        pageValueStatistics[column].setCount(1);
+        pageValueStatistics[column] =
+            generateFakeStatistics(dataTypes.get(column), pageStartTime, pageEndTime);
       }
       valueStatisticsList.add(pageValueStatistics);
       Statistics<? extends Serializable> pageTimeStatistics =
-          Statistics.getStatsByType(TSDataType.VECTOR);
+          generateFakeStatistics(TSDataType.VECTOR, pageStartTime, pageEndTime);
       timeStatisticsList.add(pageTimeStatistics);
-      pageTimeStatistics.setStartTime(pageStartTime);
-      pageTimeStatistics.setEndTime(pageEndTime);
-      pageTimeStatistics.setCount(1);
     }
 
     Statistics<? extends Serializable>[] chunkValueStatistics = new Statistics[dataTypes.size()];
     for (int column = 0; column < dataTypes.size(); column++) {
-      chunkValueStatistics[column] = Statistics.getStatsByType(dataTypes.get(column));
-      chunkValueStatistics[column].setStartTime(chunkStartTime);
-      chunkValueStatistics[column].setEndTime(chunkEndTime);
-      chunkValueStatistics[column].setCount(1);
+      chunkValueStatistics[column] =
+          generateFakeStatistics(dataTypes.get(column), chunkStartTime, chunkEndTime);
     }
 
     // init chunk meta
     Statistics<? extends Serializable> chunkTimeStatistics =
-        Statistics.getStatsByType(TSDataType.VECTOR);
-    chunkTimeStatistics.setStartTime(chunkStartTime);
-    chunkTimeStatistics.setEndTime(chunkEndTime);
-    chunkTimeStatistics.setCount(1);
+        generateFakeStatistics(TSDataType.VECTOR, chunkStartTime, chunkEndTime);
     IChunkMetadata timeChunkMetadata =
         new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, chunkTimeStatistics);
     timeChunkMetadata.setModified(true);

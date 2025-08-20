@@ -231,7 +231,7 @@ public class ModificationUtils {
         }
       }
     } else {
-      while (deletionList != null && deleteCursor[0] >= 0) {
+      while (deletionList != null && !deletionList.isEmpty() && deleteCursor[0] >= 0) {
         if (deletionList.get(deleteCursor[0]).contains(timestamp)) {
           return true;
         } else if (deletionList.get(deleteCursor[0]).getMin() >= timestamp) {

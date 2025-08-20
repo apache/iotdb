@@ -218,7 +218,8 @@ public class ReadOnlyMemChunk {
     cachedMetaData = metaData;
   }
 
-  public void initChunkMetaFromTVLists2(Ordering scanOrder, Filter globalTimeFilter) {
+  public void initChunkMetaFromTVListsWithFakeStatistics(
+      Ordering scanOrder, Filter globalTimeFilter) {
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     timeValuePairIterator =
         MemPointIteratorFactory.create(
@@ -230,18 +231,17 @@ public class ReadOnlyMemChunk {
             floatPrecision,
             encoding,
             MAX_NUMBER_OF_POINTS_IN_PAGE);
-    Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
     long chunkStartTime = Long.MAX_VALUE;
     long chunkEndTime = Long.MIN_VALUE;
     long rowNum = 0;
-    for (TVList tvList : tvLists) {
+    for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
+      TVList tvList = entry.getKey();
       chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
       chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
-      rowNum += tvList.rowCount();
+      rowNum += entry.getValue();
     }
-    chunkStatistics.setStartTime(chunkStartTime);
-    chunkStatistics.setEndTime(chunkEndTime);
-    chunkStatistics.setCount(1);
+    Statistics<? extends Serializable> chunkStatistics =
+        generateFakeStatistics(dataType, chunkStartTime, chunkEndTime);
     cachedMetaData = new ChunkMetadata(measurementUid, dataType, null, null, 0, chunkStatistics);
 
     int pageNum = (int) Math.min(100, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_PAGE / 10));
@@ -249,17 +249,21 @@ public class ReadOnlyMemChunk {
     for (int i = 0; i < pageNum; i++) {
       long pageStartTime = chunkStartTime + i * timeInterval;
       long pageEndTime = (i == pageNum - 1) ? chunkEndTime : (pageStartTime + timeInterval - 1);
-
-      Statistics<? extends Serializable> pageStats = Statistics.getStatsByType(dataType);
-      pageStats.setStartTime(pageStartTime);
-      pageStats.setEndTime(pageEndTime);
-      pageStats.setCount(1);
-      pageStatisticsList.add(pageStats);
+      pageStatisticsList.add(generateFakeStatistics(dataType, pageStartTime, pageEndTime));
     }
 
     cachedMetaData.setChunkLoader(new MemChunkLoader(context, this));
     cachedMetaData.setVersion(Long.MAX_VALUE);
     cachedMetaData.setModified(true);
+  }
+
+  protected Statistics<? extends Serializable> generateFakeStatistics(
+      TSDataType dataType, long startTime, long endTime) {
+    Statistics<? extends Serializable> stats = Statistics.getStatsByType(dataType);
+    stats.setStartTime(startTime);
+    stats.setEndTime(endTime);
+    stats.setCount(1);
+    return stats;
   }
 
   public TSDataType getDataType() {
