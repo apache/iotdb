@@ -155,7 +155,7 @@ class TemplateSchemaFetcher {
                   measurements[j],
                   dataType,
                   getDefaultEncoding(dataType),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor());
+                  TSFileDescriptor.getInstance().getConfig().getCompressor(dataType));
         }
       }
     }
