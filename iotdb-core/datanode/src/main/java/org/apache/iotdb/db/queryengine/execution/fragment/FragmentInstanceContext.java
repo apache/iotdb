@@ -586,8 +586,17 @@ public class FragmentInstanceContext extends QueryContext {
     }
 
     long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    long startAcquireLockTime = System.nanoTime();
     if (dataRegion.tryReadLock(waitForLockTime)) {
       try {
+        // minus already consumed time
+        waitForLockTime -= (System.nanoTime() - startAcquireLockTime) / 1_000_000;
+
+        // no remaining time slice
+        if (waitForLockTime <= 0) {
+          return false;
+        }
+
         this.sharedQueryDataSource =
             dataRegion.query(
                 sourcePaths,
@@ -632,6 +641,13 @@ public class FragmentInstanceContext extends QueryContext {
     long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
     if (dataRegion.tryReadLock(waitForLockTime)) {
       try {
+        // minus already consumed time
+        waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
+
+        // no remaining time slice
+        if (waitForLockTime <= 0) {
+          return false;
+        }
         this.sharedQueryDataSource =
             dataRegion.queryForDeviceRegionScan(
                 devicePathsToContext,
@@ -666,6 +682,13 @@ public class FragmentInstanceContext extends QueryContext {
     }
     long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
     if (dataRegion.tryReadLock(waitForLockTime)) {
+      // minus already consumed time
+      waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
+
+      // no remaining time slice
+      if (waitForLockTime <= 0) {
+        return false;
+      }
       try {
         this.sharedQueryDataSource =
             dataRegion.queryForSeriesRegionScan(

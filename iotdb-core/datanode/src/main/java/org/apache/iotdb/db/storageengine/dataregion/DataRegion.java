@@ -2126,9 +2126,7 @@ public class DataRegion implements IDataRegionForQuery {
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       } finally {
-        for (TsFileProcessor processor : needToUnLockList) {
-          processor.readUnLock();
-        }
+        clearAlreadyLockedList(needToUnLockList);
       }
     } else {
       // means that failed to acquire lock within the specific time
@@ -2154,12 +2152,26 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileProcessor> needToUnLockList) {
     // deal with seq resources
     for (TsFileResource tsFileResource : seqResources) {
+      // only need to acquire flush lock for those unclosed and satisfied tsfile
       if (!tsFileResource.isClosed()
           && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, true, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
+          long startTime = System.currentTimeMillis();
           if (tsFileProcessor.tryReadLock(waitTimeInMs)) {
+            // minus already consumed time
+            waitTimeInMs -= (System.nanoTime() - startTime) / 1_000_000;
+
             needToUnLockList.add(tsFileProcessor);
+
+            // no remaining time slice
+            if (waitTimeInMs <= 0) {
+              clearAlreadyLockedList(needToUnLockList);
+              return false;
+            }
+          } else {
+            clearAlreadyLockedList(needToUnLockList);
+            return false;
           }
         } catch (InterruptedException e) {
           for (TsFileProcessor processor : needToUnLockList) {
@@ -2177,20 +2189,36 @@ public class DataRegion implements IDataRegionForQuery {
           && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, false, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
+          long startTime = System.currentTimeMillis();
           if (tsFileProcessor.tryReadLock(waitTimeInMs)) {
+            // minus already consumed time
+            waitTimeInMs -= (System.nanoTime() - startTime) / 1_000_000;
+
             needToUnLockList.add(tsFileProcessor);
+            // no remaining time slice
+            if (waitTimeInMs <= 0) {
+              clearAlreadyLockedList(needToUnLockList);
+              return false;
+            }
+          } else {
+            clearAlreadyLockedList(needToUnLockList);
+            return false;
           }
         } catch (InterruptedException e) {
-          for (TsFileProcessor processor : needToUnLockList) {
-            processor.readUnLock();
-          }
-          needToUnLockList.clear();
+          clearAlreadyLockedList(needToUnLockList);
           Thread.currentThread().interrupt();
           return false;
         }
       }
     }
     return true;
+  }
+
+  private void clearAlreadyLockedList(List<TsFileProcessor> needToUnLockList) {
+    for (TsFileProcessor processor : needToUnLockList) {
+      processor.readUnLock();
+    }
+    needToUnLockList.clear();
   }
 
   @Override
@@ -2238,9 +2266,7 @@ public class DataRegion implements IDataRegionForQuery {
             UNSEQUENCE_TSFILE, unSeqFileScanHandles.size());
         return new QueryDataSourceForRegionScan(seqFileScanHandles, unSeqFileScanHandles);
       } finally {
-        for (TsFileProcessor processor : needToUnLockList) {
-          processor.readUnLock();
-        }
+        clearAlreadyLockedList(needToUnLockList);
       }
     } else {
       // means that failed to acquire lock within the specific time
@@ -2317,9 +2343,7 @@ public class DataRegion implements IDataRegionForQuery {
             UNSEQUENCE_TSFILE, unSeqFileScanHandles.size());
         return new QueryDataSourceForRegionScan(seqFileScanHandles, unSeqFileScanHandles);
       } finally {
-        for (TsFileProcessor processor : needToUnLockList) {
-          processor.readUnLock();
-        }
+        clearAlreadyLockedList(needToUnLockList);
       }
     } else {
       // means that failed to acquire lock within the specific time
