@@ -289,6 +289,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
@@ -4277,14 +4278,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitExtendRegion(IoTDBSqlParser.ExtendRegionContext ctx) {
-    return new ExtendRegionStatement(
-        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    return new ExtendRegionStatement(regionIds, Integer.parseInt(ctx.targetDataNodeId.getText()));
   }
 
   @Override
   public Statement visitRemoveRegion(IoTDBSqlParser.RemoveRegionContext ctx) {
-    return new RemoveRegionStatement(
-        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    return new RemoveRegionStatement(regionIds, Integer.parseInt(ctx.targetDataNodeId.getText()));
   }
 
   @Override
