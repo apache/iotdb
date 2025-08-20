@@ -23,51 +23,62 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class CachedValue {
 
   PlanNode planNode;
+  List<DeviceTableScanNode> scanNodes;
 
   DatasetHeader respHeader;
   HashMap<Symbol, Type> symbolMap;
-  Map<Symbol, ColumnSchema> assignments;
 
   // Used for indexScan to fetch device
-  List<Expression> metadataExpressionList;
-  List<String> attributeColumns;
+  List<List<Expression>> metadataExpressionLists;
+  List<List<String>> attributeColumnsLists;
+  List<Map<Symbol, ColumnSchema>> assignmentsLists;
+
   List<Literal> literalReference;
 
   public CachedValue(
       PlanNode planNode,
+      List<DeviceTableScanNode> scanNodes,
       List<Literal> literalReference,
       DatasetHeader header,
       HashMap<Symbol, Type> symbolMap,
-      Map<Symbol, ColumnSchema> assignments,
-      List<Expression> metadataExpressionList,
-      List<String> attributeColumns) {
+      List<List<Expression>> metadataExpressionLists,
+      List<List<String>> attributeColumnsLists,
+      List<Map<Symbol, ColumnSchema>> assignmentsLists) {
     this.planNode = planNode;
+    this.scanNodes = scanNodes;
     this.respHeader = header;
     this.symbolMap = symbolMap;
-    this.assignments = assignments;
-    this.metadataExpressionList = metadataExpressionList;
-    this.attributeColumns = attributeColumns;
+    this.metadataExpressionLists = metadataExpressionLists;
+    this.attributeColumnsLists = attributeColumnsLists;
+    this.assignmentsLists = assignmentsLists;
     this.literalReference = literalReference;
   }
 
@@ -79,20 +90,24 @@ public class CachedValue {
     return planNode;
   }
 
+  public List<DeviceTableScanNode> getScanNodes() {
+    return scanNodes;
+  }
+
   public HashMap<Symbol, Type> getSymbolMap() {
     return symbolMap;
   }
 
-  public List<Expression> getMetadataExpressionList() {
-    return metadataExpressionList;
+  public List<List<Expression>> getMetadataExpressionLists() {
+    return metadataExpressionLists;
   }
 
-  public List<String> getAttributeColumns() {
-    return attributeColumns;
+  public List<List<String>> getAttributeColumnsLists() {
+    return attributeColumnsLists;
   }
 
-  public Map<Symbol, ColumnSchema> getAssignments() {
-    return assignments;
+  public List<Map<Symbol, ColumnSchema>> getAssignmentsLists() {
+    return assignmentsLists;
   }
 
   public List<Literal> getLiteralReference() {
@@ -165,14 +180,56 @@ public class CachedValue {
     @Override
     public PlanNode visitPlan(PlanNode node, ClonerContext context) {
       // Default case, just return the node itself
-      return node;
+      // return node;
+      throw new UnsupportedOperationException(
+          "visitNode of Node {" + node.getClass() + "} is not supported in PlanNodeCloner");
     }
 
     @Override
-    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, ClonerContext context) {
+    public PlanNode visitOutput(OutputNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      node.setChild(newChild);
-      return node;
+      OutputNode newNode = (OutputNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitCollect(CollectNode node, ClonerContext context) {
+      List<PlanNode> newChildren = new ArrayList<>();
+      for (PlanNode child : node.getChildren()) {
+        newChildren.add(child.accept(this, context));
+      }
+
+      CollectNode newNode =
+          new CollectNode(
+              context.getQueryId().genPlanNodeId(),
+              newChildren,
+              ImmutableList.copyOf(node.getOutputSymbols()));
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitMergeSort(MergeSortNode node, ClonerContext context) {
+      List<PlanNode> newChildren = new ArrayList<>();
+      for (PlanNode child : node.getChildren()) {
+        newChildren.add(child.accept(this, context));
+      }
+
+      MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
+      newNode.setChildren(newChildren);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitSort(SortNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+
+      return new SortNode(
+          context.getQueryId().genPlanNodeId(),
+          newChild,
+          node.getOrderingScheme(),
+          node.isPartial(),
+          node.isOrderByAllIdsAndTime());
     }
 
     @Override
@@ -195,6 +252,27 @@ public class CachedValue {
       Assignments newAssignments = new Assignments(newAssignmentsMap);
 
       return new ProjectNode(context.getQueryId().genPlanNodeId(), newChild, newAssignments);
+    }
+
+    @Override
+    public PlanNode visitJoin(JoinNode node, ClonerContext context) {
+      PlanNode newLeft = node.getLeftChild().accept(this, context);
+      PlanNode newRight = node.getRightChild().accept(this, context);
+
+      Optional<Expression> newFilter =
+          node.getFilter().map(expr -> expr.accept(exprCloner, context.getNewLiterals()));
+
+      return new JoinNode(
+          context.getQueryId().genPlanNodeId(),
+          node.getJoinType(),
+          newLeft,
+          newRight,
+          ImmutableList.copyOf(node.getCriteria()),
+          node.getAsofCriteria(),
+          ImmutableList.copyOf(node.getLeftOutputSymbols()),
+          ImmutableList.copyOf(node.getRightOutputSymbols()),
+          newFilter,
+          node.isSpillable());
     }
 
     @Override
@@ -229,6 +307,21 @@ public class CachedValue {
               node.containsNonAlignedDevice());
 
       return newNode;
+    }
+  }
+
+  public static List<DeviceTableScanNode> collectDeviceTableScanNodes(PlanNode root) {
+    List<DeviceTableScanNode> list = new ArrayList<>();
+    traverse(root, list);
+    return list;
+  }
+
+  private static void traverse(PlanNode node, List<DeviceTableScanNode> list) {
+    if (node instanceof DeviceTableScanNode) {
+      list.add((DeviceTableScanNode) node);
+    }
+    for (PlanNode child : node.getChildren()) {
+      traverse(child, list);
     }
   }
 
