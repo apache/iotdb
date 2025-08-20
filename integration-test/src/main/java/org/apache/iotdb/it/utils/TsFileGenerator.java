@@ -252,7 +252,6 @@ public class TsFileGenerator implements AutoCloseable {
   public void generateDeletion(final String device) throws IOException, IllegalPathException {
     try (final ModificationFile modificationFile =
         new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
-      writer.flushAllChunkGroups();
       modificationFile.write(
           new Deletion(
               new PartialPath(
@@ -261,7 +260,7 @@ public class TsFileGenerator implements AutoCloseable {
               Long.MIN_VALUE,
               Long.MAX_VALUE));
       device2TimeSet.remove(device);
-      LOGGER.info("Delete device {}", device);
+      device2MeasurementSchema.remove(device);
     }
   }
 
@@ -269,7 +268,6 @@ public class TsFileGenerator implements AutoCloseable {
       throws IOException, IllegalPathException {
     try (final ModificationFile modificationFile =
         new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
-      writer.flushAllChunkGroups();
       modificationFile.write(
           new Deletion(
               new PartialPath(
@@ -278,7 +276,6 @@ public class TsFileGenerator implements AutoCloseable {
               Long.MIN_VALUE,
               Long.MAX_VALUE));
       device2MeasurementSchema.get(device).remove(measurement);
-      LOGGER.info("Delete measurement {} of device {}", measurement.getMeasurementId(), device);
     }
   }
 
