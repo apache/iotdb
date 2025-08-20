@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.it.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -246,6 +247,39 @@ public class TsFileGenerator implements AutoCloseable {
     final Binary[] binaries = (Binary[]) obj;
     binaries[row] =
         new Binary(String.format("test point %d", random.nextInt()), TSFileConfig.STRING_CHARSET);
+  }
+
+  public void generateDeletion(final String device) throws IOException, IllegalPathException {
+    try (final ModificationFile modificationFile =
+        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+      writer.flushAllChunkGroups();
+      modificationFile.write(
+          new Deletion(
+              new PartialPath(
+                  device + TsFileConstant.PATH_SEPARATOR + IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+              tsFile.length(),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+      device2TimeSet.remove(device);
+      LOGGER.info("Delete device {}", device);
+    }
+  }
+
+  public void generateDeletion(final String device, final MeasurementSchema measurement)
+      throws IOException, IllegalPathException {
+    try (final ModificationFile modificationFile =
+        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+      writer.flushAllChunkGroups();
+      modificationFile.write(
+          new Deletion(
+              new PartialPath(
+                  device + TsFileConstant.PATH_SEPARATOR + measurement.getMeasurementId()),
+              tsFile.length(),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+      device2MeasurementSchema.get(device).remove(measurement);
+      LOGGER.info("Delete device {}", device);
+    }
   }
 
   public void generateDeletion(final String device, final int number)
