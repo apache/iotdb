@@ -580,7 +580,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       if (deviceEntriesMap.size() > 1) {
-        throw new SemanticException("Tree device view with multiple databases is unsupported yet.");
+        throw new SemanticException(
+            "Tree device view with multiple databases("
+                + deviceEntriesMap.keySet()
+                + ") is unsupported yet.");
       }
       final String deviceDatabase =
           !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
