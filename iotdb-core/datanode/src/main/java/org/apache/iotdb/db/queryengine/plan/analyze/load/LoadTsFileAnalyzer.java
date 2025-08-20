@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -58,7 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -73,6 +73,7 @@ import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -97,7 +98,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -546,7 +546,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
         for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
           try {
-            if (schemaCache.isTimeseriesDeletedByMods(device, timeseriesMetadata)) {
+            if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
               continue;
             }
           } catch (IllegalPathException e) {
@@ -554,7 +554,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             // IllegalPathException.
             if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
               LOGGER.warn(
-                  "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                  "Failed to check if device {}, timeSeries {} is deleted by mods. Will see it as not deleted.",
                   device,
                   timeseriesMetadata.getMeasurementId(),
                   e);
@@ -926,7 +926,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
     private Set<PartialPath> alreadySetDatabases;
 
-    private Collection<Modification> currentModifications;
+    private PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> currentModifications;
     private ITimeIndex currentTimeIndex;
 
     private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
@@ -944,7 +944,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.currentBatchDevice2TimeSeriesSchemas = new HashMap<>();
       this.tsFileDevice2IsAligned = new HashMap<>();
       this.alreadySetDatabases = new HashSet<>();
-      this.currentModifications = new ArrayList<>();
+      this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     }
 
     public Map<IDeviceID, Set<MeasurementSchema>> getDevice2TimeSeries() {
@@ -1003,10 +1003,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
       clearModificationsAndTimeIndex();
 
-      currentModifications = resource.getModFile().getModifications();
-      for (final Modification modification : currentModifications) {
-        currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
-      }
+      resource
+          .getModFile()
+          .getModifications()
+          .forEach(
+              modification -> currentModifications.append(modification.getPath(), modification));
+
+      currentModificationsMemoryUsageSizeInBytes = currentModifications.ramBytesUsed();
       block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
 
       if (resource.resourceFileExists()) {
@@ -1028,7 +1031,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           currentModifications, currentTimeIndex, device);
     }
 
-    public boolean isTimeseriesDeletedByMods(
+    public boolean isTimeSeriesDeletedByMods(
         IDeviceID device, TimeseriesMetadata timeseriesMetadata) throws IllegalPathException {
       return ModificationUtils.isTimeSeriesDeletedByMods(
           currentModifications,
@@ -1068,7 +1071,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     public void clearModificationsAndTimeIndex() {
-      currentModifications.clear();
+      currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
       currentTimeIndex = null;
       block.reduceMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
       block.reduceMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
