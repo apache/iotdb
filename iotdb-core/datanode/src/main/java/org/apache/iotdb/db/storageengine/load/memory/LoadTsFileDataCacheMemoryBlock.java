@@ -66,9 +66,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
 
   @Override
   public synchronized void reduceMemoryUsage(long memoryInBytes) {
-    if (memoryUsageInBytes.addAndGet(-memoryInBytes) < 0) {
-      LOGGER.warn("{} has reduce memory usage to negative", this);
-    }
+    memoryUsageInBytes.addAndGet(-memoryInBytes);
   }
 
   @Override
@@ -97,11 +95,11 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
       return true;
     }
 
-    if (limitedMemorySizeInBytes.get() - shrinkMemoryInBytes <= MINIMUM_MEMORY_SIZE_IN_BYTES) {
+    if (limitedMemorySizeInBytes.get() - shrinkMemoryInBytes
+        <= Math.max(MINIMUM_MEMORY_SIZE_IN_BYTES, memoryUsageInBytes.get())) {
       return false;
     }
 
-    MEMORY_MANAGER.releaseToQuery(shrinkMemoryInBytes);
     limitedMemorySizeInBytes.addAndGet(-shrinkMemoryInBytes);
     return true;
   }

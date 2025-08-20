@@ -273,11 +273,14 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
+  public synchronized long tryAllocateFreeMemory4Load(final long memoryInBytes) {
     if (OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - memoryInBytes
         <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
-      long result =
+      final long result =
           OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+      if (result <= 0) {
+        return 0;
+      }
       OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(result);
       return result;
     } else {
