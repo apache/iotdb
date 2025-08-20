@@ -41,6 +41,8 @@ public class VirtualDataRegion implements IDataRegionForQuery {
 
   private static final String VIRTUAL_DB_NAME = "root.__virtual";
 
+  private static final String VIRTUAL_DATA_REGION_ID = "virtual_data_region";
+
   public static final QueryDataSource EMPTY_QUERY_DATA_SOURCE =
       new QueryDataSource(Collections.emptyList(), Collections.emptyList());
 
@@ -112,6 +114,11 @@ public class VirtualDataRegion implements IDataRegionForQuery {
   @Override
   public String getDatabaseName() {
     return VIRTUAL_DB_NAME;
+  }
+
+  @Override
+  public String getDataRegionId() {
+    return VIRTUAL_DATA_REGION_ID;
   }
 
   private static class InstanceHolder {

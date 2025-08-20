@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
+import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
@@ -148,6 +149,7 @@ public class FragmentInstanceContext extends QueryContext {
   private TFetchFragmentInstanceStatisticsResp fragmentInstanceStatistics = null;
 
   private long initQueryDataSourceCost = 0;
+  private int initQueryDataSourceRetryCount = 0;
   private final AtomicLong readyQueueTime = new AtomicLong(0);
   private final AtomicLong blockQueueTime = new AtomicLong(0);
   private long unclosedSeqFileNum = 0;
@@ -700,21 +702,21 @@ public class FragmentInstanceContext extends QueryContext {
             // Friendly for gc
             sourcePaths = null;
           } else {
-            return UNFINISHED_QUERY_DATA_SOURCE;
+            return getUnfinishedQueryDataSource();
           }
           break;
         case DEVICE_REGION_SCAN:
           if (initRegionScanQueryDataSource(devicePathsToContext)) {
             devicePathsToContext = null;
           } else {
-            return UNFINISHED_QUERY_DATA_SOURCE;
+            return getUnfinishedQueryDataSource();
           }
           break;
         case TIME_SERIES_REGION_SCAN:
           if (initRegionScanQueryDataSource(sourcePaths)) {
             sourcePaths = null;
           } else {
-            return UNFINISHED_QUERY_DATA_SOURCE;
+            return getUnfinishedQueryDataSource();
           }
           break;
         default:
@@ -723,6 +725,18 @@ public class FragmentInstanceContext extends QueryContext {
       }
     }
     return sharedQueryDataSource;
+  }
+
+  private IQueryDataSource getUnfinishedQueryDataSource() {
+    increaseInitQueryDataSourceRetryCount();
+    // record warn log every 10 times retry
+    if (initQueryDataSourceRetryCount % 10 == 0) {
+      LOGGER.warn(
+          "Failed to acquire the read lock of DataRegion-{} for {} times",
+          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionId(),
+          initQueryDataSourceRetryCount);
+    }
+    return UNFINISHED_QUERY_DATA_SOURCE;
   }
 
   /** Lock and check if tsFileResource is deleted */
@@ -902,6 +916,9 @@ public class FragmentInstanceContext extends QueryContext {
 
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
 
+    QueryResourceMetricSet.getInstance()
+        .recordInitQueryResourceRetryCount(getInitQueryDataSourceRetryCount());
+
     SeriesScanCostMetricSet.getInstance()
         .recordBloomFilterMetrics(
             getQueryStatistics().getLoadBloomFilterFromCacheCount().get(),
@@ -1028,6 +1045,14 @@ public class FragmentInstanceContext extends QueryContext {
 
   public long getInitQueryDataSourceCost() {
     return initQueryDataSourceCost;
+  }
+
+  public void increaseInitQueryDataSourceRetryCount() {
+    this.initQueryDataSourceRetryCount++;
+  }
+
+  public int getInitQueryDataSourceRetryCount() {
+    return initQueryDataSourceRetryCount;
   }
 
   public void addReadyQueuedTime(long time) {
