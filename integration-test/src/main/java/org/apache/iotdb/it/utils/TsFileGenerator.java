@@ -278,7 +278,7 @@ public class TsFileGenerator implements AutoCloseable {
               Long.MIN_VALUE,
               Long.MAX_VALUE));
       device2MeasurementSchema.get(device).remove(measurement);
-      LOGGER.info("Delete device {}", device);
+      LOGGER.info("Delete measurement {} of device {}", measurement.getMeasurementId(), device);
     }
   }
 
