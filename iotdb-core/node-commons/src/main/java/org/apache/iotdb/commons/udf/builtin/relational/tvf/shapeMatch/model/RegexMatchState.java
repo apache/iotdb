@@ -122,12 +122,11 @@ public class RegexMatchState {
       double threshold) {
     dataSectionList.add(section);
     if (matchStateStack.isEmpty()) {
-      if(patternSectionNow.getSign() == 2){
-        for(Section startSection: patternSectionNow.getNextSectionList()){
+      if (patternSectionNow.getSign() == 2) {
+        for (Section startSection : patternSectionNow.getNextSectionList()) {
           matchStateStack.push(new PathState(0, startSection));
         }
-      }
-      else{
+      } else {
         matchStateStack.push(new PathState(0, patternSectionNow));
       }
     }
@@ -139,7 +138,8 @@ public class RegexMatchState {
         PathState topPathState = matchStateStack.peek();
         // lose the top of the section until sectionStack size is smaller than the dataSectionIndex
         // of the pathState
-        while (topPathState.getDataSectionIndex() < sectionStack.size() && !sectionStack.isEmpty()) {
+        while (topPathState.getDataSectionIndex() < sectionStack.size()
+            && !sectionStack.isEmpty()) {
           sectionStack.pop();
         }
         // loop the dataSectionList from the dataSectionIndex to the end
@@ -247,7 +247,7 @@ public class RegexMatchState {
       if (section.getMaxHeight() > patternMaxHeight) {
         patternMaxHeight = section.getMaxHeight();
       }
-      if (section.getMinHeight()  < patternMinHeight) {
+      if (section.getMinHeight() < patternMinHeight) {
         patternMinHeight = section.getMinHeight();
       }
       if (section.getMaxWidth() > patternMaxWidth) {
@@ -279,7 +279,12 @@ public class RegexMatchState {
     }
 
     public void calcGlobalRadio(double smoothValue) {
-      globalHeightRadio = (dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight) == 0? smoothValue : (patternMaxHeight - patternMinHeight);
+      globalHeightRadio =
+          (dataMaxHeight - dataMinHeight) == 0
+              ? smoothValue
+              : (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight) == 0
+                  ? smoothValue
+                  : (patternMaxHeight - patternMinHeight);
       globalWitdhRadio = (dataMaxWidth - dataMinWidth) / (patternMaxWidth - patternMinWidth);
     }
 
@@ -303,7 +308,9 @@ public class RegexMatchState {
           && dataSection.getCalcResult().get(patternSection.getId()) != null) {
         shapeError =
             dataSection.getCalcResult().get(patternSection.getId())
-                / ((dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight));
+                / ((dataMaxHeight - dataMinHeight) == 0
+                    ? smoothValue
+                    : (dataMaxHeight - dataMinHeight));
       } else {
         // calc the SE
         // align the first point or the centroid, it's same because the calculation is just an avg
@@ -338,12 +345,21 @@ public class RegexMatchState {
         }
 
         shapeError =
-            shapeError / (((dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight)) * (dataSection.getPoints().size() - 1));
+            shapeError
+                / (((dataMaxHeight - dataMinHeight) == 0
+                        ? smoothValue
+                        : (dataMaxHeight - dataMinHeight))
+                    * (dataSection.getPoints().size() - 1));
 
         if (calcSEusingMoreMemory) {
           dataSection
               .getCalcResult()
-              .put(patternSection.getId(), shapeError * (((dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight))));
+              .put(
+                  patternSection.getId(),
+                  shapeError
+                      * (((dataMaxHeight - dataMinHeight) == 0
+                          ? smoothValue
+                          : (dataMaxHeight - dataMinHeight))));
         }
       }
 

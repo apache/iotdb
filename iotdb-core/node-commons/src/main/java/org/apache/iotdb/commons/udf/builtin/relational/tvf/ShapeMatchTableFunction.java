@@ -99,9 +99,7 @@ public class ShapeMatchTableFunction implements TableFunction {
     String expectedDataName = (String) ((ScalarArgument) arguments.get(DataColumn)).getValue();
     int requiredTimeIndex =
         findColumnIndex(
-            tableArgument,
-            expectedTimeName,
-            ImmutableSet.of(Type.TIMESTAMP, Type.INT64));
+            tableArgument, expectedTimeName, ImmutableSet.of(Type.TIMESTAMP, Type.INT64));
     int requiredDataIndex =
         findColumnIndex(
             tableArgument,
@@ -221,9 +219,12 @@ public class ShapeMatchTableFunction implements TableFunction {
         MatchState matchResult) {
       // TODO fill the result to the output column
       int matchResultID = qetchAlgorthm.getMatchResultID();
-      for(int i = 0; i< matchResult.getDataSectionList().size(); i++){
-        for(int j = i==0? 0:1; j< matchResult.getDataSectionList().get(i).getPoints().size(); j++){
-          passThroughIndexBuilder.writeLong(matchResult.getDataSectionList().get(i).getPoints().get(j).index);
+      for (int i = 0; i < matchResult.getDataSectionList().size(); i++) {
+        for (int j = i == 0 ? 0 : 1;
+            j < matchResult.getDataSectionList().get(i).getPoints().size();
+            j++) {
+          passThroughIndexBuilder.writeLong(
+              matchResult.getDataSectionList().get(i).getPoints().get(j).index);
           properColumnBuilders.get(0).writeInt(matchResultID);
           properColumnBuilders.get(1).writeDouble(matchResult.getMatchValue());
         }
@@ -246,7 +247,7 @@ public class ShapeMatchTableFunction implements TableFunction {
         int dataSectionIndex = pathState.getDataSectionIndex();
         List<Section> dataSectionList = matchResult.getDataSectionList();
         for (int i = 0; i <= dataSectionIndex; i++) {
-          for(int j = i==0? 0:1; j < dataSectionList.get(i).getPoints().size(); j++) {
+          for (int j = i == 0 ? 0 : 1; j < dataSectionList.get(i).getPoints().size(); j++) {
             passThroughIndexBuilder.writeLong(dataSectionList.get(i).getPoints().get(j).index);
             properColumnBuilders.get(0).writeInt(matchResultID);
             properColumnBuilders.get(1).writeDouble(pathState.getMatchValue());

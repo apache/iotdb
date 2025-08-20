@@ -16,6 +16,7 @@ public class PatternSegment {
   private Boolean isConstantChar = false;
   private String repeatSign = null;
   private Boolean isZeroRepeat = false; // deal with + repeat
+
   // constant area
   public PatternSegment() {}
 
@@ -61,7 +62,7 @@ public class PatternSegment {
   }
 
   public List<Section> getEndSectionList() {
-      return endSectionList;
+    return endSectionList;
   }
 
   // special function area
@@ -197,20 +198,19 @@ public class PatternSegment {
   }
 
   // address the concat of two dataSegment without combine the two dataSegment
-  private void concat(PatternSegment patternSegment,boolean isUpdateZeroRepeat) {
+  private void concat(PatternSegment patternSegment, boolean isUpdateZeroRepeat) {
     List<Section> newStartSection = new ArrayList<>(patternSegment.getStartSectionList());
     List<Section> newEndSection = new ArrayList<>(endSectionList);
 
-    for(int i = 0; i< patternSegment.getEndSectionList().size(); i++){
-      for(int j = 0; j< startSectionList.size();j++) {
+    for (int i = 0; i < patternSegment.getEndSectionList().size(); i++) {
+      for (int j = 0; j < startSectionList.size(); j++) {
         Section lastSection = patternSegment.getEndSectionList().get(i);
         Section firstSection = startSectionList.get(j);
 
         if (lastSection.getSign() != firstSection.getSign()) {
           lastSection.getNextSectionList().add(0, firstSection);
           firstSection.getPrevSectionList().add(lastSection);
-        }
-        else{
+        } else {
           Point lastPoint = lastSection.getPoints().get(lastSection.getPoints().size() - 1);
           Point firstPoint = firstSection.getPoints().get(0);
 
@@ -220,26 +220,27 @@ public class PatternSegment {
           Section section = lastSection.copy();
 
           for (int k = 1; k < firstSection.getPoints().size(); k++) {
-            section.addPoint(new Point(lastPoint.x + k, firstSection.getPoints().get(k).y + upHeight));
+            section.addPoint(
+                new Point(lastPoint.x + k, firstSection.getPoints().get(k).y + upHeight));
           }
 
-          if(lastSection.getPrevSectionList() != null && !lastSection.getPrevSectionList().isEmpty()) {
-            for(Section prevSection : lastSection.getPrevSectionList()) {
-              prevSection.getNextSectionList().add(0,section);
+          if (lastSection.getPrevSectionList() != null
+              && !lastSection.getPrevSectionList().isEmpty()) {
+            for (Section prevSection : lastSection.getPrevSectionList()) {
+              prevSection.getNextSectionList().add(0, section);
               section.getPrevSectionList().add(prevSection);
             }
-          }
-          else{
+          } else {
             newStartSection.add(section);
           }
 
-          if(firstSection.getNextSectionList() != null && !firstSection.getNextSectionList().isEmpty()){
-            for(Section nextSection : firstSection.getNextSectionList()) {
+          if (firstSection.getNextSectionList() != null
+              && !firstSection.getNextSectionList().isEmpty()) {
+            for (Section nextSection : firstSection.getNextSectionList()) {
               section.getNextSectionList().add(nextSection);
               nextSection.getPrevSectionList().add(section);
             }
-          }
-          else{
+          } else {
             newEndSection.add(section);
           }
           sections.add(section);
@@ -247,11 +248,11 @@ public class PatternSegment {
       }
     }
 
-    if(isUpdateZeroRepeat){
-      if(patternSegment.isZeroRepeat){
+    if (isUpdateZeroRepeat) {
+      if (patternSegment.isZeroRepeat) {
         newStartSection.addAll(startSectionList);
       }
-      if(isZeroRepeat){
+      if (isZeroRepeat) {
         newEndSection.addAll(patternSegment.getEndSectionList());
       }
       isZeroRepeat = patternSegment.isZeroRepeat && isZeroRepeat;
@@ -262,13 +263,13 @@ public class PatternSegment {
   }
 
   public void concatNear(PatternSegment patternSegment) {
-    concat(patternSegment,true);
+    concat(patternSegment, true);
     // combine the two sections of dataSegment and this
     patternSegment.getSections().addAll(this.getSections());
     this.sections = patternSegment.getSections();
   }
 
   public void concatHeadAndTail() {
-    concat(this,false);
+    concat(this, false);
   }
 }

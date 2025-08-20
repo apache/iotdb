@@ -104,10 +104,10 @@ public class MatchState {
 
   private void updatePatternBounds(Section section) {
     if (section.getMaxHeight() > patternMaxHeight) {
-      patternMaxHeight = section.getMaxHeight() ;
+      patternMaxHeight = section.getMaxHeight();
     }
     if (section.getMinHeight() < patternMinHeight) {
-      patternMinHeight = section.getMinHeight() ;
+      patternMinHeight = section.getMinHeight();
     }
     if (section.getMaxWidth() > patternMaxWidth) {
       patternMaxWidth = section.getMaxWidth();
@@ -126,7 +126,12 @@ public class MatchState {
   }
 
   public void calcGlobalRadio(double smoothValue) {
-    globalHeightRadio = (dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight) == 0? smoothValue : (patternMaxHeight - patternMinHeight);
+    globalHeightRadio =
+        (dataMaxHeight - dataMinHeight) == 0
+            ? smoothValue
+            : (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight) == 0
+                ? smoothValue
+                : (patternMaxHeight - patternMinHeight);
     globalWitdhRadio = (dataMaxWidth - dataMinWidth) / (patternMaxWidth - patternMinWidth);
   }
 
@@ -171,7 +176,12 @@ public class MatchState {
                   - section.getPoints().get(i).y);
     }
 
-    shapeError = shapeError / (((dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight)) * (section.getPoints().size() - 1));
+    shapeError =
+        shapeError
+            / (((dataMaxHeight - dataMinHeight) == 0
+                    ? smoothValue
+                    : (dataMaxHeight - dataMinHeight))
+                * (section.getPoints().size() - 1));
 
     // calc the match value for a section
     matchValue = matchValue + LED + shapeError;

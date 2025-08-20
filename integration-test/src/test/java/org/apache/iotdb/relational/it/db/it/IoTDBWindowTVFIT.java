@@ -61,6 +61,8 @@ public class IoTDBWindowTVFIT {
         "insert into multi_type values (2021-01-01T09:03:00, 'device1', null, null, null, null, false, null, null, null, null)",
         "insert into multi_type values (2021-01-01T09:04:00, 'device1', null, null, null, null, null, null, null, null, null)",
         "insert into multi_type values (2021-01-01T09:05:00, 'device1', 3, 3, 3.0, 3.0, false, '2', X'02', 2021-01-01T10:00:00, '2021-01-02')",
+        "create table t1(value DOUBLE FIELD, value1 DOUBLE FIRLD)"
+        "INSERT INTO t1 VALUES (1, 1, 0),(2, 2, 0),(3, 1, 0),(4, 1, 0),(5, 1, 0),(6, 1.2, 0),(7, 1, 0),(8, 1, 0),(9, 2, 0),(10, 3, 0),(11, 4, 0),(12, 3, 0),(13, 2, 0),(14, 3, 0),(15, 4, 0),(16, 2, 0),(17, 1, 0),(18, 1, 0),(19, 1, 0),(20, 1, 0),(21, 1, 0),(41, 1, 0),(42, 2, 0),(43, 3, 0),(44, 4, 0),(45, 3, 0),(46, 2, 0),(47, 2, 0),(48, 2, 0),(49, 2, 0),(50, 2, 0),(51, 2, 0),(52, 2, 0)"
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };

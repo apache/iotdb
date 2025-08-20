@@ -60,7 +60,7 @@ public class QetchAlgorthm {
     isNewDataSegment = true;
   }
 
-  private List<PatternSegment>  parsePattern2DataSegment(String pattern) {
+  private List<PatternSegment> parsePattern2DataSegment(String pattern) {
     // this pattern is divided by ",", such as "{,1,2,1,},3,6,9"
     // "()" claim as a point while "{}" claim as a repeat regex sign "+" which is supported to nest
     List<String> patternPieces = Arrays.asList(pattern.split(","));
@@ -129,16 +129,15 @@ public class QetchAlgorthm {
     // index the section in the automaton
     int id = 0;
     Queue<Section> queue = new LinkedList<>();
-    if(startSections.size() >= 2){
+    if (startSections.size() >= 2) {
       // set a virtual section as a new startSection
       Section virtualStartSection = new Section(2); // use 2 to claim the start section is virtual
-      for(Section section : startSections) {
+      for (Section section : startSections) {
         virtualStartSection.getNextSectionList().add(section);
       }
       queue.add(virtualStartSection);
       stateMachineStartSection = virtualStartSection;
-    }
-    else{
+    } else {
       queue.add(startSections.get(0));
       stateMachineStartSection = startSections.get(0);
     }
@@ -177,7 +176,9 @@ public class QetchAlgorthm {
       // use a stack to concat all dataSegment to one automaton
       Stack<PatternSegment> stack = new Stack<>();
       for (int i = 0; i < patternSegments.size(); i++) {
-        if (patternSegments.get(i).isConstantChar() && ( patternSegments.get(i).getRepeatSign().equals("}*")|| patternSegments.get(i).getRepeatSign().equals("}+"))) {
+        if (patternSegments.get(i).isConstantChar()
+            && (patternSegments.get(i).getRepeatSign().equals("}*")
+                || patternSegments.get(i).getRepeatSign().equals("}+"))) {
           // pop the dataSegment from stack until find the '{'
           PatternSegment patternSegment = stack.pop();
           while (!stack.isEmpty() && !stack.peek().isConstantChar()) {
@@ -186,7 +187,7 @@ public class QetchAlgorthm {
           }
           stack.pop(); // pop the '{'
           patternSegment.concatHeadAndTail();
-          if(patternSegments.get(i).getRepeatSign().equals("}*")){
+          if (patternSegments.get(i).getRepeatSign().equals("}*")) {
             patternSegment.setIsZeroRepeat(true);
           }
           stack.push(patternSegment);
@@ -202,7 +203,7 @@ public class QetchAlgorthm {
         PatternSegment topSegment = stack.pop();
         patternSegment.concatNear(topSegment);
       }
-      for(Section section: patternSegment.getEndSectionList()){
+      for (Section section : patternSegment.getEndSectionList()) {
         section.setIsFinal(true);
       }
 
@@ -601,7 +602,7 @@ public class QetchAlgorthm {
   }
 
   public void addPoint(Point point) {
-    if(isNewDataSegment){
+    if (isNewDataSegment) {
       environmentClear();
       isNewDataSegment = false;
     }
