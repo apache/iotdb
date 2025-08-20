@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -195,11 +196,14 @@ public class ModificationUtils {
    * There are some slight differences from that in {@link SettleSelectorImpl}.
    */
   public static boolean isDeviceDeletedByMods(
-      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
+      final Collection<Modification> modifications,
+      final IDeviceID device,
+      final long startTime,
+      final long endTime)
       throws IllegalPathException {
-    for (Modification modification : modifications) {
-      PartialPath path = modification.getPath();
-      if (path.include(new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))
+    for (final Modification modification : modifications) {
+      final PartialPath path = modification.getPath();
+      if (path.include(CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))
           && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
         return true;
       }
@@ -207,16 +211,16 @@ public class ModificationUtils {
     return false;
   }
 
-  public static boolean isTimeseriesDeletedByMods(
-      Collection<Modification> modifications,
-      IDeviceID device,
-      String timeseriesId,
-      long startTime,
-      long endTime)
+  public static boolean isTimeSeriesDeletedByMods(
+      final Collection<Modification> modifications,
+      final IDeviceID device,
+      final String timeSeriesId,
+      final long startTime,
+      final long endTime)
       throws IllegalPathException {
-    for (Modification modification : modifications) {
-      PartialPath path = modification.getPath();
-      if (path.include(new PartialPath(device, timeseriesId))
+    for (final Modification modification : modifications) {
+      final PartialPath path = modification.getPath();
+      if (path.include(CompactionPathUtils.getPath(device, timeSeriesId))
           && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
         return true;
       }

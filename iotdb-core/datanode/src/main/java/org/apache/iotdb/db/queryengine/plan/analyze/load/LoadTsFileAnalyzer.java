@@ -527,10 +527,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public void autoCreateAndVerify(
         TsFileSequenceReader reader,
-        Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+        Map<IDeviceID, List<TimeseriesMetadata>> device2TimeSeriesMetadataList)
         throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
       for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
-          device2TimeseriesMetadataList.entrySet()) {
+          device2TimeSeriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
 
         try {
@@ -1030,7 +1030,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public boolean isTimeseriesDeletedByMods(
         IDeviceID device, TimeseriesMetadata timeseriesMetadata) throws IllegalPathException {
-      return ModificationUtils.isTimeseriesDeletedByMods(
+      return ModificationUtils.isTimeSeriesDeletedByMods(
           currentModifications,
           device,
           timeseriesMetadata.getMeasurementId(),
