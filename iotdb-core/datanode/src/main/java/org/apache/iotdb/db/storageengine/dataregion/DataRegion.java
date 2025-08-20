@@ -581,9 +581,10 @@ public class DataRegion implements IDataRegionForQuery {
           }
         }
       }
-      for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
+      for (List<TsFileResource> unseqTsFiles : partitionTmpUnseqTsFiles.values()) {
+        List<TsFileResource> unsealedTsFiles = new ArrayList<>();
         // tsFiles without resource file are unsealed
-        for (TsFileResource resource : value) {
+        for (TsFileResource resource : unseqTsFiles) {
           if (resource.resourceFileExists()) {
             FileMetrics.getInstance()
                 .addTsFile(
@@ -592,6 +593,13 @@ public class DataRegion implements IDataRegionForQuery {
                     resource.getTsFile().length(),
                     false,
                     resource.getTsFile().getName());
+          } else {
+            WALRecoverListener recoverListener =
+                recoverUnsealedTsFile(resource, dataRegionRecoveryContext, false);
+            if (recoverListener != null) {
+              recoverListeners.add(recoverListener);
+            }
+            unsealedTsFiles.add(resource);
           }
           if (ModificationFile.getExclusiveMods(resource.getTsFile()).exists()) {
             // update mods file metrics
@@ -600,19 +608,7 @@ public class DataRegion implements IDataRegionForQuery {
             resource.upgradeModFile(upgradeModFileThreadPool);
           }
         }
-        while (!value.isEmpty()) {
-          TsFileResource tsFileResource = value.get(value.size() - 1);
-          if (tsFileResource.resourceFileExists()) {
-            break;
-          } else {
-            value.remove(value.size() - 1);
-            WALRecoverListener recoverListener =
-                recoverUnsealedTsFile(tsFileResource, dataRegionRecoveryContext, false);
-            if (recoverListener != null) {
-              recoverListeners.add(recoverListener);
-            }
-          }
-        }
+        unseqTsFiles.removeAll(unsealedTsFiles);
       }
       // signal wal recover manager to recover this region's files
       WALRecoverManager.getInstance().getAllDataRegionScannedLatch().countDown();
