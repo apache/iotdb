@@ -87,7 +87,7 @@ public class UnionNode extends SetOperationNode {
       outputs.add(Symbol.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new UnionNode(planNodeId, null, ImmutableListMultimap.of(), outputs);
+    return new UnionNode(planNodeId, ImmutableListMultimap.of(), outputs);
   }
 
   @Override
