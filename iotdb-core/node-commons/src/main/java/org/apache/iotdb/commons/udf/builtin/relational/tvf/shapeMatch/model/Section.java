@@ -16,8 +16,6 @@ public class Section {
   private Double MaxWidth = 0.0;
   private Double MinWidth = Double.MAX_VALUE;
 
-  private Double UpHeight = 0.0;
-
   private Boolean isFinal = false;
   private Boolean isVisited = false;
 
@@ -26,6 +24,7 @@ public class Section {
   private Map<Integer, Double> calcResult =
       new HashMap<>(); // only record the SE without divide the height(C)
   private List<Section> NextSectionList = new ArrayList<>();
+  private List<Section> PrevSectionList = new ArrayList<>();
 
   public Section(double sign) {
     this.sign = sign;
@@ -97,12 +96,8 @@ public class Section {
     return NextSectionList;
   }
 
-  public void setUpHeight(Double upHeight) {
-    this.UpHeight = upHeight;
-  }
-
-  public double getUpHeight() {
-    return UpHeight;
+  public List<Section> getPrevSectionList() {
+    return PrevSectionList;
   }
 
   public void setIsFinal(Boolean isFinal) {
@@ -142,7 +137,6 @@ public class Section {
     section.MinHeight = this.MinHeight;
     section.MaxWidth = this.MaxWidth;
     section.MinWidth = this.MinWidth;
-    section.UpHeight = this.UpHeight;
     return section;
   }
 
@@ -205,11 +199,11 @@ public class Section {
       for (int i = indexSecond; i < section.getPoints().size(); i++) {
         secondSection.addPoint(section.getPoints().get(i));
       }
-      if (firstSection.getPoints().size() != 0) {
+      if (!firstSection.getPoints().isEmpty()) {
         concatResult.add(firstSection);
       }
       concatResult.add(midSection);
-      if (secondSection.getPoints().size() != 0) {
+      if (!secondSection.getPoints().isEmpty()) {
         concatResult.add(secondSection);
       }
     }

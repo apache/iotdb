@@ -50,34 +50,10 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
-// from shape_match(data => t1, col => 's1', pattern => '(1,1),(2,2),(3,1)', smoothValue => 0.5,
-// threshold => 0.5)
-// 这里还可以再加上结果的范围限制，加速查询（因为UDTF过程当中可能无法获取到下推的谓词）
-// 这里加上平滑参数
-
-// input
-// Time,       s1,
-// 1,          1,
-// 2,          2,
-// 3,          3,
-// 4,          2,
-// 5,          1,
-// 6,          6,
-// 7,          7,
-// 8,          8,
-// 9,          9,
-
-// output
-// Time,       s1,          matchID,    matchValue
-// 1,          1,             0,           0.99
-// 2,          2,             1,           0.1
-// 3,          3,             1,           0.1
-// 4,          2,             2,           0.01
-// 5,          1,             2,           0.01
-
 public class ShapeMatchTableFunction implements TableFunction {
   private static final String TBL_PARAM = "DATA";
-  private static final String COL_PARAM = "COL";
+  private static final String TimeColumn = "TIME_COL";
+  private static final String DataColumn = "DATA_COL";
   private static final String PATTERN_PARAM = "PATTERN";
   private static final String SMOOTH_PARAM = "SMOOTH";
   private static final String THRESHOLD_PARAM = "THRESHOLD";
@@ -90,8 +66,9 @@ public class ShapeMatchTableFunction implements TableFunction {
     // TODO：这里rowSemantice还是setSemantice不太清楚，因为我需要将数据全部读出来，不论是按行读取还是按partition读取都一样，这里看哪个效率高用哪个
     // TODO: 这里不使用passThroughColumns，是因为我输出的结果是原来列结果的一部分，我在处理的时候不会保留这是第几行的信息，所以可能穿透不太好完成，可以看看是否可以穿透
     return Arrays.asList(
-        TableParameterSpecification.builder().name(TBL_PARAM).build(),
-        ScalarParameterSpecification.builder().name(COL_PARAM).type(Type.STRING).build(),
+        TableParameterSpecification.builder().name(TBL_PARAM).passThroughColumns().build(),
+        ScalarParameterSpecification.builder().name(TimeColumn).type(Type.STRING).build(),
+        ScalarParameterSpecification.builder().name(DataColumn).type(Type.STRING).build(),
         ScalarParameterSpecification.builder().name(PATTERN_PARAM).type(Type.STRING).build(),
         ScalarParameterSpecification.builder().name(SMOOTH_PARAM).type(Type.DOUBLE).build(),
         ScalarParameterSpecification.builder().name(THRESHOLD_PARAM).type(Type.DOUBLE).build(),
@@ -118,20 +95,24 @@ public class ShapeMatchTableFunction implements TableFunction {
 
     // calc the index of the column
     TableArgument tableArgument = (TableArgument) arguments.get(TBL_PARAM);
-    String expectedFieldName = (String) ((ScalarArgument) arguments.get(COL_PARAM)).getValue();
-    int requiredIndex =
+    String expectedTimeName = (String) ((ScalarArgument) arguments.get(TimeColumn)).getValue();
+    String expectedDataName = (String) ((ScalarArgument) arguments.get(DataColumn)).getValue();
+    int requiredTimeIndex =
         findColumnIndex(
             tableArgument,
-            expectedFieldName,
+            expectedTimeName,
+            ImmutableSet.of(Type.TIMESTAMP, Type.INT64));
+    int requiredDataIndex =
+        findColumnIndex(
+            tableArgument,
+            expectedDataName,
             ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
 
     // outputColumnSchema description
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder()
-            .addField("time", Type.TIMESTAMP)
-            .addField(expectedFieldName, tableArgument.getFieldTypes().get(requiredIndex))
-            .addField("matchID", Type.INT32)
-            .addField("matchValue", Type.DOUBLE)
+            .addField("match_index", Type.INT32)
+            .addField("degree_of_similarity", Type.DOUBLE)
             .build();
 
     // this is for transferring the parameters to the processor
@@ -150,7 +131,9 @@ public class ShapeMatchTableFunction implements TableFunction {
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
         .requireRecordSnapshot(false)
-        .requiredColumns(TBL_PARAM, Arrays.asList(0, requiredIndex)) // the 0th column is time
+        .requiredColumns(
+            TBL_PARAM,
+            Arrays.asList(requiredTimeIndex, requiredDataIndex)) // the 0th column is time
         .handle(handle)
         .build();
   }
@@ -209,12 +192,13 @@ public class ShapeMatchTableFunction implements TableFunction {
       double time = input.getLong(0);
       double value = input.getDouble(1);
 
-      qetchAlgorthm.addPoint(new Point(time, value));
-      if(qetchAlgorthm.hasMatchResult()){
+      qetchAlgorthm.addPoint(new Point(time, value, qetchAlgorthm.getPointNum()));
+      if (qetchAlgorthm.hasMatchResult()) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
       }
-      if(qetchAlgorthm.hasRegexMatchResult()) {
-        outputWindowRegex(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+      if (qetchAlgorthm.hasRegexMatchResult()) {
+        outputWindowRegex(
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
       }
     }
 
@@ -222,11 +206,12 @@ public class ShapeMatchTableFunction implements TableFunction {
     public void finish(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
       qetchAlgorthm.closeNowDataSegment();
-      if(qetchAlgorthm.hasMatchResult()){
+      if (qetchAlgorthm.hasMatchResult()) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
       }
-      if(qetchAlgorthm.hasRegexMatchResult()) {
-        outputWindowRegex(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+      if (qetchAlgorthm.hasRegexMatchResult()) {
+        outputWindowRegex(
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
       }
     }
 
@@ -236,18 +221,17 @@ public class ShapeMatchTableFunction implements TableFunction {
         MatchState matchResult) {
       // TODO fill the result to the output column
       int matchResultID = qetchAlgorthm.getMatchResultID();
-      for (Section section : matchResult.getDataSectionList()) {
-        for (Point point : section.getPoints()) {
-          properColumnBuilders.get(0).writeLong((long) point.x);
-          properColumnBuilders.get(1).writeDouble(point.y);
-          properColumnBuilders.get(2).writeInt(matchResultID);
-          properColumnBuilders.get(3).writeDouble(matchResult.getMatchValue());
+      for(int i = 0; i< matchResult.getDataSectionList().size(); i++){
+        for(int j = i==0? 0:1; j< matchResult.getDataSectionList().get(i).getPoints().size(); j++){
+          passThroughIndexBuilder.writeLong(matchResult.getDataSectionList().get(i).getPoints().get(j).index);
+          properColumnBuilders.get(0).writeInt(matchResultID);
+          properColumnBuilders.get(1).writeDouble(matchResult.getMatchValue());
         }
       }
 
       // after the process, the result of qetchAlgorthm will be empty
       qetchAlgorthm.matchResultClear();
-      if(qetchAlgorthm.checkNextMatchResult()) {
+      if (qetchAlgorthm.checkNextMatchResult()) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
       }
     }
@@ -262,19 +246,19 @@ public class ShapeMatchTableFunction implements TableFunction {
         int dataSectionIndex = pathState.getDataSectionIndex();
         List<Section> dataSectionList = matchResult.getDataSectionList();
         for (int i = 0; i <= dataSectionIndex; i++) {
-          for (Point point : dataSectionList.get(i).getPoints()) {
-            properColumnBuilders.get(0).writeLong((long) point.x);
-            properColumnBuilders.get(1).writeDouble(point.y);
-            properColumnBuilders.get(2).writeInt(matchResultID);
-            properColumnBuilders.get(3).writeDouble(pathState.getMatchValue());
+          for(int j = i==0? 0:1; j < dataSectionList.get(i).getPoints().size(); j++) {
+            passThroughIndexBuilder.writeLong(dataSectionList.get(i).getPoints().get(j).index);
+            properColumnBuilders.get(0).writeInt(matchResultID);
+            properColumnBuilders.get(1).writeDouble(pathState.getMatchValue());
           }
         }
       }
 
       // after the process, the result of qetchAlgorthm will be empty
       qetchAlgorthm.matchResultClear();
-      if(qetchAlgorthm.checkNextRegexMatchResult()){
-        outputWindowRegex(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+      if (qetchAlgorthm.checkNextRegexMatchResult()) {
+        outputWindowRegex(
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
       }
     }
   }

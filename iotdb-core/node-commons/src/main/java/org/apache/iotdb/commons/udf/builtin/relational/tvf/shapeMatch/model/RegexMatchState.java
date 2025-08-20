@@ -1,6 +1,5 @@
 package org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -38,7 +37,7 @@ public class RegexMatchState {
     // calc the matchValue between sectionStack and dataSectionList, meta info is in pathState
     int index = 0;
     Iterator<Section> iterator = sectionStack.iterator();
-    pathState.calcGlobalRadio();
+    pathState.calcGlobalRadio(smoothValue);
     while (iterator.hasNext()) {
       Section patternSection = iterator.next();
       Section dataSection = dataSectionList.get(index);
@@ -79,7 +78,7 @@ public class RegexMatchState {
       if (pathState.getPatternSection().isFinal()) {
         calcMatchValue(pathState, smoothValue, threshold);
       }
-      if (section.isFinal()){
+      if (section.isFinal()) {
         return true; // if the section is final, claim that the pathState is finished
       }
 
@@ -87,11 +86,11 @@ public class RegexMatchState {
       if (!pathState.getPatternSection().getNextSectionList().isEmpty()) {
         if (pathState.getPatternSection().getNextSectionList().size() == 1) {
           Section nextSection = pathState.getPatternSection().getNextSectionList().get(0);
-          if(pathState.getPatternSection().isFinal()){ // 这里不能在之前的上面继续改，这里需要保留这个index，之后输出要用
-            PathState newPathState = new PathState(pathState.getDataSectionIndex() + 1, nextSection, pathState);
+          if (pathState.getPatternSection().isFinal()) { // 这里不能在之前的上面继续改，这里需要保留这个index，之后输出要用
+            PathState newPathState =
+                new PathState(pathState.getDataSectionIndex() + 1, nextSection, pathState);
             matchStateStack.push(newPathState);
-          }
-          else{
+          } else {
             pathState.nextState(nextSection);
             matchStateStack.push(pathState);
           }
@@ -123,7 +122,14 @@ public class RegexMatchState {
       double threshold) {
     dataSectionList.add(section);
     if (matchStateStack.isEmpty()) {
-      matchStateStack.push(new PathState(0, patternSectionNow));
+      if(patternSectionNow.getSign() == 2){
+        for(Section startSection: patternSectionNow.getNextSectionList()){
+          matchStateStack.push(new PathState(0, startSection));
+        }
+      }
+      else{
+        matchStateStack.push(new PathState(0, patternSectionNow));
+      }
     }
 
     if (checkOneSectionInTopPathState(section, heightLimit, widthLimit, smoothValue, threshold)) {
@@ -133,7 +139,7 @@ public class RegexMatchState {
         PathState topPathState = matchStateStack.peek();
         // lose the top of the section until sectionStack size is smaller than the dataSectionIndex
         // of the pathState
-        while (topPathState.getDataSectionIndex() <= sectionStack.size()) {
+        while (topPathState.getDataSectionIndex() < sectionStack.size() && !sectionStack.isEmpty()) {
           sectionStack.pop();
         }
         // loop the dataSectionList from the dataSectionIndex to the end
@@ -165,8 +171,6 @@ public class RegexMatchState {
 
     private int dataSectionIndex = 0;
     private Section patternSection = null;
-
-    private double TotalUpHeight = 0.0;
 
     private double dataMaxHeight = 0.0;
     private double dataMinHeight = Double.MAX_VALUE;
@@ -240,13 +244,11 @@ public class RegexMatchState {
     }
 
     private void updatePatternBounds(Section section) {
-      TotalUpHeight += section.getUpHeight();
-
-      if (section.getMaxHeight() + TotalUpHeight > patternMaxHeight) {
-        patternMaxHeight = section.getMaxHeight() + TotalUpHeight;
+      if (section.getMaxHeight() > patternMaxHeight) {
+        patternMaxHeight = section.getMaxHeight();
       }
-      if (section.getMinHeight() + TotalUpHeight < patternMinHeight) {
-        patternMinHeight = section.getMinHeight() + TotalUpHeight;
+      if (section.getMinHeight()  < patternMinHeight) {
+        patternMinHeight = section.getMinHeight();
       }
       if (section.getMaxWidth() > patternMaxWidth) {
         patternMaxWidth = section.getMaxWidth();
@@ -257,8 +259,6 @@ public class RegexMatchState {
     }
 
     private void copy(PathState pathState) {
-      this.TotalUpHeight = pathState.TotalUpHeight;
-
       this.dataMaxHeight = pathState.dataMaxHeight;
       this.dataMinHeight = pathState.dataMinHeight;
       this.dataMaxWidth = pathState.dataMaxWidth;
@@ -278,8 +278,8 @@ public class RegexMatchState {
       return dataMaxWidth - dataMinWidth;
     }
 
-    public void calcGlobalRadio() {
-      globalHeightRadio = (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight);
+    public void calcGlobalRadio(double smoothValue) {
+      globalHeightRadio = (dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight) == 0? smoothValue : (patternMaxHeight - patternMinHeight);
       globalWitdhRadio = (dataMaxWidth - dataMinWidth) / (patternMaxWidth - patternMinWidth);
     }
 
@@ -303,7 +303,7 @@ public class RegexMatchState {
           && dataSection.getCalcResult().get(patternSection.getId()) != null) {
         shapeError =
             dataSection.getCalcResult().get(patternSection.getId())
-                / (dataMaxHeight - dataMinHeight);
+                / ((dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight));
       } else {
         // calc the SE
         // align the first point or the centroid, it's same because the calculation is just an avg
@@ -338,12 +338,12 @@ public class RegexMatchState {
         }
 
         shapeError =
-            shapeError / ((dataMaxHeight - dataMinHeight) * (dataSection.getPoints().size() - 1));
+            shapeError / (((dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight)) * (dataSection.getPoints().size() - 1));
 
         if (calcSEusingMoreMemory) {
           dataSection
               .getCalcResult()
-              .put(patternSection.getId(), shapeError * ((dataMaxHeight - dataMinHeight)));
+              .put(patternSection.getId(), shapeError * (((dataMaxHeight - dataMinHeight)==0? smoothValue : (dataMaxHeight - dataMinHeight))));
         }
       }
 
