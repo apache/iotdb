@@ -78,13 +78,14 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long END_TIME_INITIAL_VALUE = -1L;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
@@ -345,7 +346,7 @@ public class FragmentInstanceContext extends QueryContext {
               PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allMods =
                   loadAllModificationsFromDisk(resource);
               atomicReference.set(allMods);
-              if (cachedModEntriesSize.get() >= config.getModsCacheSizeLimitPerFI()) {
+              if (cachedModEntriesSize.get() >= CONFIG.getModsCacheSizeLimitPerFI()) {
                 return null;
               }
               long memCost =
@@ -353,7 +354,7 @@ public class FragmentInstanceContext extends QueryContext {
                       + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY;
               long alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
               while (alreadyUsedMemoryForCachedModEntries + memCost
-                  < config.getModsCacheSizeLimitPerFI()) {
+                  < CONFIG.getModsCacheSizeLimitPerFI()) {
                 if (cachedModEntriesSize.compareAndSet(
                     alreadyUsedMemoryForCachedModEntries,
                     alreadyUsedMemoryForCachedModEntries + memCost)) {
@@ -555,11 +556,11 @@ public class FragmentInstanceContext extends QueryContext {
     memoryReservationManager.releaseAllReservedMemory();
   }
 
-  public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
+  public boolean initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (sourcePaths == null || sourcePaths.isEmpty()) {
       this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
-      return;
+      return true;
     }
 
     IDeviceID singleDeviceId = null;
@@ -582,82 +583,112 @@ public class FragmentInstanceContext extends QueryContext {
       }
     }
 
-    dataRegion.readLock();
-    try {
+    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    if (dataRegion.tryReadLock(waitForLockTime)) {
+      try {
+        this.sharedQueryDataSource =
+            dataRegion.query(
+                sourcePaths,
+                // when all the selected series are under the same device, the QueryDataSource will
+                // be
+                // filtered according to timeIndex
+                singleDeviceId,
+                this,
+                // time filter may be stateful, so we need to copy it
+                globalTimeFilter != null ? globalTimeFilter.copy() : null,
+                timePartitions,
+                waitForLockTime);
 
-      this.sharedQueryDataSource =
-          dataRegion.query(
-              sourcePaths,
-              // when all the selected series are under the same device, the QueryDataSource will be
-              // filtered according to timeIndex
-              singleDeviceId,
-              this,
-              // time filter may be stateful, so we need to copy it
-              globalTimeFilter != null ? globalTimeFilter.copy() : null,
-              timePartitions);
-
-      // used files should be added before mergeLock is unlocked, or they may be deleted by
-      // running merge
-      if (sharedQueryDataSource != null) {
-        closedFilePaths = new HashSet<>();
-        unClosedFilePaths = new HashSet<>();
-        addUsedFilesForQuery((QueryDataSource) sharedQueryDataSource);
-        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(singleDeviceId != null);
+        // used files should be added before mergeLock is unlocked, or they may be deleted by
+        // running merge
+        if (sharedQueryDataSource != null) {
+          closedFilePaths = new HashSet<>();
+          unClosedFilePaths = new HashSet<>();
+          addUsedFilesForQuery((QueryDataSource) sharedQueryDataSource);
+          ((QueryDataSource) sharedQueryDataSource).setSingleDevice(singleDeviceId != null);
+          return true;
+        } else {
+          // failed to acquire lock within the specific time
+          return false;
+        }
+      } finally {
+        addInitQueryDataSourceCost(System.nanoTime() - startTime);
+        dataRegion.readUnlock();
       }
-    } finally {
-      setInitQueryDataSourceCost(System.nanoTime() - startTime);
-      dataRegion.readUnlock();
+    } else {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
+      return false;
     }
   }
 
-  public void initRegionScanQueryDataSource(Map<IDeviceID, DeviceContext> devicePathsToContext)
-      throws QueryProcessException {
+  public boolean initRegionScanQueryDataSource(Map<IDeviceID, DeviceContext> devicePathsToContext) {
     long startTime = System.nanoTime();
     if (devicePathsToContext == null) {
-      return;
+      return true;
     }
-    dataRegion.readLock();
-    try {
-      this.sharedQueryDataSource =
-          dataRegion.queryForDeviceRegionScan(
-              devicePathsToContext,
-              this,
-              globalTimeFilter != null ? globalTimeFilter.copy() : null,
-              timePartitions);
 
-      if (sharedQueryDataSource != null) {
-        closedFilePaths = new HashSet<>();
-        unClosedFilePaths = new HashSet<>();
-        addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    if (dataRegion.tryReadLock(waitForLockTime)) {
+      try {
+        this.sharedQueryDataSource =
+            dataRegion.queryForDeviceRegionScan(
+                devicePathsToContext,
+                this,
+                globalTimeFilter != null ? globalTimeFilter.copy() : null,
+                timePartitions,
+                waitForLockTime);
+
+        if (sharedQueryDataSource != null) {
+          closedFilePaths = new HashSet<>();
+          unClosedFilePaths = new HashSet<>();
+          addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+          return true;
+        } else {
+          // failed to acquire lock within the specific time
+          return false;
+        }
+      } finally {
+        addInitQueryDataSourceCost(System.nanoTime() - startTime);
+        dataRegion.readUnlock();
       }
-    } finally {
-      setInitQueryDataSourceCost(System.nanoTime() - startTime);
-      dataRegion.readUnlock();
+    } else {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
+      return false;
     }
   }
 
-  public void initRegionScanQueryDataSource(List<IFullPath> pathList) throws QueryProcessException {
+  public boolean initRegionScanQueryDataSource(List<IFullPath> pathList) {
     long startTime = System.nanoTime();
     if (pathList == null) {
-      return;
+      return true;
     }
-    dataRegion.readLock();
-    try {
-      this.sharedQueryDataSource =
-          dataRegion.queryForSeriesRegionScan(
-              pathList,
-              this,
-              globalTimeFilter != null ? globalTimeFilter.copy() : null,
-              timePartitions);
+    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    if (dataRegion.tryReadLock(waitForLockTime)) {
+      try {
+        this.sharedQueryDataSource =
+            dataRegion.queryForSeriesRegionScan(
+                pathList,
+                this,
+                globalTimeFilter != null ? globalTimeFilter.copy() : null,
+                timePartitions,
+                waitForLockTime);
 
-      if (sharedQueryDataSource != null) {
-        closedFilePaths = new HashSet<>();
-        unClosedFilePaths = new HashSet<>();
-        addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+        if (sharedQueryDataSource != null) {
+          closedFilePaths = new HashSet<>();
+          unClosedFilePaths = new HashSet<>();
+          addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+          return true;
+        } else {
+          // failed to acquire lock within the specific time
+          return false;
+        }
+      } finally {
+        addInitQueryDataSourceCost(System.nanoTime() - startTime);
+        dataRegion.readUnlock();
       }
-    } finally {
-      setInitQueryDataSourceCost(System.nanoTime() - startTime);
-      dataRegion.readUnlock();
+    } else {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
+      return false;
     }
   }
 
@@ -665,17 +696,26 @@ public class FragmentInstanceContext extends QueryContext {
     if (sharedQueryDataSource == null) {
       switch (queryDataSourceType) {
         case SERIES_SCAN:
-          initQueryDataSource(sourcePaths);
-          // Friendly for gc
-          sourcePaths = null;
+          if (initQueryDataSource(sourcePaths)) {
+            // Friendly for gc
+            sourcePaths = null;
+          } else {
+            return UNFINISHED_QUERY_DATA_SOURCE;
+          }
           break;
         case DEVICE_REGION_SCAN:
-          initRegionScanQueryDataSource(devicePathsToContext);
-          devicePathsToContext = null;
+          if (initRegionScanQueryDataSource(devicePathsToContext)) {
+            devicePathsToContext = null;
+          } else {
+            return UNFINISHED_QUERY_DATA_SOURCE;
+          }
           break;
         case TIME_SERIES_REGION_SCAN:
-          initRegionScanQueryDataSource(sourcePaths);
-          sourcePaths = null;
+          if (initRegionScanQueryDataSource(sourcePaths)) {
+            sourcePaths = null;
+          } else {
+            return UNFINISHED_QUERY_DATA_SOURCE;
+          }
           break;
         default:
           throw new QueryProcessException(
@@ -982,8 +1022,8 @@ public class FragmentInstanceContext extends QueryContext {
     return fragmentInstanceStatistics;
   }
 
-  public void setInitQueryDataSourceCost(long initQueryDataSourceCost) {
-    this.initQueryDataSourceCost = initQueryDataSourceCost;
+  public void addInitQueryDataSourceCost(long initQueryDataSourceCost) {
+    this.initQueryDataSourceCost += initQueryDataSourceCost;
   }
 
   public long getInitQueryDataSourceCost() {
