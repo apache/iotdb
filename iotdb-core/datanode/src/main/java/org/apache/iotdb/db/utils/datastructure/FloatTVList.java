@@ -164,6 +164,13 @@ public abstract class FloatTVList extends TVList {
   }
 
   @Override
+  protected TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, TSEncoding encoding, Ordering ordering) {
+    return getTimeValuePair(
+        ordering.isAscending() ? index : rowCount - 1 - index, time, floatPrecision, encoding);
+  }
+
+  @Override
   protected void writeValidValuesIntoTsBlock(
       TsBlockBuilder builder,
       int floatPrecision,

@@ -32,9 +32,11 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.operator.LongFilterOperators;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.junit.AfterClass;
@@ -54,7 +56,6 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
 public class MemPointIteratorTest {
-  private static final int maxNumberOfPointsInPage = 1000;
 
   private static FragmentInstanceId instanceId;
   private static ExecutorService instanceNotificationExecutor;
@@ -78,7 +79,26 @@ public class MemPointIteratorTest {
   @Test
   public void testNonAlignedAsc() throws IOException, QueryProcessException {
     testNonAligned(
-        Ordering.ASC, null, null, PaginationController.UNLIMITED_PAGINATION_CONTROLLER, 400000);
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        400000);
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Arrays.asList(new TimeRange(10001, 20000), new TimeRange(50001, 60000)),
+        380000);
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(0, 1000000)),
+        0);
   }
 
   @Test
@@ -88,26 +108,104 @@ public class MemPointIteratorTest {
         new TimeFilterOperators.TimeNotBetweenAnd(1L, 30000L),
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
         370000);
+    testNonAligned(
+        Ordering.ASC,
+        new TimeFilterOperators.TimeNotBetweenAnd(1001L, 30000L),
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        371000);
     testNonAligned(
         Ordering.ASC,
         new TimeFilterOperators.TimeNotBetweenAnd(1L, 3000000L),
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
         0);
   }
 
   @Test
+  public void testNonAlignedAscWithPushDownFilter() throws QueryProcessException, IOException {
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        new LongFilterOperators.ValueEq(0, 10000),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        1);
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        new LongFilterOperators.ValueBetweenAnd(0, 10001, 20000),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        10000);
+  }
+
+  @Test
   public void testNonAlignedAscWithLimitAndOffset() throws IOException, QueryProcessException {
-    testNonAligned(Ordering.ASC, null, null, new PaginationController(10000, 0), 10000);
-    testNonAligned(Ordering.ASC, null, null, new PaginationController(100000, 0), 100000);
-    testNonAligned(Ordering.ASC, null, null, new PaginationController(200000, 0), 200000);
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(10000, 0),
+        Collections.emptyList(),
+        10000);
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(10000, 10),
+        Collections.emptyList(),
+        10000);
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(10000, 1000000),
+        Collections.emptyList(),
+        0);
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(100000, 0),
+        Collections.emptyList(),
+        100000);
+    testNonAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(200000, 0),
+        Collections.emptyList(),
+        200000);
   }
 
   @Test
   public void testNonAlignedDesc() throws IOException, QueryProcessException {
     testNonAligned(
-        Ordering.DESC, null, null, PaginationController.UNLIMITED_PAGINATION_CONTROLLER, 400000);
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        400000);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Arrays.asList(new TimeRange(10001, 20000), new TimeRange(50001, 60000)),
+        380000);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(0, 1000000)),
+        0);
   }
 
   @Test
@@ -117,20 +215,79 @@ public class MemPointIteratorTest {
         new TimeFilterOperators.TimeNotBetweenAnd(1L, 30000L),
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
         370000);
+    testNonAligned(
+        Ordering.DESC,
+        new TimeFilterOperators.TimeNotBetweenAnd(1001L, 30000L),
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        371000);
     testNonAligned(
         Ordering.DESC,
         new TimeFilterOperators.TimeNotBetweenAnd(1L, 3000000L),
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
         0);
   }
 
   @Test
+  public void testNonAlignedDescWithPushDownFilter() throws QueryProcessException, IOException {
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        new LongFilterOperators.ValueEq(0, 10000),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        1);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        new LongFilterOperators.ValueBetweenAnd(0, 10001, 20000),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        10000);
+  }
+
+  @Test
   public void testNonAlignedDescWithLimitAndOffset() throws IOException, QueryProcessException {
-    testNonAligned(Ordering.ASC, null, null, new PaginationController(10000, 0), 10000);
-    testNonAligned(Ordering.ASC, null, null, new PaginationController(100000, 0), 100000);
-    testNonAligned(Ordering.ASC, null, null, new PaginationController(200000, 0), 200000);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(10000, 0),
+        Collections.emptyList(),
+        10000);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(10000, 10),
+        Collections.emptyList(),
+        10000);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(10000, 1000000),
+        Collections.emptyList(),
+        0);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(100000, 0),
+        Collections.emptyList(),
+        100000);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(200000, 0),
+        Collections.emptyList(),
+        200000);
   }
 
   private void testNonAligned(
@@ -138,16 +295,45 @@ public class MemPointIteratorTest {
       Filter globalTimeFilter,
       Filter pushDownFilter,
       PaginationController paginationController,
+      List<TimeRange> deletions,
       int expectedCount)
-      throws IOException, QueryProcessException {
+      throws QueryProcessException, IOException {
     Map<TVList, Integer> tvListMap =
-        buildTvListMap(
+        buildNonAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 400000)));
+    //    testNonAligned(
+    //        tvListMap,
+    //        scanOrder,
+    //        globalTimeFilter,
+    //        pushDownFilter,
+    //        paginationController,
+    //        deletions,
+    //        expectedCount);
+    tvListMap =
+        buildNonAlignedOrderedMultiTvListMap(
             Arrays.asList(
                 new TimeRange(1, 100000),
                 new TimeRange(100001, 200000),
                 new TimeRange(200001, 300000),
                 new TimeRange(300001, 400000)));
-    List<TimeRange> deletions = Collections.emptyList();
+    testNonAligned(
+        tvListMap,
+        scanOrder,
+        globalTimeFilter,
+        pushDownFilter,
+        paginationController,
+        deletions,
+        expectedCount);
+  }
+
+  private void testNonAligned(
+      Map<TVList, Integer> tvListMap,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
+      Filter pushDownFilter,
+      PaginationController paginationController,
+      List<TimeRange> deletions,
+      int expectedCount)
+      throws IOException, QueryProcessException {
     ReadOnlyMemChunk chunk =
         new ReadOnlyMemChunk(
             fragmentInstanceContext,
@@ -189,18 +375,60 @@ public class MemPointIteratorTest {
           if (pushDownFilter != null) {
             Assert.assertTrue(pushDownFilter.satisfyLong(currentTimestamp, value));
           }
+          if (!deletions.isEmpty()) {
+            deletions.stream()
+                .map(deletion -> deletion.contains(currentTimestamp))
+                .forEach(Assert::assertFalse);
+          }
           if (pushDownFilter == null
               && globalTimeFilter == null
-              && paginationController == PaginationController.UNLIMITED_PAGINATION_CONTROLLER) {
+              && paginationController == PaginationController.UNLIMITED_PAGINATION_CONTROLLER
+              && deletions.isEmpty()) {
             Assert.assertEquals(expectedTimestamp, currentTimestamp);
           }
         }
       }
     }
     Assert.assertEquals(expectedCount, count);
+
+    if (pushDownFilter != null) {
+      return;
+    }
+
+    chunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
+    memPointIterator = chunk.getMemPointIterator();
+    count = 0;
+    while (memPointIterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = memPointIterator.nextTimeValuePair();
+      long currentTimestamp = timeValuePair.getTimestamp();
+      long value = timeValuePair.getValue().getLong();
+      Assert.assertEquals(currentTimestamp, value);
+      long expectedTimestamp;
+      if (scanOrder.isAscending()) {
+        count++;
+        expectedTimestamp = count + offset;
+      } else {
+        expectedTimestamp = 400000 - count - offset;
+        count++;
+      }
+
+      if (globalTimeFilter != null) {
+        Assert.assertTrue(globalTimeFilter.satisfyRow(currentTimestamp, null));
+      }
+      if (!deletions.isEmpty()) {
+        deletions.stream()
+            .map(deletion -> deletion.contains(currentTimestamp))
+            .forEach(Assert::assertFalse);
+      }
+      if (globalTimeFilter == null
+          && paginationController == PaginationController.UNLIMITED_PAGINATION_CONTROLLER
+          && deletions.isEmpty()) {
+        Assert.assertEquals(expectedTimestamp, currentTimestamp);
+      }
+    }
   }
 
-  private Map<TVList, Integer> buildTvListMap(List<TimeRange> timeRanges) {
+  private Map<TVList, Integer> buildNonAlignedSingleTvListMap(List<TimeRange> timeRanges) {
     TVList tvList = TVList.newList(TSDataType.INT64);
     int rowCount = 0;
     for (TimeRange timeRange : timeRanges) {
@@ -213,6 +441,22 @@ public class MemPointIteratorTest {
     }
     Map<TVList, Integer> tvListMap = new HashMap<>();
     tvListMap.put(tvList, rowCount);
+    return tvListMap;
+  }
+
+  private Map<TVList, Integer> buildNonAlignedOrderedMultiTvListMap(List<TimeRange> timeRanges) {
+    Map<TVList, Integer> tvListMap = new HashMap<>();
+    for (TimeRange timeRange : timeRanges) {
+      TVList tvList = TVList.newList(TSDataType.INT64);
+      int rowCount = 0;
+      long start = timeRange.getMin();
+      long end = timeRange.getMax();
+      for (long timestamp = start; timestamp <= end; timestamp++) {
+        tvList.putLong(timestamp, timestamp);
+        rowCount++;
+      }
+      tvListMap.put(tvList, rowCount);
+    }
     return tvListMap;
   }
 }

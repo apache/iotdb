@@ -65,12 +65,21 @@ public abstract class MultiTVListIterator extends MemPointIterator {
     super(scanOrder);
     this.tsDataType = tsDataType;
     this.tvListIterators = new ArrayList<>(tvLists.size());
-    for (int i = 0; i < tvLists.size(); i++) {
-      TVList tvList = tvLists.get(i);
-      TVList.TVListIterator iterator =
-          tvList.iterator(
-              scanOrder, globalTimeFilter, deletionList, null, null, maxNumberOfPointsInPage);
-      tvListIterators.set(scanOrder.isAscending() ? i : tvLists.size() - 1 - i, iterator);
+    if (scanOrder.isAscending()) {
+      for (TVList tvList : tvLists) {
+        TVList.TVListIterator iterator =
+            tvList.iterator(
+                scanOrder, globalTimeFilter, deletionList, null, null, maxNumberOfPointsInPage);
+        tvListIterators.add(iterator);
+      }
+    } else {
+      for (int i = tvLists.size() - 1; i >= 0; i--) {
+        TVList tvList = tvLists.get(i);
+        TVList.TVListIterator iterator =
+            tvList.iterator(
+                scanOrder, globalTimeFilter, deletionList, null, null, maxNumberOfPointsInPage);
+        tvListIterators.add(iterator);
+      }
     }
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encoding = encoding;
@@ -80,6 +89,9 @@ public abstract class MultiTVListIterator extends MemPointIterator {
 
   @Override
   public boolean hasNextTimeValuePair() {
+    if (!paginationController.hasCurLimit()) {
+      return false;
+    }
     if (!probeNext) {
       prepareNext();
     }
@@ -93,7 +105,9 @@ public abstract class MultiTVListIterator extends MemPointIterator {
     }
     TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
     TimeValuePair currentTvPair =
-        iterator.getTVList().getTimeValuePair(rowIndex, currentTime, floatPrecision, encoding);
+        iterator
+            .getTVList()
+            .getTimeValuePair(rowIndex, currentTime, floatPrecision, encoding, scanOrder);
     next();
     return currentTvPair;
   }
@@ -120,15 +134,17 @@ public abstract class MultiTVListIterator extends MemPointIterator {
       builder.getTimeColumnBuilder().writeLong(currentTime);
       switch (tsDataType) {
         case BOOLEAN:
-          builder.getColumnBuilder(0).writeBoolean(iterator.getTVList().getBoolean(rowIndex));
+          builder
+              .getColumnBuilder(0)
+              .writeBoolean(iterator.getTVList().getBoolean(rowIndex, scanOrder));
           break;
         case INT32:
         case DATE:
-          builder.getColumnBuilder(0).writeInt(iterator.getTVList().getInt(rowIndex));
+          builder.getColumnBuilder(0).writeInt(iterator.getTVList().getInt(rowIndex, scanOrder));
           break;
         case INT64:
         case TIMESTAMP:
-          builder.getColumnBuilder(0).writeLong(iterator.getTVList().getLong(rowIndex));
+          builder.getColumnBuilder(0).writeLong(iterator.getTVList().getLong(rowIndex, scanOrder));
           break;
         case FLOAT:
           TVList floatTvList = iterator.getTVList();
@@ -136,7 +152,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
               .getColumnBuilder(0)
               .writeFloat(
                   floatTvList.roundValueWithGivenPrecision(
-                      floatTvList.getFloat(rowIndex), floatPrecision, encoding));
+                      floatTvList.getFloat(rowIndex, scanOrder), floatPrecision, encoding));
           break;
         case DOUBLE:
           TVList doubleTvList = iterator.getTVList();
@@ -144,12 +160,14 @@ public abstract class MultiTVListIterator extends MemPointIterator {
               .getColumnBuilder(0)
               .writeDouble(
                   doubleTvList.roundValueWithGivenPrecision(
-                      doubleTvList.getDouble(rowIndex), floatPrecision, encoding));
+                      doubleTvList.getDouble(rowIndex, scanOrder), floatPrecision, encoding));
           break;
         case TEXT:
         case BLOB:
         case STRING:
-          builder.getColumnBuilder(0).writeBinary(iterator.getTVList().getBinary(rowIndex));
+          builder
+              .getColumnBuilder(0)
+              .writeBinary(iterator.getTVList().getBinary(rowIndex, scanOrder));
           break;
         default:
           throw new UnSupportedDataTypeException(
@@ -160,9 +178,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
       builder.declarePosition();
     }
     TsBlock tsBlock = builder.build();
-    if (pushDownFilter == null) {
-      paginationController.consumeLimit(tsBlock.getPositionCount());
-    } else {
+    if (pushDownFilter != null) {
       tsBlock =
           TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
               tsBlock,
@@ -171,6 +187,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
                   Collections.singletonList(tsDataType)),
               pushDownFilter,
               paginationController);
+    } else {
+      tsBlock = paginationController.applyTsBlock(tsBlock);
     }
     tsBlocks.add(tsBlock);
     return tsBlock;
@@ -204,6 +222,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
     for (TVList.TVListIterator iterator : tvListIterators) {
       iterator.setPushDownFilter(pushDownFilter);
     }
+    this.pushDownFilter = pushDownFilter;
   }
 
   @Override

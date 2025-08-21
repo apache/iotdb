@@ -262,6 +262,12 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
+  protected TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, TSEncoding encoding, Ordering ordering) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  @Override
   public TimeValuePair getTimeValuePair(int index) {
     return new TimeValuePair(
         getTime(index), (TsPrimitiveType) getAlignedValueForQuery(index, null, null));
@@ -1612,8 +1618,17 @@ public abstract class AlignedTVList extends TVList {
       this.valueColumnsDeletionList = valueColumnsDeletionList;
       this.ignoreAllNullRows = ignoreAllNullRows;
       this.selectedIndices = new int[dataTypeList.size()];
+      timeDeleteCursor[0] =
+          (timeColumnDeletion == null || scanOrder.isAscending())
+              ? 0
+              : (timeColumnDeletion.size() - 1);
       for (int i = 0; i < dataTypeList.size(); i++) {
-        valueColumnDeleteCursor.add(new int[] {0});
+        List<TimeRange> valueColumnDeletions = valueColumnsDeletionList.get(i);
+        int cursor =
+            (valueColumnDeletions == null || scanOrder.isAscending())
+                ? 0
+                : (valueColumnDeletions.size() - 1);
+        valueColumnDeleteCursor.add(new int[] {cursor});
       }
     }
 

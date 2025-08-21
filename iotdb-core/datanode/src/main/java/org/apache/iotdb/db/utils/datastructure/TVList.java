@@ -575,6 +575,9 @@ public abstract class TVList implements WALEntryValue {
   protected abstract TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
+  protected abstract TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, TSEncoding encoding, Ordering ordering);
+
   @TestOnly
   public TsBlock buildTsBlock() {
     return buildTsBlock(0, TSEncoding.PLAIN, null);
@@ -714,7 +717,7 @@ public abstract class TVList implements WALEntryValue {
 
     protected final Filter globalTimeFilter;
     private final List<TimeRange> deletionList;
-    private final int[] deleteCursor = {0};
+    private final int[] deleteCursor;
     private final int floatPrecision;
     private final TSEncoding encoding;
 
@@ -738,6 +741,9 @@ public abstract class TVList implements WALEntryValue {
       this.probeNext = false;
       this.tsBlocks = new ArrayList<>();
       this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+      int cursor =
+          (deletionList == null || scanOrder.isAscending()) ? 0 : (deletionList.size() - 1);
+      deleteCursor = new int[] {cursor};
     }
 
     protected void prepareNext() {

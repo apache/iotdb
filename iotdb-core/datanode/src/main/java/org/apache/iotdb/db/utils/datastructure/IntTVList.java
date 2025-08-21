@@ -159,6 +159,13 @@ public abstract class IntTVList extends TVList {
   }
 
   @Override
+  protected TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, TSEncoding encoding, Ordering ordering) {
+    return new TimeValuePair(
+        time, TsPrimitiveType.getByType(TSDataType.INT32, getInt(index, ordering)));
+  }
+
+  @Override
   protected void writeValidValuesIntoTsBlock(
       TsBlockBuilder builder,
       int floatPrecision,
