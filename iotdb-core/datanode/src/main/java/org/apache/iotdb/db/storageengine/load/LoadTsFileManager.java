@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -480,6 +481,11 @@ public class LoadTsFileManager {
           chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
       if (tableName != null
           && !(tableName.startsWith(TREE_MODEL_DATABASE_PREFIX) || tableName.equals(ROOT))) {
+        // If the table does not exist, it means that the table is all deleted by mods
+        final TsTable table =
+            DataNodeTableCache.getInstance()
+                .getTable(partitionInfo.getDataRegion().getDatabaseName(), tableName);
+        if (Objects.nonNull(table)) {
         writer
             .getSchema()
             .getTableSchemaMap()
@@ -495,6 +501,7 @@ public class LoadTsFileManager {
                                             partitionInfo.getDataRegion().getDatabaseName(),
                                             tablet))
                                 .toTsFileTableSchemaNoAttribute()));
+        }
       }
 
       // ---------- Handle chunk-group boundaries ----------

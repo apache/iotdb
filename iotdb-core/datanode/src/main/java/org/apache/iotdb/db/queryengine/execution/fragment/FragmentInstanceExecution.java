@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
@@ -53,6 +54,7 @@ import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mer
 public class FragmentInstanceExecution {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceExecution.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
@@ -152,7 +154,7 @@ public class FragmentInstanceExecution {
       return false;
     }
     statistics.setDataRegion(((DataRegion) context.getDataRegion()).getDataRegionId());
-    statistics.setIp(IoTDBDescriptor.getInstance().getConfig().getAddressAndPort().ip);
+    statistics.setIp(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
     statistics.setStartTimeInMS(context.getStartTime());
     statistics.setEndTimeInMS(
         context.isEndTimeUpdate() ? context.getEndTime() : System.currentTimeMillis());

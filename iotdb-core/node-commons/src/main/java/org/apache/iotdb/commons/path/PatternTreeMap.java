@@ -68,6 +68,10 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
     return rootMap.computeIfAbsent(rootName, r -> new PathPatternNode<>(r, supplier, serializer));
   }
 
+  public boolean isEmpty() {
+    return rootMap.values().stream().allMatch(node -> node.isLeaf() && node.getValues().isEmpty());
+  }
+
   /**
    * Append key and value to PatternTreeMap.
    *

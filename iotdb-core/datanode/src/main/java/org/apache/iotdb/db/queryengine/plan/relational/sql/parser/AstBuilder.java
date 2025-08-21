@@ -1438,14 +1438,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitExtendRegionStatement(RelationalSqlParser.ExtendRegionStatementContext ctx) {
-    return new ExtendRegion(
-        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    return new ExtendRegion(regionIds, Integer.parseInt(ctx.targetDataNodeId.getText()));
   }
 
   @Override
   public Node visitRemoveRegionStatement(RelationalSqlParser.RemoveRegionStatementContext ctx) {
-    return new RemoveRegion(
-        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    return new RemoveRegion(regionIds, Integer.parseInt(ctx.targetDataNodeId.getText()));
   }
 
   @Override
