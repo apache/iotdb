@@ -191,17 +191,10 @@ public class ExportSchemaTable extends AbstractExportSchema {
       try (ITableSession session = sessionPool.getSession()) {
         sessionDataSet =
             session.executeQueryStatement(
-                String.format(Constants.EXPORT_SCHEMA_COLUMNS_SELECT, database, tableName));
-        exportSchemaBySelect(sessionDataSet, fileName, tableName, comment);
+                String.format("SHOW CREATE TABLE %s.%s", database, tableName));
+        exportSchemaByShowCreate(sessionDataSet, fileName, tableName);
       } catch (IoTDBConnectionException | StatementExecutionException | IOException e) {
-        try (ITableSession session = sessionPool.getSession()) {
-          sessionDataSet =
-              session.executeQueryStatement(
-                  String.format(Constants.EXPORT_SCHEMA_COLUMNS_DESC, database, tableName));
-          exportSchemaByDesc(sessionDataSet, fileName, tableName, comment);
-        } catch (IoTDBConnectionException | StatementExecutionException | IOException e1) {
-          ioTPrinter.println(Constants.COLUMN_SQL_MEET_ERROR_MSG + e.getMessage());
-        }
+        ioTPrinter.println(Constants.COLUMN_SQL_MEET_ERROR_MSG + e.getMessage());
       } finally {
         if (ObjectUtils.isNotEmpty(sessionDataSet)) {
           try {
@@ -211,6 +204,23 @@ public class ExportSchemaTable extends AbstractExportSchema {
           }
         }
       }
+    }
+  }
+
+  private void exportSchemaByShowCreate(
+      SessionDataSet sessionDataSet, String fileName, String tableName)
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String dropSql = "DROP TABLE IF EXISTS " + tableName + ";\n";
+    StringBuilder sb = new StringBuilder(dropSql);
+    try (FileWriter writer = new FileWriter(fileName, true)) {
+      while (sessionDataSet.hasNext()) {
+        RowRecord rowRecord = sessionDataSet.next();
+        String res = rowRecord.getField(1).getStringValue();
+        sb.append(res);
+        sb.append(";\n");
+      }
+      writer.append(sb.toString());
+      writer.flush();
     }
   }
 
