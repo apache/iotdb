@@ -318,7 +318,7 @@ public class PredicateUtils {
             constructRightDeepTreeWithAnd(conjuncts.subList(1, conjuncts.size())));
       } catch (StackOverflowError e) {
         throw new SemanticException(
-            "There are too many conjuncts after rewriting, this may be caused by too many devices, try to use ALIGN BY DEVICE");
+            "There are too many conjuncts in predicate after rewriting, this may be caused by too many devices, try to use ALIGN BY DEVICE");
       }
     }
   }
