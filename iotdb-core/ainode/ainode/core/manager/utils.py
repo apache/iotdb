@@ -39,7 +39,7 @@ INFERENCE_EXTRA_MEMORY_RATIO = (
 )  # the overhead ratio for inference, used to estimate the pool size
 
 
-def _measure_model_memory(device: torch.device, model_id: str) -> int:
+def measure_model_memory(device: torch.device, model_id: str) -> int:
     # TODO: support CPU in the future
     # TODO: we can estimate the memory usage by running a dummy inference
     torch.cuda.empty_cache()
@@ -62,7 +62,7 @@ def _measure_model_memory(device: torch.device, model_id: str) -> int:
     return final
 
 
-def _evaluate_system_resources(device: torch.device) -> dict:
+def evaluate_system_resources(device: torch.device) -> dict:
     if torch.cuda.is_available():
         free_mem, total_mem = torch.cuda.mem_get_info()
         logger.info(
@@ -79,7 +79,7 @@ def _evaluate_system_resources(device: torch.device) -> dict:
         return {"device": "cpu", "free_mem": free_mem, "total_mem": total_mem}
 
 
-def _estimate_pool_size(device: torch.device, model_id: str) -> int:
+def estimate_pool_size(device: torch.device, model_id: str) -> int:
     model_info = BUILT_IN_LTSM_MAP.get(model_id, None)
     if model_info is None:
         logger.error(f"[Inference][Device-{device}] Model {model_id} not found")
@@ -90,7 +90,7 @@ def _estimate_pool_size(device: torch.device, model_id: str) -> int:
         logger.error(f"[Inference][Device-{device}] Model {model_id} not supported now")
         return 0
 
-    system_res = _evaluate_system_resources(device)
+    system_res = evaluate_system_resources(device)
     free_mem = system_res["free_mem"]
 
     mem_usage = MODEL_MEM_USAGE_MAP[model_type] * INFERENCE_EXTRA_MEMORY_RATIO
