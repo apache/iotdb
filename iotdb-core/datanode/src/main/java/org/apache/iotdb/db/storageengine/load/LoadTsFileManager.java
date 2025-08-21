@@ -501,7 +501,7 @@ public class LoadTsFileManager {
       IDeviceID device = chunkData.getDevice();
       DataPartitionInfo prevPartition = device2Partition.get(device);
 
-      // 2.1 Device changed → close old group, open new one.
+      // Device changed → close old group, open new one.
       if (!Objects.equals(device, dataPartition2LastDevice.get(partitionInfo))) {
         Set<DataPartitionInfo> set = endChunkGroup.computeIfAbsent(device, k -> new HashSet<>());
         if (dataPartition2LastDevice.containsKey(partitionInfo) && !set.contains(partitionInfo)) {
@@ -511,10 +511,8 @@ public class LoadTsFileManager {
         }
         writer.startChunkGroup(device);
         dataPartition2LastDevice.put(partitionInfo, device);
-      }
-
-      // 2.2 Data partition changed within same device → close group if needed.
-      else if (!Objects.equals(partitionInfo, prevPartition)) {
+      } else if (!Objects.equals(partitionInfo, prevPartition)) {
+        // Data partition changed within same device → close group if needed.
         Set<DataPartitionInfo> set = endChunkGroup.get(device);
         if (dataPartition2LastDevice.containsKey(partitionInfo)
             && set != null
@@ -525,7 +523,7 @@ public class LoadTsFileManager {
         }
       }
 
-      // 2.3 Record current partition for next check.
+      // Record current partition for next check.
       device2Partition.put(device, partitionInfo);
 
       chunkData.writeToFileWriter(writer);
@@ -745,6 +743,7 @@ public class LoadTsFileManager {
       }
       dataPartition2Writer = null;
       dataPartition2LastDevice = null;
+      endChunkGroup = null;
       dataPartition2ModificationFile = null;
       isClosed = true;
     }
