@@ -21,10 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.apache.tsfile.utils.Accountable;
+
 import java.util.Objects;
 
 /** Modification represents an UPDATE or DELETE operation on a certain timeseries. */
-public abstract class Modification {
+public abstract class Modification implements Accountable {
 
   protected Type type;
   protected PartialPath path;

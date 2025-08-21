@@ -295,7 +295,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public final void extract(final PipeRealtimeEvent event) {
     // The progress report event shall be directly extracted
     if (event.getEvent() instanceof ProgressReportEvent) {
-      extractDirectly(event);
+      extractProgressReportEvent(event);
       return;
     }
 
@@ -379,6 +379,18 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       // Ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
     }
+  }
+
+  protected void extractProgressReportEvent(final PipeRealtimeEvent event) {
+    if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
+      final ProgressReportEvent oldEvent = (ProgressReportEvent) pendingQueue.peekLast();
+      oldEvent.bindProgressIndex(
+          oldEvent
+              .getProgressIndex()
+              .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+      return;
+    }
+    extractDirectly(event);
   }
 
   protected void extractDirectly(final PipeRealtimeEvent event) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -781,9 +782,11 @@ public class IoTDBLoadTsFileIT {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4,
+          new ArrayList<>(Arrays.asList(SchemaConfig.MEASUREMENT_30, SchemaConfig.MEASUREMENT_40)));
       generator.generateData(SchemaConfig.DEVICE_2, 100, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 100, PARTITION_INTERVAL / 10_000, false);
+      generator.generateDeletion(SchemaConfig.DEVICE_3);
       generator.generateData(SchemaConfig.DEVICE_4, 100, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_2, 2);
       generator.generateDeletion(SchemaConfig.DEVICE_4, 2);
@@ -791,6 +794,7 @@ public class IoTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.DEVICE_4, 100, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_2, 2);
       generator.generateDeletion(SchemaConfig.DEVICE_4, 2);
+      generator.generateDeletion(SchemaConfig.DEVICE_4, SchemaConfig.MEASUREMENT_30);
       writtenPoint2 = generator.getTotalNumber();
     }
 
@@ -810,6 +814,10 @@ public class IoTDBLoadTsFileIT {
           Assert.fail("This ResultSet is empty.");
         }
       }
+
+      TestUtils.assertSingleResultSetEqual(
+          TestUtils.executeQueryWithRetry(statement, "count timeSeries"),
+          Collections.singletonMap("count(timeseries)", "18"));
     }
   }
 

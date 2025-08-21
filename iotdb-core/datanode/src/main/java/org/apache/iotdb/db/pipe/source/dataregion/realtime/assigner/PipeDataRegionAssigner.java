@@ -127,10 +127,7 @@ public class PipeDataRegionAssigner implements Closeable {
                     new ProgressReportEvent(
                         extractor.getPipeName(),
                         extractor.getCreationTime(),
-                        extractor.getPipeTaskMeta(),
-                        extractor.getPipePattern(),
-                        extractor.getRealtimeDataExtractionStartTime(),
-                        extractor.getRealtimeDataExtractionEndTime());
+                        extractor.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(
@@ -182,10 +179,7 @@ public class PipeDataRegionAssigner implements Closeable {
                     new ProgressReportEvent(
                         extractor.getPipeName(),
                         extractor.getCreationTime(),
-                        extractor.getPipeTaskMeta(),
-                        extractor.getPipePattern(),
-                        extractor.getRealtimeDataExtractionStartTime(),
-                        extractor.getRealtimeDataExtractionEndTime());
+                        extractor.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(

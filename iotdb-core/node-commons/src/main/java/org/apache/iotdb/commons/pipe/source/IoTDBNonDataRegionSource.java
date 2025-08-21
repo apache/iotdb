@@ -189,8 +189,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         || !isTypeListened(realtimeEvent)
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
       final ProgressReportEvent event =
-          new ProgressReportEvent(
-              pipeName, creationTime, pipeTaskMeta, pipePattern, Long.MIN_VALUE, Long.MAX_VALUE);
+          new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
       event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       event.increaseReferenceCount(IoTDBNonDataRegionSource.class.getName());
       return event;

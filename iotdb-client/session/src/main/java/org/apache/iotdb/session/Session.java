@@ -412,7 +412,7 @@ public class Session implements ISession {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
     }
-    Collections.shuffle(nodeUrls);
+    nodeUrls = shuffleNodeUrls(nodeUrls);
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -429,7 +429,7 @@ public class Session implements ISession {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
       }
-      Collections.shuffle(builder.nodeUrls);
+      builder.nodeUrls = shuffleNodeUrls(builder.nodeUrls);
       this.nodeUrls = builder.nodeUrls;
       this.enableQueryRedirection = true;
     } else {
@@ -548,6 +548,16 @@ public class Session implements ISession {
               }
               return t;
             });
+  }
+
+  private static List<String> shuffleNodeUrls(List<String> endPoints) {
+    try {
+      Collections.shuffle(endPoints);
+    } catch (UnsupportedOperationException e) {
+      endPoints = new ArrayList<>(endPoints);
+      Collections.shuffle(endPoints);
+    }
+    return endPoints;
   }
 
   private List<TEndPoint> getNodeUrls() {
@@ -1430,7 +1440,7 @@ public class Session implements ISession {
     request.setPrefixPath(prefixPath);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values, measurements);
     request.setValues(buffer);
     request.setIsAligned(isAligned);
     return request;
@@ -2395,7 +2405,8 @@ public class Session implements ISession {
     request.setPrefixPath(prefixPath);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
-    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
+    List<ByteBuffer> buffersList =
+        objectValuesListToByteBufferList(valuesList, typesList, measurementsList);
     request.setValuesList(buffersList);
     request.setIsAligned(isAligned);
     return request;
@@ -2469,11 +2480,14 @@ public class Session implements ISession {
   }
 
   private List<ByteBuffer> objectValuesListToByteBufferList(
-      List<List<Object>> valuesList, List<List<TSDataType>> typesList)
+      List<List<Object>> valuesList,
+      List<List<TSDataType>> typesList,
+      List<List<String>> measurementsList)
       throws IoTDBConnectionException {
     List<ByteBuffer> buffersList = new ArrayList<>();
     for (int i = 0; i < valuesList.size(); i++) {
-      ByteBuffer buffer = SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i));
+      ByteBuffer buffer =
+          SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i), measurementsList.get(i));
       buffersList.add(buffer);
     }
     return buffersList;
@@ -2545,7 +2559,8 @@ public class Session implements ISession {
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
     request.setIsAligned(isAligned);
-    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
+    List<ByteBuffer> buffersList =
+        objectValuesListToByteBufferList(valuesList, typesList, measurementsList);
     request.setValuesList(buffersList);
     return request;
   }
@@ -2582,7 +2597,7 @@ public class Session implements ISession {
     request.addToPrefixPaths(deviceId);
     request.addToTimestamps(time);
     request.addToMeasurementsList(measurements);
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values, measurements);
     request.addToValuesList(buffer);
   }
 

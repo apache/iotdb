@@ -27,7 +27,6 @@ import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
-import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -40,8 +39,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This class is used to be compatible with the new distribution of aligned series in chunk group.
@@ -51,8 +48,6 @@ import java.util.List;
  */
 public class BatchedAlignedValueChunkData extends AlignedChunkData {
 
-  private List<ValueChunkWriter> valueChunkWriters;
-
   // Used for splitter
   public BatchedAlignedValueChunkData(AlignedChunkData alignedChunkData) {
     super(alignedChunkData);
@@ -61,7 +56,6 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   // Used for deserialize
   public BatchedAlignedValueChunkData(String device, TTimePartitionSlot timePartitionSlot) {
     super(device, timePartitionSlot);
-    valueChunkWriters = new ArrayList<>();
   }
 
   @Override
@@ -129,7 +123,8 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   }
 
   @Override
-  protected void buildChunkWriter(final InputStream stream) throws IOException, PageException {
+  protected void buildChunkWriter(final InputStream stream, final TsFileIOWriter writer)
+      throws IOException, PageException {
     for (int i = 0; i < chunkHeaderList.size(); i++) {
       ChunkHeader chunkHeader = chunkHeaderList.get(i);
       MeasurementSchema measurementSchema =
@@ -145,8 +140,8 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
               measurementSchema.getType(),
               measurementSchema.getEncodingType(),
               measurementSchema.getValueEncoder());
-      valueChunkWriters.add(valueChunkWriter);
       buildValueChunkWriter(stream, chunkHeader, pageNumbers.get(i), valueChunkWriter);
+      valueChunkWriter.writeToFileWriter(writer);
     }
   }
 
@@ -223,19 +218,6 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       statistics.setEndTime(endTime);
 
       valueChunkWriter.sealCurrentPage();
-    }
-  }
-
-  @Override
-  public void writeToFileWriter(TsFileIOWriter writer) throws IOException {
-    if (chunkList != null) {
-      for (final Chunk chunk : chunkList) {
-        writer.writeChunk(chunk);
-      }
-    } else {
-      for (ValueChunkWriter valueChunkWriter : valueChunkWriters) {
-        valueChunkWriter.writeToFileWriter(writer);
-      }
     }
   }
 }

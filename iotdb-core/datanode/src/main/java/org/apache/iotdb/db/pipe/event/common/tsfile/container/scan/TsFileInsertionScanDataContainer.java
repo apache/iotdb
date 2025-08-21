@@ -111,7 +111,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlockForBatchData =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
@@ -137,44 +139,50 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return () ->
-        new Iterator<TabletInsertionEvent>() {
+    if (tabletInsertionIterable == null) {
+      tabletInsertionIterable =
+          () ->
+              new Iterator<TabletInsertionEvent>() {
 
-          @Override
-          public boolean hasNext() {
-            return Objects.nonNull(chunkReader);
-          }
+                @Override
+                public boolean hasNext() {
+                  return Objects.nonNull(chunkReader);
+                }
 
-          @Override
-          public TabletInsertionEvent next() {
-            if (!hasNext()) {
-              close();
-              throw new NoSuchElementException();
-            }
+                @Override
+                public TabletInsertionEvent next() {
+                  if (!hasNext()) {
+                    close();
+                    throw new NoSuchElementException();
+                  }
 
-            // currentIsAligned is initialized when TsFileInsertionEventScanParser is constructed.
-            // When the getNextTablet function is called, currentIsAligned may be updated, causing
-            // the currentIsAligned information to be inconsistent with the current Tablet
-            // information.
-            final boolean isAligned = currentIsAligned;
-            final Tablet tablet = getNextTablet();
-            final boolean hasNext = hasNext();
-            try {
-              return new PipeRawTabletInsertionEvent(
-                  tablet,
-                  isAligned,
-                  sourceEvent != null ? sourceEvent.getPipeName() : null,
-                  sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-                  pipeTaskMeta,
-                  sourceEvent,
-                  !hasNext);
-            } finally {
-              if (!hasNext) {
-                close();
-              }
-            }
-          }
-        };
+                  // currentIsAligned is initialized when TsFileInsertionEventScanParser is
+                  // constructed.
+                  // When the getNextTablet function is called, currentIsAligned may be updated,
+                  // causing
+                  // the currentIsAligned information to be inconsistent with the current Tablet
+                  // information.
+                  final boolean isAligned = currentIsAligned;
+                  final Tablet tablet = getNextTablet();
+                  final boolean hasNext = hasNext();
+                  try {
+                    return new PipeRawTabletInsertionEvent(
+                        tablet,
+                        isAligned,
+                        sourceEvent != null ? sourceEvent.getPipeName() : null,
+                        sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                        pipeTaskMeta,
+                        sourceEvent,
+                        !hasNext);
+                  } finally {
+                    if (!hasNext) {
+                      close();
+                    }
+                  }
+                }
+              };
+    }
+    return tabletInsertionIterable;
   }
 
   public Iterable<Pair<Tablet, Boolean>> toTabletWithIsAligneds() {
@@ -233,8 +241,11 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             tablet =
                 new Tablet(currentDevice, currentMeasurements, rowCountAndMemorySize.getLeft());
             tablet.initBitMaps();
-            PipeDataNodeResourceManager.memory()
-                .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getRight());
+            if (allocatedMemoryBlockForTablet.getMemoryUsageInBytes()
+                < rowCountAndMemorySize.getRight()) {
+              PipeDataNodeResourceManager.memory()
+                  .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getRight());
+            }
             isFirstRow = false;
           }
 
@@ -259,8 +270,6 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       if (tablet == null) {
         tablet = new Tablet(currentDevice, currentMeasurements, 1);
         tablet.initBitMaps();
-        // Ignore the memory cost of tablet
-        PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
       }
 
       // Switch chunk reader iff current chunk is all consumed
@@ -287,10 +296,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
       do {
         data = chunkReader.nextPageData();
-        PipeDataNodeResourceManager.memory()
-            .forceResize(
-                allocatedMemoryBlockForBatchData,
-                PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(data));
+        long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(data);
+        if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
+          PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForBatchData, size);
+        }
       } while (!data.hasCurrent() && chunkReader.hasNextSatisfiedPage());
     } while (!data.hasCurrent());
   }

@@ -90,6 +90,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.LongConsumer;
 import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
@@ -1081,7 +1082,10 @@ public class IoTDBDescriptor {
 
     // The buffer for sort operator to calculate
 
-    loadSortBuffer(properties);
+    loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+
+    loadFixedSizeLimitForQuery(
+        properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
 
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
@@ -1106,21 +1110,17 @@ public class IoTDBDescriptor {
     loadTrustedUriPattern(properties);
   }
 
-  private void loadSortBuffer(TrimProperties properties) {
-    long defaultValue = calculateDefaultSortBufferSize();
-    long sortBufferSize =
-        Long.parseLong(
-            properties.getProperty("sort_buffer_size_in_bytes", Long.toString(defaultValue)));
-    if (sortBufferSize <= 0) {
-      sortBufferSize = defaultValue;
+  private void loadFixedSizeLimitForQuery(
+      TrimProperties properties, String name, LongConsumer setFunction) {
+    long defaultValue =
+        Math.min(
+            32 * 1024 * 1024L,
+            conf.getAllocateMemoryForOperators() / conf.getQueryThreadCount() / 2);
+    long size = Long.parseLong(properties.getProperty(name, Long.toString(defaultValue)));
+    if (size <= 0) {
+      size = defaultValue;
     }
-    // The buffer for sort operator to calculate
-    conf.setSortBufferSize(sortBufferSize);
-  }
-
-  public static long calculateDefaultSortBufferSize() {
-    return Math.min(
-        32 * 1024 * 1024L, conf.getAllocateMemoryForOperators() / conf.getQueryThreadCount() / 2);
+    setFunction.accept(size);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -1791,6 +1791,31 @@ public class IoTDBDescriptor {
                     "max_tsblock_line_number",
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "max_tsblock_line_number"))));
+
+    String booleanCompressor = properties.getProperty("boolean_compressor");
+    if (booleanCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setBooleanCompression(booleanCompressor);
+    }
+    String int32Compressor = properties.getProperty("int32_compressor");
+    if (int32Compressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setInt32Compression(int32Compressor);
+    }
+    String int64Compressor = properties.getProperty("int64_compressor");
+    if (int64Compressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setInt64Compression(int64Compressor);
+    }
+    String floatCompressor = properties.getProperty("float_compressor");
+    if (floatCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setFloatCompression(floatCompressor);
+    }
+    String doubleCompressor = properties.getProperty("double_compressor");
+    if (doubleCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setDoubleCompression(doubleCompressor);
+    }
+    String textCompressor = properties.getProperty("text_compressor");
+    if (textCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setTextCompression(textCompressor);
+    }
   }
 
   // Mqtt related
@@ -2058,7 +2083,10 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
 
       // sort_buffer_size_in_bytes
-      loadSortBuffer(properties);
+      loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+
+      loadFixedSizeLimitForQuery(
+          properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
