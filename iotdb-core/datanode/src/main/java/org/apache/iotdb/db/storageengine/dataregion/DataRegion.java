@@ -2174,10 +2174,7 @@ public class DataRegion implements IDataRegionForQuery {
             return false;
           }
         } catch (InterruptedException e) {
-          for (TsFileProcessor processor : needToUnLockList) {
-            processor.readUnLock();
-          }
-          needToUnLockList.clear();
+          clearAlreadyLockedList(needToUnLockList);
           Thread.currentThread().interrupt();
           return false;
         }
