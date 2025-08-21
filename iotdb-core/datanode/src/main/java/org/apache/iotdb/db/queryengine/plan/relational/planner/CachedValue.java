@@ -24,12 +24,29 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -55,6 +72,7 @@ public class CachedValue {
 
   DatasetHeader respHeader;
   HashMap<Symbol, Type> symbolMap;
+  int symbolNextId;
 
   // Used for indexScan to fetch device
   List<List<Expression>> metadataExpressionLists;
@@ -71,6 +89,7 @@ public class CachedValue {
       List<Literal> literalReference,
       DatasetHeader header,
       HashMap<Symbol, Type> symbolMap,
+      int symbolNextId,
       List<List<Expression>> metadataExpressionLists,
       List<List<String>> attributeColumnsLists,
       List<Map<Symbol, ColumnSchema>> assignmentsLists) {
@@ -78,6 +97,7 @@ public class CachedValue {
     this.scanNodes = scanNodes;
     this.respHeader = header;
     this.symbolMap = symbolMap;
+    this.symbolNextId = symbolNextId;
     this.metadataExpressionLists = metadataExpressionLists;
     this.attributeColumnsLists = attributeColumnsLists;
     this.assignmentsLists = assignmentsLists;
@@ -99,6 +119,10 @@ public class CachedValue {
 
   public HashMap<Symbol, Type> getSymbolMap() {
     return symbolMap;
+  }
+
+  public int getSymbolNextId() {
+    return symbolNextId;
   }
 
   public List<List<Expression>> getMetadataExpressionLists() {
@@ -282,6 +306,151 @@ public class CachedValue {
               node.isPushLimitToEachDevice(),
               node.containsNonAlignedDevice());
 
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitPatternRecognition(PatternRecognitionNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      PatternRecognitionNode newNode = (PatternRecognitionNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitAggregation(AggregationNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      AggregationNode newNode = (AggregationNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitWindowFunction(WindowNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      WindowNode newNode = (WindowNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitTableFunction(TableFunctionNode node, ClonerContext context) {
+      List<PlanNode> newChildren = new ArrayList<>();
+      for (PlanNode child : node.getChildren()) {
+        newChildren.add(child.accept(this, context));
+      }
+      TableFunctionNode newNode = (TableFunctionNode) node.clone();
+      newNode.setChildren(newChildren);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitTableFunctionProcessor(
+        TableFunctionProcessorNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      TableFunctionProcessorNode newNode = (TableFunctionProcessorNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitLimit(LimitNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      LimitNode newNode = (LimitNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitOffset(OffsetNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      OffsetNode newNode = (OffsetNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitApply(ApplyNode node, ClonerContext context) {
+      PlanNode newLeft = node.getLeftChild().accept(this, context);
+      PlanNode newRight = node.getRightChild().accept(this, context);
+      ApplyNode newNode = (ApplyNode) node.clone();
+      newNode.setLeftChild(newLeft);
+      newNode.setRightChild(newRight);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitCorrelatedJoin(CorrelatedJoinNode node, ClonerContext context) {
+      PlanNode newLeft = node.getLeftChild().accept(this, context);
+      PlanNode newRight = node.getRightChild().accept(this, context);
+      CorrelatedJoinNode newNode = (CorrelatedJoinNode) node.clone();
+      newNode.setLeftChild(newLeft);
+      newNode.setRightChild(newRight);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitLinearFill(LinearFillNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      LinearFillNode newNode = (LinearFillNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitPreviousFill(PreviousFillNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      PreviousFillNode newNode = (PreviousFillNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitValueFill(ValueFillNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      ValueFillNode newNode = (ValueFillNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitGroup(GroupNode node, ClonerContext context) {
+      PlanNode newChild = node.getChild().accept(this, context);
+      GroupNode newNode = (GroupNode) node.clone();
+      newNode.setChild(newChild);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitTopK(TopKNode node, ClonerContext context) {
+      List<PlanNode> newChildren = new ArrayList<>();
+      for (PlanNode child : node.getChildren()) {
+        newChildren.add(child.accept(this, context));
+      }
+      TopKNode newNode = (TopKNode) node.clone();
+      newNode.setChildren(newChildren);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitSemiJoin(SemiJoinNode node, ClonerContext context) {
+      PlanNode newLeft = node.getLeftChild().accept(this, context);
+      PlanNode newRight = node.getRightChild().accept(this, context);
+      SemiJoinNode newNode = (SemiJoinNode) node.clone();
+      newNode.setLeftChild(newLeft);
+      newNode.setRightChild(newRight);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitGroupReference(GroupReference node, ClonerContext context) {
+      GroupReference newNode = (GroupReference) node.clone();
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitTreeDeviceViewScan(TreeDeviceViewScanNode node, ClonerContext context) {
+      TreeDeviceViewScanNode newNode = (TreeDeviceViewScanNode) node.clone();
       return newNode;
     }
   }
