@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.protocol.mqtt.BrokerAuthenticator;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -33,6 +35,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import io.moquette.BrokerConstants;
@@ -41,13 +44,14 @@ import io.moquette.broker.config.IConfig;
 import io.moquette.broker.config.MemoryConfig;
 import io.moquette.broker.security.IAuthenticator;
 import io.moquette.interception.InterceptHandler;
+import org.h2.mvstore.MVStoreException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -62,18 +66,23 @@ public class MQTTSource implements PipeExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MQTTSource.class);
 
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  public static final String WILD_CARD_ADDRESS = "0.0.0.0";
+
   protected String pipeName;
   protected long creationTime;
   protected PipeTaskMeta pipeTaskMeta;
   protected final UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue =
       new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
-  protected IConfig config;
+  protected IConfig brokerConfig;
   protected List<InterceptHandler> handlers;
   protected IAuthenticator authenticator;
   private final Server server = new Server();
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -86,6 +95,45 @@ public class MQTTSource implements PipeExtractor {
             PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
       throw new PipeParameterNotValidException("single mode should be true in MQTT extractor");
     }
+
+    if (CONFIG.isEnableMQTTService()) {
+      if (Objects.equals(
+          CONFIG.getMqttDataPath(),
+          validator
+              .getParameters()
+              .getStringOrDefault(
+                  PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
+                  PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE))) {
+        throw new PipeParameterNotValidException(
+            "The data path of the MQTT extractor is used by the MQTT service. "
+                + "Please change the data path of the MQTT extractor.");
+      }
+      if (Objects.equals(
+              CONFIG.getMqttHost(),
+              validator
+                  .getParameters()
+                  .getStringOrDefault(
+                      PipeSourceConstant.MQTT_BROKER_HOST_KEY,
+                      PipeSourceConstant.MQTT_BROKER_HOST_DEFAULT_VALUE))
+          || ((WILD_CARD_ADDRESS.equals(CONFIG.getMqttHost())
+                  || WILD_CARD_ADDRESS.equals(
+                      validator
+                          .getParameters()
+                          .getStringOrDefault(
+                              PipeSourceConstant.MQTT_BROKER_HOST_KEY,
+                              PipeSourceConstant.MQTT_BROKER_HOST_DEFAULT_VALUE)))
+              && Objects.equals(
+                  String.valueOf(CONFIG.getMqttPort()),
+                  validator
+                      .getParameters()
+                      .getStringOrDefault(
+                          PipeSourceConstant.MQTT_BROKER_PORT_KEY,
+                          PipeSourceConstant.MQTT_BROKER_PORT_DEFAULT_VALUE)))) {
+        throw new PipeParameterNotValidException(
+            "The host and port of the MQTT extractor are used by the MQTT service. "
+                + "Please change the host and port of the MQTT extractor.");
+      }
+    }
   }
 
   @Override
@@ -97,7 +145,7 @@ public class MQTTSource implements PipeExtractor {
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    config = createBrokerConfig(parameters);
+    brokerConfig = createBrokerConfig(parameters);
     handlers = new ArrayList<>(1);
     handlers.add(new MQTTPublishHandler(parameters, environment, pendingQueue));
     authenticator = new BrokerAuthenticator();
@@ -153,16 +201,34 @@ public class MQTTSource implements PipeExtractor {
 
   @Override
   public void start() throws Exception {
+    if (hasBeenStarted.get()) {
+      return;
+    }
+    hasBeenStarted.set(true);
+
     try {
-      server.startServer(config, handlers, null, authenticator, null);
-    } catch (IOException e) {
-      throw new RuntimeException("Exception while starting server", e);
+      server.startServer(brokerConfig, handlers, null, authenticator, null);
+    } catch (MVStoreException e) {
+      throw new PipeException(
+          "Failed to start MQTT Extractor "
+              + pipeName
+              + ". The data file is used by another MQTT Source or MQTT Service. "
+              + "please check if another MQTT service is using the same data path: "
+              + brokerConfig.getProperty(BrokerConstants.DATA_PATH_PROPERTY_NAME),
+          e);
+    } catch (Exception e) {
+      throw new PipeException(
+          "Failed to start MQTT Extractor "
+              + pipeName
+              + ". The port might already be in use, or there could be other issues. "
+              + "Please check the logs for more details.",
+          e);
     }
 
     LOGGER.info(
         "Start MQTT Extractor successfully, listening on ip {}, port {}",
-        config.getProperty(BrokerConstants.HOST_PROPERTY_NAME),
-        config.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
+        brokerConfig.getProperty(BrokerConstants.HOST_PROPERTY_NAME),
+        brokerConfig.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
   }
 
   @Override
