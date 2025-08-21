@@ -357,32 +357,7 @@ public abstract class AlignedTVList extends TVList {
     List<Object> columnValue = new ArrayList<>(timestamps.size());
     List<BitMap> columnBitMaps = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
-      switch (dataType) {
-        case TEXT:
-        case STRING:
-        case BLOB:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.TEXT));
-          break;
-        case FLOAT:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.FLOAT));
-          break;
-        case INT32:
-        case DATE:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.INT32));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.INT64));
-          break;
-        case DOUBLE:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.DOUBLE));
-          break;
-        case BOOLEAN:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.BOOLEAN));
-          break;
-        default:
-          break;
-      }
+      columnValue.add(null);
       BitMap bitMap = new BitMap(ARRAY_SIZE);
       // The following code is for these 2 kinds of scenarios.
 
@@ -708,7 +683,7 @@ public abstract class AlignedTVList extends TVList {
       indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     }
     for (int i = 0; i < dataTypes.size(); i++) {
-      values.get(i).add(getPrimitiveArraysByType(dataTypes.get(i)));
+      values.get(i).add(null);
       if (bitMaps != null && bitMaps.get(i) != null) {
         bitMaps.get(i).add(null);
       }
@@ -835,6 +810,10 @@ public abstract class AlignedTVList extends TVList {
         case BLOB:
         case STRING:
           Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
+          if (arrayT == null) {
+            arrayT = (Binary[]) getPrimitiveArraysByType(TSDataType.TEXT);
+            columnValues.set(arrayIndex, arrayT);
+          }
           System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
 
           // update raw size of Text chunk
@@ -845,24 +824,44 @@ public abstract class AlignedTVList extends TVList {
           break;
         case FLOAT:
           float[] arrayF = ((float[]) columnValues.get(arrayIndex));
+          if (arrayF == null) {
+            arrayF = (float[]) getPrimitiveArraysByType(TSDataType.FLOAT);
+            columnValues.set(arrayIndex, arrayF);
+          }
           System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
           break;
         case INT32:
         case DATE:
           int[] arrayI = ((int[]) columnValues.get(arrayIndex));
+          if (arrayI == null) {
+            arrayI = (int[]) getPrimitiveArraysByType(TSDataType.INT32);
+            columnValues.set(arrayIndex, arrayI);
+          }
           System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
           break;
         case INT64:
         case TIMESTAMP:
           long[] arrayL = ((long[]) columnValues.get(arrayIndex));
+          if (arrayL == null) {
+            arrayL = (long[]) getPrimitiveArraysByType(TSDataType.INT64);
+            columnValues.set(arrayIndex, arrayL);
+          }
           System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
           break;
         case DOUBLE:
           double[] arrayD = ((double[]) columnValues.get(arrayIndex));
+          if (arrayD == null) {
+            arrayD = (double[]) getPrimitiveArraysByType(TSDataType.DOUBLE);
+            columnValues.set(arrayIndex, arrayD);
+          }
           System.arraycopy(value[i], idx, arrayD, elementIndex, remaining);
           break;
         case BOOLEAN:
           boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
+          if (arrayB == null) {
+            arrayB = (boolean[]) getPrimitiveArraysByType(TSDataType.BOOLEAN);
+            columnValues.set(arrayIndex, arrayB);
+          }
           System.arraycopy(value[i], idx, arrayB, elementIndex, remaining);
           break;
         default:
