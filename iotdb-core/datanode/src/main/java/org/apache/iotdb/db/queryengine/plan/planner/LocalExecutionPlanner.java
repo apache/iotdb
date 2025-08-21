@@ -225,9 +225,12 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
+  public synchronized long tryAllocateFreeMemory4Load(final long memoryInBytes) {
     if (freeMemoryForOperators - memoryInBytes <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
-      long result = freeMemoryForOperators - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+      final long result = freeMemoryForOperators - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+      if (result <= 0) {
+        return 0;
+      }
       freeMemoryForOperators = MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
       return result;
     } else {
