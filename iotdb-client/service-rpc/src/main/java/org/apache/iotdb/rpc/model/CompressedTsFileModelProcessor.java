@@ -165,12 +165,13 @@ public class CompressedTsFileModelProcessor extends ModelProcessor {
                         chunkHeader.getEncodingType(), chunkHeader.getDataType());
 
                 byte[] bitmap = null;
+                int size = 0;
                 if (uncompressedPageData.hasRemaining()) {
-                  int size = ReadWriteIOUtils.readInt(uncompressedPageData);
+                  size = ReadWriteIOUtils.readInt(uncompressedPageData);
                   bitmap = new byte[(size + 7) / 8];
                   uncompressedPageData.get(bitmap);
                 }
-                while (decoder.hasNext(uncompressedPageData)) {
+                for (int j = 0; j < size; j++) {
                   values[i++] = decoder.readFloat(uncompressedPageData);
                 }
               }
