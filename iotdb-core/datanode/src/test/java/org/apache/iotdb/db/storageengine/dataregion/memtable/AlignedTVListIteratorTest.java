@@ -38,6 +38,8 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.operator.LongFilterOperators;
+import org.apache.tsfile.read.filter.operator.TimeFilterOperators;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.VectorMeasurementSchema;
@@ -113,6 +115,234 @@ public class AlignedTVListIteratorTest {
         Collections.emptyList(),
         Arrays.asList(Collections.emptyList(), Collections.emptyList()),
         400000);
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Arrays.asList(new TimeRange(10001, 20000), new TimeRange(50001, 60000)),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        380000);
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(0, 1000000)),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        0);
+  }
+
+  @Test
+  public void testAlignedAscWithGlobalTimeFilter() throws IOException, QueryProcessException {
+    testAligned(
+        Ordering.ASC,
+        new TimeFilterOperators.TimeNotBetweenAnd(1L, 30000L),
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        370000);
+    testAligned(
+        Ordering.ASC,
+        new TimeFilterOperators.TimeNotBetweenAnd(1001L, 30000L),
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        371000);
+    testAligned(
+        Ordering.ASC,
+        new TimeFilterOperators.TimeNotBetweenAnd(1L, 3000000L),
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        0);
+  }
+
+  @Test
+  public void testAlignedAscWithPushDownFilter() throws QueryProcessException, IOException {
+    testAligned(
+        Ordering.ASC,
+        null,
+        new LongFilterOperators.ValueEq(0, 10000),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        1);
+    testAligned(
+        Ordering.ASC,
+        null,
+        new LongFilterOperators.ValueBetweenAnd(0, 10001, 20000),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        10000);
+  }
+
+  @Test
+  public void testAlignedAscWithLimitAndOffset() throws IOException, QueryProcessException {
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(10000, 0),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        10000);
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(10000, 10),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        10000);
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(10000, 1000000),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        0);
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(100000, 0),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        100000);
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        new PaginationController(200000, 0),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        200000);
+  }
+
+  @Test
+  public void testAlignedDesc() throws QueryProcessException, IOException {
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        400000);
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Arrays.asList(new TimeRange(10001, 20000), new TimeRange(50001, 60000)),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        380000);
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(0, 1000000)),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        0);
+  }
+
+  @Test
+  public void testAlignedDescWithGlobalTimeFilter() throws IOException, QueryProcessException {
+    testAligned(
+        Ordering.DESC,
+        new TimeFilterOperators.TimeNotBetweenAnd(1L, 30000L),
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        370000);
+    testAligned(
+        Ordering.DESC,
+        new TimeFilterOperators.TimeNotBetweenAnd(1001L, 30000L),
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        371000);
+    testAligned(
+        Ordering.DESC,
+        new TimeFilterOperators.TimeNotBetweenAnd(1L, 3000000L),
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        0);
+  }
+
+  @Test
+  public void testAlignedDescWithPushDownFilter() throws QueryProcessException, IOException {
+    testAligned(
+        Ordering.DESC,
+        null,
+        new LongFilterOperators.ValueEq(0, 10000),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        1);
+    testAligned(
+        Ordering.DESC,
+        null,
+        new LongFilterOperators.ValueBetweenAnd(0, 10001, 20000),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        10000);
+  }
+
+  @Test
+  public void testAlignedDescWithLimitAndOffset() throws IOException, QueryProcessException {
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(10000, 0),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        10000);
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(10000, 10),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        10000);
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(10000, 1000000),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        0);
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(100000, 0),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        100000);
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        new PaginationController(200000, 0),
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        200000);
   }
 
   private void testAligned(
@@ -199,11 +429,16 @@ public class AlignedTVListIteratorTest {
             count++;
           }
           long currentTimestamp = tsBlock.getTimeByIndex(i);
-          long int64Value = tsBlock.getColumn(0).getLong(i);
-          boolean boolValue = tsBlock.getColumn(1).getBoolean(i);
+          Long int64Value = tsBlock.getColumn(0).isNull(i) ? null : tsBlock.getColumn(0).getLong(i);
+          Boolean boolValue =
+              tsBlock.getColumn(0).isNull(i) ? null : tsBlock.getColumn(1).getBoolean(i);
 
-          Assert.assertEquals(currentTimestamp, int64Value);
-          Assert.assertEquals(expectedTimestamp % 2 == 0, boolValue);
+          if (int64Value != null) {
+            Assert.assertEquals(currentTimestamp, int64Value.longValue());
+          }
+          if (boolValue != null) {
+            Assert.assertEquals(currentTimestamp % 2 == 0, boolValue.booleanValue());
+          }
           if (globalTimeFilter != null) {
             Assert.assertTrue(globalTimeFilter.satisfyRow(currentTimestamp, null));
           }
