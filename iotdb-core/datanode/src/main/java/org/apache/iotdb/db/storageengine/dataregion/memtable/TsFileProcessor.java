@@ -2336,7 +2336,7 @@ public class TsFileProcessor {
   }
 
   public boolean tryReadLock(long waitInMs) throws InterruptedException {
-    return flushQueryLock.writeLock().tryLock(waitInMs, TimeUnit.MILLISECONDS);
+    return flushQueryLock.readLock().tryLock(waitInMs, TimeUnit.MILLISECONDS);
   }
 
   public void readUnLock() {

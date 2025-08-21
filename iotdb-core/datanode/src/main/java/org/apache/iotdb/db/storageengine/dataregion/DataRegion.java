@@ -2157,7 +2157,7 @@ public class DataRegion implements IDataRegionForQuery {
           && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, true, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
-          long startTime = System.currentTimeMillis();
+          long startTime = System.nanoTime();
           if (tsFileProcessor.tryReadLock(waitTimeInMs)) {
             // minus already consumed time
             waitTimeInMs -= (System.nanoTime() - startTime) / 1_000_000;
@@ -2189,7 +2189,7 @@ public class DataRegion implements IDataRegionForQuery {
           && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, false, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
-          long startTime = System.currentTimeMillis();
+          long startTime = System.nanoTime();
           if (tsFileProcessor.tryReadLock(waitTimeInMs)) {
             // minus already consumed time
             waitTimeInMs -= (System.nanoTime() - startTime) / 1_000_000;
@@ -2380,7 +2380,15 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       // apply read lock for SG insert lock to prevent inconsistent with concurrently writing
       // memtable
+      long startTime = System.nanoTime();
       if (insertLock.readLock().tryLock(waitMillis, TimeUnit.MILLISECONDS)) {
+        // minus already consumed time
+        waitMillis -= (System.nanoTime() - startTime) / 1_000_000;
+        // no remaining time slice
+        if (waitMillis <= 0) {
+          insertLock.readLock().unlock();
+          return false;
+        }
         return tryGetTsFileManagerReadLock(waitMillis);
       } else {
         return false;
