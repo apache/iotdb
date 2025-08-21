@@ -265,9 +265,6 @@ public class PrimitiveArrayManager {
    */
   public static void release(Object array) {
     int order;
-    if (array == null) {
-      return;
-    }
     if (array instanceof boolean[]) {
       order = TSDataType.BOOLEAN.serialize();
     } else if (array instanceof int[]) {

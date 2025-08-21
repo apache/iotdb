@@ -196,39 +196,64 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
+        if (dataTypes.get(i).isBinary()) {
+          memoryBinaryChunkSize[i] += getBinarySize(Binary.EMPTY_VALUE);
+        }
+        continue;
       }
       switch (dataTypes.get(i)) {
         case TEXT:
         case BLOB:
         case STRING:
-          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
-          memoryBinaryChunkSize[i] +=
-              columnValue != null
-                  ? getBinarySize((Binary) columnValue)
-                  : getBinarySize(Binary.EMPTY_VALUE);
+          Binary[] arrayT = (Binary[]) columnValues.get(arrayIndex);
+          if (arrayT == null) {
+            arrayT = (Binary[]) getPrimitiveArraysByType(TSDataType.TEXT);
+            columnValues.set(arrayIndex, arrayT);
+          }
+          arrayT[elementIndex] = (Binary) columnValue;
+          memoryBinaryChunkSize[i] += getBinarySize((Binary) columnValue);
           break;
         case FLOAT:
-          ((float[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (float) columnValue : Float.MIN_VALUE;
+          float[] arrayF = (float[]) columnValues.get(arrayIndex);
+          if (arrayF == null) {
+            arrayF = (float[]) getPrimitiveArraysByType(TSDataType.FLOAT);
+            columnValues.set(arrayIndex, arrayF);
+          }
+          arrayF[elementIndex] = (float) columnValue;
           break;
         case INT32:
         case DATE:
-          ((int[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (int) columnValue : Integer.MIN_VALUE;
+          float[] arrayI = (float[]) columnValues.get(arrayIndex);
+          if (arrayI == null) {
+            arrayI = (float[]) getPrimitiveArraysByType(TSDataType.INT32);
+            columnValues.set(arrayIndex, arrayI);
+          }
+          arrayI[elementIndex] = (int) columnValue;
           break;
         case INT64:
         case TIMESTAMP:
-          ((long[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (long) columnValue : Long.MIN_VALUE;
+          long[] arrayL = (long[]) columnValues.get(arrayIndex);
+          if (arrayL == null) {
+            arrayL = (long[]) getPrimitiveArraysByType(TSDataType.INT64);
+            columnValues.set(arrayIndex, arrayL);
+          }
+          arrayL[elementIndex] = (long) columnValue;
           break;
         case DOUBLE:
-          ((double[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (double) columnValue : Double.MIN_VALUE;
+          double[] arrayD = (double[]) columnValues.get(arrayIndex);
+          if (arrayD == null) {
+            arrayD = (double[]) getPrimitiveArraysByType(TSDataType.DOUBLE);
+            columnValues.set(arrayIndex, arrayD);
+          }
+          arrayD[elementIndex] = (double) columnValue;
           break;
         case BOOLEAN:
-          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null && (boolean) columnValue;
+          boolean[] arrayB = (boolean[]) columnValues.get(arrayIndex);
+          if (arrayB == null) {
+            arrayB = (boolean[]) getPrimitiveArraysByType(TSDataType.BOOLEAN);
+            columnValues.set(arrayIndex, arrayB);
+          }
+          arrayB[elementIndex] = (boolean) columnValue;
           break;
         default:
           break;
@@ -485,23 +510,22 @@ public abstract class AlignedTVList extends TVList {
     if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(unsortedRowIndex)) {
       return true;
     }
+    int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
+    int elementIndex = unsortedRowIndex % ARRAY_SIZE;
 
-    if (columnIndex < 0 || columnIndex >= values.size() || values.get(columnIndex) == null) {
+    if (columnIndex < 0
+        || columnIndex >= values.size()
+        || values.get(columnIndex) == null
+        || values.get(columnIndex).get(arrayIndex) == null) {
       return true;
     }
     if (bitMaps == null
         || bitMaps.get(columnIndex) == null
-        || bitMaps.get(columnIndex).get(unsortedRowIndex / ARRAY_SIZE) == null) {
+        || bitMaps.get(columnIndex).get(arrayIndex) == null) {
       return false;
     }
-    int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
-    int elementIndex = unsortedRowIndex % ARRAY_SIZE;
     List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
     return columnBitMaps.get(arrayIndex).isMarked(elementIndex);
-  }
-
-  public List<List<Object>> getValues() {
-    return values;
   }
 
   public List<TSDataType> getTsDataTypes() {
@@ -611,6 +635,9 @@ public abstract class AlignedTVList extends TVList {
   }
 
   protected Object cloneValue(TSDataType type, Object value) {
+    if (value == null) {
+      return null;
+    }
     switch (type) {
       case TEXT:
       case BLOB:
@@ -657,7 +684,9 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValues != null) {
         for (Object dataArray : columnValues) {
-          PrimitiveArrayManager.release(dataArray);
+          if (dataArray != null) {
+            PrimitiveArrayManager.release(dataArray);
+          }
         }
         columnValues.clear();
       }
@@ -1254,50 +1283,52 @@ public abstract class AlignedTVList extends TVList {
         int arrayIndex = rowIndex / ARRAY_SIZE;
         int elementIndex = rowIndex % ARRAY_SIZE;
         // value
+        boolean isNull = isNullValue(rowIndex, columnIndex);
         switch (dataTypes.get(columnIndex)) {
           case TEXT:
           case BLOB:
           case STRING:
-            Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
             // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
             // current row. We need to handle this scenario to get rid of NPE. See the similar issue
             // here: https://github.com/apache/iotdb/pull/9884
             // Furthermore, we use an empty Binary as a placeholder here. It won't lead to data
             // error because whether this field is null or not is decided by the bitMap rather than
             // the object's value here.
-            if (valueT != null) {
-              WALWriteUtils.write(valueT, buffer);
-            } else {
-              WALWriteUtils.write(new Binary(new byte[0]), buffer);
-            }
+            WALWriteUtils.write(
+                isNull
+                    ? Binary.EMPTY_VALUE
+                    : ((Binary[]) columnValues.get(arrayIndex))[elementIndex],
+                buffer);
             break;
           case FLOAT:
-            float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
-            buffer.putFloat(valueF);
+            buffer.putFloat(
+                isNull ? Float.MIN_VALUE : ((float[]) columnValues.get(arrayIndex))[elementIndex]);
             break;
           case INT32:
           case DATE:
-            int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
-            buffer.putInt(valueI);
+            buffer.putInt(
+                isNull ? Integer.MIN_VALUE : ((int[]) columnValues.get(arrayIndex))[elementIndex]);
             break;
           case INT64:
           case TIMESTAMP:
-            long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
-            buffer.putLong(valueL);
+            buffer.putLong(
+                isNull ? Long.MIN_VALUE : ((long[]) columnValues.get(arrayIndex))[elementIndex]);
             break;
           case DOUBLE:
-            double valueD = ((double[]) columnValues.get(arrayIndex))[elementIndex];
-            buffer.putDouble(valueD);
+            buffer.putDouble(
+                isNull
+                    ? Double.MIN_VALUE
+                    : ((double[]) columnValues.get(arrayIndex))[elementIndex]);
             break;
           case BOOLEAN:
-            boolean valueB = ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
-            WALWriteUtils.write(valueB, buffer);
+            WALWriteUtils.write(
+                !isNull && ((boolean[]) columnValues.get(arrayIndex))[elementIndex], buffer);
             break;
           default:
             throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
         }
         // bitmap
-        WALWriteUtils.write(isNullValue(rowIndex, columnIndex), buffer);
+        WALWriteUtils.write(isNull, buffer);
       }
     }
 
