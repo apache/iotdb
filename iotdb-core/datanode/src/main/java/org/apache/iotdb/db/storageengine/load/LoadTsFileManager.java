@@ -486,21 +486,21 @@ public class LoadTsFileManager {
             DataNodeTableCache.getInstance()
                 .getTable(partitionInfo.getDataRegion().getDatabaseName(), tableName);
         if (Objects.nonNull(table)) {
-        writer
-            .getSchema()
-            .getTableSchemaMap()
-            .computeIfAbsent(
-                tableName,
-                t ->
-                    SCHEMA_CACHE.get(
-                        t,
-                        tablet ->
-                            TableSchema.of(
-                                    DataNodeTableCache.getInstance()
-                                        .getTable(
-                                            partitionInfo.getDataRegion().getDatabaseName(),
-                                            tablet))
-                                .toTsFileTableSchemaNoAttribute()));
+          writer
+              .getSchema()
+              .getTableSchemaMap()
+              .computeIfAbsent(
+                  tableName,
+                  t ->
+                      SCHEMA_CACHE.get(
+                          t,
+                          tablet ->
+                              TableSchema.of(
+                                      DataNodeTableCache.getInstance()
+                                          .getTable(
+                                              partitionInfo.getDataRegion().getDatabaseName(),
+                                              tablet))
+                                  .toTsFileTableSchemaNoAttribute()));
         }
       }
 
