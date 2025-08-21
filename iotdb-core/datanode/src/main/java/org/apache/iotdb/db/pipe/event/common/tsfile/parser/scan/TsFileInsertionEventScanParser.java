@@ -487,7 +487,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 final long chunkSize = timeChunkSize + valueChunkSize;
                 if (chunkSize + chunkHeader.getDataSize()
                     > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-                  if (valueChunkList.size() <= 1
+                  if (valueChunkList.size() == 1
                       && chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
                     PipeDataNodeResourceManager.memory()
                         .forceResize(allocatedMemoryBlockForChunk, chunkSize);
