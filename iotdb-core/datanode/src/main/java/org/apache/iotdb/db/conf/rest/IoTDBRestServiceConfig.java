@@ -22,7 +22,7 @@ package org.apache.iotdb.db.conf.rest;
 public class IoTDBRestServiceConfig {
 
   /** If the enableRestService is true, we will start REST Service. */
-  private boolean enableRestService = true;
+  private boolean enableRestService = false;
 
   /** Set the REST Service port. */
   private int restServicePort = 18080;
