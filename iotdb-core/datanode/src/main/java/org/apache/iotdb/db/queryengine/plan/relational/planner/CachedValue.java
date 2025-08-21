@@ -23,13 +23,10 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -41,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,6 +47,8 @@ import java.util.Map;
 import java.util.Optional;
 
 public class CachedValue {
+  private static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(CachedValue.class);
 
   PlanNode planNode;
   List<DeviceTableScanNode> scanNodes;
@@ -62,6 +62,8 @@ public class CachedValue {
   List<Map<Symbol, ColumnSchema>> assignmentsLists;
 
   List<Literal> literalReference;
+
+  long estimatedMemoryUsage;
 
   public CachedValue(
       PlanNode planNode,
@@ -80,6 +82,7 @@ public class CachedValue {
     this.attributeColumnsLists = attributeColumnsLists;
     this.assignmentsLists = assignmentsLists;
     this.literalReference = literalReference;
+    this.estimatedMemoryUsage = estimateMemoryUsage();
   }
 
   public DatasetHeader getRespHeader() {
@@ -171,7 +174,7 @@ public class CachedValue {
       return new LogicalExpression(node.getOperator(), newTerms);
     }
 
-    // TODO: 这里可以把 LikePredicate, FunctionCall, Between, InPredicate, etc 全部补齐
+    // FunctionCall, Between, InPredicate, etc
   }
 
   private static class PlanNodeCloner extends PlanVisitor<PlanNode, ClonerContext> {
@@ -190,33 +193,6 @@ public class CachedValue {
       PlanNode newChild = node.getChild().accept(this, context);
       OutputNode newNode = (OutputNode) node.clone();
       newNode.setChild(newChild);
-      return newNode;
-    }
-
-    @Override
-    public PlanNode visitCollect(CollectNode node, ClonerContext context) {
-      List<PlanNode> newChildren = new ArrayList<>();
-      for (PlanNode child : node.getChildren()) {
-        newChildren.add(child.accept(this, context));
-      }
-
-      CollectNode newNode =
-          new CollectNode(
-              context.getQueryId().genPlanNodeId(),
-              newChildren,
-              ImmutableList.copyOf(node.getOutputSymbols()));
-      return newNode;
-    }
-
-    @Override
-    public PlanNode visitMergeSort(MergeSortNode node, ClonerContext context) {
-      List<PlanNode> newChildren = new ArrayList<>();
-      for (PlanNode child : node.getChildren()) {
-        newChildren.add(child.accept(this, context));
-      }
-
-      MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
-      newNode.setChildren(newChildren);
       return newNode;
     }
 
@@ -323,6 +299,51 @@ public class CachedValue {
     for (PlanNode child : node.getChildren()) {
       traverse(child, list);
     }
+  }
+
+  public long estimateMemoryUsage() {
+    long size = INSTANCE_SIZE;
+
+    if (planNode != null) {
+      size += PlanMemoryEstimator.estimatePlan(planNode); // 已内部处理 Seen
+    }
+
+    if (respHeader != null) {
+      size += RamUsageEstimator.sizeOfObject(respHeader);
+    }
+
+    if (symbolMap != null) {
+      size += RamUsageEstimator.sizeOfMap(symbolMap);
+    }
+
+    if (metadataExpressionLists != null) {
+      for (List<Expression> list : metadataExpressionLists) {
+        if (list != null) {
+          for (Expression e : list) {
+            if (e != null) {
+              size += PlanMemoryEstimator.estimateExpression(e);
+            }
+          }
+        }
+      }
+    }
+
+    if (attributeColumnsLists != null) {
+      for (List<String> list : attributeColumnsLists) {
+        if (list != null) {
+          for (String s : list) {
+            if (s != null) {
+              size += RamUsageEstimator.sizeOf(s);
+            }
+          }
+        }
+      }
+    }
+
+    // scanNodes, assignmentsLists, and literalreferences all store references to a small part of
+    // the planNode, so there is no need to repeat the calculation
+
+    return size;
   }
 
   public static class ClonerContext {

@@ -32,12 +32,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
+/** LRU Cache with dual restrictions on cache quantity and memory */
 public class PlanCacheManager {
 
   private static class SingletonHolder {
     private static final PlanCacheManager INSTANCE = new PlanCacheManager();
   }
+
+  private static final int MAX_CACHE_SIZE = 100;
+  private static final long MAX_MEMORY_BYTES = 512L * 1024 * 1024;
+
+  private final AtomicLong currentMemoryBytes = new AtomicLong(0);
 
   private final Map<String, CachedValue> planCache;
 
