@@ -40,8 +40,7 @@ public class PatternMatchConfig {
    * if the number of sections is N, and the number of sections with a different sign is D. The
    * algorithm consider the two subsequences as incompatible if D/N > 0.5
    */
-  public static final double QUERY_SIGN_MAXIMUM_TOLERABLE_DIFFERENT_SIGN_SECTIONS =
-      0.5;
+  public static final double QUERY_SIGN_MAXIMUM_TOLERABLE_DIFFERENT_SIGN_SECTIONS = 0.5;
 
   /**
    * keep only one (best) match if the same area is selected in different smooth iterations with not
@@ -54,15 +53,13 @@ public class PatternMatchConfig {
   public static final boolean CHECK_QUERY_COMPATIBILITY = true;
 
   /** the first and last sections are cut to have a good fit */
-  public static final boolean START_END_CUT_IN_SUBPARTS =
-      true;
+  public static final boolean START_END_CUT_IN_SUBPARTS = true;
 
   /**
    * the first and last sections are cut as well in the results, or are returned highlighting the
    * whole section. false in tests
    */
-  public static final boolean START_END_CUT_IN_SUBPARTS_IN_RESULTS =
-      true;
+  public static final boolean START_END_CUT_IN_SUBPARTS_IN_RESULTS = true;
 
   /** true for tests */
   public static final boolean RESCALING_Y = true;

@@ -523,8 +523,7 @@ public class PatternExecutor {
                 matchedSections.get(si), querySect.getWidth() * subSequenceScaleFactorX));
       } else if (si == querySections.size() - 1
           && querySections.size() > 2
-          && PatternMatchConfig
-              .START_END_CUT_IN_SUBPARTS_IN_RESULTS) {
+          && PatternMatchConfig.START_END_CUT_IN_SUBPARTS_IN_RESULTS) {
         // TODO 这里的参数是不是用错了，源代码居然也是这么错的，这有点抽象了
         dataSect.setPoints(
             sectionStartSubpartPoints(
@@ -783,7 +782,8 @@ public class PatternExecutor {
    * @param n
    * @return
    */
-  // TODO 这里的合并可能有个问题，就是对角线的计算使用的是两侧的点的x和y坐标进行计算，而这里的section合并会将两个sign相反的section合并在一起，这样会导致y轴方向缩小，导致合并后可能计算出来的对角线没有增大
+  // TODO
+  // 这里的合并可能有个问题，就是对角线的计算使用的是两侧的点的x和y坐标进行计算，而这里的section合并会将两个sign相反的section合并在一起，这样会导致y轴方向缩小，导致合并后可能计算出来的对角线没有增大
   public List<Section> reduceSections(List<Section> sections, int n) {
     if (n >= sections.size() || n < 1) {
       return sections;

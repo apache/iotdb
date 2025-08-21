@@ -68,8 +68,7 @@ public class UDAFPatternMatch implements UDAF {
   }
 
   @Override
-  public void addInput(
-      State state, Column[] columns, BitMap bitMap) {
+  public void addInput(State state, Column[] columns, BitMap bitMap) {
     PatternState matchState = (PatternState) state;
 
     int count = columns[0].getPositionCount();
@@ -117,8 +116,7 @@ public class UDAFPatternMatch implements UDAF {
     // State only records time and recorded values, and the final result is calculated
     List<PatternResult> results = executor.executeQuery(ctx);
     if (!results.isEmpty()) {
-      resultValue.setBinary(
-          new Binary(results.toString(), Charset.defaultCharset()));
+      resultValue.setBinary(new Binary(results.toString(), Charset.defaultCharset()));
     } else {
       // If no results are found, use DTW
       UDAFDTWMatch dtw = new UDAFDTWMatch();
