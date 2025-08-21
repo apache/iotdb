@@ -21,12 +21,29 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -44,6 +61,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
@@ -89,7 +108,10 @@ public final class PlanMemoryEstimator {
 
     @Override
     protected Long visitNode(Node node, Void ctx) {
-      return node == null || !seen.mark(node) ? 0L : RamUsageEstimator.sizeOfObject(node);
+      throw new UnsupportedOperationException(
+          "[ExpressionSizer] Unhandled node type: " + node.getClass().getName());
+
+      // return node == null || !seen.mark(node) ? 0L : RamUsageEstimator.sizeOfObject(node);
     }
 
     @Override
@@ -206,7 +228,11 @@ public final class PlanMemoryEstimator {
 
     @Override
     public Long visitPlan(PlanNode node, Void ctx) {
-      return sizeOfPlan(node);
+      if (node == null) return 0L;
+      throw new UnsupportedOperationException(
+          "[PlanSizer] Unhandled plan type: " + node.getClass().getName());
+
+      // return sizeOfPlan(node);
     }
 
     @Override
@@ -318,6 +344,310 @@ public final class PlanMemoryEstimator {
         size += sizeOfExpr(tp);
       }
       size += RamUsageEstimator.sizeOfObject(node.getTimeFilter());
+
+      return size;
+    }
+
+    @Override
+    public Long visitPatternRecognition(PatternRecognitionNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getPartitionBy() != null) {
+        for (Symbol sym : node.getPartitionBy()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+
+      if (node.getOrderingScheme().isPresent() && seen.mark(node.getOrderingScheme().get())) {
+        size += RamUsageEstimator.shallowSizeOfInstance(node.getOrderingScheme().get().getClass());
+        if (node.getOrderingScheme().get().getOrderBy() != null)
+          for (Object sym : node.getOrderingScheme().get().getOrderBy())
+            size += RamUsageEstimator.sizeOfObject(sym);
+        if (node.getOrderingScheme().get().getOrderings() != null)
+          size += RamUsageEstimator.sizeOfMap(node.getOrderingScheme().get().getOrderings());
+      }
+
+      if (node.getHashSymbol().isPresent())
+        size += RamUsageEstimator.sizeOfObject(node.getHashSymbol().get());
+      if (node.getMeasures() != null) size += RamUsageEstimator.sizeOfMap(node.getMeasures());
+      if (node.getSkipToLabels() != null)
+        size += RamUsageEstimator.sizeOfCollection(node.getSkipToLabels());
+      if (node.getPattern() != null) size += RamUsageEstimator.sizeOfObject(node.getPattern());
+      if (node.getVariableDefinitions() != null)
+        size += RamUsageEstimator.sizeOfMap(node.getVariableDefinitions());
+      if (node.getRowsPerMatch() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getRowsPerMatch());
+      if (node.getSkipToPosition() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getSkipToPosition());
+
+      return size;
+    }
+
+    @Override
+    public Long visitAggregation(AggregationNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getAggregations() != null)
+        size += RamUsageEstimator.sizeOfMap(node.getAggregations());
+      if (node.getGroupingSets() != null && seen.mark(node.getGroupingSets()))
+        size += RamUsageEstimator.shallowSizeOfInstance(node.getGroupingSets().getClass());
+      if (node.getPreGroupedSymbols() != null) {
+        for (Symbol sym : node.getPreGroupedSymbols()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+      if (node.getStep() != null) size += RamUsageEstimator.sizeOfObject(node.getStep());
+      if (node.getHashSymbol().isPresent())
+        size += RamUsageEstimator.sizeOfObject(node.getHashSymbol().get());
+      if (node.getGroupIdSymbol().isPresent())
+        size += RamUsageEstimator.sizeOfObject(node.getGroupIdSymbol().get());
+      if (node.getOutputSymbols() != null) {
+        for (Symbol sym : node.getOutputSymbols()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+
+      return size;
+    }
+
+    @Override
+    public Long visitWindowFunction(WindowNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getPrePartitionedInputs() != null)
+        size += RamUsageEstimator.sizeOfCollection(node.getPrePartitionedInputs());
+      if (node.getSpecification() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getSpecification());
+      size += Integer.BYTES; // preSortedOrderPrefix
+      if (node.getWindowFunctions() != null)
+        size += RamUsageEstimator.sizeOfMap(node.getWindowFunctions());
+      if (node.getHashSymbol().isPresent())
+        size += RamUsageEstimator.sizeOfObject(node.getHashSymbol().get());
+
+      return size;
+    }
+
+    @Override
+    public Long visitTableFunction(TableFunctionNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getName() != null) size += RamUsageEstimator.sizeOfObject(node.getName());
+      if (node.getTableFunctionHandle() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getTableFunctionHandle());
+      if (node.getProperOutputs() != null) {
+        for (Symbol sym : node.getProperOutputs()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+      if (node.getTableArgumentProperties() != null)
+        size += RamUsageEstimator.sizeOfCollection(node.getTableArgumentProperties());
+
+      return size;
+    }
+
+    @Override
+    public Long visitTableFunctionProcessor(TableFunctionProcessorNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getName() != null) size += RamUsageEstimator.sizeOfObject(node.getName());
+      if (node.getProperOutputs() != null) {
+        for (Symbol sym : node.getProperOutputs()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+      if (node.getPassThroughSpecification().isPresent())
+        size += RamUsageEstimator.sizeOfObject(node.getPassThroughSpecification().get());
+      if (node.getRequiredSymbols() != null) {
+        for (Symbol sym : node.getRequiredSymbols()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+      if (node.getDataOrganizationSpecification().isPresent())
+        size += RamUsageEstimator.sizeOfObject(node.getDataOrganizationSpecification().get());
+      size += 1; // boolean rowSemantic
+      if (node.getTableFunctionHandle() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getTableFunctionHandle());
+      size += 1; // boolean requireRecordSnapshot
+
+      return size;
+    }
+
+    @Override
+    public Long visitLimit(LimitNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      size += Long.BYTES; // count
+      if (node.getTiesResolvingScheme().isPresent()) {
+        size +=
+            RamUsageEstimator.shallowSizeOfInstance(node.getTiesResolvingScheme().get().getClass());
+        if (node.getTiesResolvingScheme().get().getOrderBy() != null) {
+          for (Object sym : node.getTiesResolvingScheme().get().getOrderBy())
+            size += RamUsageEstimator.sizeOfObject(sym);
+        }
+        if (node.getTiesResolvingScheme().get().getOrderings() != null)
+          size += RamUsageEstimator.sizeOfMap(node.getTiesResolvingScheme().get().getOrderings());
+      }
+
+      return size;
+    }
+
+    @Override
+    public Long visitOffset(OffsetNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      size += Long.BYTES; // count
+      return size;
+    }
+
+    @Override
+    public Long visitApply(ApplyNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getCorrelation() != null) {
+        for (Symbol sym : node.getCorrelation()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+      if (node.getSubqueryAssignments() != null)
+        size += RamUsageEstimator.sizeOfMap(node.getSubqueryAssignments());
+      if (node.getOriginSubquery() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getOriginSubquery());
+
+      return size;
+    }
+
+    @Override
+    public Long visitCorrelatedJoin(CorrelatedJoinNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getCorrelation() != null) {
+        for (Symbol sym : node.getCorrelation()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+      if (node.getType() != null) size += RamUsageEstimator.sizeOfObject(node.getType());
+      if (node.getFilter() != null) size += RamUsageEstimator.sizeOfObject(node.getFilter());
+      if (node.getOriginSubquery() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getOriginSubquery());
+
+      return size;
+    }
+
+    @Override
+    public Long visitLinearFill(LinearFillNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getHelperColumn() != null) {
+        size += RamUsageEstimator.sizeOfObject(node.getHelperColumn());
+      }
+
+      Optional<List<Symbol>> groupingKeysOpt = node.getGroupingKeys();
+      if (groupingKeysOpt.isPresent()) {
+        List<Symbol> groupingKeys = groupingKeysOpt.get();
+        for (Symbol sym : groupingKeys) {
+          size += RamUsageEstimator.sizeOfObject(sym);
+        }
+      }
+
+      return size;
+    }
+
+    @Override
+    public Long visitPreviousFill(PreviousFillNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getTimeBound() != null) size += RamUsageEstimator.sizeOfObject(node.getTimeBound());
+      if (node.getHelperColumn() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getHelperColumn());
+
+      Optional<List<Symbol>> groupingKeysOpt = node.getGroupingKeys();
+      if (groupingKeysOpt.isPresent()) {
+        List<Symbol> groupingKeys = groupingKeysOpt.get();
+        for (Symbol sym : groupingKeys) {
+          size += RamUsageEstimator.sizeOfObject(sym);
+        }
+      }
+
+      return size;
+    }
+
+    @Override
+    public Long visitValueFill(ValueFillNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getFilledValue() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getFilledValue());
+
+      return size;
+    }
+
+    @Override
+    public Long visitGroup(GroupNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = visitSort(node, ctx); // GroupNode extends SortNode
+
+      size += Integer.BYTES; // partitionKeyCount
+
+      return size;
+    }
+
+    @Override
+    public Long visitTopK(TopKNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getOrderingScheme() != null && seen.mark(node.getOrderingScheme())) {
+        size += RamUsageEstimator.shallowSizeOfInstance(node.getOrderingScheme().getClass());
+        if (node.getOrderingScheme().getOrderBy() != null)
+          for (Object sym : node.getOrderingScheme().getOrderBy())
+            size += RamUsageEstimator.sizeOfObject(sym);
+        if (node.getOrderingScheme().getOrderings() != null)
+          size += RamUsageEstimator.sizeOfMap(node.getOrderingScheme().getOrderings());
+      }
+
+      size += Long.BYTES; // count
+      if (node.getOutputSymbols() != null) {
+        for (Symbol sym : node.getOutputSymbols()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+
+      size += 1; // boolean childrenDataInOrder
+
+      return size;
+    }
+
+    @Override
+    public Long visitSemiJoin(SemiJoinNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getSourceJoinSymbol() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getSourceJoinSymbol());
+      if (node.getFilteringSourceJoinSymbol() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getFilteringSourceJoinSymbol());
+      if (node.getSemiJoinOutput() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getSemiJoinOutput());
+
+      return size;
+    }
+
+    @Override
+    public Long visitGroupReference(GroupReference node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      size += Integer.BYTES; // groupId
+      if (node.getOutputSymbols() != null) {
+        for (Symbol sym : node.getOutputSymbols()) size += RamUsageEstimator.sizeOfObject(sym);
+      }
+
+      return size;
+    }
+
+    @Override
+    public Long visitTreeDeviceViewScan(TreeDeviceViewScanNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) return 0L;
+      long size = sizeOfPlan(node);
+
+      if (node.getTreeDBName() != null)
+        size += RamUsageEstimator.sizeOfObject(node.getTreeDBName());
+      if (node.getMeasurementColumnNameMap() != null)
+        size += RamUsageEstimator.sizeOfMap(node.getMeasurementColumnNameMap());
 
       return size;
     }

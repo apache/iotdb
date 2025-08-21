@@ -282,6 +282,7 @@ public class TableLogicalPlanner {
         long curTime = System.nanoTime();
         // logger.info("CachedKey generated cost time: {}", curTime - totalStartTime);
         symbolAllocator.fill(cachedValue.getSymbolMap());
+        symbolAllocator.setNextId(cachedValue.getSymbolNextId());
         analysis.setRespDatasetHeader(cachedValue.getRespHeader());
 
         // Clone the PlanNode with new literals
@@ -380,6 +381,7 @@ public class TableLogicalPlanner {
               literalReference,
               analysis.getRespDatasetHeader(),
               symbolAllocator.cloneSymbolMap(),
+              symbolAllocator.getNextId(),
               queryContext.getMetadataExpressionLists(),
               queryContext.getAttributeColumnsLists(),
               queryContext.getAssignmentsLists());

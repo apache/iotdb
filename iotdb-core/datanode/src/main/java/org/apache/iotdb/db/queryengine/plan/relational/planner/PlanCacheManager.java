@@ -27,29 +27,33 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** LRU Cache with dual restrictions on cache quantity and memory */
 public class PlanCacheManager {
+  private static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(PlanCacheManager.class);
 
   private static class SingletonHolder {
     private static final PlanCacheManager INSTANCE = new PlanCacheManager();
   }
 
-  private static final int MAX_CACHE_SIZE = 100;
-  private static final long MAX_MEMORY_BYTES = 512L * 1024 * 1024;
+  private static final int MAX_CACHE_SIZE = 1000;
+  private static final long MAX_MEMORY_BYTES = 64L * 1024 * 1024; // 64 MB
 
-  private final AtomicLong currentMemoryBytes = new AtomicLong(0);
+  private final AtomicLong currentMemoryBytes = new AtomicLong(INSTANCE_SIZE);
 
   private final Map<String, CachedValue> planCache;
 
   private PlanCacheManager() {
-    planCache = new ConcurrentHashMap<>();
+    this.planCache = new LinkedHashMap<>(16, 0.75f, true);
   }
 
   public static PlanCacheManager getInstance() {
@@ -63,28 +67,61 @@ public class PlanCacheManager {
       List<Literal> literalReference,
       DatasetHeader header,
       HashMap<Symbol, Type> symbolMap,
+      int symbolNextId,
       List<List<Expression>> metadataExpressionLists,
       List<List<String>> attributeColumnsLists,
       List<Map<Symbol, ColumnSchema>> assignmentsLists) {
-    planCache.put(
-        cachedKey,
+    CachedValue newValue =
         new CachedValue(
             planNode,
             scanNodes,
             literalReference,
             header,
             symbolMap,
+            symbolNextId,
             metadataExpressionLists,
             attributeColumnsLists,
-            assignmentsLists));
+            assignmentsLists);
+
+    long keySize = RamUsageEstimator.sizeOf(cachedKey);
+    long newValueSize = newValue.estimateMemoryUsage();
+
+    synchronized (planCache) {
+      planCache.put(cachedKey, newValue);
+      currentMemoryBytes.addAndGet(keySize + newValueSize);
+
+      Iterator<Map.Entry<String, CachedValue>> iterator = planCache.entrySet().iterator();
+      while ((currentMemoryBytes.get() > MAX_MEMORY_BYTES || planCache.size() > MAX_CACHE_SIZE)
+          && iterator.hasNext()) {
+        Map.Entry<String, CachedValue> eldest = iterator.next();
+
+        CachedValue evicted = eldest.getValue();
+        long evictedKeySize = RamUsageEstimator.sizeOf(eldest.getKey());
+        long evictedValueSize = evicted.estimateMemoryUsage();
+        iterator.remove();
+        currentMemoryBytes.addAndGet(-(evictedKeySize + evictedValueSize));
+      }
+    }
+  }
+
+  public int size() {
+    return planCache.size();
   }
 
   public CachedValue getCachedValue(String cacheKey) {
-    return planCache.get(cacheKey);
+    synchronized (planCache) {
+      return planCache.get(cacheKey);
+    }
   }
 
-  /*
-  TODO: add LRU strategy
-   缓存数量和内存大小
-  */
+  public long getCurrentMemoryBytes() {
+    return currentMemoryBytes.get();
+  }
+
+  public void clear() {
+    synchronized (planCache) {
+      planCache.clear();
+      currentMemoryBytes.set(0);
+    }
+  }
 }
