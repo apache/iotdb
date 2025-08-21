@@ -737,7 +737,7 @@ public class IoTDBLoadTsFileIT {
       }
 
       TestUtils.assertSingleResultSetEqual(
-          TestUtils.executeQueryWithRetry(statement, "count timeSeries"),
+          TestUtils.executeQueryWithRetry(statement, "count timeSeries root.sg.**"),
           Collections.singletonMap("count(timeseries)", "18"));
     }
   }
