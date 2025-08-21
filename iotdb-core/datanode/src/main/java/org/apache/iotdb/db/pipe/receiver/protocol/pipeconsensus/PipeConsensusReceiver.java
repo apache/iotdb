@@ -918,15 +918,18 @@ public class PipeConsensusReceiver {
   }
 
   private void deleteCurrentWritingFile(PipeConsensusTsFileWriter tsFileWriter) {
-    if (tsFileWriter.getWritingFile() != null) {
-      deleteFileOrDirectoryIfExists(
-          tsFileWriter.getWritingFile(),
-          String.format("TsFileWriter-%s delete current writing file", tsFileWriter.index));
-    } else {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "PipeConsensus-PipeName-{}: Current writing file is null. No need to delete.",
-            consensusPipeName.toString());
+    if (tsFileWriter.getLocalWritingDir() != null) {
+      try {
+        // There may be multiple files such as mods and tsfile pieces in the dir. Here we clean the
+        // dir instead of deleting it to avoid repeatedly deleting and creating the base dir for
+        // tsfile writer
+        FileUtils.cleanDirectory(tsFileWriter.getLocalWritingDir());
+      } catch (IOException e) {
+        LOGGER.warn(
+            "PipeConsensus-PipeName-{}: Failed to clean current writing file dir {}.",
+            consensusPipeName,
+            tsFileWriter.getLocalWritingDir().getPath(),
+            e);
       }
     }
   }
