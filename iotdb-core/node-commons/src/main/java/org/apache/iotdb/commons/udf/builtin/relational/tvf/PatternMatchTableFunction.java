@@ -50,7 +50,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
-public class ShapeMatchTableFunction implements TableFunction {
+public class PatternMatchTableFunction implements TableFunction {
   private static final String TBL_PARAM = "DATA";
   private static final String TimeColumn = "TIME_COL";
   private static final String DataColumn = "DATA_COL";
@@ -59,7 +59,7 @@ public class ShapeMatchTableFunction implements TableFunction {
   private static final String THRESHOLD_PARAM = "THRESHOLD";
   private static final String WIDTH_PARAM = "WIDTH";
   private static final String HEIGHT_PARAM = "HEIGHT";
-  private static final String TYPE_PARAM = "TYPE";
+  private static final String PATTERN_SOURCE_PARAM = "ISPATTERNFROMORIGIN";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -81,9 +81,9 @@ public class ShapeMatchTableFunction implements TableFunction {
             .defaultValue(Double.MAX_VALUE)
             .build(),
         ScalarParameterSpecification.builder()
-            .name(TYPE_PARAM)
-            .type(Type.STRING)
-            .defaultValue("shape")
+            .name(PATTERN_SOURCE_PARAM)
+            .type(Type.BOOLEAN)
+            .defaultValue(false)
             .build());
   }
 
@@ -118,7 +118,9 @@ public class ShapeMatchTableFunction implements TableFunction {
                 THRESHOLD_PARAM, ((ScalarArgument) arguments.get(THRESHOLD_PARAM)).getValue())
             .addProperty(WIDTH_PARAM, ((ScalarArgument) arguments.get(WIDTH_PARAM)).getValue())
             .addProperty(HEIGHT_PARAM, ((ScalarArgument) arguments.get(HEIGHT_PARAM)).getValue())
-            .addProperty(TYPE_PARAM, ((ScalarArgument) arguments.get(TYPE_PARAM)).getValue())
+            .addProperty(
+                PATTERN_SOURCE_PARAM,
+                ((ScalarArgument) arguments.get(PATTERN_SOURCE_PARAM)).getValue())
             .build();
 
     return TableFunctionAnalysis.builder()
@@ -149,14 +151,15 @@ public class ShapeMatchTableFunction implements TableFunction {
         (Double) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(WIDTH_PARAM);
     Double heightLimit =
         (Double) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(HEIGHT_PARAM);
-    String type = (String) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(TYPE_PARAM);
+    boolean isPatternFromOrigin =
+        (Boolean) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(PATTERN_SOURCE_PARAM);
 
     QetchAlgorthm qetchAlgorthm = new QetchAlgorthm();
     qetchAlgorthm.setThreshold(threshold);
     qetchAlgorthm.setSmoothValue(smoothValue);
     qetchAlgorthm.setHeightLimit(heightLimit);
     qetchAlgorthm.setWidthLimit(widthLimit);
-    qetchAlgorthm.setType(type);
+    qetchAlgorthm.setIsPatternFromOrigin(isPatternFromOrigin);
     qetchAlgorthm.parsePattern2Automaton(pattern);
 
     return new TableFunctionProcessorProvider() {
@@ -182,7 +185,19 @@ public class ShapeMatchTableFunction implements TableFunction {
         ColumnBuilder passThroughIndexBuilder) {
 
       double time = input.getLong(0);
-      double value = input.getDouble(1);
+      // need to judge the type of the value and trans it to double
+      double value;
+      if (input.getDataType(1) == Type.INT32) {
+        value = (double) input.getInt(1);
+      } else if (input.getDataType(1) == Type.INT64) {
+        value = (double) input.getLong(1);
+      } else if (input.getDataType(1) == Type.FLOAT) {
+        value = (double) input.getFloat(1);
+      } else if (input.getDataType(1) == Type.DOUBLE) {
+        value = (double) input.getDouble(1);
+      } else {
+        throw new UDFException("Unsupported data type for value column: " + input.getDataType(1));
+      }
 
       qetchAlgorthm.addPoint(new Point(time, value, qetchAlgorthm.getPointNum()));
       if (qetchAlgorthm.hasMatchResult()) {

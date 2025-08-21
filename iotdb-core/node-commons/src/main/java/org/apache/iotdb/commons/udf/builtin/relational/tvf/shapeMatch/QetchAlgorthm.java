@@ -31,7 +31,7 @@ public class QetchAlgorthm {
   private Double widthLimit = (double) 0;
   private Double heightLimit = (double) 0;
 
-  private String Type = "shape";
+  private Boolean isPatternFromOrigin = false;
 
   private Point lastPoint = null;
 
@@ -63,11 +63,42 @@ public class QetchAlgorthm {
   private List<PatternSegment> parsePattern2DataSegment(String pattern) {
     // this pattern is divided by ",", such as "{,1,2,1,},3,6,9"
     // "()" claim as a point while "{}" claim as a repeat regex sign "+" which is supported to nest
-    List<String> patternPieces = Arrays.asList(pattern.split(","));
 
-    // prepare the minY and minX
-    Double minX = Double.MAX_VALUE;
-    Double minY = Double.MAX_VALUE;
+    List<String> patternPiecesTemp = Arrays.asList(pattern.split(","));
+    List<String> patternPieces = new ArrayList<>();
+    for (int i = 0; i < patternPiecesTemp.size(); i++) {
+      String piece = patternPiecesTemp.get(i);
+      // scan the piece and divide the {. }*, }+ out of it, and push them to the list in order
+      for (int j = 0; j < piece.length(); j++) {
+        char c = piece.charAt(j);
+        if (c == '{') {
+          patternPieces.add("{");
+        } else if (c == '}') {
+          if (j + 1 < piece.length() && piece.charAt(j + 1) == '*') {
+            patternPieces.add("}*");
+            j++;
+          } else if (j + 1 < piece.length() && piece.charAt(j + 1) == '+') {
+            patternPieces.add("}+");
+            j++;
+          } else {
+            throw new IllegalArgumentException(
+                "Invalid pattern: " + pattern + ", missing repeat sign after '}'");
+          }
+        } else if (Character.isDigit(c) || c == '.' || c == '-') {
+          // scan the number, and push it to the list
+          StringBuilder numBuilder = new StringBuilder();
+          while (j < piece.length()
+              && (Character.isDigit(piece.charAt(j))
+                  || piece.charAt(j) == '.'
+                  || piece.charAt(j) == '-')) {
+            numBuilder.append(piece.charAt(j));
+            j++;
+          }
+          j--; // because the for loop will increase j, so need to decrease it
+          patternPieces.add(numBuilder.toString());
+        }
+      }
+    }
 
     // classify the Pieces to different dataSegment
     List<PatternSegment> patternSegments = new ArrayList<>();
@@ -98,29 +129,10 @@ public class QetchAlgorthm {
           patternSegment = new PatternSegment();
         }
         patternSegment.addPoint(point);
-        if (minX > point.x) {
-          minX = point.x;
-        }
-        if (minY > point.y) {
-          minY = point.y;
-        }
       }
     }
     if (patternSegment != null && patternSegment.getPoints().size() >= 2)
       patternSegments.add(patternSegment);
-
-    // move the minX and minY to the (0,0)
-    System.out.println("patternSegmenets size" + patternSegments.size());
-    for (PatternSegment segment : patternSegments) {
-      if (!segment.isConstantChar()) {
-        List<Point> points = segment.getPoints();
-        for (Point point : points) {
-          System.out.println("x: " + point.x + " y: " + point.y);
-          point.setXY(point.x - minX, point.y - minY);
-          System.out.println("x: " + point.x + " y: " + point.y);
-        }
-      }
-    }
 
     return patternSegments;
   }
@@ -163,7 +175,7 @@ public class QetchAlgorthm {
     int lastSegmentIndex = 0;
     for (int i = 0; i < patternSegments.size(); i++) {
       if (!patternSegments.get(i).isConstantChar()) {
-        patternSegments.get(i).trans2SectionList(Type, smoothValue);
+        patternSegments.get(i).trans2SectionList(isPatternFromOrigin, smoothValue);
         if (i > lastSegmentIndex) {
           lastSegmentIndex = i;
         }
@@ -655,8 +667,8 @@ public class QetchAlgorthm {
     this.heightLimit = heightLimit;
   }
 
-  public void setType(String type) {
-    this.Type = type;
+  public void setIsPatternFromOrigin(Boolean isPatternFromOrigin) {
+    this.isPatternFromOrigin = isPatternFromOrigin;
   }
 
   public Boolean isRegex() {

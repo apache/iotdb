@@ -143,7 +143,7 @@ public class PatternSegment {
     }
   }
 
-  public void trans2SectionList(String Type, double smoothValue) {
+  public void trans2SectionList(Boolean isPatternFromOrigin, double smoothValue) {
     // check whether the points.size() > 2
     if (points.size() < 2) {
       return;
@@ -165,7 +165,7 @@ public class PatternSegment {
         sections.get(0).addPoint(points.get(0));
       } else {
         if (sign != lastSign) {
-          if (Type.equals("series")) {
+          if (isPatternFromOrigin) {
             closeLastSection(smoothValue);
           }
           sections.add(new Section(sign));
@@ -177,7 +177,7 @@ public class PatternSegment {
       lastPt = pt;
       lastSign = sign;
     }
-    if (Type.equals("series")) {
+    if (isPatternFromOrigin) {
       closeLastSection(smoothValue);
     }
 

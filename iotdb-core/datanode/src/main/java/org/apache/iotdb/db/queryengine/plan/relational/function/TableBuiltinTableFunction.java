@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.function;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.PatternMatchTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.ShapeMatchTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
@@ -40,7 +40,7 @@ public enum TableBuiltinTableFunction {
   CUMULATE("cumulate"),
   SESSION("session"),
   VARIATION("variation"),
-  SHAPE_MATCH("shape_match"),
+  PATTERN_MATCH("pattern_match"),
   CAPACITY("capacity"),
   FORECAST("forecast");
 
@@ -80,8 +80,8 @@ public enum TableBuiltinTableFunction {
         return new SessionTableFunction();
       case "variation":
         return new VariationTableFunction();
-      case "shape_match":
-        return new ShapeMatchTableFunction();
+      case "pattern_match":
+        return new PatternMatchTableFunction();
       case "capacity":
         return new CapacityTableFunction();
       case "forecast":
