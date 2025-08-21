@@ -23,7 +23,7 @@ import java.util.List;
 
 public class PatternResult {
   private int id;
-  private double match; // 这里是matchValu
+  private double match;
   private double size;
   private double matchPos;
   private Long timespan;

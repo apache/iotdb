@@ -46,7 +46,8 @@ public class RegexMatchState {
       }
       index++;
     }
-    if (index == dataSectionList.size()) { // 如果是因为超过阈值跳出来，至少会少一次index++，就不会等于size
+    // if get out over threshold, there is a index++ less than normal case
+    if (index == dataSectionList.size()) {
       matchResult.add(pathState);
     }
   }

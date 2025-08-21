@@ -63,8 +63,6 @@ public class ShapeMatchTableFunction implements TableFunction {
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
-    // TODO：这里rowSemantice还是setSemantice不太清楚，因为我需要将数据全部读出来，不论是按行读取还是按partition读取都一样，这里看哪个效率高用哪个
-    // TODO: 这里不使用passThroughColumns，是因为我输出的结果是原来列结果的一部分，我在处理的时候不会保留这是第几行的信息，所以可能穿透不太好完成，可以看看是否可以穿透
     return Arrays.asList(
         TableParameterSpecification.builder().name(TBL_PARAM).passThroughColumns().build(),
         ScalarParameterSpecification.builder().name(TimeColumn).type(Type.STRING).build(),
@@ -91,8 +89,6 @@ public class ShapeMatchTableFunction implements TableFunction {
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
-    // check whether the arguments are valid TODO 似乎没有用于参数校验的函数，是要写在analyze里面吗
-
     // calc the index of the column
     TableArgument tableArgument = (TableArgument) arguments.get(TBL_PARAM);
     String expectedTimeName = (String) ((ScalarArgument) arguments.get(TimeColumn)).getValue();
@@ -125,7 +121,6 @@ public class ShapeMatchTableFunction implements TableFunction {
             .addProperty(TYPE_PARAM, ((ScalarArgument) arguments.get(TYPE_PARAM)).getValue())
             .build();
 
-    // TODO: 这里的requireRecordSnapshot 是要false还是true
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
         .requireRecordSnapshot(false)
@@ -136,7 +131,6 @@ public class ShapeMatchTableFunction implements TableFunction {
         .build();
   }
 
-  // TODO: this is newer function which is not in the manual
   @Override
   public TableFunctionHandle createTableFunctionHandle() {
     return new MapTableFunctionHandle();
@@ -217,7 +211,6 @@ public class ShapeMatchTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder,
         MatchState matchResult) {
-      // TODO fill the result to the output column
       int matchResultID = qetchAlgorthm.getMatchResultID();
       for (int i = 0; i < matchResult.getDataSectionList().size(); i++) {
         for (int j = i == 0 ? 0 : 1;
@@ -241,7 +234,6 @@ public class ShapeMatchTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder,
         RegexMatchState matchResult) {
-      // TODO fill the result to the output column
       for (RegexMatchState.PathState pathState : matchResult.getMatchResult()) {
         int matchResultID = qetchAlgorthm.getMatchResultID();
         int dataSectionIndex = pathState.getDataSectionIndex();
