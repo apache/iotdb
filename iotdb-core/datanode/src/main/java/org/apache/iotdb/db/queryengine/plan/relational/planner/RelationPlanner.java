@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPositi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationLabelSet;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
@@ -105,7 +106,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
@@ -121,9 +124,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -152,7 +158,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilde
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.extractPatternRecognitionExpressions;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.pruneInvisibleFields;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.CROSS;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.IMPLICIT;
@@ -1094,6 +1103,64 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
   }
 
+  @Override
+  protected RelationPlan visitUnion(Union node, Void context) {
+    Preconditions.checkArgument(!node.getRelations().isEmpty(), "No relations specified for UNION");
+
+    SetOperationPlan setOperationPlan = process(node);
+
+    PlanNode planNode =
+        new UnionNode(
+            idAllocator.genPlanNodeId(),
+            setOperationPlan.getChildren(),
+            setOperationPlan.getSymbolMapping(),
+            ImmutableList.copyOf(setOperationPlan.getSymbolMapping().keySet()));
+    if (node.isDistinct()) {
+      planNode = distinct(planNode);
+    }
+    return new RelationPlan(
+        planNode, analysis.getScope(node), planNode.getOutputSymbols(), outerContext);
+  }
+
+  private SetOperationPlan process(SetOperation node) {
+    RelationType outputFields = analysis.getOutputDescriptor(node);
+    List<Symbol> outputs =
+        outputFields.getAllFields().stream()
+            .map(symbolAllocator::newSymbol)
+            .collect(toImmutableList());
+
+    ImmutableListMultimap.Builder<Symbol, Symbol> symbolMapping = ImmutableListMultimap.builder();
+    ImmutableList.Builder<PlanNode> children = ImmutableList.builder();
+
+    for (Relation child : node.getRelations()) {
+      RelationPlan plan = process(child, null);
+
+      NodeAndMappings planAndMappings;
+      List<Type> types = analysis.getRelationCoercion(child);
+      if (types == null) {
+        // no coercion required, only prune invisible fields from child outputs
+        planAndMappings = pruneInvisibleFields(plan, idAllocator);
+      } else {
+        // apply required coercion and prune invisible fields from child outputs
+        planAndMappings = coerce(plan, types, symbolAllocator, idAllocator);
+      }
+      for (int i = 0; i < outputFields.getAllFields().size(); i++) {
+        symbolMapping.put(outputs.get(i), planAndMappings.getFields().get(i));
+      }
+
+      children.add(planAndMappings.getNode());
+    }
+    return new SetOperationPlan(children.build(), symbolMapping.build());
+  }
+
+  private PlanNode distinct(PlanNode node) {
+    return singleAggregation(
+        idAllocator.genPlanNodeId(),
+        node,
+        ImmutableMap.of(),
+        singleGroupingSet(node.getOutputSymbols()));
+  }
+
   // ================================ Implemented later =====================================
 
   @Override
@@ -1104,11 +1171,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitIntersect(Intersect node, Void context) {
     throw new IllegalStateException("Intersect is not supported in current version.");
-  }
-
-  @Override
-  protected RelationPlan visitUnion(Union node, Void context) {
-    throw new IllegalStateException("Union is not supported in current version.");
   }
 
   @Override
@@ -1381,6 +1443,24 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         measurements[j] = null;
         measurementSchemas[j] = null;
       }
+    }
+  }
+
+  private static final class SetOperationPlan {
+    private final List<PlanNode> children;
+    private final ListMultimap<Symbol, Symbol> symbolMapping;
+
+    private SetOperationPlan(List<PlanNode> children, ListMultimap<Symbol, Symbol> symbolMapping) {
+      this.children = children;
+      this.symbolMapping = symbolMapping;
+    }
+
+    public List<PlanNode> getChildren() {
+      return children;
+    }
+
+    public ListMultimap<Symbol, Symbol> getSymbolMapping() {
+      return symbolMapping;
     }
   }
 

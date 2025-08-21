@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -1152,6 +1153,32 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitRelationalInsertTablet(
         RelationalInsertTabletNode node, RewriteContext context) {
+      return node;
+    }
+
+    @Override
+    public PlanNode visitUnion(UnionNode node, RewriteContext context) {
+      boolean modified = false;
+      ImmutableList.Builder<PlanNode> builder = ImmutableList.builder();
+      for (int i = 0; i < node.getChildren().size(); i++) {
+        Expression sourcePredicate =
+            inlineSymbols(node.sourceSymbolMap(i), context.inheritedPredicate);
+        PlanNode child = node.getChildren().get(i);
+        PlanNode rewritten = child.accept(this, new RewriteContext(sourcePredicate));
+        if (rewritten != child) {
+          modified = true;
+        }
+        builder.add(rewritten);
+      }
+
+      if (modified) {
+        return new UnionNode(
+            node.getPlanNodeId(),
+            builder.build(),
+            node.getSymbolMapping(),
+            node.getOutputSymbols());
+      }
+
       return node;
     }
 
