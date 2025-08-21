@@ -46,21 +46,27 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
-public class MemPointIteratorTest {
+public class NonAlignedTVListIteratorTest {
 
   private static FragmentInstanceId instanceId;
   private static ExecutorService instanceNotificationExecutor;
   private static FragmentInstanceStateMachine stateMachine;
   private static FragmentInstanceContext fragmentInstanceContext;
+
+  private static Map<TVList, Integer> largeSingleTvListMap;
+  private static Map<TVList, Integer> largeOrderedMultiTvListMap;
+  private static Map<TVList, Integer> largeMergeSortMultiTvListMap;
 
   @BeforeClass
   public static void setup() {
@@ -69,6 +75,25 @@ public class MemPointIteratorTest {
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     stateMachine = new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     fragmentInstanceContext = createFragmentInstanceContext(instanceId, stateMachine);
+
+    largeSingleTvListMap =
+        buildNonAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 400000)));
+    largeOrderedMultiTvListMap =
+        buildNonAlignedMultiTvListMap(
+            Arrays.asList(
+                new TimeRange(1, 100000),
+                new TimeRange(100001, 200000),
+                new TimeRange(200001, 300000),
+                new TimeRange(300001, 400000)));
+    largeMergeSortMultiTvListMap =
+        buildNonAlignedMultiTvListMap(
+            Arrays.asList(
+                new TimeRange(1, 20000),
+                new TimeRange(1, 100000),
+                new TimeRange(100001, 200000),
+                new TimeRange(200001, 300000),
+                new TimeRange(250001, 300000),
+                new TimeRange(300001, 400000)));
   }
 
   @AfterClass
@@ -298,31 +323,38 @@ public class MemPointIteratorTest {
       List<TimeRange> deletions,
       int expectedCount)
       throws QueryProcessException, IOException {
-    Map<TVList, Integer> tvListMap =
-        buildNonAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 400000)));
-    //    testNonAligned(
-    //        tvListMap,
-    //        scanOrder,
-    //        globalTimeFilter,
-    //        pushDownFilter,
-    //        paginationController,
-    //        deletions,
-    //        expectedCount);
-    tvListMap =
-        buildNonAlignedOrderedMultiTvListMap(
-            Arrays.asList(
-                new TimeRange(1, 100000),
-                new TimeRange(100001, 200000),
-                new TimeRange(200001, 300000),
-                new TimeRange(300001, 400000)));
     testNonAligned(
-        tvListMap,
+        largeSingleTvListMap,
         scanOrder,
         globalTimeFilter,
         pushDownFilter,
-        paginationController,
+        duplicatePaginationController(paginationController),
         deletions,
         expectedCount);
+    testNonAligned(
+        largeOrderedMultiTvListMap,
+        scanOrder,
+        globalTimeFilter,
+        pushDownFilter,
+        duplicatePaginationController(paginationController),
+        deletions,
+        expectedCount);
+    testNonAligned(
+        largeMergeSortMultiTvListMap,
+        scanOrder,
+        globalTimeFilter,
+        pushDownFilter,
+        duplicatePaginationController(paginationController),
+        deletions,
+        expectedCount);
+  }
+
+  private PaginationController duplicatePaginationController(
+      PaginationController paginationController) {
+    return paginationController == PaginationController.UNLIMITED_PAGINATION_CONTROLLER
+        ? paginationController
+        : new PaginationController(
+            paginationController.getCurLimit(), paginationController.getCurOffset());
   }
 
   private void testNonAligned(
@@ -428,13 +460,18 @@ public class MemPointIteratorTest {
     }
   }
 
-  private Map<TVList, Integer> buildNonAlignedSingleTvListMap(List<TimeRange> timeRanges) {
+  private static Map<TVList, Integer> buildNonAlignedSingleTvListMap(List<TimeRange> timeRanges) {
     TVList tvList = TVList.newList(TSDataType.INT64);
     int rowCount = 0;
     for (TimeRange timeRange : timeRanges) {
       long start = timeRange.getMin();
       long end = timeRange.getMax();
+      List<Long> timestamps = new ArrayList<>((int) (end - start + 1));
       for (long timestamp = start; timestamp <= end; timestamp++) {
+        timestamps.add(timestamp);
+      }
+      Collections.shuffle(timestamps);
+      for (Long timestamp : timestamps) {
         tvList.putLong(timestamp, timestamp);
         rowCount++;
       }
@@ -444,14 +481,19 @@ public class MemPointIteratorTest {
     return tvListMap;
   }
 
-  private Map<TVList, Integer> buildNonAlignedOrderedMultiTvListMap(List<TimeRange> timeRanges) {
-    Map<TVList, Integer> tvListMap = new HashMap<>();
+  private static Map<TVList, Integer> buildNonAlignedMultiTvListMap(List<TimeRange> timeRanges) {
+    Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
     for (TimeRange timeRange : timeRanges) {
       TVList tvList = TVList.newList(TSDataType.INT64);
       int rowCount = 0;
       long start = timeRange.getMin();
       long end = timeRange.getMax();
+      List<Long> timestamps = new ArrayList<>((int) (end - start + 1));
       for (long timestamp = start; timestamp <= end; timestamp++) {
+        timestamps.add(timestamp);
+      }
+      Collections.shuffle(timestamps);
+      for (Long timestamp : timestamps) {
         tvList.putLong(timestamp, timestamp);
         rowCount++;
       }

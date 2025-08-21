@@ -28,14 +28,12 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterator {
   private final BitMap bitMap;
-  private final List<int[]> valueColumnDeleteCursor;
   private int iteratorIndex = 0;
   private int[] rowIndices;
 
@@ -64,10 +62,6 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
         ignoreAllNullRows,
         maxNumberOfPointsInPage);
     this.bitMap = new BitMap(tsDataTypeList.size());
-    this.valueColumnDeleteCursor = new ArrayList<>();
-    for (int i = 0; i < tsDataTypeList.size(); i++) {
-      valueColumnDeleteCursor.add(new int[] {0});
-    }
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
 

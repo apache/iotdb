@@ -32,7 +32,6 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -48,7 +47,6 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   private final int[] rowIndices;
 
   private final BitMap bitMap;
-  private final List<int[]> valueColumnDeleteCursor;
   // Min-Heap: minimal timestamp; if same timestamp, maximum TVList index
   private final PriorityQueue<Pair<Long, Integer>> heap;
 
@@ -81,10 +79,6 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.iteratorIndices = new int[tsDataTypeList.size()];
     this.rowIndices = new int[tsDataTypeList.size()];
-    this.valueColumnDeleteCursor = new ArrayList<>();
-    for (int i = 0; i < tsDataTypeList.size(); i++) {
-      valueColumnDeleteCursor.add(new int[] {0});
-    }
     this.ignoreAllNullRows = ignoreAllNullRows;
     this.heap =
         new PriorityQueue<>(

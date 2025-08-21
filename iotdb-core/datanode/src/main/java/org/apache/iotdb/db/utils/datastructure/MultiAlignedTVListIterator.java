@@ -56,7 +56,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
 
   // used by nextBatch during query
   protected final int maxNumberOfPointsInPage;
-  protected PaginationController paginationController;
+  protected final List<int[]> valueColumnDeleteCursor;
 
   protected MultiAlignedTVListIterator(
       List<TSDataType> tsDataTypeList,
@@ -114,6 +114,15 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     this.ignoreAllNullRows = ignoreAllNullRows;
     this.tsBlocks = new ArrayList<>();
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+    this.valueColumnDeleteCursor = new ArrayList<>();
+    for (int i = 0; i < tsDataTypeList.size(); i++) {
+      List<TimeRange> valueColumnDeletions = valueColumnsDeletionList.get(i);
+      int cursor =
+          (valueColumnDeletions == null || scanOrder.isAscending())
+              ? 0
+              : (valueColumnDeletions.size() - 1);
+      valueColumnDeleteCursor.add(new int[] {cursor});
+    }
   }
 
   @Override

@@ -1623,7 +1623,8 @@ public abstract class AlignedTVList extends TVList {
               ? 0
               : (timeColumnDeletion.size() - 1);
       for (int i = 0; i < dataTypeList.size(); i++) {
-        List<TimeRange> valueColumnDeletions = valueColumnsDeletionList.get(i);
+        List<TimeRange> valueColumnDeletions =
+            valueColumnsDeletionList == null ? null : valueColumnsDeletionList.get(i);
         int cursor =
             (valueColumnDeletions == null || scanOrder.isAscending())
                 ? 0
