@@ -37,6 +37,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -54,6 +55,8 @@ import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -75,10 +78,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -108,6 +113,14 @@ public class LoadTsFileManager {
   private static final AtomicReference<String[]> LOAD_BASE_DIRS =
       new AtomicReference<>(CONFIG.getLoadTsFileDirs());
   private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
+
+  private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
+      Caffeine.newBuilder()
+          .maximumWeight(10L << 20)
+          .weigher(
+              (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
+                  (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
+          .build();
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
 
@@ -387,6 +400,8 @@ public class LoadTsFileManager {
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
     private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
+    private Map<IDeviceID, DataPartitionInfo> device2Partition;
+    private Map<IDeviceID, Set<DataPartitionInfo>> endChunkGroup;
     private boolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
@@ -395,6 +410,8 @@ public class LoadTsFileManager {
       this.dataPartition2Resource = new HashMap<>();
       this.dataPartition2LastDevice = new HashMap<>();
       this.dataPartition2ModificationFile = new HashMap<>();
+      device2Partition = new HashMap<>();
+      endChunkGroup = new HashMap<>();
       this.isClosed = false;
 
       clearDir(taskDir);
@@ -469,20 +486,48 @@ public class LoadTsFileManager {
             .computeIfAbsent(
                 tableName,
                 t ->
-                    TableSchema.of(
-                            DataNodeTableCache.getInstance()
-                                .getTable(partitionInfo.getDataRegion().getDatabaseName(), t))
-                        .toTsFileTableSchemaNoAttribute());
+                    SCHEMA_CACHE.get(
+                        t,
+                        tablet ->
+                            TableSchema.of(
+                                    DataNodeTableCache.getInstance()
+                                        .getTable(
+                                            partitionInfo.getDataRegion().getDatabaseName(),
+                                            tablet))
+                                .toTsFileTableSchemaNoAttribute()));
       }
 
-      if (!Objects.equals(chunkData.getDevice(), dataPartition2LastDevice.get(partitionInfo))) {
-        if (dataPartition2LastDevice.containsKey(partitionInfo)) {
+      // ---------- Handle chunk-group boundaries ----------
+      IDeviceID device = chunkData.getDevice();
+      DataPartitionInfo prevPartition = device2Partition.get(device);
+
+      // 2.1 Device changed → close old group, open new one.
+      if (!Objects.equals(device, dataPartition2LastDevice.get(partitionInfo))) {
+        Set<DataPartitionInfo> set = endChunkGroup.computeIfAbsent(device, k -> new HashSet<>());
+        if (dataPartition2LastDevice.containsKey(partitionInfo) && !set.contains(partitionInfo)) {
           writer.endChunkGroup();
           writer.checkMetadataSizeAndMayFlush();
+          set.add(partitionInfo);
         }
-        writer.startChunkGroup(chunkData.getDevice());
-        dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
+        writer.startChunkGroup(device);
+        dataPartition2LastDevice.put(partitionInfo, device);
       }
+
+      // 2.2 Data partition changed within same device → close group if needed.
+      else if (!Objects.equals(partitionInfo, prevPartition)) {
+        Set<DataPartitionInfo> set = endChunkGroup.get(device);
+        if (dataPartition2LastDevice.containsKey(partitionInfo)
+            && set != null
+            && !set.contains(partitionInfo)) {
+          writer.endChunkGroup();
+          writer.checkMetadataSizeAndMayFlush();
+          set.add(partitionInfo);
+        }
+      }
+
+      // 2.3 Record current partition for next check.
+      device2Partition.put(device, partitionInfo);
+
       chunkData.writeToFileWriter(writer);
     }
 
