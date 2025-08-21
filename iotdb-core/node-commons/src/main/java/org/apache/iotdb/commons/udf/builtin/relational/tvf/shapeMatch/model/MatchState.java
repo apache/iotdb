@@ -188,7 +188,7 @@ public class MatchState {
 
     dataSectionList.add(section);
 
-    if (patternSectionNow.isFinal()) {
+    if (patternSectionNow.isFinal() && matchValue <= threshold) {
       isFinish = true;
       patternSectionNow = null;
     }

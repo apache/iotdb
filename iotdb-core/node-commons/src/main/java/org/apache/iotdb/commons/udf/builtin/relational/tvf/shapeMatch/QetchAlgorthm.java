@@ -160,7 +160,6 @@ public class QetchAlgorthm {
 
   private void transDataSegment2Automation(List<PatternSegment> patternSegments) {
     // loop each dataSegment and trans them to sectionList
-    Type = isRegex ? "shape" : Type;
     int lastSegmentIndex = 0;
     for (int i = 0; i < patternSegments.size(); i++) {
       if (!patternSegments.get(i).isConstantChar()) {

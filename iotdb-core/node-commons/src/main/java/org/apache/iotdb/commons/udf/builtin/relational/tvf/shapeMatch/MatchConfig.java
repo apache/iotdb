@@ -6,7 +6,7 @@ public class MatchConfig {
   // will consider as a new segment start
 
   public static final int lineSectionTolerance =
-      5; // if the point num more than this while it's heightBound is in smoothValue, it will be
+      4; // if the point num more than this while it's heightBound is in smoothValue, it will be
   // considered as a line section
 
   public static final int shapeTolerance = 0;
