@@ -25,7 +25,6 @@ import org.apache.iotdb.it.utils.TsFileTableGenerator;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -46,7 +45,6 @@ import java.io.File;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,21 +76,10 @@ public class IoTDBLoadTsFileIT {
 
   @After
   public void tearDown() throws Exception {
-    deleteSG();
     EnvFactory.getEnv().cleanClusterEnvironment();
 
     if (!deleteDir()) {
       LOGGER.error("Can not delete tmp dir for loading tsfile.");
-    }
-  }
-
-  private void deleteSG() throws SQLException {
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-
-      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
-      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
-    } catch (final IoTDBSQLException ignored) {
     }
   }
 
@@ -105,8 +92,7 @@ public class IoTDBLoadTsFileIT {
     return tmpDir.delete();
   }
 
-  private List<Pair<MeasurementSchema, MeasurementSchema>>
-      generateMeasurementSchemasForDataTypeConversion() {
+  private List<Pair<MeasurementSchema, MeasurementSchema>> generateMeasurementSchemas() {
     TSDataType[] dataTypes = {
       TSDataType.STRING,
       TSDataType.TEXT,
@@ -135,7 +121,7 @@ public class IoTDBLoadTsFileIT {
     final int lineCount = 10000;
 
     final List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
-        generateMeasurementSchemasForDataTypeConversion();
+        generateMeasurementSchemas();
     final List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size());
 
@@ -190,7 +176,7 @@ public class IoTDBLoadTsFileIT {
     final int lineCount = 10000;
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
-        generateMeasurementSchemasForDataTypeConversion();
+        generateMeasurementSchemas();
     List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size());
 
@@ -223,6 +209,53 @@ public class IoTDBLoadTsFileIT {
         } else {
           Assert.fail("This ResultSet is empty.");
         }
+      }
+    }
+  }
+
+  @Test
+  public void testLoadWithTableMod() throws Exception {
+    final int lineCount = 10000;
+
+    List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemas();
+    List<ColumnCategory> columnCategories =
+        generateTabletColumnCategory(0, measurementSchemas.size());
+
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    List<MeasurementSchema> schemaList1 =
+        measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+
+      generator.registerTable(SchemaConfig.TABLE_1, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_1, lineCount, PARTITION_INTERVAL / 10_000);
+      generator.generateDeletion(SchemaConfig.TABLE_1);
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+        if (resultSet.next()) {
+          Assert.assertEquals(lineCount, resultSet.getLong(1));
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+
+      try (final ResultSet resultSet = statement.executeQuery("show tables")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
       }
     }
   }
@@ -261,7 +294,6 @@ public class IoTDBLoadTsFileIT {
   private static class SchemaConfig {
     private static final String DATABASE_0 = "root";
     private static final String TABLE_0 = "test";
-    private static final String STORAGE_GROUP_0 = "root.sg.test_0";
-    private static final String STORAGE_GROUP_1 = "root.sg.test_1";
+    private static final String TABLE_1 = "test1";
   }
 }
