@@ -143,8 +143,11 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     }
     TsPrimitiveType[] vector = new TsPrimitiveType[tsDataTypeList.size()];
     for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
-      AlignedTVList.AlignedTVListIterator iterator =
-          alignedTvListIterators.get(currentIteratorIndex(columnIndex));
+      int iteratorIndex = currentIteratorIndex(columnIndex);
+      if (iteratorIndex == -1) {
+        continue;
+      }
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
       vector[columnIndex] =
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
     }
@@ -161,8 +164,11 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     }
     TsPrimitiveType[] vector = new TsPrimitiveType[tsDataTypeList.size()];
     for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
-      AlignedTVList.AlignedTVListIterator iterator =
-          alignedTvListIterators.get(currentIteratorIndex(columnIndex));
+      int iteratorIndex = currentIteratorIndex(columnIndex);
+      if (iteratorIndex == -1) {
+        continue;
+      }
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
       vector[columnIndex] =
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
     }
@@ -185,8 +191,13 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
       for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
         // Value column
         ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
+        int currentIteratorIndex = currentIteratorIndex(columnIndex);
+        if (currentIteratorIndex == -1) {
+          valueBuilder.appendNull();
+          continue;
+        }
         AlignedTVList alignedTVList =
-            alignedTvListIterators.get(currentIteratorIndex(columnIndex)).getAlignedTVList();
+            alignedTvListIterators.get(currentIteratorIndex).getAlignedTVList();
 
         // sanity check
         int validColumnIndex =

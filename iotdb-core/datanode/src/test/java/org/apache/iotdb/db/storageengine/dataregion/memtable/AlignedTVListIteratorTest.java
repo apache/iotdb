@@ -131,6 +131,25 @@ public class AlignedTVListIteratorTest {
         Collections.singletonList(new TimeRange(0, 1000000)),
         Arrays.asList(Collections.emptyList(), Collections.emptyList()),
         0);
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(
+            Collections.singletonList(new TimeRange(0, 1000000)), Collections.emptyList()),
+        400000);
+    testAligned(
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(
+            Arrays.asList(new TimeRange(10001, 20000), new TimeRange(100001, 120000)),
+            Collections.singletonList(new TimeRange(50001, 60000))),
+        400000);
   }
 
   @Test
@@ -251,6 +270,25 @@ public class AlignedTVListIteratorTest {
         Collections.singletonList(new TimeRange(0, 1000000)),
         Arrays.asList(Collections.emptyList(), Collections.emptyList()),
         0);
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(
+            Collections.singletonList(new TimeRange(0, 1000000)), Collections.emptyList()),
+        400000);
+    testAligned(
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(
+            Arrays.asList(new TimeRange(10001, 20000), new TimeRange(100001, 120000)),
+            Collections.singletonList(new TimeRange(50001, 60000))),
+        400000);
   }
 
   @Test
@@ -431,13 +469,21 @@ public class AlignedTVListIteratorTest {
           long currentTimestamp = tsBlock.getTimeByIndex(i);
           Long int64Value = tsBlock.getColumn(0).isNull(i) ? null : tsBlock.getColumn(0).getLong(i);
           Boolean boolValue =
-              tsBlock.getColumn(0).isNull(i) ? null : tsBlock.getColumn(1).getBoolean(i);
+              tsBlock.getColumn(1).isNull(i) ? null : tsBlock.getColumn(1).getBoolean(i);
+          List<TimeRange> int64Deletions = valueDeletions.get(0);
+          List<TimeRange> boolDeletions = valueDeletions.get(1);
 
           if (int64Value != null) {
             Assert.assertEquals(currentTimestamp, int64Value.longValue());
+          } else {
+            Assert.assertTrue(
+                int64Deletions.stream().anyMatch(range -> range.contains(currentTimestamp)));
           }
           if (boolValue != null) {
             Assert.assertEquals(currentTimestamp % 2 == 0, boolValue.booleanValue());
+          } else {
+            Assert.assertTrue(
+                boolDeletions.stream().anyMatch(range -> range.contains(currentTimestamp)));
           }
           if (globalTimeFilter != null) {
             Assert.assertTrue(globalTimeFilter.satisfyRow(currentTimestamp, null));

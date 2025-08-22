@@ -185,8 +185,12 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
         ValueChunkWriter valueChunkWriter =
             alignedChunkWriterImpl.getValueChunkWriterByIndex(columnIndex);
-        AlignedTVList alignedTVList =
-            alignedTvListIterators.get(currentIteratorIndex(columnIndex)).getAlignedTVList();
+        int iteratorIndex = currentIteratorIndex(columnIndex);
+        if (iteratorIndex == -1) {
+          valueChunkWriter.write(currentTime, null, true);
+          continue;
+        }
+        AlignedTVList alignedTVList = alignedTvListIterators.get(iteratorIndex).getAlignedTVList();
 
         // sanity check
         int validColumnIndex =
