@@ -162,8 +162,9 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE))
         .validate(
             arg ->
-                Arrays.stream(((String) arg).replace(" ", "").split(","))
-                    .allMatch(this::isLegalMeasurement),
+                ((String) arg).isEmpty()
+                    || Arrays.stream(((String) arg).replace(" ", "").split(","))
+                        .allMatch(this::isLegalMeasurement),
             String.format(
                 "The output measurements %s contains illegal measurements, the measurements must be the last level of a legal path",
                 parameters.getStringOrDefault(
