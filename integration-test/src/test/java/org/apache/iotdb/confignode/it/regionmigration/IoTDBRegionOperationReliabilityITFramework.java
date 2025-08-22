@@ -300,7 +300,8 @@ public class IoTDBRegionOperationReliabilityITFramework {
       if (success) {
         checkRegionFileClearIfNodeAlive(originalDataNode);
         checkRegionFileExistIfNodeAlive(destDataNode);
-        checkClusterStillWritable();
+        // TODO: @YongzaoDan enable this check after the __system database is refactored!!!
+        //        checkClusterStillWritable();
       } else {
         checkRegionFileClearIfNodeAlive(destDataNode);
         checkRegionFileExistIfNodeAlive(originalDataNode);
