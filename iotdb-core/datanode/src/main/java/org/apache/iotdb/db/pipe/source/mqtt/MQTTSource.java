@@ -51,8 +51,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -148,10 +151,20 @@ public class MQTTSource implements PipeExtractor {
             PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
             PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE);
     File file = Paths.get(dataPath).resolve("moquette_store.h2").toAbsolutePath().toFile();
-    if (file.exists() && !file.canWrite()) {
-      throw new PipeParameterNotValidException(
-          " The data file is used by another MQTT Source or MQTT Service. "
-              + "Please use another data path");
+    if (file.exists()) {
+      try (RandomAccessFile raf = new RandomAccessFile(file, "rw");
+          FileChannel channel = raf.getChannel();
+          FileLock lock = channel.tryLock()) {
+        if (lock == null) {
+          throw new PipeParameterNotValidException(
+              " The data file is used by another MQTT Source or MQTT Service. "
+                  + "Please use another data path");
+        }
+      } catch (Exception e) {
+        throw new PipeParameterNotValidException(
+            " The data file is used by another MQTT Source or MQTT Service. "
+                + "Please use another data path");
+      }
     }
   }
 
