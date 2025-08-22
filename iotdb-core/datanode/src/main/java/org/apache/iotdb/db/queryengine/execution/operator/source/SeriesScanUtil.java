@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityM
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -125,6 +126,8 @@ public class SeriesScanUtil implements Accountable {
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
+  protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SeriesScanUtil.class)
@@ -773,8 +776,12 @@ public class SeriesScanUtil implements Accountable {
         firstPageReader.setLimitOffset(paginationController);
         LazyMemVersionPageReader lazyMemVersionPageReader =
             (LazyMemVersionPageReader) firstPageReader;
+        // We must set the time range before actually reading the required data because
+        // MemPointIterator is shared by multiple Pages
         lazyMemVersionPageReader.setCurrentPageTimeRangeToMemPointIterator();
         lazyMemVersionPageReader.setInited();
+        // There is no need to consider scan order here, because the tsBlock returned here has been
+        // processed in MemPointIterator
         TsBlock tsBlock =
             lazyMemVersionPageReader.hasNextBatch() ? lazyMemVersionPageReader.nextBatch() : null;
         if (!lazyMemVersionPageReader.hasNextBatch()) {
@@ -936,7 +943,8 @@ public class SeriesScanUtil implements Accountable {
             // get the latest first point in mergeReader
             timeValuePair = mergeReader.nextTimeValuePair();
             addTimeValuePairToResult(timeValuePair, builder);
-            if (builder.getPositionCount() >= 10000) {
+            // A PageReader from MemChunk may have a lot of data, so it needs to be checked here
+            if (builder.getPositionCount() >= MAX_NUMBER_OF_POINTS_IN_PAGE) {
               break;
             }
           }
@@ -1106,9 +1114,16 @@ public class SeriesScanUtil implements Accountable {
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     IPointReader pointReader;
     if (pageReader instanceof LazyMemVersionPageReader) {
+      // There may be many VersionPageReaders belonging to the same MemChunk sharing a
+      // MemPointIterator, but the time ranges of these pages sharing it must not overlap, so there
+      // will be no problem of reading data from the MemPointIterator at the same time
       LazyMemVersionPageReader lazyMemPageReader = (LazyMemVersionPageReader) pageReader;
+      // We must set the time range before actually reading the required data because
+      // MemPointIterator is shared by multiple Pages
       lazyMemPageReader.setCurrentPageTimeRangeToMemPointIterator();
       lazyMemPageReader.setInited();
+      // There is no need to consider scanOrder here, because MemPointIterator has already returned
+      // according to the current scan order
       pointReader = lazyMemPageReader.getPointReader();
     } else {
       pointReader = getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending()));

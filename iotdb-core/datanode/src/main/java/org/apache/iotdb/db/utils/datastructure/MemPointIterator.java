@@ -31,7 +31,9 @@ import org.apache.tsfile.write.chunk.IChunkWriter;
 public abstract class MemPointIterator implements IPointReader {
 
   protected final Ordering scanOrder;
+  // Only used when returning by batch
   protected Filter pushDownFilter;
+  // Only used when returning by batch
   protected PaginationController paginationController =
       PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
   protected TimeRange timeRange;

@@ -107,14 +107,14 @@ public class AlignedTVListIteratorTest {
   }
 
   @Test
-  public void testAlignedAsc() throws QueryProcessException, IOException {
+  public void testAlignedAsc() throws IOException {
     testAligned(
         Ordering.ASC,
         null,
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         400000);
     testAligned(
         Ordering.ASC,
@@ -122,7 +122,7 @@ public class AlignedTVListIteratorTest {
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Arrays.asList(new TimeRange(10001, 20000), new TimeRange(50001, 60000)),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         380000);
     testAligned(
         Ordering.ASC,
@@ -130,7 +130,7 @@ public class AlignedTVListIteratorTest {
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.singletonList(new TimeRange(0, 1000000)),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         0);
     testAligned(
         Ordering.ASC,
@@ -139,7 +139,9 @@ public class AlignedTVListIteratorTest {
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
         Arrays.asList(
-            Collections.singletonList(new TimeRange(0, 1000000)), Collections.emptyList()),
+            Collections.singletonList(new TimeRange(0, 1000000)),
+            Collections.emptyList(),
+            Collections.emptyList()),
         400000);
     testAligned(
         Ordering.ASC,
@@ -149,19 +151,20 @@ public class AlignedTVListIteratorTest {
         Collections.emptyList(),
         Arrays.asList(
             Arrays.asList(new TimeRange(10001, 20000), new TimeRange(100001, 120000)),
-            Collections.singletonList(new TimeRange(50001, 60000))),
+            Collections.singletonList(new TimeRange(50001, 60000)),
+            Collections.emptyList()),
         400000);
   }
 
   @Test
-  public void testAlignedAscWithGlobalTimeFilter() throws IOException, QueryProcessException {
+  public void testAlignedAscWithGlobalTimeFilter() throws IOException {
     testAligned(
         Ordering.ASC,
         new TimeFilterOperators.TimeNotBetweenAnd(1L, 30000L),
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         370000);
     testAligned(
         Ordering.ASC,
@@ -169,7 +172,7 @@ public class AlignedTVListIteratorTest {
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         371000);
     testAligned(
         Ordering.ASC,
@@ -177,19 +180,19 @@ public class AlignedTVListIteratorTest {
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         0);
   }
 
   @Test
-  public void testAlignedAscWithPushDownFilter() throws QueryProcessException, IOException {
+  public void testAlignedAscWithPushDownFilter() throws IOException {
     testAligned(
         Ordering.ASC,
         null,
         new LongFilterOperators.ValueEq(0, 10000),
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         1);
     testAligned(
         Ordering.ASC,
@@ -197,19 +200,19 @@ public class AlignedTVListIteratorTest {
         new LongFilterOperators.ValueBetweenAnd(0, 10001, 20000),
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         10000);
   }
 
   @Test
-  public void testAlignedAscWithLimitAndOffset() throws IOException, QueryProcessException {
+  public void testAlignedAscWithLimitAndOffset() throws IOException {
     testAligned(
         Ordering.ASC,
         null,
         null,
         new PaginationController(10000, 0),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         10000);
     testAligned(
         Ordering.ASC,
@@ -217,7 +220,7 @@ public class AlignedTVListIteratorTest {
         null,
         new PaginationController(10000, 10),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         10000);
     testAligned(
         Ordering.ASC,
@@ -225,7 +228,7 @@ public class AlignedTVListIteratorTest {
         null,
         new PaginationController(10000, 1000000),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         0);
     testAligned(
         Ordering.ASC,
@@ -233,7 +236,7 @@ public class AlignedTVListIteratorTest {
         null,
         new PaginationController(100000, 0),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         100000);
     testAligned(
         Ordering.ASC,
@@ -241,19 +244,19 @@ public class AlignedTVListIteratorTest {
         null,
         new PaginationController(200000, 0),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         200000);
   }
 
   @Test
-  public void testAlignedDesc() throws QueryProcessException, IOException {
+  public void testAlignedDesc() throws IOException {
     testAligned(
         Ordering.DESC,
         null,
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         400000);
     testAligned(
         Ordering.DESC,
@@ -261,7 +264,7 @@ public class AlignedTVListIteratorTest {
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Arrays.asList(new TimeRange(10001, 20000), new TimeRange(50001, 60000)),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         380000);
     testAligned(
         Ordering.DESC,
@@ -269,7 +272,7 @@ public class AlignedTVListIteratorTest {
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.singletonList(new TimeRange(0, 1000000)),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         0);
     testAligned(
         Ordering.DESC,
@@ -278,7 +281,9 @@ public class AlignedTVListIteratorTest {
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
         Arrays.asList(
-            Collections.singletonList(new TimeRange(0, 1000000)), Collections.emptyList()),
+            Collections.singletonList(new TimeRange(0, 1000000)),
+            Collections.emptyList(),
+            Collections.emptyList()),
         400000);
     testAligned(
         Ordering.DESC,
@@ -288,19 +293,20 @@ public class AlignedTVListIteratorTest {
         Collections.emptyList(),
         Arrays.asList(
             Arrays.asList(new TimeRange(10001, 20000), new TimeRange(100001, 120000)),
-            Collections.singletonList(new TimeRange(50001, 60000))),
+            Collections.singletonList(new TimeRange(50001, 60000)),
+            Collections.emptyList()),
         400000);
   }
 
   @Test
-  public void testAlignedDescWithGlobalTimeFilter() throws IOException, QueryProcessException {
+  public void testAlignedDescWithGlobalTimeFilter() throws IOException {
     testAligned(
         Ordering.DESC,
         new TimeFilterOperators.TimeNotBetweenAnd(1L, 30000L),
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         370000);
     testAligned(
         Ordering.DESC,
@@ -308,7 +314,7 @@ public class AlignedTVListIteratorTest {
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         371000);
     testAligned(
         Ordering.DESC,
@@ -316,7 +322,7 @@ public class AlignedTVListIteratorTest {
         null,
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         0);
   }
 
@@ -328,7 +334,7 @@ public class AlignedTVListIteratorTest {
         new LongFilterOperators.ValueEq(0, 10000),
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         1);
     testAligned(
         Ordering.DESC,
@@ -336,19 +342,19 @@ public class AlignedTVListIteratorTest {
         new LongFilterOperators.ValueBetweenAnd(0, 10001, 20000),
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         10000);
   }
 
   @Test
-  public void testAlignedDescWithLimitAndOffset() throws IOException, QueryProcessException {
+  public void testAlignedDescWithLimitAndOffset() throws IOException {
     testAligned(
         Ordering.DESC,
         null,
         null,
         new PaginationController(10000, 0),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         10000);
     testAligned(
         Ordering.DESC,
@@ -356,7 +362,7 @@ public class AlignedTVListIteratorTest {
         null,
         new PaginationController(10000, 10),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         10000);
     testAligned(
         Ordering.DESC,
@@ -364,7 +370,7 @@ public class AlignedTVListIteratorTest {
         null,
         new PaginationController(10000, 1000000),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         0);
     testAligned(
         Ordering.DESC,
@@ -372,7 +378,7 @@ public class AlignedTVListIteratorTest {
         null,
         new PaginationController(100000, 0),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         100000);
     testAligned(
         Ordering.DESC,
@@ -380,7 +386,7 @@ public class AlignedTVListIteratorTest {
         null,
         new PaginationController(200000, 0),
         Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         200000);
   }
 
@@ -392,7 +398,7 @@ public class AlignedTVListIteratorTest {
       List<TimeRange> timeDeletions,
       List<List<TimeRange>> valueDeletions,
       int expectedCount)
-      throws QueryProcessException, IOException {
+      throws IOException {
 
     testAligned(
         largeSingleTvListMap,
@@ -433,7 +439,7 @@ public class AlignedTVListIteratorTest {
       List<List<TimeRange>> valueDeletions,
       int expectedCount)
       throws IOException {
-    List<Integer> columnIdxList = Arrays.asList(0, 1);
+    List<Integer> columnIdxList = Arrays.asList(0, 1, 2);
     IMeasurementSchema measurementSchema = getMeasurementSchema();
     AlignedReadOnlyMemChunk chunk =
         new AlignedReadOnlyMemChunk(
@@ -471,6 +477,8 @@ public class AlignedTVListIteratorTest {
           Long int64Value = tsBlock.getColumn(0).isNull(i) ? null : tsBlock.getColumn(0).getLong(i);
           Boolean boolValue =
               tsBlock.getColumn(1).isNull(i) ? null : tsBlock.getColumn(1).getBoolean(i);
+          boolean isLast = tsBlock.getColumn(2).getBoolean(i);
+          Assert.assertTrue(isLast);
           List<TimeRange> int64Deletions = valueDeletions.get(0);
           List<TimeRange> boolDeletions = valueDeletions.get(1);
 
@@ -521,6 +529,8 @@ public class AlignedTVListIteratorTest {
       long currentTimestamp = timeValuePair.getTimestamp();
       Long value = (Long) timeValuePair.getValues()[0];
       Boolean boolValue = (Boolean) timeValuePair.getValues()[1];
+      boolean isLast = (boolean) timeValuePair.getValues()[2];
+      Assert.assertTrue(isLast);
 
       if (value != null) {
         Assert.assertEquals(currentTimestamp, value.longValue());
@@ -554,16 +564,19 @@ public class AlignedTVListIteratorTest {
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
-    String[] array = new String[] {"s1", "s2"};
-    TSDataType[] types = new TSDataType[] {TSDataType.INT64, TSDataType.BOOLEAN};
-    TSEncoding[] encodings = new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.PLAIN};
+    String[] array = new String[] {"s1", "s2", "s3"};
+    TSDataType[] types =
+        new TSDataType[] {TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN};
+    TSEncoding[] encodings =
+        new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.PLAIN, TSEncoding.PLAIN};
     return new VectorMeasurementSchema(
         VECTOR_PLACEHOLDER, array, types, encodings, CompressionType.UNCOMPRESSED);
   }
 
   private static Map<TVList, Integer> buildAlignedSingleTvListMap(List<TimeRange> timeRanges) {
     AlignedTVList alignedTVList =
-        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN));
+        AlignedTVList.newAlignedList(
+            Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN));
     int rowCount = 0;
     for (TimeRange timeRange : timeRanges) {
       long start = timeRange.getMin();
@@ -574,7 +587,8 @@ public class AlignedTVListIteratorTest {
       }
       Collections.shuffle(timestamps);
       for (Long timestamp : timestamps) {
-        alignedTVList.putAlignedValue(timestamp, new Object[] {timestamp, timestamp % 2 == 0});
+        alignedTVList.putAlignedValue(
+            timestamp, new Object[] {timestamp, timestamp % 2 == 0, true});
         rowCount++;
       }
     }
@@ -585,9 +599,11 @@ public class AlignedTVListIteratorTest {
 
   private static Map<TVList, Integer> buildAlignedMultiTvListMap(List<TimeRange> timeRanges) {
     Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
-    for (TimeRange timeRange : timeRanges) {
+    for (int i = 0; i < timeRanges.size(); i++) {
+      TimeRange timeRange = timeRanges.get(i);
       AlignedTVList alignedTVList =
-          AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN));
+          AlignedTVList.newAlignedList(
+              Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN));
       int rowCount = 0;
       long start = timeRange.getMin();
       long end = timeRange.getMax();
@@ -597,7 +613,15 @@ public class AlignedTVListIteratorTest {
       }
       Collections.shuffle(timestamps);
       for (Long timestamp : timestamps) {
-        alignedTVList.putAlignedValue(timestamp, new Object[] {timestamp, timestamp % 2 == 0});
+        boolean isLast = true;
+        for (int j = i + 1; j < timeRanges.size(); j++) {
+          if (timeRanges.get(j).contains(timestamp)) {
+            isLast = false;
+            break;
+          }
+        }
+        alignedTVList.putAlignedValue(
+            timestamp, new Object[] {timestamp, timestamp % 2 == 0, isLast});
         rowCount++;
       }
       tvListMap.put(alignedTVList, rowCount);

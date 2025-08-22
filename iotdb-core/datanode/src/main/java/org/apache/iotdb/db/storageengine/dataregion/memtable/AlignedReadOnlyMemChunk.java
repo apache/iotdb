@@ -282,6 +282,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     cachedMetaData = alignedChunkMetadata;
   }
 
+  // To avoid loading too much data from disk when the time range is too large during query, we
+  // segment the data according to the time range and construct false statistics.
   @Override
   public void initChunkMetaFromTVListsWithFakeStatistics(
       Ordering scanOrder, Filter globalTimeFilter) {
@@ -315,7 +317,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       rowNum += entry.getValue();
     }
 
-    int pageNum = (int) Math.min(100, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_PAGE / 10));
+    int pageNum =
+        (int)
+            Math.min(
+                MAX_NUMBER_OF_FAKE_CHUNK, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_CHUNK));
     long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
     for (int i = 0; i < pageNum; i++) {
       long pageStartTime = chunkStartTime + i * timeInterval;
@@ -366,6 +371,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             : new TableDeviceChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
     alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
     alignedChunkMetadata.setVersion(Long.MAX_VALUE);
+    // By setting Modified to true, we can prevent these fake statistics from being used.
+    alignedChunkMetadata.setModified(true);
     cachedMetaData = alignedChunkMetadata;
   }
 

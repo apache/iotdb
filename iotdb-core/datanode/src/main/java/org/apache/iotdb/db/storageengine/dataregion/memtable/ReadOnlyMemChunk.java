@@ -84,6 +84,10 @@ public class ReadOnlyMemChunk {
   protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
+  protected final int MAX_NUMBER_OF_POINTS_IN_FAKE_CHUNK = 10 * MAX_NUMBER_OF_POINTS_IN_PAGE;
+
+  protected final int MAX_NUMBER_OF_FAKE_CHUNK = 100;
+
   protected ReadOnlyMemChunk(QueryContext context) {
     this.context = context;
   }
@@ -218,6 +222,8 @@ public class ReadOnlyMemChunk {
     cachedMetaData = metaData;
   }
 
+  // To avoid loading too much data from disk when the time range is too large during query, we
+  // segment the data according to the time range and construct false statistics.
   public void initChunkMetaFromTVListsWithFakeStatistics(
       Ordering scanOrder, Filter globalTimeFilter) {
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
@@ -244,7 +250,10 @@ public class ReadOnlyMemChunk {
         generateFakeStatistics(dataType, chunkStartTime, chunkEndTime);
     cachedMetaData = new ChunkMetadata(measurementUid, dataType, null, null, 0, chunkStatistics);
 
-    int pageNum = (int) Math.min(100, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_PAGE / 10));
+    int pageNum =
+        (int)
+            Math.min(
+                MAX_NUMBER_OF_FAKE_CHUNK, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_CHUNK));
     long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
     for (int i = 0; i < pageNum; i++) {
       long pageStartTime = chunkStartTime + i * timeInterval;
@@ -254,6 +263,7 @@ public class ReadOnlyMemChunk {
 
     cachedMetaData.setChunkLoader(new MemChunkLoader(context, this));
     cachedMetaData.setVersion(Long.MAX_VALUE);
+    // By setting Modified to true, we can prevent these fake statistics from being used.
     cachedMetaData.setModified(true);
   }
 

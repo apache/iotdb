@@ -199,7 +199,7 @@ public class IoTDBConfig {
   private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
 
   /** Minimum ratio of effective information in wal files */
-  private volatile double walMinEffectiveInfoRatio = 0.0001;
+  private volatile double walMinEffectiveInfoRatio = 0.1;
 
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
@@ -370,7 +370,7 @@ public class IoTDBConfig {
   private long seqTsFileSize = 0L;
 
   /** Whether to timed flush sequence tsfiles' memtables. */
-  private boolean enableTimedFlushSeqMemtable = false;
+  private boolean enableTimedFlushSeqMemtable = true;
 
   /**
    * If a memTable's last update time is older than current time minus this, the memtable will be
@@ -382,7 +382,7 @@ public class IoTDBConfig {
   private long seqMemtableFlushCheckInterval = 30 * 1000L;
 
   /** Whether to timed flush unsequence tsfiles' memtables. */
-  private boolean enableTimedFlushUnseqMemtable = false;
+  private boolean enableTimedFlushUnseqMemtable = true;
 
   /**
    * If a memTable's last update time is older than current time minus this, the memtable will be
@@ -403,13 +403,13 @@ public class IoTDBConfig {
   private int tvListSortThreshold = 0;
 
   /** Enable inner space compaction for sequence files */
-  private volatile boolean enableSeqSpaceCompaction = false;
+  private volatile boolean enableSeqSpaceCompaction = true;
 
   /** Enable inner space compaction for unsequence files */
-  private volatile boolean enableUnseqSpaceCompaction = false;
+  private volatile boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private volatile boolean enableCrossSpaceCompaction = false;
+  private volatile boolean enableCrossSpaceCompaction = true;
 
   /** Enable auto repair compaction */
   private volatile boolean enableAutoRepairCompaction = true;
