@@ -431,6 +431,8 @@ public class LoadTsFileManager {
       }
     }
 
+    private static int c = 0;
+
     /**
      * It should be noted that all AlignedChunkData of the same partition split from a source file
      * should be guaranteed to be written to the same new file. Otherwise, for detached
@@ -508,12 +510,21 @@ public class LoadTsFileManager {
         if (lastDevice != null && device2Partition.containsKey(lastDevice)) {
           Set<DataPartitionInfo> partitions = device2Partition.get(lastDevice);
           for (DataPartitionInfo partition : partitions) {
-            if (dataPartition2LastDevice.containsKey(partition)) {
-              writer.endChunkGroup();
-              writer.checkMetadataSizeAndMayFlush();
+            TsFileIOWriter w = dataPartition2Writer.get(partition);
+            if (dataPartition2LastDevice.containsKey(partition) && w != null) {
+              w.endChunkGroup();
+              w.checkMetadataSizeAndMayFlush();
             }
           }
           device2Partition.remove(lastDevice);
+        }
+        if (writer.isWritingChunkGroup()) {
+          LOGGER.warn(
+              "Writer {} for partition {} is already writing chunk group for device {}, but the last device is {}. ",
+              writer.getFile().getAbsolutePath(),
+              partitionInfo,
+              device,
+              lastDevice);
         }
         writer.startChunkGroup(device);
         dataPartition2LastDevice.put(partitionInfo, device);
