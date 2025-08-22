@@ -48,6 +48,11 @@ import org.h2.mvstore.MVStoreException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -94,6 +99,25 @@ public class MQTTSource implements PipeExtractor {
                 PipeSourceConstant.EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY),
             PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
       throw new PipeParameterNotValidException("single mode should be true in MQTT extractor");
+    }
+    if(checkMoquetteConfigConflict(
+        validator
+            .getParameters()
+            .getStringOrDefault(
+                PipeSourceConstant.MQTT_BROKER_HOST_KEY,
+                PipeSourceConstant.MQTT_BROKER_HOST_DEFAULT_VALUE),
+        Integer.parseInt(
+            validator
+                .getParameters()
+                .getStringOrDefault(
+                    PipeSourceConstant.MQTT_BROKER_PORT_KEY,
+                    PipeSourceConstant.MQTT_BROKER_PORT_DEFAULT_VALUE)),
+        validator
+            .getParameters()
+            .getStringOrDefault(
+                PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
+                PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE))) {
+      throw new PipeParameterNotValidException("Moquette config is not valid");
     }
 
     if (CONFIG.isEnableMQTTService()) {
@@ -243,4 +267,16 @@ public class MQTTSource implements PipeExtractor {
       isClosed.set(true);
     }
   }
+
+  public static boolean checkMoquetteConfigConflict(String ip, int port, String dataPath)  {
+    try (ServerSocket socket = new ServerSocket()) {
+      socket.bind(new InetSocketAddress(ip, port));
+    } catch (IOException e) {
+      return true;
+    }
+
+    File file = Paths.get(dataPath).resolve("moquette_store.h2").toAbsolutePath().toFile();
+    return file.exists() && file.canWrite();
+  }
+
 }
