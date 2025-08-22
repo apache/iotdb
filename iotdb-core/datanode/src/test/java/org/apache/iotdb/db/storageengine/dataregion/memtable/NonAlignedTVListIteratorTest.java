@@ -163,6 +163,13 @@ public class NonAlignedTVListIteratorTest {
     testNonAligned(
         Ordering.ASC,
         null,
+        new LongFilterOperators.ValueEq(0, -1),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        0);
+    testNonAligned(
+        Ordering.ASC,
+        null,
         new LongFilterOperators.ValueBetweenAnd(0, 10001, 20000),
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
@@ -267,6 +274,13 @@ public class NonAlignedTVListIteratorTest {
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
         1);
+    testNonAligned(
+        Ordering.DESC,
+        null,
+        new LongFilterOperators.ValueEq(0, -1),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        0);
     testNonAligned(
         Ordering.DESC,
         null,

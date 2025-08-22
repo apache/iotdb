@@ -34,7 +34,6 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.TsBlockUtil;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -791,9 +790,12 @@ public abstract class TVList implements WALEntryValue {
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(getScanOrderIndex(index + 1)))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeBoolean(getBoolean(getScanOrderIndex(index)));
-              builder.declarePosition();
+              boolean aBoolean = getBoolean(getScanOrderIndex(index));
+              if (pushDownFilter == null || pushDownFilter.satisfyBoolean(time, aBoolean)) {
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeBoolean(aBoolean);
+                builder.declarePosition();
+              }
             }
             index++;
           }
@@ -806,9 +808,12 @@ public abstract class TVList implements WALEntryValue {
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(getScanOrderIndex(index + 1)))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeInt(getInt(getScanOrderIndex(index)));
-              builder.declarePosition();
+              int anInt = getInt(getScanOrderIndex(index));
+              if (pushDownFilter == null || pushDownFilter.satisfyInteger(time, anInt)) {
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeInt(anInt);
+                builder.declarePosition();
+              }
             }
             index++;
           }
@@ -821,9 +826,12 @@ public abstract class TVList implements WALEntryValue {
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(getScanOrderIndex(index + 1)))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeLong(getLong(getScanOrderIndex(index)));
-              builder.declarePosition();
+              long aLong = getLong(getScanOrderIndex(index));
+              if (pushDownFilter == null || pushDownFilter.satisfyLong(time, aLong)) {
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeLong(aLong);
+                builder.declarePosition();
+              }
             }
             index++;
           }
@@ -835,13 +843,14 @@ public abstract class TVList implements WALEntryValue {
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(getScanOrderIndex(index + 1)))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder
-                  .getColumnBuilder(0)
-                  .writeFloat(
-                      roundValueWithGivenPrecision(
-                          getFloat(getScanOrderIndex(index)), floatPrecision, encoding));
-              builder.declarePosition();
+              float aFloat =
+                  roundValueWithGivenPrecision(
+                      getFloat(getScanOrderIndex(index)), floatPrecision, encoding);
+              if (pushDownFilter == null || pushDownFilter.satisfyFloat(time, aFloat)) {
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeFloat(aFloat);
+                builder.declarePosition();
+              }
             }
             index++;
           }
@@ -853,13 +862,14 @@ public abstract class TVList implements WALEntryValue {
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(getScanOrderIndex(index + 1)))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder
-                  .getColumnBuilder(0)
-                  .writeDouble(
-                      roundValueWithGivenPrecision(
-                          getDouble(getScanOrderIndex(index)), floatPrecision, encoding));
-              builder.declarePosition();
+              double aDouble =
+                  roundValueWithGivenPrecision(
+                      getDouble(getScanOrderIndex(index)), floatPrecision, encoding);
+              if (pushDownFilter == null || pushDownFilter.satisfyDouble(time, aDouble)) {
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeDouble(aDouble);
+                builder.declarePosition();
+              }
             }
             index++;
           }
@@ -873,9 +883,12 @@ public abstract class TVList implements WALEntryValue {
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isTimeSatisfied(time)
                 && (index == rows - 1 || time != getTime(getScanOrderIndex(index + 1)))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeBinary(getBinary(getScanOrderIndex(index)));
-              builder.declarePosition();
+              Binary binary = getBinary(getScanOrderIndex(index));
+              if (pushDownFilter == null || pushDownFilter.satisfyBinary(time, binary)) {
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeBinary(binary);
+                builder.declarePosition();
+              }
             }
             index++;
           }
@@ -884,23 +897,14 @@ public abstract class TVList implements WALEntryValue {
           throw new UnSupportedDataTypeException(
               String.format("Data type %s is not supported.", dataType));
       }
-      TsBlock tsBlock = builder.build();
-      if (pushDownFilter != null) {
-        tsBlock =
-            TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
-                tsBlock,
-                new TsBlockBuilder(
-                    Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()),
-                    Collections.singletonList(dataType)),
-                pushDownFilter,
-                paginationController);
-      } else {
-        tsBlock = paginationController.applyTsBlock(tsBlock);
-      }
+      // There is no need to process pushDownFilter here because it has been applied when
+      // constructing the tsBlock
+      TsBlock tsBlock = paginationController.applyTsBlock(builder.build());
       tsBlocks.add(tsBlock);
       return tsBlock;
     }
 
+    // When traversing in desc order, the index needs to be converted
     public int getScanOrderIndex(int rowIndex) {
       return scanOrder.isAscending() ? rowIndex : rowCount - 1 - rowIndex;
     }
