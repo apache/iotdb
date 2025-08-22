@@ -176,6 +176,16 @@ public class ExportSchemaTable extends AbstractExportSchema {
     }
   }
 
+  private String escapeSqlIdentifer(String identifier) {
+    if (StringUtils.isBlank(identifier)) {
+      return identifier;
+    }
+    if (identifier.contains("\"")) {
+      identifier = identifier.replace("\"", "\"\"");
+    }
+    return "\"" + identifier + "\"";
+  }
+
   @Override
   protected void exportSchemaToSqlFile() {
     File file = new File(targetDirectory);
@@ -191,7 +201,10 @@ public class ExportSchemaTable extends AbstractExportSchema {
       try (ITableSession session = sessionPool.getSession()) {
         sessionDataSet =
             session.executeQueryStatement(
-                String.format("SHOW CREATE TABLE %s.%s", database, tableName));
+                String.format(
+                    Constants.SHOW_CREATE_TABLE,
+                    escapeSqlIdentifer(database),
+                    escapeSqlIdentifer(tableName)));
         exportSchemaByShowCreate(sessionDataSet, fileName, tableName);
       } catch (IoTDBConnectionException | StatementExecutionException | IOException e) {
         ioTPrinter.println(Constants.COLUMN_SQL_MEET_ERROR_MSG + e.getMessage());
@@ -210,7 +223,8 @@ public class ExportSchemaTable extends AbstractExportSchema {
   private void exportSchemaByShowCreate(
       SessionDataSet sessionDataSet, String fileName, String tableName)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    String dropSql = "DROP TABLE IF EXISTS \"" + tableName + "\";\n";
+    String dropSql =
+        String.format(Constants.DROP_TABLE_IF_EXIST, escapeSqlIdentifer(tableName)) + ";\n";
     StringBuilder sb = new StringBuilder(dropSql);
     try (FileWriter writer = new FileWriter(fileName, true)) {
       while (sessionDataSet.hasNext()) {
