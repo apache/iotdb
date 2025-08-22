@@ -721,22 +721,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     runtimeMeta.setIsStoppedByRuntimeException(false);
 
     runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
-
-    final Map<Integer, PipeRuntimeException> exceptionMap =
-        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-    if (!exceptionMap.isEmpty()) {
-      exceptionMap.clear();
-    }
-
-    runtimeMeta
-        .getConsensusGroupId2TaskMetaMap()
-        .values()
-        .forEach(
-            pipeTaskMeta -> {
-              if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
-                pipeTaskMeta.clearExceptionMessages();
-              }
-            });
   }
 
   public void setIsStoppedByRuntimeExceptionToFalse(final String pipeName) {

@@ -643,12 +643,6 @@ public abstract class PipeTaskAgent {
 
     // Set pipe meta status to RUNNING
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
-    // Clear exception messages if started successfully
-    existedPipeMeta
-        .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
-        .values()
-        .forEach(PipeTaskMeta::clearExceptionMessages);
 
     thawRate(pipeName, creationTime);
   }
