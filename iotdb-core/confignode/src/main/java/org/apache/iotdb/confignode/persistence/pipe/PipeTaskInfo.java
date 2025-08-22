@@ -719,8 +719,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     // To avoid unnecessary retries, we set the isStoppedByRuntimeException flag to false
     runtimeMeta.setIsStoppedByRuntimeException(false);
-
-    runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
   }
 
   public void setIsStoppedByRuntimeExceptionToFalse(final String pipeName) {
