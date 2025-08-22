@@ -23,13 +23,11 @@ import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.protocol.mqtt.Message;
-import org.apache.iotdb.db.protocol.mqtt.PayloadFormatManager;
 import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
 import org.apache.iotdb.db.protocol.mqtt.TableMessage;
 import org.apache.iotdb.db.protocol.mqtt.TreeMessage;
@@ -42,7 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import io.moquette.interception.AbstractInterceptHandler;
@@ -79,14 +76,10 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   private final PipeTaskMeta pipeTaskMeta;
 
   public MQTTPublishHandler(
-      final PipeParameters pipeParameters,
+      final PayloadFormatter payloadFormat,
       final PipeTaskExtractorRuntimeEnvironment environment,
       final UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue) {
-    this.payloadFormat =
-        PayloadFormatManager.getPayloadFormat(
-            pipeParameters.getStringOrDefault(
-                PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_KEY,
-                PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_DEFAULT_VALUE));
+    this.payloadFormat = payloadFormat;
     useTableInsert = PayloadFormatter.TABLE_TYPE.equals(this.payloadFormat.getType());
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();

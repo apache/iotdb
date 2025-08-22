@@ -22,12 +22,13 @@ package org.apache.iotdb.db.pipe.source.mqtt;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.protocol.mqtt.BrokerAuthenticator;
+import org.apache.iotdb.db.protocol.mqtt.PayloadFormatManager;
+import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -56,7 +57,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -71,16 +71,13 @@ public class MQTTSource implements PipeExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MQTTSource.class);
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-
-  public static final String WILD_CARD_ADDRESS = "0.0.0.0";
-
   protected String pipeName;
   protected long creationTime;
   protected PipeTaskMeta pipeTaskMeta;
   protected final UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue =
       new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
+  private PayloadFormatter payloadFormat;
   protected IConfig brokerConfig;
   protected List<InterceptHandler> handlers;
   protected IAuthenticator authenticator;
@@ -100,63 +97,61 @@ public class MQTTSource implements PipeExtractor {
             PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
       throw new PipeParameterNotValidException("single mode should be true in MQTT extractor");
     }
-    if(checkMoquetteConfigConflict(
+    final String sqlDialect =
         validator
             .getParameters()
             .getStringOrDefault(
-                PipeSourceConstant.MQTT_BROKER_HOST_KEY,
-                PipeSourceConstant.MQTT_BROKER_HOST_DEFAULT_VALUE),
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final String formatType =
+        validator
+            .getParameters()
+            .getStringOrDefault(
+                PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_KEY,
+                SystemConstant.SQL_DIALECT_TREE_VALUE.equals(sqlDialect)
+                    ? PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_TREE_DIALECT_VALUE
+                    : PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_TABLE_DIALECT_VALUE);
+    payloadFormat = PayloadFormatManager.getPayloadFormat(formatType);
+    if (!sqlDialect.equals(payloadFormat.getType())) {
+      throw new PipeParameterNotValidException(
+          "The MQTT payload formatter type "
+              + formatType
+              + " does not match the SQL dialect "
+              + sqlDialect
+              + ". Please use a compatible payload formatter.");
+    }
+    validateMoquetteConfig(validator.getParameters());
+  }
+
+  public static void validateMoquetteConfig(final PipeParameters pipeParameters) {
+    final String ip =
+        pipeParameters.getStringOrDefault(
+            PipeSourceConstant.MQTT_BROKER_HOST_KEY,
+            PipeSourceConstant.MQTT_BROKER_HOST_DEFAULT_VALUE);
+    final int port =
         Integer.parseInt(
-            validator
-                .getParameters()
-                .getStringOrDefault(
-                    PipeSourceConstant.MQTT_BROKER_PORT_KEY,
-                    PipeSourceConstant.MQTT_BROKER_PORT_DEFAULT_VALUE)),
-        validator
-            .getParameters()
-            .getStringOrDefault(
-                PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
-                PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE))) {
-      throw new PipeParameterNotValidException("Moquette config is not valid");
+            pipeParameters.getStringOrDefault(
+                PipeSourceConstant.MQTT_BROKER_PORT_KEY,
+                PipeSourceConstant.MQTT_BROKER_PORT_DEFAULT_VALUE));
+    try (ServerSocket socket = new ServerSocket()) {
+      socket.bind(new InetSocketAddress(ip, port));
+    } catch (IOException e) {
+      throw new PipeParameterNotValidException(
+          "Cannot bind MQTT broker to "
+              + ip
+              + ":"
+              + port
+              + ". The port might already be in use, or the IP address is invalid.");
     }
 
-    if (CONFIG.isEnableMQTTService()) {
-      if (Objects.equals(
-          CONFIG.getMqttDataPath(),
-          validator
-              .getParameters()
-              .getStringOrDefault(
-                  PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
-                  PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE))) {
-        throw new PipeParameterNotValidException(
-            "The data path of the MQTT extractor is used by the MQTT service. "
-                + "Please change the data path of the MQTT extractor.");
-      }
-      if (Objects.equals(
-              CONFIG.getMqttHost(),
-              validator
-                  .getParameters()
-                  .getStringOrDefault(
-                      PipeSourceConstant.MQTT_BROKER_HOST_KEY,
-                      PipeSourceConstant.MQTT_BROKER_HOST_DEFAULT_VALUE))
-          || ((WILD_CARD_ADDRESS.equals(CONFIG.getMqttHost())
-                  || WILD_CARD_ADDRESS.equals(
-                      validator
-                          .getParameters()
-                          .getStringOrDefault(
-                              PipeSourceConstant.MQTT_BROKER_HOST_KEY,
-                              PipeSourceConstant.MQTT_BROKER_HOST_DEFAULT_VALUE)))
-              && Objects.equals(
-                  String.valueOf(CONFIG.getMqttPort()),
-                  validator
-                      .getParameters()
-                      .getStringOrDefault(
-                          PipeSourceConstant.MQTT_BROKER_PORT_KEY,
-                          PipeSourceConstant.MQTT_BROKER_PORT_DEFAULT_VALUE)))) {
-        throw new PipeParameterNotValidException(
-            "The host and port of the MQTT extractor are used by the MQTT service. "
-                + "Please change the host and port of the MQTT extractor.");
-      }
+    final String dataPath =
+        pipeParameters.getStringOrDefault(
+            PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
+            PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE);
+    File file = Paths.get(dataPath).resolve("moquette_store.h2").toAbsolutePath().toFile();
+    if (file.exists() && !file.canWrite()) {
+      throw new PipeParameterNotValidException(
+          " The data file is used by another MQTT Source or MQTT Service. "
+              + "Please use another data path");
     }
   }
 
@@ -171,7 +166,7 @@ public class MQTTSource implements PipeExtractor {
     pipeTaskMeta = environment.getPipeTaskMeta();
     brokerConfig = createBrokerConfig(parameters);
     handlers = new ArrayList<>(1);
-    handlers.add(new MQTTPublishHandler(parameters, environment, pendingQueue));
+    handlers.add(new MQTTPublishHandler(payloadFormat, environment, pendingQueue));
     authenticator = new BrokerAuthenticator();
   }
 
@@ -267,16 +262,4 @@ public class MQTTSource implements PipeExtractor {
       isClosed.set(true);
     }
   }
-
-  public static boolean checkMoquetteConfigConflict(String ip, int port, String dataPath)  {
-    try (ServerSocket socket = new ServerSocket()) {
-      socket.bind(new InetSocketAddress(ip, port));
-    } catch (IOException e) {
-      return true;
-    }
-
-    File file = Paths.get(dataPath).resolve("moquette_store.h2").toAbsolutePath().toFile();
-    return file.exists() && file.canWrite();
-  }
-
 }
