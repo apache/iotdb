@@ -26,6 +26,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
@@ -278,6 +279,10 @@ public class PipeMemoryWeightUtil {
     }
 
     return batchData.length() * totalSizeInBytes;
+  }
+
+  public static long calculateChunkRamBytesUsed(Chunk chunk) {
+    return chunk != null ? chunk.getRetainedSizeInBytes() : 0L;
   }
 
   /**
