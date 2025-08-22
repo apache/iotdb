@@ -97,6 +97,7 @@ public class AlignedTVListIteratorTest {
                 new TimeRange(100001, 200000),
                 new TimeRange(200001, 300000),
                 new TimeRange(250001, 300000),
+                new TimeRange(250001, 300000),
                 new TimeRange(300001, 400000)));
   }
 
@@ -431,7 +432,7 @@ public class AlignedTVListIteratorTest {
       List<TimeRange> timeDeletions,
       List<List<TimeRange>> valueDeletions,
       int expectedCount)
-      throws IOException, QueryProcessException {
+      throws IOException {
     List<Integer> columnIdxList = Arrays.asList(0, 1);
     IMeasurementSchema measurementSchema = getMeasurementSchema();
     AlignedReadOnlyMemChunk chunk =

@@ -119,15 +119,18 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       hasNext = true;
 
       // duplicated timestamps
+      boolean[] valueDeleted = new boolean[tsDataTypeList.size()];
       while (!heap.isEmpty() && heap.peek().left == currentTime) {
         Pair<Long, Integer> element = heap.poll();
         probeIterators.add(element.right);
 
         for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
           // if current column null, it needs update
-          if (alignedTvListIterators
-              .get(iteratorIndices[columnIndex])
-              .isNullValue(rowIndices[columnIndex], columnIndex)) {
+          int iteratorIndex = currentIteratorIndex(columnIndex);
+          if (iteratorIndex == -1
+              || alignedTvListIterators
+                  .get(iteratorIndex)
+                  .isNullValue(rowIndices[columnIndex], columnIndex)) {
             iteratorIndices[columnIndex] = element.right;
             rowIndices[columnIndex] =
                 alignedTvListIterators.get(element.right).getSelectedIndex(columnIndex);
