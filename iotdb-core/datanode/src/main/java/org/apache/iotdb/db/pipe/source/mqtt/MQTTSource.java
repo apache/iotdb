@@ -80,7 +80,7 @@ public class MQTTSource implements PipeExtractor {
   protected final UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue =
       new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
-  private PayloadFormatter payloadFormat;
+  protected PayloadFormatter payloadFormat;
   protected IConfig brokerConfig;
   protected List<InterceptHandler> handlers;
   protected IAuthenticator authenticator;
