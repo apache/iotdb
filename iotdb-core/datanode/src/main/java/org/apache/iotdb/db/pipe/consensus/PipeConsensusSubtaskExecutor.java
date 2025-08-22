@@ -27,12 +27,17 @@ public class PipeConsensusSubtaskExecutor extends PipeSinkSubtaskExecutor {
   public PipeConsensusSubtaskExecutor() {
     super(
         // The number of data regions for a datanode is limited by offHeapMemory. At the same time,
-        // in order to ensure multi-core performance, the number of data regions usually does not
+        // in order to ensure multi-cores performance, the number of data regions usually does not
         // exceed the number of cores. To prevent the thread from exploding, we take the min of
         // both.
         (int)
             Math.min(
+                // NOTE1: The number of data regions is limited by the number of cores.
                 Runtime.getRuntime().availableProcessors(),
+                // NOTE2: The number of data regions is also limited by the offHeapMemory. In fact,
+                // schema regions also take up off-heap memory. So in fact, the soft cap of
+                // data region will be smaller than what is calculated here, but that's okay, we can
+                // set the core size quota of the Executor pool a little bit higher slightly
                 IoTDBDescriptor.getInstance()
                         .getMemoryConfig()
                         .getOffHeapMemoryManager()
