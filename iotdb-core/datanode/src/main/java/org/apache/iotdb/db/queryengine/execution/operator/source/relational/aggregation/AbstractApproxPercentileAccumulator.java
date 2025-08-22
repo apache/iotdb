@@ -36,7 +36,7 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
   protected final TSDataType seriesDataType;
   protected double percentage;
 
-  public AbstractApproxPercentileAccumulator(TSDataType seriesDataType) {
+  AbstractApproxPercentileAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
   }
 
@@ -90,9 +90,7 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
         // Read percentage from the first 8 bytes and TDigest from the rest
         ByteBuffer buffer = ByteBuffer.wrap(data);
         this.percentage = ReadWriteIOUtils.readDouble(buffer);
-        byte[] tDigestData = new byte[data.length - 8];
-        buffer.get(tDigestData);
-        TDigest other = TDigest.fromByteArray(tDigestData);
+        TDigest other = TDigest.fromByteBuffer(buffer);
         tDigest.add(other);
       }
     }
@@ -100,11 +98,11 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
 
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
-    byte[] tDigestData = tDigest.toByteArray();
+    int tDigestDataLength = tDigest.byteSize();
     // Create a buffer with space for percentage (8 bytes) + TDigest data
-    ByteBuffer buffer = ByteBuffer.allocate(8 + tDigestData.length);
+    ByteBuffer buffer = ByteBuffer.allocate(8 + tDigestDataLength);
     ReadWriteIOUtils.write(percentage, buffer);
-    buffer.put(tDigestData);
+    tDigest.toByteArray(buffer);
     columnBuilder.writeBinary(new Binary(buffer.array()));
   }
 

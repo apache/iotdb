@@ -14,7 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.TDigest;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.TDigestBigArray;
@@ -37,7 +36,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
   protected double percentage;
   protected final TDigestBigArray array = new TDigestBigArray();
 
-  public AbstractGroupedApproxPercentileAccumulator(TSDataType seriesDataType) {
+  AbstractGroupedApproxPercentileAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
   }
 
@@ -58,7 +57,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
     } else if (arguments.length == 3) {
       percentage = arguments[2].getDouble(0);
     } else {
-      throw new SemanticException(
+      throw new IllegalArgumentException(
           String.format(
               "APPROX_PERCENTILE requires 2 or 3 arguments, but got %d", arguments.length));
     }
@@ -92,9 +91,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
         byte[] data = argument.getBinary(i).getValues();
         ByteBuffer buffer = ByteBuffer.wrap(data);
         this.percentage = ReadWriteIOUtils.readDouble(buffer);
-        byte[] tDigestData = new byte[data.length - 8];
-        buffer.get(tDigestData);
-        TDigest other = TDigest.fromByteArray(tDigestData);
+        TDigest other = TDigest.fromByteBuffer(buffer);
         array.get(groupId).add(other);
       }
     }
@@ -102,10 +99,11 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
-    byte[] tDigestData = array.get(groupId).toByteArray();
-    ByteBuffer buffer = ByteBuffer.allocate(8 + tDigestData.length);
+    TDigest tDigest = array.get(groupId);
+    int tDigestDataLength = tDigest.byteSize();
+    ByteBuffer buffer = ByteBuffer.allocate(8 + tDigestDataLength);
     ReadWriteIOUtils.write(percentage, buffer);
-    buffer.put(tDigestData);
+    tDigest.toByteArray(buffer);
     columnBuilder.writeBinary(new Binary(buffer.array()));
   }
 
@@ -129,7 +127,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", seriesDataType));
+                "Unsupported data type in APPROX_PERCENTILE Aggregation: %s", seriesDataType));
     }
   }
 

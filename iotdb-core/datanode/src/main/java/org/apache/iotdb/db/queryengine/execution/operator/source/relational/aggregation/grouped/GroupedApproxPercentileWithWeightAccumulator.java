@@ -51,7 +51,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
-          tDigest.add(valueColumn.getInt(i), weightColumn.getInt(i));
+          tDigest.add(valueColumn.getInt(position), weightColumn.getInt(position));
         }
       }
     }
@@ -81,7 +81,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
-          tDigest.add(valueColumn.getLong(i), weightColumn.getInt(i));
+          tDigest.add(valueColumn.getLong(position), weightColumn.getInt(position));
         }
       }
     }
@@ -111,7 +111,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
-          tDigest.add(valueColumn.getFloat(i), weightColumn.getInt(i));
+          tDigest.add(valueColumn.getFloat(position), weightColumn.getInt(position));
         }
       }
     }
@@ -141,7 +141,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
-          tDigest.add(valueColumn.getDouble(i), weightColumn.getInt(i));
+          tDigest.add(valueColumn.getDouble(position), weightColumn.getInt(position));
         }
       }
     }

@@ -58,9 +58,9 @@ public class TDigest implements Serializable {
   private double max = Double.NEGATIVE_INFINITY;
 
   // Configuration flags
-  public boolean useAlternatingSort = true;
-  public boolean useTwoLevelCompression = true;
-  public static boolean useWeightLimit = true;
+  private boolean useAlternatingSort = true;
+  private boolean useTwoLevelCompression = true;
+  private boolean useWeightLimit = true;
 
   public TDigest() {
     this(DEFAULT_COMPRESSION);
@@ -514,7 +514,7 @@ public class TDigest implements Serializable {
    */
   public double quantile(double q) {
     if (q < 0 || q > 1) {
-      throw new SemanticException("q should be in [0,1], got " + q);
+      throw new SemanticException("percentage should be in [0,1], got " + q);
     }
     mergeNewValues();
 
@@ -745,6 +745,11 @@ public class TDigest implements Serializable {
     return buf.array();
   }
 
+  public byte[] toByteArray(ByteBuffer buffer) {
+    asBytes(buffer);
+    return buffer.array();
+  }
+
   /**
    * Serialize to byte array using small encoding.
    *
@@ -764,6 +769,10 @@ public class TDigest implements Serializable {
    */
   public static TDigest fromByteArray(byte[] bytes) {
     return fromBytes(ByteBuffer.wrap(bytes));
+  }
+
+  public static TDigest fromByteBuffer(ByteBuffer buffer) {
+    return fromBytes(buffer);
   }
 
   /** Over-ride the min and max values (used internally during deserialization). */

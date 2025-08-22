@@ -49,7 +49,7 @@ public class GroupedApproxPercentileAccumulator extends AbstractGroupedApproxPer
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
-          tDigest.add(valueColumn.getInt(i));
+          tDigest.add(valueColumn.getInt(position));
         }
       }
     }
@@ -78,7 +78,7 @@ public class GroupedApproxPercentileAccumulator extends AbstractGroupedApproxPer
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
-          tDigest.add(valueColumn.getLong(i));
+          tDigest.add(valueColumn.getLong(position));
         }
       }
     }
@@ -107,7 +107,7 @@ public class GroupedApproxPercentileAccumulator extends AbstractGroupedApproxPer
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
-          tDigest.add(valueColumn.getFloat(i));
+          tDigest.add(valueColumn.getFloat(position));
         }
       }
     }
@@ -136,7 +136,7 @@ public class GroupedApproxPercentileAccumulator extends AbstractGroupedApproxPer
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
-          tDigest.add(valueColumn.getDouble(i));
+          tDigest.add(valueColumn.getDouble(position));
         }
       }
     }

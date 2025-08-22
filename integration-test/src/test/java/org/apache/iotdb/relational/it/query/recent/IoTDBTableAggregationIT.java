@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.TDigest;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -4326,10 +4325,6 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,shanghai,55,0,",
         },
         DATABASE_NAME);
-
-    TDigest a = new TDigest();
-    TDigest b = new TDigest();
-    a.add(b);
   }
 
   @Test
@@ -4400,7 +4395,7 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
     tableAssertTestFail(
         "select approx_percentile(s1,1.1) from table1",
-        "701: q should be in [0,1], got 1.1",
+        "701: percentage should be in [0,1], got 1.1",
         DATABASE_NAME);
     tableAssertTestFail(
         "select approx_percentile(s1,'test') from table1",
