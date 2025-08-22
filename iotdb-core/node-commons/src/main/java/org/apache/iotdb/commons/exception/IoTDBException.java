@@ -82,7 +82,7 @@ public class IoTDBException extends Exception {
     return errorCode;
   }
 
-  public TSStatus getStatus() {
+  public @Nullable TSStatus getStatus() {
     return status;
   }
 }
