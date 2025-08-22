@@ -313,7 +313,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             "Failed to execute {} in config node, status is {}.",
             AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        future.setException(new IoTDBException(tsStatus));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
@@ -355,8 +355,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       LOGGER.error(CONNECTERROR);
       authorizerResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
-      future.setException(
-          new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
+      future.setException(new IoTDBException(authorizerResp.getStatus()));
     } catch (AuthException e) {
       future.setException(e);
     }

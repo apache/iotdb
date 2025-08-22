@@ -558,7 +558,7 @@ class AutoCreateSchemaExecutor {
     status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 
@@ -590,7 +590,7 @@ class AutoCreateSchemaExecutor {
         throw new SemanticException(new MetadataException(String.join("; ", failedActivationSet)));
       }
     } else {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 
@@ -659,7 +659,7 @@ class AutoCreateSchemaExecutor {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode()
             != TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 }
