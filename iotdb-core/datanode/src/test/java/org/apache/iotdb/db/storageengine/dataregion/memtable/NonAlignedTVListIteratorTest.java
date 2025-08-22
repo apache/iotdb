@@ -102,6 +102,52 @@ public class NonAlignedTVListIteratorTest {
   }
 
   @Test
+  public void otherTest() throws QueryProcessException, IOException {
+    Map<TVList, Integer> tvListMap =
+        buildNonAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1)));
+    testNonAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        false,
+        1);
+    testNonAligned(
+        tvListMap,
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        false,
+        1);
+
+    tvListMap = buildNonAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 10000)));
+    TVList tvList = tvListMap.keySet().iterator().next();
+    tvList.delete(1, 10);
+    testNonAligned(
+        tvListMap,
+        Ordering.ASC,
+        new TimeFilterOperators.TimeBetweenAnd(110L, 200L),
+        new LongFilterOperators.ValueBetweenAnd(0, 100, 200),
+        new PaginationController(10, 10),
+        Collections.singletonList(new TimeRange(1, 10)),
+        false,
+        10);
+    testNonAligned(
+        tvListMap,
+        Ordering.DESC,
+        new TimeFilterOperators.TimeBetweenAnd(110L, 200L),
+        new LongFilterOperators.ValueBetweenAnd(0, 100, 200),
+        new PaginationController(10, 10),
+        Collections.singletonList(new TimeRange(1, 10)),
+        false,
+        10);
+  }
+
+  @Test
   public void testNonAlignedWithDeletionInTVList() throws QueryProcessException, IOException {
     Map<TVList, Integer> tvListMap =
         buildNonAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
@@ -462,7 +508,7 @@ public class NonAlignedTVListIteratorTest {
             count++;
             expectedTimestamp = count + offset;
           } else {
-            expectedTimestamp = 400000 - count - offset;
+            expectedTimestamp = endTime - count - offset;
             count++;
           }
           long currentTimestamp = tsBlock.getTimeByIndex(i);
@@ -507,7 +553,7 @@ public class NonAlignedTVListIteratorTest {
         count++;
         expectedTimestamp = count + offset;
       } else {
-        expectedTimestamp = 400000 - count - offset;
+        expectedTimestamp = endTime - count - offset;
         count++;
       }
 

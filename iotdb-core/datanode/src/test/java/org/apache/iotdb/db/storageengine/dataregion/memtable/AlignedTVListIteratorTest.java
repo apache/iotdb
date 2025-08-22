@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -104,6 +103,62 @@ public class AlignedTVListIteratorTest {
   @AfterClass
   public static void tearDown() {
     instanceNotificationExecutor.shutdown();
+  }
+
+  @Test
+  public void otherTest() throws IOException {
+    Map<TVList, Integer> tvListMap =
+        buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1)));
+    testAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        false,
+        1);
+    testAligned(
+        tvListMap,
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        false,
+        1);
+
+    tvListMap = buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 10000)));
+    AlignedTVList tvList = (AlignedTVList) tvListMap.keySet().iterator().next();
+    tvList.delete(1, 10, 0);
+    testAligned(
+        tvListMap,
+        Ordering.ASC,
+        new TimeFilterOperators.TimeBetweenAnd(110L, 200L),
+        new LongFilterOperators.ValueBetweenAnd(0, 100, 200),
+        new PaginationController(10, 10),
+        Collections.emptyList(),
+        Arrays.asList(
+            Collections.singletonList(new TimeRange(1, 10)),
+            Collections.emptyList(),
+            Collections.emptyList()),
+        false,
+        10);
+    testAligned(
+        tvListMap,
+        Ordering.DESC,
+        new TimeFilterOperators.TimeBetweenAnd(110L, 200L),
+        new LongFilterOperators.ValueBetweenAnd(0, 100, 200),
+        new PaginationController(10, 10),
+        Collections.emptyList(),
+        Arrays.asList(
+            Collections.singletonList(new TimeRange(1, 10)),
+            Collections.emptyList(),
+            Collections.emptyList()),
+        false,
+        10);
   }
 
   @Test
@@ -451,7 +506,7 @@ public class AlignedTVListIteratorTest {
   }
 
   @Test
-  public void testAlignedDescWithPushDownFilter() throws QueryProcessException, IOException {
+  public void testAlignedDescWithPushDownFilter() throws IOException {
     testAligned(
         Ordering.DESC,
         null,
