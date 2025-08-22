@@ -27,9 +27,9 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.TsBlockUtil;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.series.PaginationController;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
@@ -130,75 +130,97 @@ public abstract class MultiTVListIterator extends MemPointIterator {
   @Override
   public TsBlock nextBatch() {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
-    while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
-      TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-      builder.getTimeColumnBuilder().writeLong(currentTime);
-      switch (tsDataType) {
-        case BOOLEAN:
-          builder
-              .getColumnBuilder(0)
-              .writeBoolean(iterator.getTVList().getBoolean(iterator.getScanOrderIndex(rowIndex)));
-          break;
-        case INT32:
-        case DATE:
-          builder
-              .getColumnBuilder(0)
-              .writeInt(iterator.getTVList().getInt(iterator.getScanOrderIndex(rowIndex)));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          builder
-              .getColumnBuilder(0)
-              .writeLong(iterator.getTVList().getLong(iterator.getScanOrderIndex(rowIndex)));
-          break;
-        case FLOAT:
+    switch (tsDataType) {
+      case BOOLEAN:
+        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
+          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
+          boolean aBoolean = iterator.getTVList().getBoolean(iterator.getScanOrderIndex(rowIndex));
+          if (pushDownFilter == null || pushDownFilter.satisfyBoolean(currentTime, aBoolean)) {
+            builder.getTimeColumnBuilder().writeLong(currentTime);
+            builder.getColumnBuilder(0).writeBoolean(aBoolean);
+            builder.declarePosition();
+          }
+          next();
+        }
+        break;
+      case INT32:
+      case DATE:
+        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
+          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
+          int anInt = iterator.getTVList().getInt(iterator.getScanOrderIndex(rowIndex));
+          if (pushDownFilter == null || pushDownFilter.satisfyInteger(currentTime, anInt)) {
+            builder.getTimeColumnBuilder().writeLong(currentTime);
+            builder.getColumnBuilder(0).writeInt(anInt);
+            builder.declarePosition();
+          }
+          next();
+        }
+        break;
+      case INT64:
+      case TIMESTAMP:
+        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
+          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
+          long aLong = iterator.getTVList().getLong(iterator.getScanOrderIndex(rowIndex));
+          if (pushDownFilter == null || pushDownFilter.satisfyLong(currentTime, aLong)) {
+            builder.getTimeColumnBuilder().writeLong(currentTime);
+            builder.getColumnBuilder(0).writeLong(aLong);
+            builder.declarePosition();
+          }
+          next();
+        }
+        break;
+      case FLOAT:
+        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
+          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
           TVList floatTvList = iterator.getTVList();
-          builder
-              .getColumnBuilder(0)
-              .writeFloat(
-                  floatTvList.roundValueWithGivenPrecision(
-                      floatTvList.getFloat(iterator.getScanOrderIndex(rowIndex)),
-                      floatPrecision,
-                      encoding));
-          break;
-        case DOUBLE:
+          float aFloat =
+              floatTvList.roundValueWithGivenPrecision(
+                  floatTvList.getFloat(iterator.getScanOrderIndex(rowIndex)),
+                  floatPrecision,
+                  encoding);
+          if (pushDownFilter == null || pushDownFilter.satisfyFloat(currentTime, aFloat)) {
+            builder.getTimeColumnBuilder().writeLong(currentTime);
+            builder.getColumnBuilder(0).writeFloat(aFloat);
+            builder.declarePosition();
+          }
+          next();
+        }
+        break;
+      case DOUBLE:
+        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
+          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
           TVList doubleTvList = iterator.getTVList();
-          builder
-              .getColumnBuilder(0)
-              .writeDouble(
-                  doubleTvList.roundValueWithGivenPrecision(
-                      doubleTvList.getDouble(iterator.getScanOrderIndex(rowIndex)),
-                      floatPrecision,
-                      encoding));
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          builder
-              .getColumnBuilder(0)
-              .writeBinary(iterator.getTVList().getBinary(iterator.getScanOrderIndex(rowIndex)));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", tsDataType));
-      }
-      next();
-
-      builder.declarePosition();
+          double aDouble =
+              doubleTvList.roundValueWithGivenPrecision(
+                  doubleTvList.getDouble(iterator.getScanOrderIndex(rowIndex)),
+                  floatPrecision,
+                  encoding);
+          if (pushDownFilter == null || pushDownFilter.satisfyDouble(currentTime, aDouble)) {
+            builder.getTimeColumnBuilder().writeLong(currentTime);
+            builder.getColumnBuilder(0).writeDouble(aDouble);
+            builder.declarePosition();
+          }
+          next();
+        }
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
+          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
+          Binary binary = iterator.getTVList().getBinary(iterator.getScanOrderIndex(rowIndex));
+          if (pushDownFilter == null || pushDownFilter.satisfyBinary(currentTime, binary)) {
+            builder.getTimeColumnBuilder().writeLong(currentTime);
+            builder.getColumnBuilder(0).writeBinary(binary);
+            builder.declarePosition();
+          }
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", tsDataType));
     }
-    TsBlock tsBlock = builder.build();
-    if (pushDownFilter != null) {
-      tsBlock =
-          TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
-              tsBlock,
-              new TsBlockBuilder(
-                  Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()),
-                  Collections.singletonList(tsDataType)),
-              pushDownFilter,
-              paginationController);
-    } else {
-      tsBlock = paginationController.applyTsBlock(tsBlock);
-    }
+    TsBlock tsBlock = paginationController.applyTsBlock(builder.build());
     tsBlocks.add(tsBlock);
     return tsBlock;
   }
