@@ -100,6 +100,7 @@ public class MQTTSource implements PipeExtractor {
             PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
       throw new PipeParameterNotValidException("single mode should be true in MQTT extractor");
     }
+
     final String sqlDialect =
         validator
             .getParameters()
@@ -122,6 +123,7 @@ public class MQTTSource implements PipeExtractor {
               + sqlDialect
               + ". Please use a compatible payload formatter.");
     }
+
     validateMoquetteConfig(validator.getParameters());
   }
 
@@ -150,7 +152,7 @@ public class MQTTSource implements PipeExtractor {
         pipeParameters.getStringOrDefault(
             PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
             PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE);
-    File file = Paths.get(dataPath).resolve("moquette_store.h2").toAbsolutePath().toFile();
+    final File file = Paths.get(dataPath).resolve("moquette_store.h2").toAbsolutePath().toFile();
     if (file.exists()) {
       try (RandomAccessFile raf = new RandomAccessFile(file, "rw");
           FileChannel channel = raf.getChannel();
