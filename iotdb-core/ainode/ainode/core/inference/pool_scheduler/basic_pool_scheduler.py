@@ -16,7 +16,7 @@
 # under the License.
 #
 
-from typing import Dict
+from typing import Dict, List
 
 import torch
 
@@ -46,7 +46,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
     def __init__(self, request_pool_map: Dict[str, PoolGroup]):
         super().__init__(request_pool_map)
 
-    def schedule(self, model_id: str) -> ScaleAction:
+    def schedule(self, model_id: str) -> List[ScaleAction]:
         """
         Schedule a scaling action for the given model_id.
         """
@@ -56,4 +56,4 @@ class BasicPoolScheduler(AbstractPoolScheduler):
                 raise InferenceModelInternalError(
                     f"Not enough memory to run model {model_id}."
                 )
-            return ScaleAction(ScaleActionType.SCALE_UP, pool_num)
+            return [ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id)]

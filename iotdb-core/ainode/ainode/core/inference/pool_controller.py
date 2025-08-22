@@ -54,17 +54,21 @@ class PoolController:
     @synchronized(threading.Lock())
     def first_req_init(self, model_id: str):
         if not self.has_request_pools(model_id):
-            action = self._pool_scheduler.schedule(model_id)
-            if action.action == ScaleActionType.SCALE_UP:
-                # initialize the first pool
-                self._first_pool_init(model_id)
-                # start a background thread to expand pools
-                expand_thread = threading.Thread(
-                    target=self._expand_pools,
-                    args=(model_id, 1, action.amount - 1),
-                    daemon=True,
-                )
-                expand_thread.start()
+            actions = self._pool_scheduler.schedule(model_id)
+            for action in actions:
+                if action.action == ScaleActionType.SCALE_UP:
+                    # initialize the first pool
+                    self._first_pool_init(action.model_id)
+                    # start a background thread to expand pools
+                    expand_thread = threading.Thread(
+                        target=self._expand_pools,
+                        args=(action.model_id, 1, action.amount - 1),
+                        daemon=True,
+                    )
+                    expand_thread.start()
+                elif action.action == ScaleActionType.SCALE_DOWN:
+                    # TODO: implement scale down logic
+                    pass
 
     def _first_pool_init(self, model_id: str):
         if model_id == "sundial":

@@ -19,7 +19,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict
+from typing import Dict, List
 
 from ainode.core.inference.pool_group import PoolGroup
 
@@ -33,6 +33,7 @@ class ScaleActionType(Enum):
 class ScaleAction:
     action: ScaleActionType
     amount: int
+    model_id: str
 
 
 class AbstractPoolScheduler(ABC):
@@ -48,7 +49,7 @@ class AbstractPoolScheduler(ABC):
         self._request_pool_map = request_pool_map
 
     @abstractmethod
-    def schedule(self, model_id: str) -> ScaleAction:
+    def schedule(self, model_id: str) -> List[ScaleAction]:
         """
         Schedule a scaling action for the given model_id.
         """
