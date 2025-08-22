@@ -45,7 +45,6 @@ import io.moquette.broker.config.IConfig;
 import io.moquette.broker.config.MemoryConfig;
 import io.moquette.broker.security.IAuthenticator;
 import io.moquette.interception.InterceptHandler;
-import org.h2.mvstore.MVStoreException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -234,19 +233,12 @@ public class MQTTSource implements PipeExtractor {
 
     try {
       server.startServer(brokerConfig, handlers, null, authenticator, null);
-    } catch (MVStoreException e) {
-      throw new PipeException(
-          "Failed to start MQTT Extractor "
-              + pipeName
-              + ". The data file is used by another MQTT Source or MQTT Service. "
-              + "please check if another MQTT service is using the same data path: "
-              + brokerConfig.getProperty(BrokerConstants.DATA_PATH_PROPERTY_NAME),
-          e);
     } catch (Exception e) {
       throw new PipeException(
           "Failed to start MQTT Extractor "
               + pipeName
-              + ". The port might already be in use, or there could be other issues. "
+              + ". Possible reasons: the data file might be used by another MQTT Source or MQTT Service, "
+              + "the port might already be in use, or there could be other issues. "
               + "Please check the logs for more details.",
           e);
     }
