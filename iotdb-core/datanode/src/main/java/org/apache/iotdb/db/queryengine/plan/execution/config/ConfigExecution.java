@@ -126,9 +126,9 @@ public class ConfigExecution implements IQueryExecution {
     if (cause instanceof IoTDBException) {
       result =
           Objects.nonNull(((IoTDBException) cause).getStatus())
-              ? new ConfigTaskResult(
-                  TSStatusCode.representOf(((IoTDBException) cause).getErrorCode()))
-              : new ConfigTaskResult(((IoTDBException) cause).getStatus());
+              ? new ConfigTaskResult(((IoTDBException) cause).getStatus())
+              : new ConfigTaskResult(
+                  TSStatusCode.representOf(((IoTDBException) cause).getErrorCode()));
     } else if (cause instanceof StatementExecutionException) {
       result =
           new ConfigTaskResult(
