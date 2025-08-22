@@ -210,7 +210,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
   private void exportSchemaByShowCreate(
       SessionDataSet sessionDataSet, String fileName, String tableName)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    String dropSql = "DROP TABLE IF EXISTS " + tableName + ";\n";
+    String dropSql = "DROP TABLE IF EXISTS \"" + tableName + "\";\n";
     StringBuilder sb = new StringBuilder(dropSql);
     try (FileWriter writer = new FileWriter(fileName, true)) {
       while (sessionDataSet.hasNext()) {
