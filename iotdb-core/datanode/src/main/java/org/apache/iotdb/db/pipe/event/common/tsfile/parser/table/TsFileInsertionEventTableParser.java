@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
@@ -67,15 +68,23 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     super(pipeName, creationTime, null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
-      long tableSize = PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes();
+      long tableSize =
+          Math.min(
+              PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
+              IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize());
+
       this.allocatedMemoryBlockForChunk =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
       this.allocatedMemoryBlockForBatchData =
           PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
       this.allocatedMemoryBlockForChunkMeta =
           PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
       this.allocatedMemoryBlockForTableSchemas =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
 
       this.startTime = startTime;
       this.endTime = endTime;
