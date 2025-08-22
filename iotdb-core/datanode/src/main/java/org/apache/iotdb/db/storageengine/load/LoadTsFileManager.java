@@ -736,6 +736,7 @@ public class LoadTsFileManager {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
       }
       dataPartition2Writer = null;
+      dataPartition2Resource = null;
       dataPartition2LastDevice = null;
       dataPartition2ModificationFile = null;
       device2Partition = null;
