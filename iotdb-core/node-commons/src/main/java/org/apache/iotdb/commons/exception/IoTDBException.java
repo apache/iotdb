@@ -38,38 +38,30 @@ public class IoTDBException extends Exception {
   public IoTDBException(String message, int errorCode) {
     super(message);
     this.errorCode = errorCode;
-    this.status = new TSStatus(errorCode);
-    this.status.setMessage(message);
     this.isUserException = false;
   }
 
   public IoTDBException(String message, int errorCode, boolean isUserException) {
     super(message);
     this.errorCode = errorCode;
-    this.status = new TSStatus(errorCode);
-    this.status.setMessage(message);
     this.isUserException = isUserException;
   }
 
   public IoTDBException(String message, Throwable cause, int errorCode) {
     super(message, cause);
     this.errorCode = errorCode;
-    this.status = new TSStatus(errorCode);
-    this.status.setMessage(message);
     this.isUserException = false;
   }
 
   public IoTDBException(Throwable cause, int errorCode) {
     super(cause);
     this.errorCode = errorCode;
-    this.status = new TSStatus(errorCode);
     this.isUserException = false;
   }
 
   public IoTDBException(Throwable cause, int errorCode, boolean isUserException) {
     super(cause);
     this.errorCode = errorCode;
-    this.status = new TSStatus(errorCode);
     this.isUserException = isUserException;
   }
 
