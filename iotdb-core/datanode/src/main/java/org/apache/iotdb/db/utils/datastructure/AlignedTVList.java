@@ -1431,16 +1431,10 @@ public abstract class AlignedTVList extends TVList {
    * @param rowIndex should be the sorted index.
    */
   public boolean isTimeDeleted(int rowIndex) {
-    return isTimeDeleted(rowIndex, true, Ordering.ASC);
+    return isTimeDeleted(rowIndex, true);
   }
 
-  public boolean isTimeDeleted(int rowIndex, Ordering ordering) {
-    return isTimeDeleted(
-        ordering.isAscending() ? rowIndex : rowCount - 1 - rowIndex, true, ordering);
-  }
-
-  public boolean isTimeDeleted(int index, boolean needConvertIndex, Ordering ordering) {
-    index = ordering.isAscending() ? index : rowCount - 1 - index;
+  public boolean isTimeDeleted(int index, boolean needConvertIndex) {
     int bitmapIndex = needConvertIndex ? getValueIndex(index) : index;
     if (timeColDeletedMap == null || timeColDeletedMap.getSize() <= bitmapIndex) {
       return false;
@@ -1626,9 +1620,10 @@ public abstract class AlignedTVList extends TVList {
       findValidRow = false;
       while (index < rows && !findValidRow) {
         // all columns values are deleted
+        int convertedScanOrderValueIndex = getValueIndex(getScanOrderIndex(index));
         if ((allValueColDeletedMap != null
-                && allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(index))))
-            || isTimeDeleted(getValueIndex(getScanOrderIndex(index)), false, scanOrder)) {
+                && allValueColDeletedMap.isMarked(convertedScanOrderValueIndex))
+            || isTimeDeleted(convertedScanOrderValueIndex, false)) {
           index++;
           continue;
         }
