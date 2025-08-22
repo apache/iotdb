@@ -243,15 +243,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       RelationPlan subPlan;
       if (analysis.isExpandableQuery(namedQuery)) {
         // recursive cte
-        subPlan =
-            new QueryPlanner(
-                    analysis,
-                    symbolAllocator,
-                    queryContext,
-                    outerContext,
-                    sessionInfo,
-                    recursiveSubqueries)
-                .plan(namedQuery);
+        throw new SemanticException("unexpected recursive cte");
       } else {
         subPlan = process(namedQuery, null);
       }

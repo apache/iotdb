@@ -898,20 +898,7 @@ public class StatementAnalyzer {
 
         boolean isRecursive = false;
         if (with.isRecursive()) {
-          // cannot nest pattern recognition within recursive query
-
-          isRecursive = tryProcessRecursiveQuery(withQuery, name, withScopeBuilder);
-          // WITH query is not shaped accordingly to the rules for expandable query and will be
-          // processed like a plain WITH query.
-          // Since RECURSIVE is specified, any reference to WITH query name is considered a
-          // recursive reference and is not allowed.
-          if (!isRecursive) {
-            List<Node> recursiveReferences =
-                findReferences(withQuery.getQuery(), withQuery.getName());
-            if (!recursiveReferences.isEmpty()) {
-              throw new SemanticException("recursive reference not allowed in this context");
-            }
-          }
+          throw new SemanticException("recursive cte is not supported yet.");
         }
 
         if (!isRecursive) {
