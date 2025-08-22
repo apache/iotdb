@@ -101,40 +101,32 @@ public class MQTTSource implements PipeExtractor {
       throw new PipeParameterNotValidException("single mode should be true in MQTT extractor");
     }
 
-    final String sqlDialect =
-        validator
-            .getParameters()
-            .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    final String formatType =
-        validator
-            .getParameters()
-            .getStringOrDefault(
-                PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_KEY,
-                SystemConstant.SQL_DIALECT_TREE_VALUE.equals(sqlDialect)
-                    ? PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_TREE_DIALECT_VALUE
-                    : PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_TABLE_DIALECT_VALUE);
-    payloadFormat = PayloadFormatManager.getPayloadFormat(formatType);
-    if (!sqlDialect.equals(payloadFormat.getType())) {
-      throw new PipeParameterNotValidException(
-          "The MQTT payload formatter type "
-              + formatType
-              + " does not match the SQL dialect "
-              + sqlDialect
-              + ". Please use a compatible payload formatter.");
-    }
-
     validateMoquetteConfig(validator.getParameters());
   }
 
-  public static void validateMoquetteConfig(final PipeParameters pipeParameters) {
+  public void validateMoquetteConfig(final PipeParameters parameters) {
+    final String sqlDialect =
+        parameters.getStringOrDefault(
+            SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final String formatType =
+        parameters.getStringOrDefault(
+            PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_KEY,
+            SystemConstant.SQL_DIALECT_TREE_VALUE.equals(sqlDialect)
+                ? PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_TREE_DIALECT_VALUE
+                : PipeSourceConstant.MQTT_PAYLOAD_FORMATTER_TABLE_DIALECT_VALUE);
+    try {
+      payloadFormat = PayloadFormatManager.getPayloadFormat(formatType);
+    } catch (IllegalArgumentException e) {
+      throw new PipeParameterNotValidException("Invalid payload format type: " + formatType);
+    }
+
     final String ip =
-        pipeParameters.getStringOrDefault(
+        parameters.getStringOrDefault(
             PipeSourceConstant.MQTT_BROKER_HOST_KEY,
             PipeSourceConstant.MQTT_BROKER_HOST_DEFAULT_VALUE);
     final int port =
         Integer.parseInt(
-            pipeParameters.getStringOrDefault(
+            parameters.getStringOrDefault(
                 PipeSourceConstant.MQTT_BROKER_PORT_KEY,
                 PipeSourceConstant.MQTT_BROKER_PORT_DEFAULT_VALUE));
     try (ServerSocket socket = new ServerSocket()) {
@@ -149,7 +141,7 @@ public class MQTTSource implements PipeExtractor {
     }
 
     final String dataPath =
-        pipeParameters.getStringOrDefault(
+        parameters.getStringOrDefault(
             PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
             PipeSourceConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE);
     final File file = Paths.get(dataPath).resolve("moquette_store.h2").toAbsolutePath().toFile();
