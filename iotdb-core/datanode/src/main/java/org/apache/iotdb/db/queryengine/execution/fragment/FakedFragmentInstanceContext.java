@@ -48,7 +48,7 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
 
   public void initQueryDataSource(IFullPath sourcePath) throws QueryProcessException {
 
-    dataRegion.readLock();
+    dataRegion.tryReadLock(Long.MAX_VALUE);
     try {
       this.sharedQueryDataSource =
           dataRegion.query(
@@ -56,7 +56,8 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
               sourcePath.getDeviceId(),
               this,
               getGlobalTimeFilter(),
-              null);
+              null,
+              Long.MAX_VALUE);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
