@@ -117,10 +117,16 @@ public class LoadTsFileManager {
 
   private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
       Caffeine.newBuilder()
-          .maximumWeight(10L << 20)
+          .maximumWeight(CONFIG.getLoadTableSchemaCacheSizeInBytes())
           .weigher(
               (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
                   (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
+          .build();
+
+  public static final Cache<String, String> MeasurementCache =
+      Caffeine.newBuilder()
+          .maximumWeight(CONFIG.getLoadMeasurementCacheSizeInBytes())
+          .weigher((String k, String v) -> v.length())
           .build();
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
@@ -401,8 +407,7 @@ public class LoadTsFileManager {
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
     private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
-    private Map<IDeviceID, DataPartitionInfo> device2Partition;
-    private Map<IDeviceID, Set<DataPartitionInfo>> endChunkGroup;
+    private Map<IDeviceID, Set<DataPartitionInfo>> device2Partition;
     private boolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
@@ -412,7 +417,6 @@ public class LoadTsFileManager {
       this.dataPartition2LastDevice = new HashMap<>();
       this.dataPartition2ModificationFile = new HashMap<>();
       device2Partition = new HashMap<>();
-      endChunkGroup = new HashMap<>();
       this.isClosed = false;
 
       clearDir(taskDir);
@@ -493,45 +497,28 @@ public class LoadTsFileManager {
                   tableName,
                   t ->
                       SCHEMA_CACHE.get(
-                          t,
-                          tablet ->
-                              TableSchema.of(
-                                      DataNodeTableCache.getInstance()
-                                          .getTable(
-                                              partitionInfo.getDataRegion().getDatabaseName(),
-                                              tablet))
-                                  .toTsFileTableSchemaNoAttribute()));
+                          t, tab -> TableSchema.of(table).toTsFileTableSchemaNoAttribute()));
         }
       }
 
-      // ---------- Handle chunk-group boundaries ----------
       IDeviceID device = chunkData.getDevice();
-      DataPartitionInfo prevPartition = device2Partition.get(device);
+      IDeviceID lastDevice = dataPartition2LastDevice.get(partitionInfo);
 
-      // Device changed → close old group, open new one.
-      if (!Objects.equals(device, dataPartition2LastDevice.get(partitionInfo))) {
-        Set<DataPartitionInfo> set = endChunkGroup.computeIfAbsent(device, k -> new HashSet<>());
-        if (dataPartition2LastDevice.containsKey(partitionInfo) && !set.contains(partitionInfo)) {
-          writer.endChunkGroup();
-          writer.checkMetadataSizeAndMayFlush();
-          set.add(partitionInfo);
+      if (!Objects.equals(device, lastDevice)) {
+        if (lastDevice != null && device2Partition.containsKey(lastDevice)) {
+          Set<DataPartitionInfo> partitions = device2Partition.get(lastDevice);
+          for (DataPartitionInfo partition : partitions) {
+            if (dataPartition2LastDevice.containsKey(partition)) {
+              writer.endChunkGroup();
+              writer.checkMetadataSizeAndMayFlush();
+            }
+          }
+          device2Partition.remove(lastDevice);
         }
         writer.startChunkGroup(device);
         dataPartition2LastDevice.put(partitionInfo, device);
-      } else if (!Objects.equals(partitionInfo, prevPartition)) {
-        // Data partition changed within same device → close group if needed.
-        Set<DataPartitionInfo> set = endChunkGroup.get(device);
-        if (dataPartition2LastDevice.containsKey(partitionInfo)
-            && set != null
-            && !set.contains(partitionInfo)) {
-          writer.endChunkGroup();
-          writer.checkMetadataSizeAndMayFlush();
-          set.add(partitionInfo);
-        }
+        device2Partition.computeIfAbsent(device, k -> new HashSet<>()).add(partitionInfo);
       }
-
-      // Record current partition for next check.
-      device2Partition.put(device, partitionInfo);
 
       chunkData.writeToFileWriter(writer);
     }
@@ -750,8 +737,8 @@ public class LoadTsFileManager {
       }
       dataPartition2Writer = null;
       dataPartition2LastDevice = null;
-      endChunkGroup = null;
       dataPartition2ModificationFile = null;
+      device2Partition = null;
       isClosed = true;
     }
   }
