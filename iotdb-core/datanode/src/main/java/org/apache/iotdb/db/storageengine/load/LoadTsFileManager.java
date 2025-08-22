@@ -797,11 +797,7 @@ public class LoadTsFileManager {
         return false;
       }
       DataPartitionInfo that = (DataPartitionInfo) o;
-      return (dataRegion == that.dataRegion
-              || dataRegion != null
-                  && that.dataRegion != null
-                  && Objects.equals(
-                      dataRegion.getDataRegionId(), that.dataRegion.getDataRegionId()))
+      return Objects.equals(dataRegion, that.dataRegion)
           && timePartitionSlot.getStartTime() == that.timePartitionSlot.getStartTime();
     }
 
