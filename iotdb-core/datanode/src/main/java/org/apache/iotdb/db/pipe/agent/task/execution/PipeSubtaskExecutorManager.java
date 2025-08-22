@@ -43,6 +43,11 @@ public class PipeSubtaskExecutorManager {
     return connectorExecutorSupplier;
   }
 
+  public PipeConsensusSubtaskExecutor getConsensusExecutor() {
+    return (PipeConsensusSubtaskExecutor)
+        IoTV2GlobalComponentContainer.getInstance().getConsensusExecutor();
+  }
+
   public SubscriptionSubtaskExecutor getSubscriptionExecutor() {
     return subscriptionExecutor;
   }

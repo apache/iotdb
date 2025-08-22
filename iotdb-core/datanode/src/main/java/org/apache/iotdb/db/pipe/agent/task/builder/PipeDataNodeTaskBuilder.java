@@ -118,7 +118,9 @@ public class PipeDataNodeTaskBuilder {
               pipeStaticMeta.getCreationTime(),
               connectorParameters,
               regionId,
-              PipeSubtaskExecutorManager.getInstance().getConnectorExecutorSupplier());
+              pipeType.equals(PipeType.USER)
+                  ? PipeSubtaskExecutorManager.getInstance().getConnectorExecutorSupplier()
+                  : PipeSubtaskExecutorManager.getInstance()::getConsensusExecutor);
     }
 
     // The processor connects the extractor and connector.
