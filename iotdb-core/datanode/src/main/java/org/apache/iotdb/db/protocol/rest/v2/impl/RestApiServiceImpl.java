@@ -155,7 +155,7 @@ public class RestApiServiceImpl extends RestApiService {
                 statement,
                 queryId,
                 sessionInfo,
-                restFastLastQuerySql(prefixPathList),
+                restFastLastQueryReq(prefixPathList),
                 partitionFetcher,
                 schemaFetcher,
                 CONFIG.getQueryTimeoutThreshold(),
@@ -242,11 +242,11 @@ public class RestApiServiceImpl extends RestApiService {
 
     @Override
     public String get() {
-      return restFastLastQuerySql(prefixPath);
+      return restFastLastQueryReq(prefixPath);
     }
   }
 
-  public static String restFastLastQuerySql(PrefixPathList prefixPath) {
+  public static String restFastLastQueryReq(PrefixPathList prefixPath) {
     return String.format(FORMAT, String.join(".", prefixPath.getPrefixPaths()));
   }
 
