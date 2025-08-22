@@ -67,9 +67,6 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
-  private final int pipeMaxAlignedSeriesNumInOneBatch =
-      PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
-
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -77,6 +74,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private IChunkReader chunkReader;
   private BatchData data;
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
+  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
 
   private boolean currentIsMultiPage;
   private String currentDevice;
@@ -109,11 +107,14 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
-    // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlockForBatchData =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+    this.allocatedMemoryBlockForChunk =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
@@ -385,6 +386,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private void moveToNextChunkReader() throws IOException, IllegalStateException {
     ChunkHeader chunkHeader;
+    long valueChunkSize = 0;
     final List<Chunk> valueChunkList = new ArrayList<>();
     currentMeasurements.clear();
 
@@ -429,6 +431,11 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             break;
           }
 
+          if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+            PipeDataNodeResourceManager.memory()
+                .forceResize(allocatedMemoryBlockForChunk, chunkHeader.getDataSize());
+          }
+
           chunkReader =
               currentIsMultiPage
                   ? new ChunkReader(
@@ -462,17 +469,32 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                     chunkHeader.getMeasurementID(),
                     (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
 
-            // Emit when encountered non-sequential value chunk, or the chunk list size exceeds
+            // Emit when encountered non-sequential value chunk, or the chunk size exceeds
             // certain value to avoid OOM
             // Do not record or end current value chunks when there are empty chunks
             if (chunkHeader.getDataSize() == 0) {
               break;
             }
             boolean needReturn = false;
-            if (lastIndex >= 0
-                && (valueIndex != lastIndex
-                    || valueChunkList.size() >= pipeMaxAlignedSeriesNumInOneBatch)) {
-              needReturn = recordAlignedChunk(valueChunkList, marker);
+            final long timeChunkSize =
+                lastIndex >= 0
+                    ? PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(lastIndex))
+                    : 0;
+            if (lastIndex >= 0) {
+              if (valueIndex != lastIndex) {
+                needReturn = recordAlignedChunk(valueChunkList, marker);
+              } else {
+                final long chunkSize = timeChunkSize + valueChunkSize;
+                if (chunkSize + chunkHeader.getDataSize()
+                    > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+                  if (valueChunkList.size() == 1
+                      && chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+                    PipeDataNodeResourceManager.memory()
+                        .forceResize(allocatedMemoryBlockForChunk, chunkSize);
+                  }
+                  needReturn = recordAlignedChunk(valueChunkList, marker);
+                }
+              }
             }
             lastIndex = valueIndex;
             if (needReturn) {
@@ -484,6 +506,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             firstChunkHeader4NextSequentialValueChunks = null;
           }
 
+          valueChunkSize += chunkHeader.getDataSize();
           valueChunkList.add(
               new Chunk(
                   chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
@@ -543,6 +566,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
     if (allocatedMemoryBlockForBatchData != null) {
       allocatedMemoryBlockForBatchData.close();
+    }
+
+    if (allocatedMemoryBlockForChunk != null) {
+      allocatedMemoryBlockForChunk.close();
     }
   }
 }
