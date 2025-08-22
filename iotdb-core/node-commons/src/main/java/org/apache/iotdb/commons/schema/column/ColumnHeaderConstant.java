@@ -181,7 +181,7 @@ public class ColumnHeaderConstant {
   public static final String PIPE_EXTRACTOR = "PipeSource";
   public static final String PIPE_PROCESSOR = "PipeProcessor";
   public static final String PIPE_CONNECTOR = "PipeSink";
-  public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
+  public static final String LAST_EXCEPTION = "LastException";
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
 
@@ -542,7 +542,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_EXTRACTOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
-          new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
+          new ColumnHeader(LAST_EXCEPTION, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
           new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
 
