@@ -788,7 +788,7 @@ public class TsFileProcessor {
                   + (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE > 0
                       ? 1
                       : 0);
-          memTableIncrement += currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
+          memTableIncrement += currentArrayNum * AlignedTVList.emptyValueListArrayMemCost();
         }
       }
       // this insertion will result in a new array
@@ -875,7 +875,7 @@ public class TsFileProcessor {
                         ? 1
                         : 0);
             memTableIncrement +=
-                currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
+                currentArrayNum * AlignedTVList.emptyValueListArrayMemCost();
           }
         }
         int addingPointNum = addingPointNumInfo.right;
@@ -1066,6 +1066,7 @@ public class TsFileProcessor {
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
       int currentPointNum = alignedMemChunk.alignedListSize();
       int newPointNum = currentPointNum + incomingPointNum;
+      List<TSDataType> insertingTypes = new ArrayList<>();
       for (int i = 0; i < dataTypes.length; i++) {
         TSDataType dataType = dataTypes[i];
         String measurement = measurementIds[i];
@@ -1076,12 +1077,13 @@ public class TsFileProcessor {
             || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
+        insertingTypes.add(dataType);
 
         if (!alignedMemChunk.containsMeasurement(measurementIds[i])) {
           // add a new column in the TVList, the new column should be as long as existing ones
           memIncrements[0] +=
               (currentPointNum / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                  * AlignedTVList.valueListArrayMemCost(dataType);
+                  * AlignedTVList.emptyValueListArrayMemCost();
         }
       }
 
@@ -1096,8 +1098,9 @@ public class TsFileProcessor {
 
       if (acquireArray != 0) {
         // memory of extending the TVList
-        memIncrements[0] +=
-            acquireArray * alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
+        memIncrements[0] += acquireArray * alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost(insertingTypes);
+      } else {
+
       }
     }
 

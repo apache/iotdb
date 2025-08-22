@@ -975,7 +975,7 @@ public abstract class AlignedTVList extends TVList {
    *
    * @return AlignedTvListArrayMemSize
    */
-  public long alignedTvListArrayMemCost() {
+  public long alignedTvListArrayMemCost(List<TSDataType> insertingTypes) {
     long size = 0;
     // value & bitmap array mem size
     for (int column = 0; column < dataTypes.size(); column++) {
@@ -1003,19 +1003,14 @@ public abstract class AlignedTVList extends TVList {
   }
 
   /**
-   * Get the single column array mem cost by give type.
+   * Get the single empty column array mem cost.
    *
-   * @param type the type of the value column
-   * @return valueListArrayMemCost
+   * @return emptyValueListArrayMemCost
    */
-  public static long valueListArrayMemCost(TSDataType type) {
+  public static long emptyValueListArrayMemCost() {
     long size = 0;
-    // value array mem size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
     // bitmap array mem size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
-    // array headers mem size
-    size += NUM_BYTES_ARRAY_HEADER;
+    size += PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
     // Object references size in ArrayList
     size += NUM_BYTES_OBJECT_REF;
     return size;
