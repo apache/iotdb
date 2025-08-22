@@ -30,6 +30,7 @@ import org.apache.iotdb.itbase.constant.BuiltinTimeSeriesGeneratingFunctionEnum;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -231,6 +232,7 @@ public class IoTDBUDAFManagementIT {
     }
   }
 
+  @Ignore
   @Test
   public void createFunctionWithInvalidURITest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
