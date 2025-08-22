@@ -77,13 +77,13 @@ public class MPPQueryContext {
 
   private boolean isExplainAnalyze = false;
 
-  QueryPlanStatistics queryPlanStatistics = null;
+  private QueryPlanStatistics queryPlanStatistics = null;
 
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
 
-  private static final int minSizeToUseSampledTimeseriesOperandMemCost = 100;
+  private static final int MIN_SIZE_TO_USE_SAMPLED_TIMESERIES_OPERAND_MEM_COST = 100;
   private double avgTimeseriesOperandMemCost = 0;
   private int numsOfSampledTimeseriesOperand = 0;
   // When there is no view in a last query and no device exists in multiple regions,
@@ -103,7 +103,6 @@ public class MPPQueryContext {
         new NotThreadSafeMemoryReservationManager(queryId, this.getClass().getName());
   }
 
-  // TODO too many callers just pass a null SessionInfo which should be forbidden
   public MPPQueryContext(
       String sql,
       QueryId queryId,
@@ -389,7 +388,7 @@ public class MPPQueryContext {
   }
 
   public boolean useSampledAvgTimeseriesOperandMemCost() {
-    return numsOfSampledTimeseriesOperand >= minSizeToUseSampledTimeseriesOperandMemCost;
+    return numsOfSampledTimeseriesOperand >= MIN_SIZE_TO_USE_SAMPLED_TIMESERIES_OPERAND_MEM_COST;
   }
 
   public long getAvgTimeseriesOperandMemCost() {
