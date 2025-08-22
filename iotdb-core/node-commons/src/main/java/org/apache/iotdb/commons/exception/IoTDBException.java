@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.exception;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
+import org.apache.thrift.annotation.Nullable;
+
 public class IoTDBException extends Exception {
 
   private static final long serialVersionUID = 8480450962311247736L;
@@ -33,7 +35,7 @@ public class IoTDBException extends Exception {
    */
   private final boolean isUserException;
 
-  private TSStatus status;
+  private @Nullable TSStatus status;
 
   public IoTDBException(String message, int errorCode) {
     super(message);
