@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
@@ -966,7 +967,7 @@ public class IoTDBConfig {
   private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
   private int schemaThreadCount = 5;
 
-  private String readConsistencyLevel = "strong";
+  private ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
 
   /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 200;
@@ -1029,6 +1030,8 @@ public class IoTDBConfig {
 
   private long dataRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
   private long schemaRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
+
+  private int ratisTransferLeaderTimeoutMs = 30 * 1000; // 30s
 
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
@@ -3269,12 +3272,16 @@ public class IoTDBConfig {
     this.schemaThreadCount = schemaThreadCount;
   }
 
-  public String getReadConsistencyLevel() {
+  public ReadConsistencyLevel getReadConsistencyLevel() {
     return readConsistencyLevel;
   }
 
   public void setReadConsistencyLevel(String readConsistencyLevel) {
-    this.readConsistencyLevel = readConsistencyLevel;
+    if ("weak".equalsIgnoreCase(readConsistencyLevel)) {
+      this.readConsistencyLevel = ReadConsistencyLevel.WEAK;
+    } else {
+      this.readConsistencyLevel = ReadConsistencyLevel.STRONG;
+    }
   }
 
   public int getDriverTaskExecutionTimeSliceInMs() {
@@ -4042,6 +4049,14 @@ public class IoTDBConfig {
 
   public void setSchemaRatisPeriodicSnapshotInterval(long schemaRatisPeriodicSnapshotInterval) {
     this.schemaRatisPeriodicSnapshotInterval = schemaRatisPeriodicSnapshotInterval;
+  }
+
+  public int getRatisTransferLeaderTimeoutMs() {
+    return ratisTransferLeaderTimeoutMs;
+  }
+
+  public void setRatisTransferLeaderTimeoutMs(int ratisTransferLeaderTimeoutMs) {
+    this.ratisTransferLeaderTimeoutMs = ratisTransferLeaderTimeoutMs;
   }
 
   public boolean isEnableTsFileValidation() {

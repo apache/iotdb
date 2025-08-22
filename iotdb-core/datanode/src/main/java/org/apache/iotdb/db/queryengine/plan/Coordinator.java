@@ -122,6 +122,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
+import org.apache.thrift.TBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,6 +133,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.BiFunction;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
@@ -221,7 +224,7 @@ public class Coordinator {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
-      if (sql != null && !sql.isEmpty()) {
+      if (LOGGER.isDebugEnabled() && sql != null && !sql.isEmpty()) {
         LOGGER.debug("[QueryStart] sql: {}", sql);
       }
       queryContext =
@@ -532,28 +535,50 @@ public class Coordinator {
         queryExecution.stopAndCleanup(t);
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
-          long costTime = queryExecution.getTotalExecutionTime();
-          // print slow query
-          if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
-            SLOW_SQL_LOGGER.info(
-                "Cost: {} ms, {}",
-                costTime / 1_000_000,
-                getContentOfRequest(nativeApiRequest, queryExecution));
-          }
-
-          // only sample successful query
-          if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
-            String queryRequest = getContentOfRequest(nativeApiRequest, queryExecution);
-            if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
-              if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
-                SAMPLED_QUERIES_LOGGER.info(queryRequest);
-              }
-            } else {
-              // no limit, always sampled
-              SAMPLED_QUERIES_LOGGER.info(queryRequest);
-            }
-          }
+          recordQueries(
+              queryExecution::getTotalExecutionTime,
+              new ContentOfQuerySupplier(nativeApiRequest, queryExecution),
+              t);
         }
+      }
+    }
+  }
+
+  private static class ContentOfQuerySupplier implements Supplier<String> {
+
+    private final org.apache.thrift.TBase<?, ?> nativeApiRequest;
+    private final IQueryExecution queryExecution;
+
+    private ContentOfQuerySupplier(TBase<?, ?> nativeApiRequest, IQueryExecution queryExecution) {
+      this.nativeApiRequest = nativeApiRequest;
+      this.queryExecution = queryExecution;
+    }
+
+    @Override
+    public String get() {
+      return getContentOfRequest(nativeApiRequest, queryExecution);
+    }
+  }
+
+  public static void recordQueries(
+      LongSupplier executionTime, Supplier<String> contentOfQuerySupplier, Throwable t) {
+
+    long costTime = executionTime.getAsLong();
+    // print slow query
+    if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
+      SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+    }
+
+    // only sample successful query
+    if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
+      String queryRequest = contentOfQuerySupplier.get();
+      if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
+        if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
+          SAMPLED_QUERIES_LOGGER.info(queryRequest);
+        }
+      } else {
+        // no limit, always sampled
+        SAMPLED_QUERIES_LOGGER.info(queryRequest);
       }
     }
   }
