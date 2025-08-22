@@ -653,7 +653,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
   }
 
   private void checkClusterStillWritable() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getAvailableConnection();
         Statement statement = connection.createStatement()) {
       // check old data
       ResultSet resultSet = statement.executeQuery(COUNT_TIMESERIES);
