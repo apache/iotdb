@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -115,11 +114,6 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public Binary getBinary(int index, Ordering ordering) {
-    return ordering.isAscending() ? getBinary(index) : getBinary(rowCount - 1 - index);
-  }
-
-  @Override
   protected void clearValue() {
     if (values != null) {
       for (Binary[] dataArray : values) {
@@ -147,23 +141,9 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public TimeValuePair getTimeValuePair(int index, Ordering ordering) {
-    return ordering.isAscending()
-        ? getTimeValuePair(index)
-        : getTimeValuePair(rowCount - 1 - index);
-  }
-
-  @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.TEXT, getBinary(index)));
-  }
-
-  @Override
-  protected TimeValuePair getTimeValuePair(
-      int index, long time, Integer floatPrecision, TSEncoding encoding, Ordering ordering) {
-    return new TimeValuePair(
-        time, TsPrimitiveType.getByType(TSDataType.TEXT, getBinary(index, ordering)));
   }
 
   @Override

@@ -107,7 +107,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
     TimeValuePair currentTvPair =
         iterator
             .getTVList()
-            .getTimeValuePair(rowIndex, currentTime, floatPrecision, encoding, scanOrder);
+            .getTimeValuePair(
+                iterator.getScanOrderIndex(rowIndex), currentTime, floatPrecision, encoding);
     next();
     return currentTvPair;
   }
@@ -136,15 +137,19 @@ public abstract class MultiTVListIterator extends MemPointIterator {
         case BOOLEAN:
           builder
               .getColumnBuilder(0)
-              .writeBoolean(iterator.getTVList().getBoolean(rowIndex, scanOrder));
+              .writeBoolean(iterator.getTVList().getBoolean(iterator.getScanOrderIndex(rowIndex)));
           break;
         case INT32:
         case DATE:
-          builder.getColumnBuilder(0).writeInt(iterator.getTVList().getInt(rowIndex, scanOrder));
+          builder
+              .getColumnBuilder(0)
+              .writeInt(iterator.getTVList().getInt(iterator.getScanOrderIndex(rowIndex)));
           break;
         case INT64:
         case TIMESTAMP:
-          builder.getColumnBuilder(0).writeLong(iterator.getTVList().getLong(rowIndex, scanOrder));
+          builder
+              .getColumnBuilder(0)
+              .writeLong(iterator.getTVList().getLong(iterator.getScanOrderIndex(rowIndex)));
           break;
         case FLOAT:
           TVList floatTvList = iterator.getTVList();
@@ -152,7 +157,9 @@ public abstract class MultiTVListIterator extends MemPointIterator {
               .getColumnBuilder(0)
               .writeFloat(
                   floatTvList.roundValueWithGivenPrecision(
-                      floatTvList.getFloat(rowIndex, scanOrder), floatPrecision, encoding));
+                      floatTvList.getFloat(iterator.getScanOrderIndex(rowIndex)),
+                      floatPrecision,
+                      encoding));
           break;
         case DOUBLE:
           TVList doubleTvList = iterator.getTVList();
@@ -160,14 +167,16 @@ public abstract class MultiTVListIterator extends MemPointIterator {
               .getColumnBuilder(0)
               .writeDouble(
                   doubleTvList.roundValueWithGivenPrecision(
-                      doubleTvList.getDouble(rowIndex, scanOrder), floatPrecision, encoding));
+                      doubleTvList.getDouble(iterator.getScanOrderIndex(rowIndex)),
+                      floatPrecision,
+                      encoding));
           break;
         case TEXT:
         case BLOB:
         case STRING:
           builder
               .getColumnBuilder(0)
-              .writeBinary(iterator.getTVList().getBinary(rowIndex, scanOrder));
+              .writeBinary(iterator.getTVList().getBinary(iterator.getScanOrderIndex(rowIndex)));
           break;
         default:
           throw new UnSupportedDataTypeException(

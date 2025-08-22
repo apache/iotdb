@@ -196,8 +196,9 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
           valueBuilder.appendNull();
           continue;
         }
-        AlignedTVList alignedTVList =
-            alignedTvListIterators.get(currentIteratorIndex).getAlignedTVList();
+        AlignedTVList.AlignedTVListIterator alignedTVListIterator =
+            alignedTvListIterators.get(currentIteratorIndex);
+        AlignedTVList alignedTVList = alignedTVListIterator.getAlignedTVList();
 
         // sanity check
         int validColumnIndex =
@@ -207,7 +208,9 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
           continue;
         }
 
-        int valueIndex = alignedTVList.getValueIndex(currentRowIndex(columnIndex), scanOrder);
+        int valueIndex =
+            alignedTVList.getValueIndex(
+                alignedTVListIterator.getScanOrderIndex(currentRowIndex(columnIndex)));
         // null value
         if (alignedTVList.isNullValue(valueIndex, validColumnIndex)) {
           valueBuilder.appendNull();

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -115,11 +114,6 @@ public abstract class DoubleTVList extends TVList {
   }
 
   @Override
-  public double getDouble(int index, Ordering ordering) {
-    return ordering.isAscending() ? getDouble(index) : getDouble(rowCount - 1 - index);
-  }
-
-  @Override
   protected void clearValue() {
     if (values != null) {
       for (double[] dataArray : values) {
@@ -147,13 +141,6 @@ public abstract class DoubleTVList extends TVList {
   }
 
   @Override
-  public TimeValuePair getTimeValuePair(int index, Ordering ordering) {
-    return ordering.isAscending()
-        ? getTimeValuePair(index)
-        : getTimeValuePair(rowCount - 1 - index);
-  }
-
-  @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     double value = getDouble(index);
@@ -161,13 +148,6 @@ public abstract class DoubleTVList extends TVList {
       value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.DOUBLE, value));
-  }
-
-  @Override
-  protected TimeValuePair getTimeValuePair(
-      int index, long time, Integer floatPrecision, TSEncoding encoding, Ordering ordering) {
-    return getTimeValuePair(
-        ordering.isAscending() ? index : rowCount - 1 - index, time, floatPrecision, encoding);
   }
 
   @Override
