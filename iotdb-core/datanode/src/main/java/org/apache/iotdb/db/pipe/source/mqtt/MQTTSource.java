@@ -257,7 +257,7 @@ public class MQTTSource implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    if (!isClosed.get()) {
+    if (!isClosed.get() && hasBeenStarted.get()) {
       server.stopServer();
       isClosed.set(true);
     }
