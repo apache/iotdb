@@ -44,6 +44,8 @@ public abstract class MemPointIterator implements IPointReader {
 
   public abstract TsBlock getBatch(int tsBlockIndex);
 
+  // When returned by nextBatch, the pagination controller and push down filter are applied. This
+  // can only be used when there is no overlap with other pages.
   public abstract boolean hasNextBatch();
 
   public abstract TsBlock nextBatch();

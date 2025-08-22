@@ -107,6 +107,122 @@ public class AlignedTVListIteratorTest {
   }
 
   @Test
+  public void testAlignedWithDeletionsInTVList() throws IOException {
+    Map<TVList, Integer> tvListMap =
+        buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
+    AlignedTVList tvList = (AlignedTVList) tvListMap.keySet().iterator().next();
+    tvList.deleteTime(1, 1000);
+    // deletion in time column
+    testAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 1000)),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        false,
+        0);
+    testAligned(
+        tvListMap,
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 1000)),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        false,
+        0);
+
+    // deletion in time column
+    tvListMap = buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
+    tvList = (AlignedTVList) tvListMap.keySet().iterator().next();
+    tvList.deleteTime(1, 10);
+    testAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 10)),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        false,
+        990);
+    testAligned(
+        tvListMap,
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 10)),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        false,
+        990);
+
+    // deletion in one value column
+    tvListMap = buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
+    tvList = (AlignedTVList) tvListMap.keySet().iterator().next();
+    tvList.delete(1, 10, 0);
+    testAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(
+            Collections.singletonList(new TimeRange(1, 10)),
+            Collections.emptyList(),
+            Collections.emptyList()),
+        false,
+        1000);
+    testAligned(
+        tvListMap,
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(
+            Collections.singletonList(new TimeRange(1, 10)),
+            Collections.emptyList(),
+            Collections.emptyList()),
+        false,
+        1000);
+
+    // deletion in all value column
+    tvListMap = buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
+    tvList = (AlignedTVList) tvListMap.keySet().iterator().next();
+    tvList.delete(1, 10);
+    testAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 10)),
+        Arrays.asList(
+            Collections.singletonList(new TimeRange(1, 10)),
+            Collections.singletonList(new TimeRange(0, 10)),
+            Collections.singletonList(new TimeRange(0, 10))),
+        false,
+        990);
+    testAligned(
+        tvListMap,
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 10)),
+        Arrays.asList(
+            Collections.singletonList(new TimeRange(1, 10)),
+            Collections.singletonList(new TimeRange(0, 10)),
+            Collections.singletonList(new TimeRange(0, 10))),
+        false,
+        990);
+  }
+
+  @Test
   public void testAlignedAsc() throws IOException {
     testAligned(
         Ordering.ASC,
@@ -194,6 +310,14 @@ public class AlignedTVListIteratorTest {
         Collections.emptyList(),
         Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
         1);
+    testAligned(
+        Ordering.ASC,
+        null,
+        new LongFilterOperators.ValueEq(0, -1),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        0);
     testAligned(
         Ordering.ASC,
         null,
@@ -339,6 +463,14 @@ public class AlignedTVListIteratorTest {
     testAligned(
         Ordering.DESC,
         null,
+        new LongFilterOperators.ValueEq(0, -1),
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        0);
+    testAligned(
+        Ordering.DESC,
+        null,
         new LongFilterOperators.ValueBetweenAnd(0, 10001, 20000),
         PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
         Collections.emptyList(),
@@ -408,6 +540,7 @@ public class AlignedTVListIteratorTest {
         duplicatePaginationController(paginationController),
         timeDeletions,
         valueDeletions,
+        true,
         expectedCount);
     testAligned(
         largeOrderedMultiTvListMap,
@@ -417,6 +550,7 @@ public class AlignedTVListIteratorTest {
         duplicatePaginationController(paginationController),
         timeDeletions,
         valueDeletions,
+        true,
         expectedCount);
     testAligned(
         largeMergeSortMultiTvListMap,
@@ -426,6 +560,7 @@ public class AlignedTVListIteratorTest {
         duplicatePaginationController(paginationController),
         timeDeletions,
         valueDeletions,
+        true,
         expectedCount);
   }
 
@@ -437,8 +572,10 @@ public class AlignedTVListIteratorTest {
       PaginationController paginationController,
       List<TimeRange> timeDeletions,
       List<List<TimeRange>> valueDeletions,
+      boolean isDeletedAsModification,
       int expectedCount)
       throws IOException {
+    long endTime = tvListMap.keySet().stream().mapToLong(TVList::getMaxTime).max().getAsLong();
     List<Integer> columnIdxList = Arrays.asList(0, 1, 2);
     IMeasurementSchema measurementSchema = getMeasurementSchema();
     AlignedReadOnlyMemChunk chunk =
@@ -447,8 +584,11 @@ public class AlignedTVListIteratorTest {
             columnIdxList,
             measurementSchema,
             tvListMap,
-            timeDeletions,
-            valueDeletions);
+            isDeletedAsModification ? timeDeletions : Collections.emptyList(),
+            isDeletedAsModification
+                ? valueDeletions
+                : Arrays.asList(
+                    Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
 
     chunk.sortTvLists();
     chunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
@@ -460,8 +600,10 @@ public class AlignedTVListIteratorTest {
     int count = 0;
     long offset = paginationController.getCurOffset();
     for (Statistics<? extends Serializable> statistics : pageStatisticsList) {
-      memPointIterator.setCurrentPageTimeRange(
-          new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
+      if (statistics.getStartTime() <= statistics.getEndTime()) {
+        memPointIterator.setCurrentPageTimeRange(
+            new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
+      }
       while (memPointIterator.hasNextBatch()) {
         TsBlock tsBlock = memPointIterator.nextBatch();
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -470,7 +612,7 @@ public class AlignedTVListIteratorTest {
             count++;
             expectedTimestamp = count + offset;
           } else {
-            expectedTimestamp = 400000 - count - offset;
+            expectedTimestamp = endTime - count - offset;
             count++;
           }
           long currentTimestamp = tsBlock.getTimeByIndex(i);
@@ -543,7 +685,7 @@ public class AlignedTVListIteratorTest {
         count++;
         expectedTimestamp = count + offset;
       } else {
-        expectedTimestamp = 400000 - count - offset;
+        expectedTimestamp = endTime - count - offset;
         count++;
       }
 

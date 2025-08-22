@@ -733,6 +733,8 @@ public abstract class TVList implements WALEntryValue {
       return globalTimeFilter == null || globalTimeFilter.satisfyRow(timestamp, null);
     }
 
+    // When used as a point reader, we should not apply a pagination controller or push down filter
+    // because it has not yet been merged with other data.
     @Override
     public boolean hasNextTimeValuePair() {
       if (!paginationController.hasCurLimit()) {

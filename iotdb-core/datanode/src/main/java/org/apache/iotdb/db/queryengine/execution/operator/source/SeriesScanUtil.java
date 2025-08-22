@@ -1459,6 +1459,10 @@ public class SeriesScanUtil implements Accountable {
       if (inited) {
         return;
       }
+      if (statistics.getStartTime() > statistics.getEndTime()) {
+        // empty
+        return;
+      }
       this.memPointIterator.setCurrentPageTimeRange(
           new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
     }

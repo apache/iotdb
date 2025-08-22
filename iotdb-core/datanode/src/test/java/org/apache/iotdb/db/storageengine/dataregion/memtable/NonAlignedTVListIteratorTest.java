@@ -102,6 +102,54 @@ public class NonAlignedTVListIteratorTest {
   }
 
   @Test
+  public void testNonAlignedWithDeletionInTVList() throws QueryProcessException, IOException {
+    Map<TVList, Integer> tvListMap =
+        buildNonAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
+    TVList tvList = tvListMap.keySet().iterator().next();
+    tvList.delete(1, 1000);
+    testNonAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 1000)),
+        false,
+        0);
+    testNonAligned(
+        tvListMap,
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 1000)),
+        false,
+        0);
+
+    tvListMap = buildNonAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
+    tvList = tvListMap.keySet().iterator().next();
+    tvList.delete(1, 10);
+    testNonAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 10)),
+        false,
+        990);
+    testNonAligned(
+        tvListMap,
+        Ordering.DESC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.singletonList(new TimeRange(1, 10)),
+        false,
+        990);
+  }
+
+  @Test
   public void testNonAlignedAsc() throws IOException, QueryProcessException {
     testNonAligned(
         Ordering.ASC,
@@ -344,6 +392,7 @@ public class NonAlignedTVListIteratorTest {
         pushDownFilter,
         duplicatePaginationController(paginationController),
         deletions,
+        true,
         expectedCount);
     testNonAligned(
         largeOrderedMultiTvListMap,
@@ -352,6 +401,7 @@ public class NonAlignedTVListIteratorTest {
         pushDownFilter,
         duplicatePaginationController(paginationController),
         deletions,
+        true,
         expectedCount);
     testNonAligned(
         largeMergeSortMultiTvListMap,
@@ -360,6 +410,7 @@ public class NonAlignedTVListIteratorTest {
         pushDownFilter,
         duplicatePaginationController(paginationController),
         deletions,
+        true,
         expectedCount);
   }
 
@@ -378,8 +429,10 @@ public class NonAlignedTVListIteratorTest {
       Filter pushDownFilter,
       PaginationController paginationController,
       List<TimeRange> deletions,
+      boolean isDeletedAsModification,
       int expectedCount)
       throws IOException, QueryProcessException {
+    long endTime = tvListMap.keySet().stream().mapToLong(TVList::getMaxTime).max().getAsLong();
     ReadOnlyMemChunk chunk =
         new ReadOnlyMemChunk(
             fragmentInstanceContext,
@@ -388,7 +441,7 @@ public class NonAlignedTVListIteratorTest {
             TSEncoding.PLAIN,
             tvListMap,
             null,
-            deletions);
+            isDeletedAsModification ? deletions : Collections.emptyList());
     chunk.sortTvLists();
     chunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
 

@@ -1683,6 +1683,8 @@ public abstract class AlignedTVList extends TVList {
       probeNext = true;
     }
 
+    // When used as a point reader, we should not apply a pagination controller or push down filter
+    // because it has not yet been merged with other data.
     @Override
     public TimeValuePair nextTimeValuePair() {
       if (!hasNextTimeValuePair()) {
