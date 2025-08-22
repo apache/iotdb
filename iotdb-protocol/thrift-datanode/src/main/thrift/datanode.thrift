@@ -744,6 +744,21 @@ struct TFetchFragmentInstanceStatisticsResp {
 * END: Used for EXPLAIN ANALYZE
 **/
 
+struct TCreateServiceInstanceReq {
+  1: required binary serviceInformation
+  2: optional binary jarFile
+}
+
+struct TDropServiceInstanceReq {
+  1: required string serviceName
+  2: required bool needToDeleteJarFile
+}
+
+struct TShowServiceInstanceResp {
+  1: required common.TSStatus status
+  2: optional string serviceState
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -1209,6 +1224,42 @@ service IDataNodeRPCService {
 
   /** to write audit log or other events as time series **/
   common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
+
+  /**
+     * Config node will create a service instance on data node.
+     *
+     * @param ServiceInformation, jar file.
+     **/
+  common.TSStatus createServiceInstance(TCreateServiceInstanceReq req)
+
+  /**
+       * Config node will get service status on data node.
+       *
+       * @param Service name.
+       **/
+  TShowServiceInstanceResp showServiceInstance(string serviceName)
+
+  /**
+     * Config node will active a service instance on data node.
+     *
+     * @param service name.
+     **/
+  common.TSStatus activeServiceInstance(string req)
+
+  /**
+     * Config node will inactive a service instance on data node.
+     *
+     * @param service name.
+     **/
+  common.TSStatus inactiveServiceInstance(string req)
+
+  /**
+     * Config node will drop a service on all online config nodes and data nodes.
+     *
+     * @param service name, whether need to delete jar
+     **/
+  common.TSStatus dropServiceInstance(TDropServiceInstanceReq req)
+
 }
 
 service MPPDataExchangeService {

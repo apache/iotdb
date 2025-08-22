@@ -90,6 +90,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.CreateServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.DropServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.ShowServicesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.StartServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.StopServiceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetSqlDialectTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
@@ -132,6 +137,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
@@ -146,6 +152,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
@@ -190,6 +197,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowServices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
@@ -197,8 +205,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
@@ -1424,5 +1434,38 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDropModel(DropModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new DropModelTask(node.getModelId());
+  }
+
+  @Override
+  protected IConfigTask visitCreateService(CreateService node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    String serviceName = node.getServiceName();
+    String className = node.getClassName();
+    String uriString = node.getUriString();
+    return new CreateServiceTask(serviceName, uriString, className);
+  }
+
+  @Override
+  protected IConfigTask visitDropService(DropService node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new DropServiceTask(node.getServiceName());
+  }
+
+  @Override
+  protected IConfigTask visitShowServices(ShowServices node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowServicesTask(node.getServiceName());
+  }
+
+  @Override
+  protected IConfigTask visitStartService(StartService node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new StartServiceTask(node.getServiceName());
+  }
+
+  @Override
+  protected IConfigTask visitStopService(StopService node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new StopServiceTask(node.getServiceName());
   }
 }

@@ -435,4 +435,15 @@ public interface IConfigTaskExecutor {
       String existingModelId,
       @Nullable String targetSql,
       @Nullable List<String> pathList);
+
+  SettableFuture<ConfigTaskResult> createService(
+      String serviceName, String uriString, String className);
+
+  SettableFuture<ConfigTaskResult> dropService(String serviceName);
+
+  SettableFuture<ConfigTaskResult> showServices(String serviceName);
+
+  SettableFuture<ConfigTaskResult> startService(String serviceName);
+
+  SettableFuture<ConfigTaskResult> stopService(String serviceName);
 }

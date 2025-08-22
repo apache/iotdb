@@ -35,6 +35,7 @@ public enum PrivilegeType {
   USE_CQ(PrivilegeModelType.SYSTEM),
   USE_PIPE(PrivilegeModelType.SYSTEM),
   USE_MODEL(PrivilegeModelType.SYSTEM),
+  USE_SERVICE(PrivilegeModelType.SYSTEM),
 
   EXTEND_TEMPLATE(PrivilegeModelType.SYSTEM),
   MANAGE_DATABASE(PrivilegeModelType.SYSTEM),

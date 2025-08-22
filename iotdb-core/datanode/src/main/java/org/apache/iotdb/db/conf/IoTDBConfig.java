@@ -277,6 +277,14 @@ public class IoTDBConfig {
   /** External temporary lib directory for storing downloaded pipe plugin JAR files */
   private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
+  /** External lib directory for service, stores user-defined JAR files */
+  private String serviceDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.SERVICE_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded service JAR files */
+  private String serviceTemporaryLibDir =
+      serviceDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
@@ -1354,6 +1362,8 @@ public class IoTDBConfig {
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
+    serviceDir = addDataHomeDir(serviceDir);
+    serviceTemporaryLibDir = addDataHomeDir(serviceTemporaryLibDir);
     for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
       pipeReceiverFileDirs[i] = addDataHomeDir(pipeReceiverFileDirs[i]);
     }
@@ -1696,6 +1706,23 @@ public class IoTDBConfig {
 
   public void setMqttDir(String mqttDir) {
     this.mqttDir = mqttDir;
+  }
+
+  public String getServiceDir() {
+    return serviceDir;
+  }
+
+  public void setServiceDir(String serviceDir) {
+    this.serviceDir = serviceDir;
+    updateServiceTemporaryLibDir();
+  }
+
+  public String getServiceTemporaryLibDir() {
+    return serviceTemporaryLibDir;
+  }
+
+  public void updateServiceTemporaryLibDir() {
+    this.serviceTemporaryLibDir = serviceDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getMultiDirStrategyClassName() {

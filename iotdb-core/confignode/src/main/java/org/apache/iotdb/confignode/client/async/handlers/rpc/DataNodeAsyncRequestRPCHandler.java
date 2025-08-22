@@ -38,6 +38,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TShowServiceInstanceResp;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -191,6 +192,14 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             dataNodeLocationMap,
             (Map<Integer, TDeviceViewResp>) responseMap,
             countDownLatch);
+      case SHOW_SERVICE:
+        return new ShowServiceRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TShowServiceInstanceResp>) responseMap,
+            countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:
@@ -231,6 +240,10 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case INVALIDATE_MATCHED_TABLE_DEVICE_CACHE:
       case DELETE_DATA_FOR_TABLE_DEVICE:
       case DELETE_TABLE_DEVICE_IN_BLACK_LIST:
+      case CREATE_SERVICE:
+      case DROP_SERVICE:
+      case ACTIVE_SERVICE:
+      case INACTIVE_SERVICE:
       default:
         return new DataNodeTSStatusRPCHandler(
             requestType,

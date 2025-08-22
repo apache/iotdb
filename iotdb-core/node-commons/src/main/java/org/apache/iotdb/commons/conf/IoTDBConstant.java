@@ -273,6 +273,7 @@ public class IoTDBConstant {
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
+  public static final String SERVICE_FOLDER_NAME = "service";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";

@@ -56,6 +56,8 @@ ddlStatement
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
+    // Service
+    | createService | dropService | showServices | startService | stopService
     // Subscription
     | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
@@ -430,6 +432,31 @@ stopTrigger
     : STOP TRIGGER triggerName=identifier
     ;
 
+//Service ==============================================================================================
+// ---- Create Service
+createService
+    : CREATE SERVICE serviceName=identifier AS className=STRING_LITERAL uriClause?
+    ;
+
+// ---- Drop Service
+dropService
+    : DROP SERVICE serviceName=identifier
+    ;
+
+// ---- Show Services
+showServices
+    : SHOW ((SERVICE serviceName=identifier) | SERVICES)
+    ;
+
+// ---- Start Service
+startService
+    : START SERVICE serviceName=identifier
+    ;
+
+// ---- Stop Service
+stopService
+    : STOP SERVICE serviceName=identifier
+    ;
 
 // CQ ==============================================================================================
 // ---- Create Continuous Query

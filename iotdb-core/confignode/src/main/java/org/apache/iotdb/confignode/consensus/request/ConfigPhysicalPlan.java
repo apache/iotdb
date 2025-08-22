@@ -86,6 +86,9 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.CreateServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.DropServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.UpdateServiceStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
@@ -593,6 +596,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case setThrottleQuota:
           plan = new SetThrottleQuotaPlan();
+          break;
+        case CreateService:
+          plan = new CreateServicePlan();
+          break;
+        case DropService:
+          plan = new DropServicePlan();
+          break;
+        case UpdateService:
+          plan = new UpdateServiceStatusPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);
