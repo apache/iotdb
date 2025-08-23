@@ -410,6 +410,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RenameViewColumn:
       case RenameTable:
       case RenameView:
+      case CommitAlterColumnDataType:
         return configManager
             .checkUserPrivileges(
                 username,

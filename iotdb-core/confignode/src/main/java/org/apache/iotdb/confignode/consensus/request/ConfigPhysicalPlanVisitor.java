@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -185,6 +186,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitSetViewComment((SetViewCommentPlan) plan, context);
       case SetTableColumnComment:
         return visitSetTableColumnComment((SetTableColumnCommentPlan) plan, context);
+      case CommitAlterColumnDataType:
+        return visitCommitAlterColumnDataType((AlterColumnDataTypePlan) plan, context);
       case RenameTable:
         return visitRenameTable((RenameTablePlan) plan, context);
       case RenameView:
@@ -499,5 +502,9 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   // Use rename table by default
   public R visitRenameView(final RenameViewPlan renameViewPlan, final C context) {
     return visitRenameTable(renameViewPlan, context);
+  }
+
+  public R visitCommitAlterColumnDataType(final AlterColumnDataTypePlan alterColumnDataTypePlan, final C context) {
+    return visitPlan(alterColumnDataTypePlan, context);
   }
 }
