@@ -223,6 +223,7 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.queryengine.plan.Coordinator.recordQueries;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfTSFastLastDataQueryForOneDeviceReq;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
@@ -936,6 +937,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeFastLastDataQueryForOnePrefixPath(
       final TSFastLastDataQueryForOnePrefixPathReq req) {
+    long startTime = System.nanoTime();
     final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
@@ -1006,6 +1008,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       resp.setMoreData(false);
+
+      long costTime = System.nanoTime() - startTime;
+
+      CommonUtils.addStatementExecutionLatency(
+          OperationType.EXECUTE_QUERY_STATEMENT, StatementType.FAST_LAST_QUERY.name(), costTime);
+      CommonUtils.addQueryLatency(StatementType.FAST_LAST_QUERY, costTime);
+      recordQueries(
+          () -> costTime, () -> String.format("thrift fastLastQuery %s", prefixPath), null);
       return resp;
     } catch (final Exception e) {
       return RpcUtils.getTSExecuteStatementResp(

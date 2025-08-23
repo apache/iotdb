@@ -128,7 +128,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
       for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
         try {
-          if (schemaCache.isTimeseriesDeletedByMods(device, timeseriesMetadata)) {
+          if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
             continue;
           }
         } catch (IllegalPathException e) {

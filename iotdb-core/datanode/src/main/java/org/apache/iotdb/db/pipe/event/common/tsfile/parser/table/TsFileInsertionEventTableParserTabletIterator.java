@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -58,9 +57,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
-
-  private final int pipeMaxAlignedSeriesNumInOneBatch =
-      PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
 
   private final long startTime;
   private final long endTime;
@@ -231,9 +227,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
 
               final int columnSchemaSize = tableSchema.getColumnSchemas().size();
-              dataTypeList = new ArrayList<>(pipeMaxAlignedSeriesNumInOneBatch);
-              columnTypes = new ArrayList<>(pipeMaxAlignedSeriesNumInOneBatch);
-              measurementList = new ArrayList<>(pipeMaxAlignedSeriesNumInOneBatch);
+              dataTypeList = new ArrayList<>();
+              columnTypes = new ArrayList<>();
+              measurementList = new ArrayList<>();
 
               for (int i = 0; i < columnSchemaSize; i++) {
                 final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
@@ -341,15 +337,14 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     timeChunk.getData().rewind();
     long size = timeChunkSize;
 
-    final List<Chunk> valueChunkList = new ArrayList<>(pipeMaxAlignedSeriesNumInOneBatch);
+    final List<Chunk> valueChunkList = new ArrayList<>();
 
     // To ensure that the Tablet has the same alignedChunk column as the current one,
     // you need to create a new Tablet to fill in the data.
     isSameDeviceID = false;
 
     // Need to ensure that columnTypes recreates an array
-    final List<ColumnCategory> categories =
-        new ArrayList<>(deviceIdSize + pipeMaxAlignedSeriesNumInOneBatch);
+    final List<ColumnCategory> categories = new ArrayList<>(deviceIdSize);
     for (int i = 0; i < deviceIdSize; i++) {
       categories.add(ColumnCategory.TAG);
     }
@@ -359,25 +354,29 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     measurementList.subList(deviceIdSize, measurementList.size()).clear();
     dataTypeList.subList(deviceIdSize, dataTypeList.size()).clear();
 
-    final int startOffset = offset;
     for (; offset < alignedChunkMetadata.getValueChunkMetadataList().size(); ++offset) {
       final IChunkMetadata metadata = alignedChunkMetadata.getValueChunkMetadataList().get(offset);
       if (metadata != null) {
-        // Record the column information corresponding to Meta to fill in Tablet
-        columnTypes.add(ColumnCategory.FIELD);
-        measurementList.add(metadata.getMeasurementUid());
-        dataTypeList.add(metadata.getDataType());
-
         final Chunk chunk = reader.readMemChunk((ChunkMetadata) metadata);
         size += PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
-        if (allocatedMemoryBlockForChunk.getMemoryUsageInBytes() < size) {
-          PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+        if (size > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+          if (valueChunkList.isEmpty()) {
+            // If the first chunk exceeds the memory limit, we need to allocate more memory
+            PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+            columnTypes.add(ColumnCategory.FIELD);
+            measurementList.add(metadata.getMeasurementUid());
+            dataTypeList.add(metadata.getDataType());
+            valueChunkList.add(chunk);
+            ++offset;
+          }
+          break;
+        } else {
+          // Record the column information corresponding to Meta to fill in Tablet
+          columnTypes.add(ColumnCategory.FIELD);
+          measurementList.add(metadata.getMeasurementUid());
+          dataTypeList.add(metadata.getDataType());
+          valueChunkList.add(chunk);
         }
-
-        valueChunkList.add(chunk);
-      }
-      if (offset - startOffset >= pipeMaxAlignedSeriesNumInOneBatch) {
-        break;
       }
     }
 

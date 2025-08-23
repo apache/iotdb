@@ -1101,6 +1101,32 @@ public class QueryPlanner {
     return new PlanAndMappings(subPlan, mappings);
   }
 
+  public static NodeAndMappings coerce(
+      RelationPlan plan, List<Type> types, SymbolAllocator symbolAllocator, QueryId idAllocator) {
+    List<Symbol> visibleFields = visibleFields(plan);
+    checkArgument(visibleFields.size() == types.size());
+
+    Assignments.Builder assignments = Assignments.builder();
+    ImmutableList.Builder<Symbol> mappings = ImmutableList.builder();
+    for (int i = 0; i < types.size(); i++) {
+      Symbol input = visibleFields.get(i);
+      Type type = types.get(i);
+
+      if (!symbolAllocator.getTypes().getTableModelType(input).equals(type)) {
+        Symbol coerced = symbolAllocator.newSymbol(input.getName(), type);
+        assignments.put(coerced, new Cast(input.toSymbolReference(), toSqlType(type)));
+        mappings.add(coerced);
+      } else {
+        assignments.putIdentity(input);
+        mappings.add(input);
+      }
+    }
+
+    ProjectNode coerced =
+        new ProjectNode(idAllocator.genPlanNodeId(), plan.getRoot(), assignments.build());
+    return new NodeAndMappings(coerced, mappings.build());
+  }
+
   public static List<Symbol> visibleFields(RelationPlan subPlan) {
     RelationType descriptor = subPlan.getDescriptor();
     return descriptor.getAllFields().stream()
@@ -1108,6 +1134,14 @@ public class QueryPlanner {
         .map(descriptor::indexOf)
         .map(subPlan.getFieldMappings()::get)
         .collect(toImmutableList());
+  }
+
+  public static NodeAndMappings pruneInvisibleFields(RelationPlan plan, QueryId idAllocator) {
+    List<Symbol> visibleFields = visibleFields(plan);
+    ProjectNode pruned =
+        new ProjectNode(
+            idAllocator.genPlanNodeId(), plan.getRoot(), Assignments.identity(visibleFields));
+    return new NodeAndMappings(pruned, visibleFields);
   }
 
   public static OrderingScheme translateOrderingScheme(

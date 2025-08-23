@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.AbstractTableDeviceQueryNode;
@@ -1756,6 +1757,12 @@ public class TableDistributedPlanGenerator
     } else {
       return splitForEachChild(node, childrenNodes);
     }
+  }
+
+  @Override
+  public List<PlanNode> visitUnion(UnionNode node, PlanContext context) {
+    context.clearExpectedOrderingScheme();
+    return visitMultiChildProcess(node, context);
   }
 
   public static class PlanContext {
