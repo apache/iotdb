@@ -41,18 +41,17 @@ public class PatternExecutor {
   List<Double> tangents = new ArrayList<>(); // all the tangents of the query
   List<Section> sections = new ArrayList<>(); // all the sections of the query
 
-  // TODO 下面四个参数完全没有赋值到
   Long queryLength = null;
   Long queryLengthTolerance = null;
   Long queryHeight = null;
   Long queryHeightTolerance = null;
 
-  public List<Point> extractPoints(Long[] times, Double[] values) { // 将模板数据进行检查，并进行平移操作
+  public List<Point> extractPoints(Long[] times, Double[] values) {
     List<Point> points = new ArrayList<>();
 
     double px = times[0];
     for (int i = 0; i < times.length; i += 1) {
-      if (times[i] >= px) { // TODO 这个处理如果输入的是原始序列，这个可能会导致数据丢失，因为数据间隔可能不到 1
+      if (times[i] >= px) {
         points.add(new Point(times[i], values[i], times[i], values[i]));
         px += 1;
       }
@@ -112,8 +111,6 @@ public class PatternExecutor {
         findCurveSections(tangents, points, PatternMatchConfig.DIVIDE_SECTION_MIN_HEIGHT_QUERY);
   }
 
-  // TODO 这个是将序列数据映射到 0-1000,0-500
-  // 的范围内，通过后面代码和源码的阅读，这个在算法处理的过程当中完全没有必要，仅仅是用于可视化显示的需求，在源码的datasetAPI.js当中的updateDataForDisplaySize
   public List<Point> scalePoint(List<Long> times, List<Double> values) {
     List<Point> points = new ArrayList<>();
     TimeScale xScale = new TimeScale(times.get(0), times.get(times.size() - 1), 0, 1000);
@@ -158,7 +155,6 @@ public class PatternExecutor {
   /** Execute the query in a particular smooth iteration */
   private void executeQueryInSI(PatternContext queryCtx) {
     int dsi = 0; // dsi: data section index
-    // TODO 这里的datasetsize的计算没有意义，可以删除
     if (queryCtx.getDatasetSize() == null) {
       queryCtx.setDatasetSize(
           queryCtx.getDataPoints().get(queryCtx.getDataPoints().size() - 1).getX()
@@ -169,16 +165,11 @@ public class PatternExecutor {
         findCurveSections(
             dataTangents,
             queryCtx.getDataPoints(),
-            PatternMatchConfig.DIVIDE_SECTION_MIN_HEIGHT_DATA); // TODO 这个是全局变量，不需要作为参数传递下去
+            PatternMatchConfig.DIVIDE_SECTION_MIN_HEIGHT_DATA);
     for (dsi = 0; dsi < dataSections.size(); dsi++) {
       for (int i = 0; i < this.sections.size(); i++) {
-        // TODO 如果不加入正则逻辑，这里没有必要这么处理
         for (int j = 0; j < this.sections.get(i).getNext().size(); j++) {
-          this.sections
-              .get(i)
-              .getNext()
-              .get(j)
-              .setTimes(1); // ！！！ 这里的times指的是重复一次，这里是一点正则逻辑，但是目前输入好像没有考虑到正则情况
+          this.sections.get(i).getNext().get(j).setTimes(1);
         }
       }
       if (!matchIn(
@@ -258,7 +249,6 @@ public class PatternExecutor {
       Point pt = points.get(i);
       double sign = Math.signum(tangent);
 
-      // TODO 这里要是第一个是0开头，有问题，因为后续处理没有考虑到sign为0的情况？ 这里和源码保持了一致，还需要再确认一下正确性
       if (sections.size() == 0) {
         sections.add(new Section(sign));
       } else if (sign != 0) {
@@ -304,7 +294,7 @@ public class PatternExecutor {
       List<Section> qSections,
       PatternContext queryCtx,
       Section lastQuerySect) {
-    if (qSections.size() > PatternMatchConfig.MAX_REGEX_IT) { // TODO 这个对正则表达式的处理是冗余的，目前输入不支持添加正则表达式
+    if (qSections.size() > PatternMatchConfig.MAX_REGEX_IT) {
       return false;
     }
     PatternResult matchValue = null;
@@ -351,7 +341,7 @@ public class PatternExecutor {
         && (currSect.getNext().size() == 0
             || currSect.getNext().get(0).getSize() != 0
             || currSect.getNext().get(0).getSize() == currSect.getNext().get(0).getTimes())) {
-      matchValue = this.calculateMatch(dataSectsForQ, newQSections, queryCtx, false); // 返回匹配结果
+      matchValue = this.calculateMatch(dataSectsForQ, newQSections, queryCtx, false);
       if (matchValue != null) {
         // Keep only one (best) match if the same area is selected in different smooth iterations
         int duplicateMatchIdx =
@@ -373,8 +363,6 @@ public class PatternExecutor {
       }
     }
 
-    // TODO 这个情况仅仅可能出现在正则表达式的情况，因为没有正则的情况下，times都是1，那么currSect就是最后一个section
-    // TODO 这里的正则重复是通过回溯来实现的，这个复杂度是否可以优化？看一下源码怎么实现的？
     if (!currSect.getNext().isEmpty()) {
       boolean backLink = false;
       for (i = currSect.getNext().size() - 1;
@@ -403,7 +391,7 @@ public class PatternExecutor {
       PatternContext queryCtx,
       boolean partialQuery) {
     PatternCalculationResult pointsMatchRes =
-        calculatePointsMatch(querySections, matchedSections, partialQuery); // 计算误差数值
+        calculatePointsMatch(querySections, matchedSections, partialQuery);
     if (pointsMatchRes == null || pointsMatchRes.getMatchedPoints().isEmpty()) {
       return null;
     }
@@ -424,46 +412,40 @@ public class PatternExecutor {
     Long matchTimeSpan =
         Math.round(matchedPts.get(matchedPts.size() - 1).getOrigX() - matchedPts.get(0).getOrigX());
 
-    // TODO queryHeight没有赋值
     if (this.queryHeight != null) {
       if (!checkQueryHeight(calculateMatchHeight(matchedPts))) {
         return null;
       }
     }
 
-    // TODO 这里设置了不少参数，但是不是所有的都用到
     PatternResult result = new PatternResult();
     result.setMatch(pointsMatchRes.getMatch());
     result.setPoints(matchedPts);
-    result.setSize(matchSize); // TODO 没有用到
-    result.setMatchPos(matchPos); // TODO 没有用到
-    result.setTimespan(matchTimeSpan); // TODO 没有用到
-    result.setMinPos(minPos); // TODO 没有用到
-    result.setMaxPos(maxPos); // TODO 没有用到
-    result.setSections(matchedSections); // TODO 没有用到
+    result.setSize(matchSize);
+    result.setMatchPos(matchPos);
+    result.setTimespan(matchTimeSpan);
+    result.setMinPos(minPos);
+    result.setMaxPos(maxPos);
+    result.setSections(matchedSections);
 
     return result;
   }
 
   /* Calculate the match considering comparing the given sections to all the sections of the query.
    * Each query section is scaled to match each section of the argument, and its tangents are compared. */
-  // TODO 这里可以考虑使用阈值进行剪枝，减少很大的计算量，如果所找的pattern很普遍，而且阈值宽松，那么这个优化就没有太大价值
   private PatternCalculationResult calculatePointsMatch(
       List<Section> querySections, List<Section> matchedSections, boolean partialQuery) {
     if (PatternMatchConfig.CHECK_QUERY_COMPATIBILITY) {
       if (!areCompatibleSections(querySections, matchedSections, !partialQuery)) {
         return null;
       }
-    } else { // TODO 这里的拓展和裁切后计算得到的相似度有什么价值？
+    } else {
       if (querySections.size() > matchedSections.size()) {
         matchedSections = expandSections(matchedSections, querySections.size());
       } else if (querySections.size() < matchedSections.size()) {
-        // TODO 感觉这个情况完全不会出现？
-        // 这个matchedSections是从原始的sectionlist上用querysection的长度截取下来的，要么数量不够截取少了，不可能出现截取多了的情况
         matchedSections = reduceSections(matchedSections, querySections.size());
       }
       if (matchedSections == null) {
-        // TODO 这个有点怪，这个null判断应该在最开始吧，如果是null，都不会有size()操作了
         return null;
       }
       if (!areCompatibleSections(querySections, matchedSections, !partialQuery)) {
@@ -474,13 +456,11 @@ public class PatternExecutor {
     double centroidsDifference;
     int i, si;
 
-    // 这里是计算section的上下左右边界 TODO 感觉reduceSections当中的对角线欧式距离的计算可以换成这个
     Bounds matchedSecBounds =
         getBounds(
             matchedSections,
             (matchedSections.size() > 2 ? 1 : 0),
-            matchedSections.size()
-                - (matchedSections.size() > 2 ? 2 : 1)); // TODO 这里的处理看起来有点像是在将首尾裁切掉？
+            matchedSections.size() - (matchedSections.size() > 2 ? 2 : 1));
 
     Bounds queryBounds =
         getBounds(
@@ -488,7 +468,6 @@ public class PatternExecutor {
             (querySections.size() > 2 ? 1 : 0),
             querySections.size() - (querySections.size() > 2 ? 2 : 1));
 
-    // 这里是计算序列和模板的全局形变比例 GX和GY
     double subSequenceScaleFactorX =
         (matchedSecBounds.getMaxX() - matchedSecBounds.getMinX())
             / (queryBounds.getMaxX() - queryBounds.getMinX());
@@ -516,7 +495,6 @@ public class PatternExecutor {
         continue;
       }
 
-      // TODO 这里切除的必要性，以及是否对模板进行切除，我个人感觉是不需要的，有点强行增加工作量的感觉
       if (si == 0 && querySections.size() > 2 && PatternMatchConfig.START_END_CUT_IN_SUBPARTS) {
         dataSect.setPoints(
             sectionEndSubpartPoints(
@@ -524,7 +502,6 @@ public class PatternExecutor {
       } else if (si == querySections.size() - 1
           && querySections.size() > 2
           && PatternMatchConfig.START_END_CUT_IN_SUBPARTS_IN_RESULTS) {
-        // TODO 这里的参数是不是用错了，源代码居然也是这么错的，这有点抽象了
         dataSect.setPoints(
             sectionStartSubpartPoints(
                 matchedSections.get(si), querySect.getWidth() * subSequenceScaleFactorX));
@@ -534,7 +511,6 @@ public class PatternExecutor {
       dataSect.setWidth(calcWidth(dataSect.getPoints()));
       dataSect.setHeight(calcHeight(dataSect.getPoints()));
 
-      // TODO 这里的跳过处理可以参考前面的处理
       if (dataSect.getHeight() == 0) {
         continue;
       }
@@ -545,9 +521,9 @@ public class PatternExecutor {
               / (querySect.getHeight()
                   * (PatternMatchConfig.RESCALING_Y
                       ? subSequenceScaleFactorY
-                      : subSequenceScaleFactorX)); // TODO 这个RESCALING_Y参数的使用有点没看懂，
+                      : subSequenceScaleFactorX));
 
-      if (scaleFactorX != 0 && scaleFactorY != 0) { // TODO 这个判断是打算干啥？如果小于等于0应该得扔个报错吧？
+      if (scaleFactorX != 0 && scaleFactorY != 0) {
         rescalingCost +=
             (Math.pow(Math.log(scaleFactorX), 2) + Math.pow(Math.log(scaleFactorY), 2));
       }
@@ -559,7 +535,6 @@ public class PatternExecutor {
       }
       dataSect.setCentroidY(dataSect.getCentroidY() / dataSect.getPoints().size());
       querySect.setCentroidY(0);
-      // TODO BUG 这里的计算有问题，这里遍历的i都没放进去，而且这里也没有累加计算？
       for (i = 0; i < querySect.getPoints().size(); i++) {
         querySect.setCentroidY(
             querySect.getPoints().get(0).getY()
@@ -570,7 +545,6 @@ public class PatternExecutor {
       }
       querySect.setCentroidY(querySect.getCentroidY() / querySect.getPoints().size());
 
-      // TODO BUG 前面几行大费周章算出来的 CentroidY 这里却没有使用？ 源码里面先用前面的CentroidY计算得到了一个质心偏移，然后又用下面的式子覆盖了原来的结果
       centroidsDifference =
           querySect.getPoints().get(0).getY()
                   * (PatternMatchConfig.RESCALING_Y
@@ -583,8 +557,6 @@ public class PatternExecutor {
 
       for (i = 0; i < dataSect.getPoints().size(); i++) {
         Point dataPt = dataSect.getPoints().get(i);
-        // TODO 这里的取点感觉怪怪的，如果是一个三等分斜线和一个四等分斜线本来是重合的，结果由于取点不对齐，导致了误差，这样的处理有点问题。但是源码也是这么处理的。也是奇怪
-        // TODO 这里考虑的一个处理是，在pattern两点之间使用线性插值，使其支持任意等分
         Point queryPt = querySect.getPoints().get((int) Math.floor(i * queryPtsStep));
 
         double resSum =
@@ -596,7 +568,7 @@ public class PatternExecutor {
                                 * scaleFactorY
                             - centroidsDifference)
                         - dataPt.getY())
-                / dataSect.getHeight(); // TODO 这里的除数和论文里面的不一样，源码也是除以这个，说明实现上有问题
+                / dataSect.getHeight();
         sum += resSum;
         num++;
       }
@@ -683,7 +655,6 @@ public class PatternExecutor {
     double targetStartX = targetMatch.getPoints().get(0).getX();
     double targetEndX = targetMatch.getPoints().get(targetMatch.getPoints().size() - 1).getX();
     for (int idx = 0; idx < matches.size(); idx++) {
-      // TODO 这里的10是怎么确定的，这里10得看时间戳间隔等情况吧？
       if (Math.abs(targetStartX - matches.get(idx).getPoints().get(0).getX()) <= 10
           && Math.abs(
                   targetEndX
@@ -706,7 +677,6 @@ public class PatternExecutor {
       return false;
     }
 
-    // TODO 这里是如果有查询长度限制，并且要求检查长度的时候，会进行如下的检查，但是目前代码当中没有查询长度限制的逻辑，这个部分代码不会被触发
     if (this.queryLength != null && checkLength) {
       Section lastDataSection = dataSections.get(dataSections.size() - 1);
       double maxMatchLength =
@@ -729,7 +699,6 @@ public class PatternExecutor {
     }
 
     double incompatibleSections = 0;
-    // TODO 这里sign为0的情况需要再想想是不是合理的，这里考虑是直接比较第二个section的sign就行，如果一致那么就是兼容的，不一致就不兼容
     for (int j = 0; j < querySections.size(); j++) {
       if (querySections.get(j).getSign() != 0
           && querySections.get(j).getSign() != dataSections.get(j).getSign()) {
@@ -782,8 +751,6 @@ public class PatternExecutor {
    * @param n
    * @return
    */
-  // TODO
-  // 这里的合并可能有个问题，就是对角线的计算使用的是两侧的点的x和y坐标进行计算，而这里的section合并会将两个sign相反的section合并在一起，这样会导致y轴方向缩小，导致合并后可能计算出来的对角线没有增大
   public List<Section> reduceSections(List<Section> sections, int n) {
     if (n >= sections.size() || n < 1) {
       return sections;
@@ -823,7 +790,7 @@ public class PatternExecutor {
   }
 
   // ExpandSections
-  public List<Section> expandSections(List<Section> sections, int n) { // 将最后一个section不断扩展，使其满足长度
+  public List<Section> expandSections(List<Section> sections, int n) {
     if (n <= sections.size()) {
       return sections;
     }

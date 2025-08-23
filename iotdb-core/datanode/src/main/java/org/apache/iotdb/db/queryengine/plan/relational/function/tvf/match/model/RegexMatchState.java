@@ -1,25 +1,26 @@
-package org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Stack;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.MatchConfig.calcSEusingMoreMemory;
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.MatchConfig.shapeTolerance;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.MatchConfig.CALC_SE_USING_MORE_MEMORY;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.MatchConfig.SHAPE_TOLERANCE;
 
 public class RegexMatchState {
 
-  private Section patternSectionNow = null;
+  private final Section patternSectionNow;
 
-  private List<Section> dataSectionList = new ArrayList<>();
+  private final List<Section> dataSectionList = new ArrayList<>();
 
   // a stack to store the pattern path
-  private Stack<Section> sectionStack = new Stack<>();
+  private final Deque<Section> sectionStack = new ArrayDeque<>();
 
-  private Stack<PathState> matchStateStack = new Stack<>();
+  private final Deque<PathState> matchStateStack = new ArrayDeque<>();
 
-  private List<PathState> matchResult = new ArrayList<>();
+  private final List<PathState> matchResult = new ArrayList<>();
 
   public RegexMatchState(Section parentSectionNow) {
     this.patternSectionNow = parentSectionNow;
@@ -36,7 +37,7 @@ public class RegexMatchState {
   private void calcMatchValue(PathState pathState, double smoothValue, double threshold) {
     // calc the matchValue between sectionStack and dataSectionList, meta info is in pathState
     int index = 0;
-    Iterator<Section> iterator = sectionStack.iterator();
+    Iterator<Section> iterator = sectionStack.descendingIterator();
     pathState.calcGlobalRadio(smoothValue);
     while (iterator.hasNext()) {
       Section patternSection = iterator.next();
@@ -134,6 +135,7 @@ public class RegexMatchState {
 
     if (checkOneSectionInTopPathState(section, heightLimit, widthLimit, smoothValue, threshold)) {
       while (!matchStateStack.isEmpty()
+          && matchStateStack.peek() != null
           && matchStateStack.peek().getDataSectionIndex() < dataSectionList.size()) {
         // update the top one's state
         PathState topPathState = matchStateStack.peek();
@@ -167,7 +169,7 @@ public class RegexMatchState {
         && (pathState.getDataWidthBound() <= widthLimit);
   }
 
-  public class PathState {
+  public static class PathState {
     private double matchValue = 0.0;
 
     private int dataSectionIndex = 0;
@@ -183,7 +185,7 @@ public class RegexMatchState {
     private double patternMaxWidth = 0.0;
     private double patternMinWidth = Double.MAX_VALUE;
 
-    private int shapeError = 0;
+    private int shapeNotMatch = 0;
 
     // this is the Gx and Gy in the paper
     private double globalWitdhRadio = 0.0;
@@ -221,8 +223,8 @@ public class RegexMatchState {
         updateDataBounds(section);
         return true;
       }
-      shapeError++;
-      if (shapeError <= shapeTolerance) {
+      shapeNotMatch++;
+      if (shapeNotMatch <= SHAPE_TOLERANCE) {
         updateDataBounds(section);
         return true;
       }
@@ -301,11 +303,11 @@ public class RegexMatchState {
           Math.max(patternSection.getHeightBound() * globalHeightRadio, smoothValue);
       double localHeightRadio = localHeightUp / localHeightDown;
 
-      double LED = Math.pow(Math.log(localWidthRadio), 2) + Math.pow(Math.log(localHeightRadio), 2);
+      double led = Math.pow(Math.log(localWidthRadio), 2) + Math.pow(Math.log(localHeightRadio), 2);
 
       // different way
       double shapeError = 0.0;
-      if (calcSEusingMoreMemory
+      if (CALC_SE_USING_MORE_MEMORY
           && dataSection.getCalcResult().get(patternSection.getId()) != null) {
         shapeError =
             dataSection.getCalcResult().get(patternSection.getId())
@@ -352,7 +354,7 @@ public class RegexMatchState {
                         : (dataMaxHeight - dataMinHeight))
                     * (dataSection.getPoints().size() - 1));
 
-        if (calcSEusingMoreMemory) {
+        if (CALC_SE_USING_MORE_MEMORY) {
           dataSection
               .getCalcResult()
               .put(
@@ -364,7 +366,7 @@ public class RegexMatchState {
         }
       }
 
-      matchValue = matchValue + LED + shapeError;
+      matchValue = matchValue + led + shapeError;
       return matchValue > threshold;
     }
 

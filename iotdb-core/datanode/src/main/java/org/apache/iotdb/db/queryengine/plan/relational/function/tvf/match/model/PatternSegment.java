@@ -1,21 +1,21 @@
-package org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.MatchConfig.lineSectionTolerance;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.MatchConfig.LINE_SECTION_TOLERANCE;
 
 public class PatternSegment {
   // variable area
-  private List<Point> points = new ArrayList<>();
-  private Double totalHeight = 0.0;
+  private final List<Point> points = new ArrayList<>();
+  private double totalHeight = 0.0;
   private List<Section> sections = new ArrayList<>();
   private List<Section> startSectionList = new ArrayList<>();
   private List<Section> endSectionList = new ArrayList<>();
 
-  private Boolean isConstantChar = false;
+  private boolean isConstantChar = false;
   private String repeatSign = null;
-  private Boolean isZeroRepeat = false; // deal with + repeat
+  private boolean isZeroRepeat = false; // deal with + repeat
 
   // constant area
   public PatternSegment() {}
@@ -26,16 +26,12 @@ public class PatternSegment {
   }
 
   // variable get/set area
-  public Boolean isConstantChar() {
+  public boolean isConstantChar() {
     return isConstantChar;
   }
 
-  public void setIsZeroRepeat(Boolean isZeroRepeat) {
+  public void setIsZeroRepeat(boolean isZeroRepeat) {
     this.isZeroRepeat = isZeroRepeat;
-  }
-
-  public Boolean isZeroRepeat() {
-    return isZeroRepeat;
   }
 
   public String getRepeatSign() {
@@ -86,7 +82,7 @@ public class PatternSegment {
         sections.remove(sections.size() - 1);
         if (concatResult.size() == 3) {
           if (!sections.isEmpty()
-              && concatResult.get(0).getPoints().size() <= lineSectionTolerance) {
+              && concatResult.get(0).getPoints().size() <= LINE_SECTION_TOLERANCE) {
             sections.get(sections.size() - 1).combine(concatResult.get(0));
             if (sections.get(sections.size() - 1).getSign() == concatResult.get(1).getSign()) {
               sections.get(sections.size() - 1).combine(concatResult.get(1));
@@ -105,7 +101,7 @@ public class PatternSegment {
             sections.add(concatResult.get(1));
           } else {
             if (concatResult.get(0).getSign() == 0) {
-              if (concatResult.get(0).getPoints().size() <= lineSectionTolerance) {
+              if (concatResult.get(0).getPoints().size() <= LINE_SECTION_TOLERANCE) {
                 sections.get(sections.size() - 1).combine(concatResult.get(0));
                 if (sections.get(sections.size() - 1).getSign() == concatResult.get(1).getSign()) {
                   sections.get(sections.size() - 1).combine(concatResult.get(1));
@@ -130,7 +126,7 @@ public class PatternSegment {
         }
       } else {
         if (sections.size() >= 3
-            && sections.get(sections.size() - 2).getPoints().size() <= lineSectionTolerance) {
+            && sections.get(sections.size() - 2).getPoints().size() <= LINE_SECTION_TOLERANCE) {
           sections.get(sections.size() - 3).combine(sections.get(sections.size() - 2));
           sections.remove(sections.size() - 2);
           if (sections.get(sections.size() - 2).getSign()
@@ -143,7 +139,7 @@ public class PatternSegment {
     }
   }
 
-  public void trans2SectionList(Boolean isPatternFromOrigin, double smoothValue) {
+  public void trans2SectionList(boolean isPatternFromOrigin, double smoothValue) {
     // check whether the points.size() > 2
     if (points.size() < 2) {
       return;
@@ -193,8 +189,6 @@ public class PatternSegment {
 
     startSectionList.add(sections.get(0));
     endSectionList.add(sections.get(sections.size() - 1));
-
-    return;
   }
 
   // address the concat of two dataSegment without combine the two dataSegment
@@ -202,11 +196,8 @@ public class PatternSegment {
     List<Section> newStartSection = new ArrayList<>(patternSegment.getStartSectionList());
     List<Section> newEndSection = new ArrayList<>(endSectionList);
 
-    for (int i = 0; i < patternSegment.getEndSectionList().size(); i++) {
-      for (int j = 0; j < startSectionList.size(); j++) {
-        Section lastSection = patternSegment.getEndSectionList().get(i);
-        Section firstSection = startSectionList.get(j);
-
+    for (Section lastSection : patternSegment.getEndSectionList()) {
+      for (Section firstSection : startSectionList) {
         if (lastSection.getSign() != firstSection.getSign()) {
           lastSection.getNextSectionList().add(0, firstSection);
           firstSection.getPrevSectionList().add(lastSection);

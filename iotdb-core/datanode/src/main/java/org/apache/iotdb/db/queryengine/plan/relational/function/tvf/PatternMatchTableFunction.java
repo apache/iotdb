@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin.relational.tvf;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.QetchAlgorthm;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.MatchState;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Point;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.RegexMatchState;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Section;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.QetchAlgorithm;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.MatchState;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.Point;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.RegexMatchState;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.Section;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -52,21 +52,25 @@ import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils
 
 public class PatternMatchTableFunction implements TableFunction {
   private static final String TBL_PARAM = "DATA";
-  private static final String TimeColumn = "TIME_COL";
-  private static final String DataColumn = "DATA_COL";
+  private static final String TIME_COLUMN = "TIME_COL";
+  private static final String DATA_COLUMN = "DATA_COL";
   private static final String PATTERN_PARAM = "PATTERN";
   private static final String SMOOTH_PARAM = "SMOOTH";
   private static final String THRESHOLD_PARAM = "THRESHOLD";
   private static final String WIDTH_PARAM = "WIDTH";
   private static final String HEIGHT_PARAM = "HEIGHT";
-  private static final String PATTERN_SOURCE_PARAM = "ISPATTERNFROMORIGIN";
+  private static final String PATTERN_SOURCE_PARAM = "IS_PATTERN_FROM_ORIGIN";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
         TableParameterSpecification.builder().name(TBL_PARAM).passThroughColumns().build(),
-        ScalarParameterSpecification.builder().name(TimeColumn).type(Type.STRING).build(),
-        ScalarParameterSpecification.builder().name(DataColumn).type(Type.STRING).build(),
+        ScalarParameterSpecification.builder()
+            .name(TIME_COLUMN)
+            .type(Type.STRING)
+            .defaultValue("time")
+            .build(),
+        ScalarParameterSpecification.builder().name(DATA_COLUMN).type(Type.STRING).build(),
         ScalarParameterSpecification.builder().name(PATTERN_PARAM).type(Type.STRING).build(),
         ScalarParameterSpecification.builder().name(SMOOTH_PARAM).type(Type.DOUBLE).build(),
         ScalarParameterSpecification.builder().name(THRESHOLD_PARAM).type(Type.DOUBLE).build(),
@@ -91,11 +95,10 @@ public class PatternMatchTableFunction implements TableFunction {
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     // calc the index of the column
     TableArgument tableArgument = (TableArgument) arguments.get(TBL_PARAM);
-    String expectedTimeName = (String) ((ScalarArgument) arguments.get(TimeColumn)).getValue();
-    String expectedDataName = (String) ((ScalarArgument) arguments.get(DataColumn)).getValue();
+    String expectedTimeName = (String) ((ScalarArgument) arguments.get(TIME_COLUMN)).getValue();
+    String expectedDataName = (String) ((ScalarArgument) arguments.get(DATA_COLUMN)).getValue();
     int requiredTimeIndex =
-        findColumnIndex(
-            tableArgument, expectedTimeName, ImmutableSet.of(Type.TIMESTAMP, Type.INT64));
+        findColumnIndex(tableArgument, expectedTimeName, ImmutableSet.of(Type.TIMESTAMP));
     int requiredDataIndex =
         findColumnIndex(
             tableArgument,
@@ -106,7 +109,7 @@ public class PatternMatchTableFunction implements TableFunction {
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder()
             .addField("match_index", Type.INT32)
-            .addField("degree_of_similarity", Type.DOUBLE)
+            .addField("similarity", Type.DOUBLE)
             .build();
 
     // this is for transferring the parameters to the processor
@@ -154,28 +157,28 @@ public class PatternMatchTableFunction implements TableFunction {
     boolean isPatternFromOrigin =
         (Boolean) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(PATTERN_SOURCE_PARAM);
 
-    QetchAlgorthm qetchAlgorthm = new QetchAlgorthm();
-    qetchAlgorthm.setThreshold(threshold);
-    qetchAlgorthm.setSmoothValue(smoothValue);
-    qetchAlgorthm.setHeightLimit(heightLimit);
-    qetchAlgorthm.setWidthLimit(widthLimit);
-    qetchAlgorthm.setIsPatternFromOrigin(isPatternFromOrigin);
-    qetchAlgorthm.parsePattern2Automaton(pattern);
+    QetchAlgorithm qetchAlgorithm = new QetchAlgorithm();
+    qetchAlgorithm.setThreshold(threshold);
+    qetchAlgorithm.setSmoothValue(smoothValue);
+    qetchAlgorithm.setHeightLimit(heightLimit);
+    qetchAlgorithm.setWidthLimit(widthLimit);
+    qetchAlgorithm.setIsPatternFromOrigin(isPatternFromOrigin);
+    qetchAlgorithm.parsePattern2Automaton(pattern);
 
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new ShapeMatchDataProcessor(qetchAlgorthm);
+        return new ShapeMatchDataProcessor(qetchAlgorithm);
       }
     };
   }
 
   private static class ShapeMatchDataProcessor implements TableFunctionDataProcessor {
 
-    private QetchAlgorthm qetchAlgorthm;
+    private final QetchAlgorithm qetchAlgorithm;
 
-    public ShapeMatchDataProcessor(QetchAlgorthm qetchAlgorthm) {
-      this.qetchAlgorthm = qetchAlgorthm;
+    public ShapeMatchDataProcessor(QetchAlgorithm qetchAlgorithm) {
+      this.qetchAlgorithm = qetchAlgorithm;
     }
 
     @Override
@@ -185,40 +188,30 @@ public class PatternMatchTableFunction implements TableFunction {
         ColumnBuilder passThroughIndexBuilder) {
 
       double time = input.getLong(0);
-      // need to judge the type of the value and trans it to double
-      double value;
-      if (input.getDataType(1) == Type.INT32) {
-        value = (double) input.getInt(1);
-      } else if (input.getDataType(1) == Type.INT64) {
-        value = (double) input.getLong(1);
-      } else if (input.getDataType(1) == Type.FLOAT) {
-        value = (double) input.getFloat(1);
-      } else if (input.getDataType(1) == Type.DOUBLE) {
-        value = (double) input.getDouble(1);
-      } else {
-        throw new UDFException("Unsupported data type for value column: " + input.getDataType(1));
-      }
+      double value = input.getDouble(1);
 
-      qetchAlgorthm.addPoint(new Point(time, value, qetchAlgorthm.getPointNum()));
-      if (qetchAlgorthm.hasMatchResult()) {
-        outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+      qetchAlgorithm.addPoint(new Point(time, value, qetchAlgorithm.getPointNum()));
+      if (qetchAlgorithm.hasMatchResult()) {
+        outputWindow(
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorithm.getMatchResult());
       }
-      if (qetchAlgorthm.hasRegexMatchResult()) {
+      if (qetchAlgorithm.hasRegexMatchResult()) {
         outputWindowRegex(
-            properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorithm.getRegexMatchResult());
       }
     }
 
     @Override
     public void finish(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      qetchAlgorthm.closeNowDataSegment();
-      if (qetchAlgorthm.hasMatchResult()) {
-        outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+      qetchAlgorithm.closeNowDataSegment();
+      if (qetchAlgorithm.hasMatchResult()) {
+        outputWindow(
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorithm.getMatchResult());
       }
-      if (qetchAlgorthm.hasRegexMatchResult()) {
+      if (qetchAlgorithm.hasRegexMatchResult()) {
         outputWindowRegex(
-            properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorithm.getRegexMatchResult());
       }
     }
 
@@ -226,7 +219,7 @@ public class PatternMatchTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder,
         MatchState matchResult) {
-      int matchResultID = qetchAlgorthm.getMatchResultID();
+      int matchResultID = qetchAlgorithm.getMatchResultID();
       for (int i = 0; i < matchResult.getDataSectionList().size(); i++) {
         for (int j = i == 0 ? 0 : 1;
             j < matchResult.getDataSectionList().get(i).getPoints().size();
@@ -239,9 +232,10 @@ public class PatternMatchTableFunction implements TableFunction {
       }
 
       // after the process, the result of qetchAlgorthm will be empty
-      qetchAlgorthm.matchResultClear();
-      if (qetchAlgorthm.checkNextMatchResult()) {
-        outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+      qetchAlgorithm.matchResultClear();
+      if (qetchAlgorithm.checkNextMatchResult()) {
+        outputWindow(
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorithm.getMatchResult());
       }
     }
 
@@ -250,7 +244,7 @@ public class PatternMatchTableFunction implements TableFunction {
         ColumnBuilder passThroughIndexBuilder,
         RegexMatchState matchResult) {
       for (RegexMatchState.PathState pathState : matchResult.getMatchResult()) {
-        int matchResultID = qetchAlgorthm.getMatchResultID();
+        int matchResultID = qetchAlgorithm.getMatchResultID();
         int dataSectionIndex = pathState.getDataSectionIndex();
         List<Section> dataSectionList = matchResult.getDataSectionList();
         for (int i = 0; i <= dataSectionIndex; i++) {
@@ -263,10 +257,10 @@ public class PatternMatchTableFunction implements TableFunction {
       }
 
       // after the process, the result of qetchAlgorthm will be empty
-      qetchAlgorthm.matchResultClear();
-      if (qetchAlgorthm.checkNextRegexMatchResult()) {
+      qetchAlgorithm.matchResultClear();
+      if (qetchAlgorithm.checkNextRegexMatchResult()) {
         outputWindowRegex(
-            properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+            properColumnBuilders, passThroughIndexBuilder, qetchAlgorithm.getRegexMatchResult());
       }
     }
   }

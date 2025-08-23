@@ -1,4 +1,4 @@
-package org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model;
 
 public class Point {
   public double x;
@@ -6,11 +6,6 @@ public class Point {
   public int index;
 
   public Point(double x, double y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  public void setXY(double x, double y) {
     this.x = x;
     this.y = y;
   }

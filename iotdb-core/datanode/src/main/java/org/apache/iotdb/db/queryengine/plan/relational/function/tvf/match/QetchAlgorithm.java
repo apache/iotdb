@@ -1,37 +1,36 @@
-package org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match;
 
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.MatchState;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.PatternSegment;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Point;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.RegexMatchState;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Section;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.MatchState;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.PatternSegment;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.Point;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.RegexMatchState;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.Section;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.Stack;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.MatchConfig.gapTolerance;
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.MatchConfig.lineSectionTolerance;
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.PatternSegment.tangent;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.MatchConfig.GAP_TOLERANCE;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.MatchConfig.LINE_SECTION_TOLERANCE;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model.PatternSegment.tangent;
 
-public class QetchAlgorthm {
-  private Integer pointNum = -1;
+public class QetchAlgorithm {
+  private int pointNum = -1;
 
-  private Boolean isNewDataSegment = true;
+  private boolean isNewDataSegment = true;
 
-  private Boolean isRegex = false;
+  private boolean isRegex = false;
   private Section stateMachineStartSection = null;
 
-  private Double smoothValue = (double) 0;
-  private Double threshold = (double) 0;
-  private Double widthLimit = (double) 0;
-  private Double heightLimit = (double) 0;
+  private double smoothValue = 0;
+  private double threshold = 0;
+  private double widthLimit = 0;
+  private double heightLimit = 0;
 
-  private Boolean isPatternFromOrigin = false;
+  private boolean isPatternFromOrigin = false;
 
   private Point lastPoint = null;
 
@@ -39,35 +38,30 @@ public class QetchAlgorthm {
   private Section dataLastSection = null;
   private Section nowSection = null;
 
-  private Queue<Section> dataSectionQueue = new LinkedList<>();
+  private final Queue<Section> dataSectionQueue = new LinkedList<>();
   private Queue<MatchState> stateQueue = new LinkedList<>();
-  private Queue<RegexMatchState> regexStateQueue = new LinkedList<>();
   private RegexMatchState regexMatchState = null;
 
   private int matchResultID = 0;
 
-  private Double gap = (double) 0;
+  private double gap = 0;
   int dataSectionIndex = 0;
 
   private MatchState matchResult = null; // each one in it is a point to the start
   private RegexMatchState regexMatchResult =
       null; // each one in it is a list of matchResult which has the same start section
 
-  private Queue<Section> sectionListForDelay = new LinkedList<>(); // only use for delay match
+  private final Queue<Section> sectionListForDelay = new LinkedList<>(); // only use for delay match
 
-  public QetchAlgorthm() {
-    pointNum = -1;
-    isNewDataSegment = true;
-  }
+  public QetchAlgorithm() {}
 
   private List<PatternSegment> parsePattern2DataSegment(String pattern) {
     // this pattern is divided by ",", such as "{,1,2,1,},3,6,9"
     // "()" claim as a point while "{}" claim as a repeat regex sign "+" which is supported to nest
 
-    List<String> patternPiecesTemp = Arrays.asList(pattern.split(","));
+    String[] patternPiecesTemp = pattern.split(",");
     List<String> patternPieces = new ArrayList<>();
-    for (int i = 0; i < patternPiecesTemp.size(); i++) {
-      String piece = patternPiecesTemp.get(i);
+    for (String piece : patternPiecesTemp) {
       // scan the piece and divide the {. }*, }+ out of it, and push them to the list in order
       for (int j = 0; j < piece.length(); j++) {
         char c = piece.charAt(j);
@@ -106,8 +100,7 @@ public class QetchAlgorthm {
 
     int numIndex = -1;
     int pointIndex = -1;
-    for (int i = 0; i < patternPieces.size(); i++) {
-      String piece = patternPieces.get(i);
+    for (String piece : patternPieces) {
       if (piece.equals("{") || piece.equals("}*") || piece.equals("}+")) {
         isRegex = true;
         if (patternSegment != null) {
@@ -120,7 +113,7 @@ public class QetchAlgorthm {
         // tips: every dataSegment should be ended with a point which is the start of the next
         // dataSegment
         pointIndex++;
-        Double num = Double.parseDouble(piece);
+        double num = Double.parseDouble(piece);
         Point point = new Point(pointIndex, num);
         if (patternSegment == null) {
           if (numIndex >= 0) {
@@ -185,33 +178,32 @@ public class QetchAlgorthm {
     // need to tag which is the start section and which is the end section
     if (isRegex) {
       // use a stack to concat all dataSegment to one automaton
-      Stack<PatternSegment> stack = new Stack<>();
-      for (int i = 0; i < patternSegments.size(); i++) {
-        if (patternSegments.get(i).isConstantChar()
-            && (patternSegments.get(i).getRepeatSign().equals("}*")
-                || patternSegments.get(i).getRepeatSign().equals("}+"))) {
+      Deque<PatternSegment> arrayDeque = new ArrayDeque<>();
+      for (PatternSegment segment : patternSegments) {
+        if (segment.isConstantChar()
+            && (segment.getRepeatSign().equals("}*") || segment.getRepeatSign().equals("}+"))) {
           // pop the dataSegment from stack until find the '{'
-          PatternSegment patternSegment = stack.pop();
-          while (!stack.isEmpty() && !stack.peek().isConstantChar()) {
-            PatternSegment topSegment = stack.pop();
+          PatternSegment patternSegment = arrayDeque.pop();
+          while (!arrayDeque.isEmpty() && !arrayDeque.peek().isConstantChar()) {
+            PatternSegment topSegment = arrayDeque.pop();
             patternSegment.concatNear(topSegment);
           }
-          stack.pop(); // pop the '{'
+          arrayDeque.pop(); // pop the '{'
           patternSegment.concatHeadAndTail();
-          if (patternSegments.get(i).getRepeatSign().equals("}*")) {
+          if (segment.getRepeatSign().equals("}*")) {
             patternSegment.setIsZeroRepeat(true);
           }
-          stack.push(patternSegment);
+          arrayDeque.push(patternSegment);
         } else {
           // push the dataSegment to stack
-          stack.push(patternSegments.get(i));
+          arrayDeque.push(segment);
         }
       }
 
       // loop the stack and concat all dataSegment to one automaton
-      PatternSegment patternSegment = stack.pop();
-      while (!stack.isEmpty()) {
-        PatternSegment topSegment = stack.pop();
+      PatternSegment patternSegment = arrayDeque.pop();
+      while (!arrayDeque.isEmpty()) {
+        PatternSegment topSegment = arrayDeque.pop();
         patternSegment.concatNear(topSegment);
       }
       for (Section section : patternSegment.getEndSectionList()) {
@@ -229,8 +221,6 @@ public class QetchAlgorthm {
 
   public void parsePattern2Automaton(String pattern) {
     // divided the pattern to multi DataSegment with the regex information
-    // TODO need to check the validity of the pattern, such as the repeat start and end need to be
-    // matched
     List<PatternSegment> patternSegments = parsePattern2DataSegment(pattern);
 
     // trans multi dataSegment to automaton
@@ -246,10 +236,9 @@ public class QetchAlgorthm {
 
     this.dataSectionQueue.clear();
     this.stateQueue.clear();
-    this.regexStateQueue.clear();
     this.regexMatchState = null;
 
-    this.gap = (double) 0;
+    this.gap = 0;
     this.dataSectionIndex = 0;
   }
 
@@ -258,7 +247,7 @@ public class QetchAlgorthm {
     this.regexMatchResult = null;
   }
 
-  public Boolean hasMatchResult() {
+  public boolean hasMatchResult() {
     return this.matchResult != null;
   }
 
@@ -267,7 +256,7 @@ public class QetchAlgorthm {
     return this.matchResult;
   }
 
-  public Boolean hasRegexMatchResult() {
+  public boolean hasRegexMatchResult() {
     return this.isRegex && this.regexMatchResult != null;
   }
 
@@ -299,7 +288,7 @@ public class QetchAlgorthm {
   }
 
   // check the bound limit
-  private Boolean checkBoundLimit(MatchState state) {
+  private boolean checkBoundLimit(MatchState state) {
     return (state.getDataHeightBound() <= this.heightLimit)
         && (state.getDataWidthBound() <= this.widthLimit);
   }
@@ -334,7 +323,7 @@ public class QetchAlgorthm {
     stateQueue.add(new MatchState(stateMachineStartSection));
     transition(section);
 
-    double lastToThrowIndex = 0;
+    double lastToThrowIndex;
     if (stateQueue.isEmpty()) {
       lastToThrowIndex = dataSectionIndex;
     } else {
@@ -363,7 +352,6 @@ public class QetchAlgorthm {
         threshold)) { // claim that regexMatchState match is over
       dataSectionQueue.poll();
       if (!regexMatchState.getMatchResult().isEmpty()) {
-        // TODO clean the variable which no need
         regexMatchResult = regexMatchState;
         regexMatchState = null;
         return;
@@ -373,9 +361,7 @@ public class QetchAlgorthm {
       while (!dataSectionQueue.isEmpty() && isNext) {
         isNext = false;
         regexMatchState = new RegexMatchState(stateMachineStartSection);
-        Iterator<Section> iterator = dataSectionQueue.iterator();
-        while (iterator.hasNext()) {
-          Section dataSection = iterator.next();
+        for (Section dataSection : dataSectionQueue) {
           if (regexMatchState.addSection(
               dataSection, heightLimit, widthLimit, smoothValue, threshold)) {
             dataSectionQueue.poll();
@@ -392,7 +378,7 @@ public class QetchAlgorthm {
     }
   }
 
-  public Boolean checkNextMatchResult() {
+  public boolean checkNextMatchResult() {
     while (!sectionListForDelay.isEmpty()) {
       Section section = sectionListForDelay.poll();
       addSectionInConstant(section);
@@ -403,14 +389,12 @@ public class QetchAlgorthm {
     return false;
   }
 
-  public Boolean checkNextRegexMatchResult() {
+  public boolean checkNextRegexMatchResult() {
     boolean isNext = true;
     while (!dataSectionQueue.isEmpty() && isNext) {
       isNext = false;
       regexMatchState = new RegexMatchState(stateMachineStartSection);
-      Iterator<Section> iterator = dataSectionQueue.iterator();
-      while (iterator.hasNext()) {
-        Section dataSection = iterator.next();
+      for (Section dataSection : dataSectionQueue) {
         if (regexMatchState.addSection(
             dataSection, heightLimit, widthLimit, smoothValue, threshold)) {
           dataSectionQueue.poll();
@@ -486,7 +470,7 @@ public class QetchAlgorthm {
               dataLastSection = concatResult.get(2);
             } else {
               // check B is long enought to be a line section
-              if (concatResult.get(0).getPoints().size() <= lineSectionTolerance) {
+              if (concatResult.get(0).getPoints().size() <= LINE_SECTION_TOLERANCE) {
                 // check whether the sign of A and C is same ( because the B is sign 0, so A and C
                 // sign isn't 0)
                 if (dataLastLastSection.getSign() == concatResult.get(1).getSign()) {
@@ -518,7 +502,7 @@ public class QetchAlgorthm {
               dataLastSection = concatResult.get(1);
             } else {
               if (concatResult.get(0).getSign() == 0) {
-                if (concatResult.get(0).getPoints().size() <= lineSectionTolerance) {
+                if (concatResult.get(0).getPoints().size() <= LINE_SECTION_TOLERANCE) {
                   // check whether the sign of A and C is same ( because the B is sign 0, so A and C
                   // sign isn't 0)
                   if (dataLastLastSection.getSign() == concatResult.get(1).getSign()) {
@@ -541,13 +525,12 @@ public class QetchAlgorthm {
                 if (dataLastLastSection.getSign() == concatResult.get(0).getSign()) {
                   // combine the AB
                   dataLastLastSection.combine(concatResult.get(0));
-                  dataLastSection = concatResult.get(1);
                 } else {
                   // A is sent to calc and move to B C
                   addSection(dataLastLastSection);
                   dataLastLastSection = concatResult.get(0);
-                  dataLastSection = concatResult.get(1);
                 }
+                dataLastSection = concatResult.get(1);
               }
             }
           }
@@ -562,7 +545,7 @@ public class QetchAlgorthm {
           } else {
             // 2 case: A B C and check B is long enough to be a line section or combine the ABC or
             // AB(move index to AB C) which up to whether the sign of A and C is same
-            if (dataLastSection.getPoints().size() <= lineSectionTolerance) {
+            if (dataLastSection.getPoints().size() <= LINE_SECTION_TOLERANCE) {
               if (dataLastLastSection.getSign() == nowSection.getSign()) {
                 // combine the ABC
                 dataLastLastSection.combine(dataLastSection);
@@ -586,11 +569,11 @@ public class QetchAlgorthm {
   }
 
   public void closeNowDataSegment() {
-    // close之后，last和lastlast至少有一个有数据
+    // after close operator,either dataLastLastSection or dataLastSection is not null
     closeNowSection();
     if (dataLastLastSection != null && dataLastSection != null) {
       if (dataLastSection.getSign() == 0
-          && dataLastSection.getPoints().size() <= lineSectionTolerance) {
+          && dataLastSection.getPoints().size() <= LINE_SECTION_TOLERANCE) {
         dataLastLastSection.combine(dataLastSection);
         addSection(dataLastLastSection);
       } else {
@@ -599,7 +582,8 @@ public class QetchAlgorthm {
         addSection(dataLastSection);
       }
     } else {
-      // 这里看起来是前后判断，实际上这两个是相互独立的，不会同时不为null
+      // this looks like a front and back judgment, but these two are independent and will not be
+      // null at the same time
       if (dataLastLastSection != null) {
         dataLastLastSection.setIsFinal(true);
         addSection(dataLastLastSection);
@@ -617,15 +601,13 @@ public class QetchAlgorthm {
       environmentClear();
       isNewDataSegment = false;
     }
-    if (lastPoint == null) {
-      lastPoint = point;
-    } else {
+    if (lastPoint != null) {
       if (this.gap <= 0) {
         this.gap = Math.abs(point.x - lastPoint.x);
       } else {
         // input data is considered as a same time gap data, so the big gap only happen in the
         // different dataSegment
-        if (Math.abs(point.x - lastPoint.x) > gapTolerance * this.gap) {
+        if (Math.abs(point.x - lastPoint.x) > GAP_TOLERANCE * this.gap) {
           lastPoint = point;
           closeNowDataSegment();
           return;
@@ -646,8 +628,8 @@ public class QetchAlgorthm {
         }
       }
       nowSection.addPoint(point);
-      lastPoint = point;
     }
+    lastPoint = point;
   }
 
   // variables getter and setter
@@ -669,10 +651,6 @@ public class QetchAlgorthm {
 
   public void setIsPatternFromOrigin(Boolean isPatternFromOrigin) {
     this.isPatternFromOrigin = isPatternFromOrigin;
-  }
-
-  public Boolean isRegex() {
-    return isRegex;
   }
 
   public Integer getPointNum() {

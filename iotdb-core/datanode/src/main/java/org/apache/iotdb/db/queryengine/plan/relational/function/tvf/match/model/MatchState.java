@@ -1,21 +1,21 @@
-package org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.MatchConfig.shapeTolerance;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.MatchConfig.SHAPE_TOLERANCE;
 
 public class MatchState {
   private double matchValue = 0.0;
-  private Boolean isFinish = false;
+  private boolean isFinish = false;
 
-  private List<Section> dataSectionList = new ArrayList<>();
+  private final List<Section> dataSectionList = new ArrayList<>();
 
-  private Section patternSectionNow = null;
+  private Section patternSectionNow;
 
   private int startSectionId = -1;
 
-  private int shapeError = 0;
+  private int shapeNotMatch = 0;
 
   private double dataMaxHeight = 0.0;
   private double dataMinHeight = Double.MAX_VALUE;
@@ -28,7 +28,7 @@ public class MatchState {
   private double patternMinWidth = Double.MAX_VALUE;
 
   // this is the Gx and Gy in the paper
-  private double globalWitdhRadio = 0.0;
+  private double globalWidthRadio = 0.0;
   private double globalHeightRadio = 0.0;
 
   public MatchState(Section patternSectionNow) {
@@ -48,7 +48,7 @@ public class MatchState {
     this.patternSectionNow = patternSectionNow;
   }
 
-  public Boolean isFinish() {
+  public boolean isFinish() {
     return isFinish;
   }
 
@@ -66,7 +66,7 @@ public class MatchState {
   }
 
   // use in constant automaton, because no need to record the path
-  public Boolean checkSign(Section section) {
+  public boolean checkSign(Section section) {
     if (section.getSign() == patternSectionNow.getSign()) {
       if (startSectionId == -1) {
         startSectionId = section.getId();
@@ -75,8 +75,8 @@ public class MatchState {
       return true;
     }
 
-    shapeError++;
-    if (shapeError <= shapeTolerance) {
+    shapeNotMatch++;
+    if (shapeNotMatch <= SHAPE_TOLERANCE) {
       if (startSectionId == -1) {
         startSectionId = section.getId();
       }
@@ -132,15 +132,15 @@ public class MatchState {
             : (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight) == 0
                 ? smoothValue
                 : (patternMaxHeight - patternMinHeight);
-    globalWitdhRadio = (dataMaxWidth - dataMinWidth) / (patternMaxWidth - patternMinWidth);
+    globalWidthRadio = (dataMaxWidth - dataMinWidth) / (patternMaxWidth - patternMinWidth);
   }
 
-  public Boolean calcOneSectionMatchValue(Section section, double smoothValue, double threshold) {
+  public boolean calcOneSectionMatchValue(Section section, double smoothValue, double threshold) {
 
     // calc the LED
     // this is the Rx and Ry in the paper
     double localWidthRadio =
-        section.getWidthBound() / (patternSectionNow.getWidthBound() * globalWitdhRadio);
+        section.getWidthBound() / (patternSectionNow.getWidthBound() * globalWidthRadio);
 
     // smooth value is used to avoid the zero division
     double localHeightUp = Math.max(section.getHeightBound(), smoothValue);
@@ -148,7 +148,7 @@ public class MatchState {
         Math.max(patternSectionNow.getHeightBound() * globalHeightRadio, smoothValue);
     double localHeightRadio = localHeightUp / localHeightDown;
 
-    double LED = Math.pow(Math.log(localWidthRadio), 2) + Math.pow(Math.log(localHeightRadio), 2);
+    double led = Math.pow(Math.log(localWidthRadio), 2) + Math.pow(Math.log(localHeightRadio), 2);
 
     // calc the SE
     // align the first point or the centroid, it's same because the calculation is just an avg
@@ -184,7 +184,7 @@ public class MatchState {
                 * (section.getPoints().size() - 1));
 
     // calc the match value for a section
-    matchValue = matchValue + LED + shapeError;
+    matchValue = matchValue + led + shapeError;
 
     dataSectionList.add(section);
 

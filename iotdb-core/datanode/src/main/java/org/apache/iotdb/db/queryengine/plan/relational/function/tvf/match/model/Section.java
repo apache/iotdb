@@ -1,4 +1,4 @@
-package org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.match.model;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,24 +7,24 @@ import java.util.Map;
 
 public class Section {
   private double sign; // enum -1, 0, 1
-  private List<Point> points = new ArrayList<>();
+  private final List<Point> points = new ArrayList<>();
 
-  private Double MaxHeight = 0.0;
+  private double MaxHeight = 0.0;
   private int MaxHeightIndex = 0;
-  private Double MinHeight = Double.MAX_VALUE;
+  private double MinHeight = Double.MAX_VALUE;
   private int MinHeightIndex = 0;
-  private Double MaxWidth = 0.0;
-  private Double MinWidth = Double.MAX_VALUE;
+  private double MaxWidth = 0.0;
+  private double MinWidth = Double.MAX_VALUE;
 
-  private Boolean isFinal = false;
-  private Boolean isVisited = false;
+  private boolean isFinal = false;
+  private boolean isVisited = false;
 
   private int id = 0;
 
-  private Map<Integer, Double> calcResult =
-      new HashMap<>(); // only record the SE without divide the height(C)
-  private List<Section> NextSectionList = new ArrayList<>();
-  private List<Section> PrevSectionList = new ArrayList<>();
+  // only record the SE without divide the height(C)
+  private final Map<Integer, Double> calcResult = new HashMap<>();
+  private final List<Section> NextSectionList = new ArrayList<>();
+  private final List<Section> PrevSectionList = new ArrayList<>();
 
   public Section(double sign) {
     this.sign = sign;
@@ -60,15 +60,15 @@ public class Section {
     return points;
   }
 
-  public Double getMaxHeight() {
+  public double getMaxHeight() {
     return MaxHeight;
   }
 
-  public Double getMinHeight() {
+  public double getMinHeight() {
     return MinHeight;
   }
 
-  public Double getHeightBound() {
+  public double getHeightBound() {
     return MaxHeight - MinHeight;
   }
 
@@ -80,15 +80,15 @@ public class Section {
     return MinHeightIndex;
   }
 
-  public Double getMaxWidth() {
+  public double getMaxWidth() {
     return MaxWidth;
   }
 
-  public Double getMinWidth() {
+  public double getMinWidth() {
     return MinWidth;
   }
 
-  public Double getWidthBound() {
+  public double getWidthBound() {
     return MaxWidth - MinWidth;
   }
 
@@ -100,11 +100,11 @@ public class Section {
     return PrevSectionList;
   }
 
-  public void setIsFinal(Boolean isFinal) {
+  public void setIsFinal(boolean isFinal) {
     this.isFinal = isFinal;
   }
 
-  public Boolean isFinal() {
+  public boolean isFinal() {
     return isFinal;
   }
 
@@ -116,11 +116,11 @@ public class Section {
     return id;
   }
 
-  public void setIsVisited(Boolean isVisited) {
+  public void setIsVisited(boolean isVisited) {
     this.isVisited = isVisited;
   }
 
-  public Boolean isVisited() {
+  public boolean isVisited() {
     return isVisited;
   }
 
@@ -155,10 +155,10 @@ public class Section {
       concatResult.add(this);
     } else {
       Section firstSection = new Section(this.sign);
-      Section midSection = null;
+      Section midSection;
       Section secondSection = new Section(section.getSign());
-      int indexFirst = 0;
-      int indexSecond = 0;
+      int indexFirst;
+      int indexSecond;
 
       // if maxHeight > this.MaxHeight, claim that the second one is higher than the first one, so
       // it is up state
