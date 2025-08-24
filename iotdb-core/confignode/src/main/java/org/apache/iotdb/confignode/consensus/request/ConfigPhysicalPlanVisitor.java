@@ -186,8 +186,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitSetViewComment((SetViewCommentPlan) plan, context);
       case SetTableColumnComment:
         return visitSetTableColumnComment((SetTableColumnCommentPlan) plan, context);
-      case CommitAlterColumnDataType:
-        return visitCommitAlterColumnDataType((AlterColumnDataTypePlan) plan, context);
+      case AlterColumnDataType:
+        return visitAlterColumnDataType((AlterColumnDataTypePlan) plan, context);
       case RenameTable:
         return visitRenameTable((RenameTablePlan) plan, context);
       case RenameView:
@@ -504,7 +504,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitRenameTable(renameViewPlan, context);
   }
 
-  public R visitCommitAlterColumnDataType(final AlterColumnDataTypePlan alterColumnDataTypePlan, final C context) {
+  public R visitAlterColumnDataType(
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final C context) {
     return visitPlan(alterColumnDataTypePlan, context);
   }
 }

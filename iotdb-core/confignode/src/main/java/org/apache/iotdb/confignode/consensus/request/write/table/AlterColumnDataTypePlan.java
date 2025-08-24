@@ -44,7 +44,7 @@ public class AlterColumnDataTypePlan extends AbstractTableColumnPlan {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     super.serializeImpl(stream);
-    stream.writeInt(newType.serialize());
+    stream.write(newType.serialize());
   }
 
   @Override

@@ -113,8 +113,8 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitCommitAlterColumnDataType(
-          final AlterColumnDataTypePlan alterColumnDataTypePlan, final TablePattern pattern) {
+  public Optional<ConfigPhysicalPlan> visitAlterColumnDataType(
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final TablePattern pattern) {
     return visitAbstractTablePlan(alterColumnDataTypePlan, pattern);
   }
 

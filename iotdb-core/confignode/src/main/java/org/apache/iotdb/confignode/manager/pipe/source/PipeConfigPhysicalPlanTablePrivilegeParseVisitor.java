@@ -388,7 +388,8 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
         : Optional.empty();
   }
 
-  public Optional<ConfigPhysicalPlan> visitCommitAlterColumnDataType(final AlterColumnDataTypePlan alterColumnDataTypePlan, final String userName) {
+  public Optional<ConfigPhysicalPlan> visitAlterColumnDataType(
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final String userName) {
     return visitAbstractTablePlan(alterColumnDataTypePlan, userName);
   }
 }

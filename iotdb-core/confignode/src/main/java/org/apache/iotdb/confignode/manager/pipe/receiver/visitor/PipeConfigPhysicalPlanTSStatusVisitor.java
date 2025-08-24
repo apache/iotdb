@@ -537,8 +537,8 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitCommitAlterColumnDataType(
-          final AlterColumnDataTypePlan alterColumnDataTypePlan, final TSStatus context) {
+  public TSStatus visitAlterColumnDataType(
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final TSStatus context) {
     return visitCommonTablePlan(alterColumnDataTypePlan, context);
   }
 

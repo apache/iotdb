@@ -410,7 +410,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RenameViewColumn:
       case RenameTable:
       case RenameView:
-      case CommitAlterColumnDataType:
+      case AlterColumnDataType:
         return configManager
             .checkUserPrivileges(
                 username,
@@ -742,7 +742,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     queryId,
                     ((CommitDeleteViewColumnPlan) plan).getColumnName(),
                     true));
-      case CommitAlterColumnDataType:
+      case AlterColumnDataType:
         return configManager
             .getProcedureManager()
             .executeWithoutDuplicate(
