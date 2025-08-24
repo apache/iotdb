@@ -19,7 +19,7 @@
 from abc import ABC, abstractmethod
 
 
-class AbstractScheduler(ABC):
+class AbstractRequestScheduler(ABC):
     """
     Abstract base class for inference scheduling strategies.
 

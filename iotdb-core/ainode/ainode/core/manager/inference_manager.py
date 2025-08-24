@@ -16,11 +16,14 @@
 # under the License.
 #
 
+import threading
+import time
 from abc import ABC, abstractmethod
 from typing import Dict
 
 import pandas as pd
 import torch
+import torch.multiprocessing as mp
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 from ainode.core.config import AINodeDescriptor
@@ -33,8 +36,9 @@ from ainode.core.exception import (
 )
 from ainode.core.inference.inference_request import (
     InferenceRequest,
+    InferenceRequestProxy,
 )
-from ainode.core.inference.request_controller import RequestController
+from ainode.core.inference.pool_controller import PoolController
 from ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
     TimerSundialInferencePipeline,
 )
@@ -45,7 +49,7 @@ from ainode.core.inference.utils import generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 from ainode.core.manager.utils import (
-    _measure_model_memory,
+    measure_model_memory,
 )
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
@@ -143,18 +147,31 @@ class InferenceManager:
     DEFAULT_DEVICE = torch.device("cpu")
     # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    WAITING_INTERVAL_IN_MS = (
+        AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
+    )  # How often to check for requests in the result queue
+
     def __init__(self):
         self._model_manager = ModelManager()
         self._model_mem_usage_map: Dict[str, int] = (
             {}
         )  # store model memory usage for each model
-        self._request_controller = RequestController()
+        self._result_queue = mp.Queue()
+        self._result_wrapper_map = {}
+        self._result_wrapper_lock = threading.RLock()
+
+        self._stop_event = mp.Event()
+        self._result_handler_thread = threading.Thread(
+            target=self._handle_results, daemon=True
+        )
+        self._result_handler_thread.start()
+        self._pool_controller = PoolController(self._result_queue)
         # self._preload_model_benchmarks()
 
     def _preload_model_benchmarks(self):
         if "cuda" in str(self.DEFAULT_DEVICE):
             for model_id in self.ACCELERATE_MODEL_ID:
-                mem_usage = _measure_model_memory(self.DEFAULT_DEVICE, model_id)
+                mem_usage = measure_model_memory(self.DEFAULT_DEVICE, model_id)
                 self._model_mem_usage_map[model_id] = mem_usage
                 logger.info(
                     f"[Inference] Preloaded benchmark for {model_id}, mem_usage={mem_usage/1024**2:.2f} MB"
@@ -163,6 +180,29 @@ class InferenceManager:
             logger.warning(
                 f"[Inference] Skipped preloading benchmarks for {self.DEFAULT_DEVICE}, only supports CUDA currently"
             )
+
+    def _handle_results(self):
+        while not self._stop_event.is_set():
+            if self._result_queue.empty():
+                time.sleep(self.WAITING_INTERVAL_IN_MS / 1000)
+                continue
+            infer_req: InferenceRequest = self._result_queue.get()
+            with self._result_wrapper_lock:
+                self._result_wrapper_map[infer_req.req_id].set_result(
+                    infer_req.get_final_output()
+                )
+
+    def process_request(self, req):
+        req_id = req.req_id
+        infer_proxy = InferenceRequestProxy(req_id)
+        with self._result_wrapper_lock:
+            self._result_wrapper_map[req_id] = infer_proxy
+        # dispatch request to the pool
+        self._pool_controller.add_request(req.model_id, req)
+        outputs = infer_proxy.wait_for_completion()
+        with self._result_wrapper_lock:
+            del self._result_wrapper_map[req_id]
+        return outputs
 
     def _get_strategy(self, model_id, model):
         if isinstance(model, TimerForPrediction):
@@ -227,7 +267,7 @@ class InferenceManager:
                     inference_pipeline=inference_pipeline,
                     max_new_tokens=predict_length,
                 )
-                outputs = self._request_controller.process_request(infer_req)
+                outputs = self.process_request(infer_req)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
             else:
                 # load model
@@ -278,4 +318,8 @@ class InferenceManager:
         )
 
     def shutdown(self):
-        self._request_controller.shutdown()
+        self._stop_event.set()
+        self._pool_controller.shutdown()
+        while not self._result_queue.empty():
+            self._result_queue.get_nowait()
+        self._result_queue.close()

@@ -29,7 +29,9 @@ from transformers import PretrainedConfig
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
-from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
+from ainode.core.inference.request_scheduler.basic_request_scheduler import (
+    BasicRequestScheduler,
+)
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 
@@ -74,7 +76,7 @@ class InferenceRequestPool(mp.Process):
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
         self._running_queue = mp.Queue()  # Requests that are currently being processed
         self._finished_queue = result_queue  # Requests that are finished
-        self._scheduler = BasicScheduler(
+        self._request_scheduler = BasicRequestScheduler(
             self._waiting_queue, self._running_queue, self._finished_queue, self.pool_id
         )
         self._stop_event = mp.Event()
@@ -113,7 +115,7 @@ class InferenceRequestPool(mp.Process):
         )
 
     def _activate_requests(self):
-        requests = self._scheduler.schedule_activate()
+        requests = self._request_scheduler.schedule_activate()
         for request in requests:
             request.inputs = request.inference_pipeline.preprocess_inputs(
                 request.inputs
@@ -130,7 +132,7 @@ class InferenceRequestPool(mp.Process):
             self._activate_requests()
 
     def _step(self):
-        requests = self._scheduler.schedule_step()
+        requests = self._request_scheduler.schedule_step()
         # TODO: We need a batcher to accelerate the concurrent inference
         for request in requests:
             if self.model_id == "sundial":
@@ -178,7 +180,7 @@ class InferenceRequestPool(mp.Process):
         self.logger = Logger(
             INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
         )
-        self._scheduler.device = self.device
+        self._request_scheduler.device = self.device
         self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
         self.ready_event.set()
 
