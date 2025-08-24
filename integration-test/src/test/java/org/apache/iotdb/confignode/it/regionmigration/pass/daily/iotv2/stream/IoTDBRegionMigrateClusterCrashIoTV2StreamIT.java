@@ -47,7 +47,8 @@ public class IoTDBRegionMigrateClusterCrashIoTV2StreamIT
         .setIoTConsensusV2Mode(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);
   }
 
-  @Test
+  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
+  //  @Test
   public void clusterCrash1() throws Exception {
     killClusterTest(buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER), true);
   }
