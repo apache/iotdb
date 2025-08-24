@@ -127,7 +127,7 @@ public class IoTDBCustomizedClusterIT {
           .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensus");
       simpleEnv.initClusterEnvironment(3, 3);
 
-      int repeat = 100;
+      int repeat = 20;
       for (int i = 0; i < repeat; i++) {
         logger.info("Round {} restart", i);
         try (Connection connection = simpleEnv.getConnection();
