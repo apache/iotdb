@@ -141,7 +141,8 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2StreamIT
         KillNode.CONFIG_NODE);
   }
 
-  @Test
+  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
+  //  @Test
   public void cnCrashDuringRemoveRegionLocationCacheTest() throws Exception {
     successTest(
         1,

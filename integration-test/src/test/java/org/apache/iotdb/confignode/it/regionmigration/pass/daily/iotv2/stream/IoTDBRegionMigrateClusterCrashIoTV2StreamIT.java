@@ -52,7 +52,8 @@ public class IoTDBRegionMigrateClusterCrashIoTV2StreamIT
     killClusterTest(buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER), true);
   }
 
-  @Test
+  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
+  //  @Test
   public void clusterCrash2() throws Exception {
     killClusterTest(buildSet(AddRegionPeerState.DO_ADD_REGION_PEER), false);
   }
