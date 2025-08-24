@@ -305,18 +305,8 @@ public class AuthorityChecker {
   }
 
   public static boolean checkDBVisible(String userName, String database) {
-    TSStatus status = authorityFetcher.get().checkDBVisible(userName, database);
-    boolean result = status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
-    if (!result) {
-      LOGGER.warn(
-          "RBAC check failed for user {} on database {}: {}",
-          userName,
-          database,
-          status.getMessage());
-    } else {
-      LOGGER.debug("RBAC check passed for user {} on database {}", userName, database);
-    }
-    return result;
+    return authorityFetcher.get().checkDBVisible(userName, database).getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   public static boolean checkTableVisible(String userName, String database, String table) {
@@ -425,131 +415,6 @@ public class AuthorityChecker {
     }
   }
 
-  /**
-   * Convert RBAC privilege type to LBAC operation type. RBAC write_data + write_schema → LBAC write
-   * RBAC read_data + read_schema → LBAC read
-   *
-   * @param privilegeType The RBAC privilege type
-   * @return The corresponding LBAC operation type, or null for non-database operations
-   */
-  public static LbacOperationClassifier.OperationType convertPrivilegeTypeToLbacOperation(
-      PrivilegeType privilegeType) {
-    switch (privilegeType) {
-      case READ_DATA:
-      case READ_SCHEMA:
-        return LbacOperationClassifier.OperationType.READ;
-      case WRITE_DATA:
-      case WRITE_SCHEMA:
-        return LbacOperationClassifier.OperationType.WRITE;
-      default:
-        // For non-database operations, return null
-        return null;
-    }
-  }
 
-  /**
-   * Unified RBAC+LBAC filtering for databases with proper operation type conversion. This method
-   * provides a unified interface for filtering database maps based on both RBAC and LBAC
-   * permissions, automatically handling the LBAC enable/disable switch.
-   *
-   * @param originalMap Original database map
-   * @param userName User name
-   * @param privilegeType RBAC privilege type (will be converted to LBAC operation type)
-   * @return Filtered map containing only databases the user can access
-   */
-  public static <T> Map<String, T> filterDatabaseMapByPermissions(
-      Map<String, T> originalMap, String userName, PrivilegeType privilegeType) {
 
-    if (originalMap == null || originalMap.isEmpty()) {
-      return Collections.emptyMap();
-    }
-
-    // Super user sees all
-    if (SUPER_USER.equals(userName)) {
-      return originalMap;
-    }
-
-    Map<String, T> filteredMap = new HashMap<>();
-    int totalCount = originalMap.size();
-    int rbacAllowedCount = 0;
-    int lbacAllowedCount = 0;
-
-    for (Map.Entry<String, T> entry : originalMap.entrySet()) {
-      String database = entry.getKey();
-
-      try {
-        // Step 1: RBAC check using checkFullPathOrPatternPermission method
-        boolean rbacAllowed =
-            checkFullPathOrPatternPermission(userName, new PartialPath(database), privilegeType);
-
-        if (rbacAllowed) {
-          rbacAllowedCount++;
-
-          // Step 2: LBAC check (only if enabled)
-          if (LbacPermissionChecker.isLbacEnabled()) {
-            // Convert PrivilegeType to LBAC operation type
-            LbacOperationClassifier.OperationType lbacOpType =
-                convertPrivilegeTypeToLbacOperation(privilegeType);
-
-            if (lbacOpType != null) {
-              boolean lbacAllowed =
-                  LbacPermissionChecker.checkLbacPermissionForDatabase(
-                      userName, database, lbacOpType);
-              if (lbacAllowed) {
-                filteredMap.put(database, entry.getValue());
-                lbacAllowedCount++;
-              } else {
-                LOGGER.warn("Database {} denied by LBAC for user {}", database, userName);
-              }
-            } else {
-              LOGGER.warn("Cannot convert privilege type {} to LBAC operation type", privilegeType);
-            }
-            // If lbacOpType is null (non-database operation), don't add to filtered map
-          } else {
-            // LBAC disabled, only RBAC check needed
-            filteredMap.put(database, entry.getValue());
-          }
-        } else {
-          LOGGER.warn("Database {} denied by RBAC for user {}", database, userName);
-        }
-      } catch (Exception e) {
-        LOGGER.warn("Permission check failed for database {}: {}", database, e.getMessage());
-      }
-    }
-
-    LOGGER.info(
-        "Database filtering complete - Total: {}, RBAC allowed: {}, LBAC allowed: {}, Final: {}",
-        totalCount,
-        rbacAllowedCount,
-        lbacAllowedCount,
-        filteredMap.size());
-
-    return filteredMap;
-  }
-
-  /**
-   * Extract database path from full path, supporting wildcards. This method handles various path
-   * patterns and extracts the database portion.
-   *
-   * <p>Examples: - "root.db1" → "root.db1" - "root.db1.device1" → "root.db1" - "root.db1.**" →
-   * "root.db1" - "root.**" → null (too broad, requires special handling)
-   *
-   * @param fullPath The full path potentially containing wildcards
-   * @return The extracted database path, or null if cannot extract valid database
-   */
-  public static String extractDatabaseFromPath(String fullPath) {
-    if (fullPath == null || !fullPath.startsWith("root.")) {
-      return null;
-    }
-
-    // Remove wildcard patterns
-    String cleanPath = fullPath.replace(".**", "").replace(".*", "");
-
-    String[] parts = cleanPath.split("\\.");
-    if (parts.length >= 2) {
-      return parts[0] + "." + parts[1]; // root.database format
-    }
-
-    return null;
-  }
 }

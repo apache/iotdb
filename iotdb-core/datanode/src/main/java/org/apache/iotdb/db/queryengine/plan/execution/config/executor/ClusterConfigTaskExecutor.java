@@ -175,6 +175,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -594,13 +595,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-
-      LOGGER.warn("=== SHOW DATABASES API CALL START ===");
-
       final List<String> databasePathPattern =
           java.util.Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
-      LOGGER.warn("Database path pattern: {}", databasePathPattern);
-      LOGGER.warn("Authority scope: {}", showDatabaseStatement.getAuthorityScope());
 
       // Check if this is a table model query based on current SQL dialect
       boolean isTableModel = false;
@@ -608,16 +604,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         IClientSession currentSession = SessionManager.getInstance().getCurrSession();
         if (currentSession != null) {
           isTableModel = currentSession.getSqlDialect() == IClientSession.SqlDialect.TABLE;
-          LOGGER.info(
-              "Current SQL dialect: {}, isTableModel: {}",
-              currentSession.getSqlDialect(),
-              isTableModel);
         } else {
-          LOGGER.warn("No current session available, defaulting to tree model");
           isTableModel = false;
         }
       } catch (Exception e) {
-        LOGGER.warn("Failed to get current session, defaulting to tree model: {}", e.getMessage());
         isTableModel = false;
       }
 
@@ -625,23 +615,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq(
                   databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
               .setIsTableModel(isTableModel);
-
-      LOGGER.warn("[DEBUG] Sending request to ConfigNode - isTableModel: {}", isTableModel);
-      LOGGER.warn("[DEBUG] Request details: {}", req);
-
       org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp resp = client.showDatabase(req);
-
-      LOGGER.warn("[DEBUG] Received response from ConfigNode");
-      LOGGER.warn("[DEBUG] Response status: {}", resp.getStatus());
-      LOGGER.warn(
-          "[DEBUG] Response database count: {}",
-          resp.getDatabaseInfoMap() != null ? resp.getDatabaseInfoMap().size() : "null");
-
-      if (resp.getDatabaseInfoMap() != null) {
-        LOGGER.warn("[DEBUG] Database names in response: {}", resp.getDatabaseInfoMap().keySet());
-      }
-
-      LOGGER.warn("=== SHOW DATABASES API CALL END ===");
 
       // Apply unified RBAC+LBAC filtering before building TSBlock
       String currentUserName = null;
@@ -655,13 +629,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       if (currentUserName != null) {
-        // Apply filtering using AuthorityChecker
         Map<String, TDatabaseInfo> filteredDatabaseMap =
-            AuthorityChecker.filterDatabaseMapByPermissions(
+            LbacPermissionChecker.filterDatabaseMapByPermissions(
                 resp.getDatabaseInfoMap(), currentUserName, PrivilegeType.READ_SCHEMA);
         showDatabaseStatement.buildTSBlock(filteredDatabaseMap, future);
       } else {
-        // Fallback: use original map if username cannot be determined
         showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
       }
     } catch (final Exception e) {

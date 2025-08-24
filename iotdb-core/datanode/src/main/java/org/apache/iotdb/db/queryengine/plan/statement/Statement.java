@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
@@ -64,26 +65,9 @@ public abstract class Statement extends StatementNode {
   public abstract List<? extends PartialPath> getPaths();
 
   public TSStatus checkPermissionBeforeProcess(final String userName) {
-    TSStatus rbacStatus = checkRbacPermission(userName);
-    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return rbacStatus;
-    }
-    return checkLbacPermission(userName);
-  }
-
-  public TSStatus checkRbacPermission(String userName) {
-    // Default implementation for show operations - allow access
-    // Subclasses should override this for specific RBAC checks
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  public TSStatus checkLbacPermission(String userName) {
-    try {
-      return LbacPermissionChecker.checkLbacPermissionForStatement(this, userName);
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage("LBAC check failed: " + e.getMessage());
-    }
+    return AuthorityChecker.getTSStatus(
+            AuthorityChecker.SUPER_USER.equals(userName),
+            "Only the admin user can perform this operation");
   }
 
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(

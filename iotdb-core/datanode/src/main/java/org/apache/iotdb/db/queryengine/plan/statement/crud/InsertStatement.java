@@ -57,19 +57,14 @@ public class InsertStatement extends Statement {
   }
 
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // Use parent class's complete permission check flow (Root → RBAC → LBAC)
-    return super.checkPermissionBeforeProcess(userName);
-  }
-
-  @Override
-  public TSStatus checkRbacPermission(String userName) {
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA),
-        checkedPaths,
-        PrivilegeType.WRITE_DATA);
+            AuthorityChecker.checkFullPathOrPatternListPermission(
+                    userName, checkedPaths, PrivilegeType.WRITE_DATA),
+            checkedPaths,
+            PrivilegeType.WRITE_DATA);
   }
+
 
   public PartialPath getDevice() {
     return device;

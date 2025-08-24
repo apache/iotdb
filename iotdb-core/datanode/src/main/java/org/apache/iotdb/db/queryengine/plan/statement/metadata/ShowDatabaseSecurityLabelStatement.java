@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -115,7 +116,7 @@ public class ShowDatabaseSecurityLabelStatement extends AuthorityInformationStat
     try {
       // Apply unified RBAC+LBAC filtering using AuthorityChecker
       Map<String, String> filteredMap =
-          AuthorityChecker.filterDatabaseMapByPermissions(
+          LbacPermissionChecker.filterDatabaseMapByPermissions(
               securityLabelMap, userName, PrivilegeType.READ_SCHEMA);
 
       List<TSDataType> outputDataTypes =
