@@ -90,8 +90,9 @@ public abstract class AbstractDataTool {
   protected static String database;
   protected static String startTime;
   protected static int threadNum = 8;
+  protected static int rpcMaxFrameSize = 536870912;
   protected static String targetPath;
-  protected static long timeout = -1;
+  protected static long timeout = Long.MAX_VALUE;
   protected static String timeZoneID;
   protected static String timeFormat;
   protected static String exportType;
@@ -114,6 +115,7 @@ public abstract class AbstractDataTool {
   protected static ZoneId zoneId = ZoneId.systemDefault();
   protected static ImportTsFileOperation successOperation;
   protected static String targetFile = Constants.DUMP_FILE_NAME_DEFAULT;
+  protected static final int updateTimeInterval = 2000;
   protected static final LongAdder loadFileFailedNum = new LongAdder();
   protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
   protected static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();

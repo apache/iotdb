@@ -270,6 +270,10 @@ public class ExportData extends AbstractDataTool {
     if (timeoutString != null) {
       timeout = Long.parseLong(timeoutString);
     }
+    String rpcMaxFrameSizeString = commandLine.getOptionValue(Constants.RPC_MAX_FRAME_SIZE_ARGS);
+    if (rpcMaxFrameSizeString != null) {
+      rpcMaxFrameSize = Integer.parseInt(rpcMaxFrameSizeString);
+    }
     if (needDataTypePrinted == null) {
       needDataTypePrinted = true;
     }

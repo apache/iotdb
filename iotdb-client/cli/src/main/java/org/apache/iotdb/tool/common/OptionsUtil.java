@@ -142,7 +142,7 @@ public class OptionsUtil extends Constants {
     return options;
   }
 
-  public static Options createTreeExportCommonOptions() {
+  public static Options createExportCommonOptions() {
     Options options = createImportCommonOptions();
 
     Option opFile =
@@ -181,48 +181,25 @@ public class OptionsUtil extends Constants {
             .desc(TIMEOUT_DESC)
             .build();
     options.addOption(opTimeOut);
+
+    Option opRpcMaxFrameSize =
+        Option.builder(RPC_MAX_FRAME_SIZE_ARGS)
+            .longOpt(RPC_MAX_FRAME_SIZE_NAME)
+            .argName(RPC_MAX_FRAME_SIZE_NAME)
+            .hasArg()
+            .desc(RPC_MAX_FRAME_SIZE_DESC)
+            .build();
+    options.addOption(opRpcMaxFrameSize);
+
     return options;
   }
 
+  public static Options createTreeExportCommonOptions() {
+    return createExportCommonOptions();
+  }
+
   public static Options createTableExportCommonOptions() {
-    final Options options = createImportCommonOptions();
-
-    Option opFile =
-        Option.builder(TARGET_DIR_ARGS)
-            .required()
-            .longOpt(TARGET_DIR_NAME)
-            .argName(TARGET_DIR_ARGS_NAME)
-            .hasArg()
-            .desc(TARGET_DIR_DESC)
-            .build();
-    options.addOption(opFile);
-
-    Option opOnSuccess =
-        Option.builder(TARGET_FILE_ARGS)
-            .longOpt(TARGET_FILE_NAME)
-            .argName(TARGET_FILE_NAME)
-            .hasArg()
-            .desc(TARGET_FILE_DESC)
-            .build();
-    options.addOption(opOnSuccess);
-
-    Option opQuery =
-        Option.builder(QUERY_COMMAND_ARGS)
-            .longOpt(QUERY_COMMAND_NAME)
-            .argName(QUERY_COMMAND_ARGS_NAME)
-            .hasArg()
-            .desc(QUERY_COMMAND_DESC)
-            .build();
-    options.addOption(opQuery);
-
-    Option opTimeOut =
-        Option.builder(TIMEOUT_ARGS)
-            .longOpt(TIMEOUT_NAME)
-            .argName(TIMEOUT_NAME)
-            .hasArg()
-            .desc(TIMEOUT_DESC)
-            .build();
-    options.addOption(opTimeOut);
+    Options options = createExportCommonOptions();
 
     Option opDatabase =
         Option.builder(DB_ARGS)
