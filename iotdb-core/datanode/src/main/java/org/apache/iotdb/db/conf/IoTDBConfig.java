@@ -403,6 +403,7 @@ public class IoTDBConfig {
    */
   private int tvListSortThreshold = 0;
 
+  /** Enable streaming query mem chunk */
   private boolean streamingQueryMemChunk = true;
 
   /** Enable inner space compaction for sequence files */

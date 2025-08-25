@@ -273,7 +273,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     } else {
       tsBlock = paginationController.applyTsBlock(tsBlock);
     }
-    tsBlocks.add(tsBlock);
+    addTsBlock(tsBlock);
     return tsBlock;
   }
 
