@@ -41,9 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Coun
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -56,7 +54,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -71,11 +68,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
@@ -91,16 +86,13 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.StringType;
-import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
@@ -265,58 +257,16 @@ public class TableLogicalPlanner {
       TableMetadataImpl.throwTableNotExistsException(
           targetTable.getDatabaseName(), targetTable.getObjectName());
     }
-    List<ColumnSchema> tableColumns = tableSchema.get().getColumns();
-    Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
 
     // insert columns
     Analysis.Insert insert = analysis.getInsert();
     List<ColumnSchema> insertColumns = insert.getColumns();
 
-    // prepare Assignments and ColumnSchema builder
-    Assignments.Builder assignments = Assignments.builder();
-    ImmutableList.Builder<ColumnSchema> insertedColumnsBuilder = ImmutableList.builder();
+    List<Symbol> neededInputColumnNames = new ArrayList<>(insertColumns.size());
 
-    // insert null if table column is not in query columns.
-    for (ColumnSchema column : tableColumns) {
-      if (column.isHidden()) {
-        continue;
-      }
-      Symbol output = symbolAllocator.newSymbol(column.getName(), column.getType());
-      Expression expression;
-      Type tableType = column.getType();
-      int index = insertColumns.indexOf(columnSchemaMap.get(column.getName()));
-      if (index < 0) {
-        expression = new NullLiteral();
-      } else {
-        Symbol input = visibleFieldMappings.get(index);
-        Type queryType = symbolAllocator.getTypes().getTableModelType(input);
-        if (!queryType.equals(tableType)) {
-          throw new SemanticException(
-              String.format(
-                  "Insert query has mismatched column type: Table: [%s], Query: [%s]",
-                  tableType, queryType));
-        }
-        expression = input.toSymbolReference();
-      }
-      assignments.put(output, expression);
-      insertedColumnsBuilder.add(column);
+    for (int i = 0, size = insertColumns.size(); i < size; i++) {
+      neededInputColumnNames.add(visibleFieldMappings.get(i));
     }
-
-    // Project Node
-    ProjectNode projectNode =
-        new ProjectNode(
-            queryContext.getQueryId().genPlanNodeId(), plan.getRoot(), assignments.build());
-    List<ColumnSchema> insertedColumns = insertedColumnsBuilder.build();
-    List<Field> fields =
-        insertedColumns.stream()
-            .map(
-                column ->
-                    Field.newUnqualified(
-                        column.getName(), column.getType(), column.getColumnCategory()))
-            .collect(toImmutableList());
-    Scope scope =
-        Scope.builder().withRelationType(RelationId.anonymous(), new RelationType(fields)).build();
-    plan = new RelationPlan(projectNode, scope, projectNode.getOutputSymbols(), Optional.empty());
 
     // Into Node
     IntoNode intoNode =
@@ -325,7 +275,8 @@ public class TableLogicalPlanner {
             plan.getRoot(),
             targetTable.getDatabaseName(),
             table.getName().getSuffix(),
-            tableColumns,
+            insertColumns,
+            neededInputColumnNames,
             symbolAllocator.newSymbol(Insert.ROWS, Insert.ROWS_TYPE));
     return new RelationPlan(
         intoNode, analysis.getRootScope(), intoNode.getOutputSymbols(), Optional.empty());
