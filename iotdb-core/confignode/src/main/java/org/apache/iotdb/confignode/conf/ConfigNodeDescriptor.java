@@ -366,6 +366,7 @@ public class ConfigNodeDescriptor {
     // commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
+    commonDescriptor.initThriftSSL(properties);
 
     conf.setProcedureCompletedEvictTTL(
         Integer.parseInt(
