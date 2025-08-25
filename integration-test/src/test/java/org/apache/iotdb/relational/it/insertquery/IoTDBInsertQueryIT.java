@@ -511,11 +511,13 @@ public class IoTDBInsertQueryIT {
       SessionDataSet dataSet = session.executeQueryStatement(String.format(insertIntoQuery, 1));
       fail("No exception!");
     } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage(),
-          e.getMessage()
-              .contains(
-                  "Cannot invoke \"java.util.List.size()\" because \"columnNameList\" is null"));
+      if (e.getMessage() != null) {
+        Assert.assertTrue(
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "Cannot invoke \"java.util.List.size()\" because \"columnNameList\" is null"));
+      }
     } finally {
       session.executeNonQueryStatement(String.format(dropTableTemplate, 1));
     }

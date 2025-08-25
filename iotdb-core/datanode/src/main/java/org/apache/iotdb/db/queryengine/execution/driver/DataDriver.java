@@ -32,6 +32,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
 /**
  * One {@link DataDriver} is responsible for one {@link FragmentInstance} which is for data query,
@@ -40,7 +41,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.QUE
 @NotThreadSafe
 public class DataDriver extends Driver {
 
-  private boolean init;
+  private boolean init = false;
 
   // Unit : Byte
   private final long estimatedMemorySize;
@@ -55,7 +56,13 @@ public class DataDriver extends Driver {
   protected boolean init(SettableFuture<?> blockedFuture) {
     if (!init) {
       try {
-        initialize();
+        if (!initialize()) { // failed to init this time, but now exception thrown, possibly failed
+          // to acquire lock within the specific time
+          blockedFuture.set(null);
+          return false;
+        } else {
+          return true;
+        }
       } catch (Throwable t) {
         LOGGER.error(
             "Failed to do the initialization for driver {} ", driverContext.getDriverTaskID(), t);
@@ -78,8 +85,7 @@ public class DataDriver extends Driver {
    *     org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource} is null after
    *     initialization, IllegalStateException will be thrown
    */
-  private void initialize() throws QueryProcessException {
-    long startTime = System.nanoTime();
+  private boolean initialize() throws QueryProcessException {
     try {
       List<DataSourceOperator> sourceOperators =
           ((DataDriverContext) driverContext).getSourceOperators();
@@ -90,20 +96,30 @@ public class DataDriver extends Driver {
           // for some reasons, we may get null QueryDataSource here.
           // And it's safe for us to throw this exception here in such case.
           throw new IllegalStateException("QueryDataSource should never be null!");
+        } else if (dataSource == UNFINISHED_QUERY_DATA_SOURCE) {
+          // init query data source timeout. Maybe failed to acquire the read lock within the
+          // specified time
+          // do nothing, wait for next try
+        } else {
+          sourceOperators.forEach(
+              sourceOperator -> {
+                // Construct QueryDataSource for source operator
+                sourceOperator.initQueryDataSource(dataSource.clone());
+              });
+          this.init = true;
         }
-        sourceOperators.forEach(
-            sourceOperator -> {
-              // Construct QueryDataSource for source operator
-              sourceOperator.initQueryDataSource(dataSource.clone());
-            });
+      } else {
+        this.init = true;
       }
-
-      this.init = true;
     } finally {
-      ((DataDriverContext) driverContext).clearSourceOperators();
-      QUERY_EXECUTION_METRICS.recordExecutionCost(
-          QUERY_RESOURCE_INIT, System.nanoTime() - startTime);
+      if (this.init) {
+        ((DataDriverContext) driverContext).clearSourceOperators();
+        QUERY_EXECUTION_METRICS.recordExecutionCost(
+            QUERY_RESOURCE_INIT,
+            driverContext.getFragmentInstanceContext().getInitQueryDataSourceCost());
+      }
     }
+    return this.init;
   }
 
   @Override

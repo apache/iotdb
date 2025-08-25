@@ -38,6 +38,7 @@ class InferenceRequest:
     def __init__(
         self,
         req_id: str,
+        model_id: str,
         inputs: torch.Tensor,
         inference_pipeline: AbstractInferencePipeline,
         max_new_tokens: int = 96,
@@ -47,6 +48,7 @@ class InferenceRequest:
             inputs = inputs.unsqueeze(0)
 
         self.req_id = req_id
+        self.model_id = model_id
         self.inputs = inputs
         self.infer_kwargs = infer_kwargs
         self.inference_pipeline = inference_pipeline
