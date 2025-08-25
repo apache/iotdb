@@ -48,6 +48,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -123,6 +124,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
   private void doTest(
       String connectorType, String realtimeMode, boolean useBatchMode, String compressionTypes)
       throws Exception {
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -193,7 +200,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
           receiverEnv,
           "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("8,"));
+          Collections.singleton("8,"),
+          handleFailure);
     }
   }
 
