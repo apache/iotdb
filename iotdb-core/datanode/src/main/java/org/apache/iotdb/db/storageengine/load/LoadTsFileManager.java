@@ -123,7 +123,7 @@ public class LoadTsFileManager {
                   (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
           .build();
 
-  public static final Cache<String, String> MeasurementIdCache =
+  public static final Cache<String, String> MEASUREMENT_ID_CACHE =
       Caffeine.newBuilder()
           .maximumWeight(CONFIG.getLoadMeasurementIdCacheSizeInBytes())
           .weigher((String k, String v) -> v.length())
