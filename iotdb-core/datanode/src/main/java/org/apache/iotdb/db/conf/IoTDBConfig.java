@@ -1110,6 +1110,10 @@ public class IoTDBConfig {
 
   private boolean loadActiveListeningEnable = true;
 
+  private long loadTableSchemaCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
+
+  private long loadMeasurementCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
+
   private String[] loadActiveListeningDirs =
       new String[] {
         IoTDBConstant.EXT_FOLDER_NAME
@@ -3993,6 +3997,22 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningEnable(boolean loadActiveListeningEnable) {
     this.loadActiveListeningEnable = loadActiveListeningEnable;
+  }
+
+  public long getLoadTableSchemaCacheSizeInBytes() {
+    return loadTableSchemaCacheSizeInBytes;
+  }
+
+  public void setLoadTableSchemaCacheSizeInBytes(long loadTableSchemaCacheSizeInBytes) {
+    this.loadTableSchemaCacheSizeInBytes = loadTableSchemaCacheSizeInBytes;
+  }
+
+  public long getLoadMeasurementIdCacheSizeInBytes() {
+    return loadMeasurementCacheSizeInBytes;
+  }
+
+  public void setLoadMeasurementCacheSizeInBytes(long loadMeasurementCacheSizeInBytes) {
+    this.loadMeasurementCacheSizeInBytes = loadMeasurementCacheSizeInBytes;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
