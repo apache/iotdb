@@ -1,25 +1,9 @@
 name: Daily IT
 
 on:
-  push:
-    branches:
-      - master
-      - 'rel/*'
-      - 'rc/*'
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
-  pull_request:
-    branches:
-      - master
-      - 'rel/*'
-      - 'rc/*'
-      - 'force_ci/**'
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
-  # allow manually run the action:
-  workflow_dispatch:
+  schedule:
+    # Run at UTC 19:00 every day (CST 03:00 AM)
+    - cron: '0 19 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
