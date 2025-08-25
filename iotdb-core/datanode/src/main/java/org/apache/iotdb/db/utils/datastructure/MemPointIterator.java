@@ -28,6 +28,7 @@ import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -85,5 +86,12 @@ public abstract class MemPointIterator implements IPointReader {
     }
     tsBlocks = tsBlocks == null ? new ArrayList<>() : tsBlocks;
     tsBlocks.add(tsBlock);
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (tsBlocks != null) {
+      tsBlocks.clear();
+    }
   }
 }

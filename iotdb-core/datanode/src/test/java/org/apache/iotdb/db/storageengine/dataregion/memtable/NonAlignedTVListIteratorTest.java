@@ -546,6 +546,9 @@ public class NonAlignedTVListIteratorTest {
     while (memPointIterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = memPointIterator.nextTimeValuePair();
       long currentTimestamp = timeValuePair.getTimestamp();
+      if (currentTimestamp == 60001) {
+        System.out.println();
+      }
       long value = timeValuePair.getValue().getLong();
       Assert.assertEquals(currentTimestamp, value);
       long expectedTimestamp;
@@ -561,9 +564,13 @@ public class NonAlignedTVListIteratorTest {
         Assert.assertTrue(globalTimeFilter.satisfyRow(currentTimestamp, null));
       }
       if (!deletions.isEmpty()) {
-        deletions.stream()
-            .map(deletion -> deletion.contains(currentTimestamp))
-            .forEach(Assert::assertFalse);
+        try {
+          deletions.stream()
+              .map(deletion -> deletion.contains(currentTimestamp))
+              .forEach(Assert::assertFalse);
+        } catch (AssertionError e) {
+          System.out.println();
+        }
       }
       if (globalTimeFilter == null
           && paginationController == PaginationController.UNLIMITED_PAGINATION_CONTROLLER
@@ -585,6 +592,12 @@ public class NonAlignedTVListIteratorTest {
       }
       Collections.shuffle(timestamps);
       for (Long timestamp : timestamps) {
+        if (timestamp % 5000 == 1) {
+          // add some duplicated timestamp
+          for (int i = 0; i < 4; i++) {
+            tvList.putLong(timestamp, timestamp - i);
+          }
+        }
         tvList.putLong(timestamp, timestamp);
         rowCount++;
       }

@@ -32,7 +32,6 @@ import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -238,11 +237,6 @@ public abstract class MultiTVListIterator extends MemPointIterator {
   public long getUsedMemorySize() {
     // not used
     return 0;
-  }
-
-  @Override
-  public void close() throws IOException {
-    tsBlocks.clear();
   }
 
   protected abstract void prepareNext();

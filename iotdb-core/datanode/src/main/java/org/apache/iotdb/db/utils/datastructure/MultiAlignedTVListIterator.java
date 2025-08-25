@@ -114,7 +114,8 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     this.valueColumnDeleteCursor = new ArrayList<>();
     for (int i = 0; i < tsDataTypeList.size(); i++) {
-      List<TimeRange> valueColumnDeletions = valueColumnsDeletionList.get(i);
+      List<TimeRange> valueColumnDeletions =
+          valueColumnsDeletionList == null ? null : valueColumnsDeletionList.get(i);
       int cursor =
           (valueColumnDeletions == null || scanOrder.isAscending())
               ? 0
