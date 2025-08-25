@@ -2313,10 +2313,10 @@ public class IoTDBDescriptor {
                 "load_table_schema_cache_size_in_bytes",
                 Long.toString(conf.getLoadTableSchemaCacheSizeInBytes()))));
 
-    conf.setLoadMeasurementCacheSizeInBytes(
+    conf.setLoadMeasurementIdCacheSizeInBytes(
         Long.parseLong(
             properties.getProperty(
-                "load_measurement_cache_size_in_bytes",
+                "load_measurement_id_cache_size_in_bytes",
                 Long.toString(conf.getLoadMeasurementIdCacheSizeInBytes()))));
 
     conf.setLoadActiveListeningMaxThreadNum(
