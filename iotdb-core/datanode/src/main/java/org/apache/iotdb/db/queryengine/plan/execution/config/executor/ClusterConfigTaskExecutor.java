@@ -3213,7 +3213,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TExtendRegionReq req =
           new TExtendRegionReq(
-              extendRegionTask.getStatement().getRegionId(),
+              extendRegionTask.getStatement().getRegionIds(),
               extendRegionTask.getStatement().getDataNodeId(),
               extendRegionTask.getModel());
       final TSStatus status = configNodeClient.extendRegion(req);
@@ -3236,7 +3236,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TRemoveRegionReq req =
           new TRemoveRegionReq(
-              removeRegionTask.getStatement().getRegionId(),
+              removeRegionTask.getStatement().getRegionIds(),
               removeRegionTask.getStatement().getDataNodeId(),
               removeRegionTask.getModel());
       final TSStatus status = configNodeClient.removeRegion(req);

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -463,16 +464,17 @@ public class LoadTsFileManager {
           chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
       if (tableName != null
           && !(tableName.startsWith(TREE_MODEL_DATABASE_PREFIX) || tableName.equals(ROOT))) {
-        writer
-            .getSchema()
-            .getTableSchemaMap()
-            .computeIfAbsent(
-                tableName,
-                t ->
-                    TableSchema.of(
-                            DataNodeTableCache.getInstance()
-                                .getTable(partitionInfo.getDataRegion().getDatabaseName(), t))
-                        .toTsFileTableSchemaNoAttribute());
+        // If the table does not exist, it means that the table is all deleted by mods
+        final TsTable table =
+            DataNodeTableCache.getInstance()
+                .getTable(partitionInfo.getDataRegion().getDatabaseName(), tableName);
+        if (Objects.nonNull(table)) {
+          writer
+              .getSchema()
+              .getTableSchemaMap()
+              .computeIfAbsent(
+                  tableName, t -> TableSchema.of(table).toTsFileTableSchemaNoAttribute());
+        }
       }
 
       if (!Objects.equals(chunkData.getDevice(), dataPartition2LastDevice.get(partitionInfo))) {

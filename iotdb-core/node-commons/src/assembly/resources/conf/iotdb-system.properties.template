@@ -980,32 +980,32 @@ default_text_encoding=PLAIN
 # BOOLEAN compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-boolean_compressor=lz4
+boolean_compressor=LZ4
 
 # INT32/DATE compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-int32_compressor=lz4
+int32_compressor=LZ4
 
 # INT64/TIMESTAMP compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-int64_compressor=lz4
+int64_compressor=LZ4
 
 # FLOAT compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-float_compressor=lz4
+float_compressor=LZ4
 
 # DOUBLE compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-double_compressor=lz4
+double_compressor=LZ4
 
 # TEXT/BINARY/BLOB compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-text_compressor=lz4
+text_compressor=LZ4
 
 ####################
 ### Query Configurations
@@ -1945,6 +1945,10 @@ data_region_ratis_max_sleep_time_ms=10000
 # Datatype: int
 ratis_first_election_timeout_min_ms=50
 ratis_first_election_timeout_max_ms=150
+
+# the timeout threshold for transferring leader in ratis
+# Datatype: int
+ratis_transfer_leader_timeout_ms=30000
 
 # preserve certain logs when take snapshot and purge
 # effectiveMode: restart

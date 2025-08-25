@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
@@ -1092,6 +1093,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         regionReplicaSet == null || regionReplicaSet == DataPartition.NOT_ASSIGNED
             ? REGION_NOT_ASSIGNED
             : String.valueOf(regionReplicaSet.getRegionId().id));
+  }
+
+  @Override
+  public List<String> visitUnion(UnionNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Union-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
   }
 
   private List<String> render(PlanNode node, List<String> nodeBoxString, GraphContext context) {
