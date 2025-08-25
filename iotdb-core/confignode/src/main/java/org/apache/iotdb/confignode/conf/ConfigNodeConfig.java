@@ -82,6 +82,8 @@ public class ConfigNodeConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
+  private String dataPartitionAllocationStrategy = "INHERIT";
+
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
@@ -421,6 +423,14 @@ public class ConfigNodeConfig {
 
   public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public String getDataPartitionAllocationStrategy() {
+    return dataPartitionAllocationStrategy;
+  }
+
+  public void setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    this.dataPartitionAllocationStrategy = dataPartitionAllocationStrategy;
   }
 
   public int getCnRpcMaxConcurrentClientNum() {
