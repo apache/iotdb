@@ -55,7 +55,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MeasurementCache;
+import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MeasurementIdCache;
 
 public class AlignedChunkData implements ChunkData {
   protected static final int DEFAULT_INT32 = 0;
@@ -462,7 +462,7 @@ public class AlignedChunkData implements ChunkData {
       final byte chunkType = ReadWriteIOUtils.readByte(stream);
       ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
       String measurementID = chunkHeader.getMeasurementID();
-      chunkHeader.setMeasurementID(MeasurementCache.get(measurementID, m -> m));
+      chunkHeader.setMeasurementID(MeasurementIdCache.get(measurementID, m -> m));
       chunkHeaderList.add(chunkHeader);
     }
     final List<Integer> pageNumbers = new ArrayList<>();

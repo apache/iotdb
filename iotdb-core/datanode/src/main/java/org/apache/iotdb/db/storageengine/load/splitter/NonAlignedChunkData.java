@@ -47,7 +47,7 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MeasurementCache;
+import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MeasurementIdCache;
 
 public class NonAlignedChunkData implements ChunkData {
 
@@ -295,7 +295,7 @@ public class NonAlignedChunkData implements ChunkData {
     final byte chunkType = ReadWriteIOUtils.readByte(stream);
     final ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
     String measurementID = chunkHeader.getMeasurementID();
-    chunkHeader.setMeasurementID(MeasurementCache.get(measurementID, m -> m));
+    chunkHeader.setMeasurementID(MeasurementIdCache.get(measurementID, m -> m));
     int pageNumber = 0;
     if (needDecodeChunk) {
       pageNumber = ReadWriteIOUtils.readInt(stream);

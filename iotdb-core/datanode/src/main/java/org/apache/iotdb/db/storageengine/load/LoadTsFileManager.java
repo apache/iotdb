@@ -123,9 +123,9 @@ public class LoadTsFileManager {
                   (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
           .build();
 
-  public static final Cache<String, String> MeasurementCache =
+  public static final Cache<String, String> MeasurementIdCache =
       Caffeine.newBuilder()
-          .maximumWeight(CONFIG.getLoadMeasurementCacheSizeInBytes())
+          .maximumWeight(CONFIG.getLoadMeasurementIdCacheSizeInBytes())
           .weigher((String k, String v) -> v.length())
           .build();
 
@@ -430,8 +430,6 @@ public class LoadTsFileManager {
         LOGGER.info("Load TsFile dir {} is created.", dir.getPath());
       }
     }
-
-    private static int c = 0;
 
     /**
      * It should be noted that all AlignedChunkData of the same partition split from a source file

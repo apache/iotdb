@@ -4007,7 +4007,7 @@ public class IoTDBConfig {
     this.loadTableSchemaCacheSizeInBytes = loadTableSchemaCacheSizeInBytes;
   }
 
-  public long getLoadMeasurementCacheSizeInBytes() {
+  public long getLoadMeasurementIdCacheSizeInBytes() {
     return loadMeasurementCacheSizeInBytes;
   }
 

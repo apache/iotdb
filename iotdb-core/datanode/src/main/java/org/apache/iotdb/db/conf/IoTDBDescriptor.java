@@ -2317,7 +2317,7 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "load_measurement_cache_size_in_bytes",
-                Long.toString(conf.getLoadMeasurementCacheSizeInBytes()))));
+                Long.toString(conf.getLoadMeasurementIdCacheSizeInBytes()))));
 
     conf.setLoadActiveListeningMaxThreadNum(
         Integer.parseInt(
