@@ -60,7 +60,6 @@ public class ExportDataTable extends AbstractExportData {
   private static List<String> tables = new ArrayList<>();
   private static long processedRows;
   private static long lastPrintTime;
-  private static final int updateTimeInterval = 3000;
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException {

@@ -64,7 +64,6 @@ public class ExportDataTree extends AbstractExportData {
   private static Session session;
   private static long processedRows;
   private static long lastPrintTime;
-  private static final int updateTimeInterval = 1000;
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException, TException {
