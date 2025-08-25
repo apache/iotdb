@@ -50,7 +50,7 @@ public class PipePushMetaRPCHandler extends DataNodeAsyncRequestRPCHandler<TPush
     responseMap.put(requestId, response);
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      LOGGER.debug("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(
           "Failed to {} on DataNode: {}, response: {}",
