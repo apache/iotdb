@@ -236,6 +236,29 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     final Scope scope = analysis.getScope(table);
+
+    // Common Table Expression
+    final Query namedQuery = analysis.getNamedQuery(table);
+    if (namedQuery != null) {
+      RelationPlan subPlan;
+      if (analysis.isExpandableQuery(namedQuery)) {
+        // recursive cte
+        throw new SemanticException("unexpected recursive cte");
+      } else {
+        subPlan = process(namedQuery, null);
+      }
+
+      // Add implicit coercions if view query produces types that don't match the declared output
+      // types of the view (e.g., if the underlying tables referenced by the view changed)
+      List<Type> types =
+          analysis.getOutputDescriptor(table).getAllFields().stream()
+              .map(Field::getType)
+              .collect(toImmutableList());
+
+      NodeAndMappings coerced = coerce(subPlan, types, symbolAllocator, idAllocator);
+      return new RelationPlan(coerced.getNode(), scope, coerced.getFields(), outerContext);
+    }
+
     final ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     final Collection<Field> fields = scope.getRelationType().getAllFields();
