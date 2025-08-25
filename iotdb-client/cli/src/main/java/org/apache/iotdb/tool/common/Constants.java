@@ -204,6 +204,11 @@ public class Constants {
   public static final String TARGET_FILE_NAME = "prefix_file_name";
   public static final String TARGET_FILE_DESC = "Export file name .(optional)";
 
+  public static final String RPC_MAX_FRAME_SIZE_ARGS = "mfs";
+  public static final String RPC_MAX_FRAME_SIZE_NAME = "rpc_max_frame_size";
+  public static final String RPC_MAX_FRAME_SIZE_DESC =
+      "The max frame size of RPC, default is 536870912 bytes.(optional)";
+
   public static final String DATA_TYPE_ARGS = "dt";
   public static final String DATA_TYPE_NAME = "datatype";
   public static final String DATA_TYPE_DESC =

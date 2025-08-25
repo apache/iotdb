@@ -90,8 +90,9 @@ public abstract class AbstractDataTool {
   protected static String database;
   protected static String startTime;
   protected static int threadNum = 8;
+  protected static int rpcMaxFrameSize = 536870912;
   protected static String targetPath;
-  protected static long timeout = -1;
+  protected static long timeout = Long.MAX_VALUE;
   protected static String timeZoneID;
   protected static String timeFormat;
   protected static String exportType;

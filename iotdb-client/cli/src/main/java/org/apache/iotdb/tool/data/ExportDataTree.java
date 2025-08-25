@@ -20,6 +20,7 @@
 package org.apache.iotdb.tool.data;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -64,7 +65,18 @@ public class ExportDataTree extends AbstractExportData {
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException, TException {
-    session = new Session(host, Integer.parseInt(port), username, password);
+    session =
+        new Session(
+            host,
+            Integer.parseInt(port),
+            username,
+            password,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            rpcMaxFrameSize,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
     session.open(false);
     timestampPrecision = session.getTimestampPrecision();
     if (timeZoneID != null) {
