@@ -191,7 +191,7 @@ public class ExportDataTable extends AbstractExportData {
           writer.write(sqlBuilder.toString());
           processedRows += 1;
           if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-            ioTPrinter.printf("\rExported %d rows of data", processedRows);
+            ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
             lastPrintTime = System.currentTimeMillis();
           }
         }
@@ -259,36 +259,41 @@ public class ExportDataTable extends AbstractExportData {
     while (iterator.next()) {
       final String finalFilePath = filePath + "_" + fileIndex + ".csv";
       final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
-      csvPrinterWrapper.printRecord(headers);
-      fromOuterloop = true;
-      int countLine = 0;
-      while (countLine++ < linesPerFile && (fromOuterloop || iterator.next())) {
-        fromOuterloop = false;
-        for (int curColumnIndex = 0; curColumnIndex < totalColumns; curColumnIndex++) {
-          String columnValue = iterator.getString(curColumnIndex + 1);
-          if (columnValue.equals("null")) {
-            csvPrinterWrapper.print("");
-          } else {
+      try {
+        csvPrinterWrapper.printRecord(headers);
+        fromOuterloop = true;
+        int countLine = 0;
+        while (countLine++ < linesPerFile && (fromOuterloop || iterator.next())) {
+          fromOuterloop = false;
+          for (int curColumnIndex = 0; curColumnIndex < totalColumns; curColumnIndex++) {
             String curType = columnTypeList.get(curColumnIndex);
-            if (curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING")) {
-              csvPrinterWrapper.print("\"" + columnValue + "\"");
-            } else if (curType.equalsIgnoreCase("TIMESTAMP")) {
+            if (curType.equalsIgnoreCase("TIMESTAMP")) {
               csvPrinterWrapper.print(timeTrans(iterator.getLong(curColumnIndex + 1)));
             } else {
-              csvPrinterWrapper.print(columnValue);
+              String columnValue = iterator.getString(curColumnIndex + 1);
+              if (columnValue.equals("null")) {
+                csvPrinterWrapper.print("");
+              } else {
+                if (curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING")) {
+                  csvPrinterWrapper.print("\"" + columnValue + "\"");
+                } else {
+                  csvPrinterWrapper.print(columnValue);
+                }
+              }
             }
           }
+          csvPrinterWrapper.println();
+          processedRows += 1;
+          if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+            ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
+            lastPrintTime = System.currentTimeMillis();
+          }
         }
-        csvPrinterWrapper.println();
-        processedRows += 1;
-        if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-          ioTPrinter.printf("\rExported %d rows of data", processedRows);
-          lastPrintTime = System.currentTimeMillis();
-        }
+        fileIndex++;
+        csvPrinterWrapper.flush();
+      } finally {
+        csvPrinterWrapper.close();
       }
-      fileIndex++;
-      csvPrinterWrapper.flush();
-      csvPrinterWrapper.close();
     }
     ioTPrinter.print("\n");
   }
@@ -330,7 +335,7 @@ public class ExportDataTable extends AbstractExportData {
         tablet.reset();
       }
       if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-        ioTPrinter.printf("\rExported %d rows of data", processedRows);
+        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
         lastPrintTime = System.currentTimeMillis();
       }
     }
@@ -338,7 +343,7 @@ public class ExportDataTable extends AbstractExportData {
       writeToTsFile(tsFileWriter, tablet);
       processedRows += tablet.getRowSize();
       if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-        ioTPrinter.printf("\rExported %d rows of data", processedRows);
+        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
         lastPrintTime = System.currentTimeMillis();
       }
     }

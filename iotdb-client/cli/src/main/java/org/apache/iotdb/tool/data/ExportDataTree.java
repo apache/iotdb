@@ -28,7 +28,6 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -200,7 +199,7 @@ public class ExportDataTree extends AbstractExportData {
                 session.executeQueryStatement(
                     "SHOW TIMESERIES " + timeseries.get(index - startIndex), timeout);
             SessionDataSet.DataIterator iterator2 = sessionDataSet2.iterator();
-            if (ObjectUtils.isNotEmpty(iterator2.next())) {
+            if (iterator2.next()) {
               String value = iterator.getString(index + 1);
               if (value.equals("null")) {
                 headersTemp.remove(seriesList.get(index - startIndex));
@@ -227,7 +226,7 @@ public class ExportDataTree extends AbstractExportData {
                     + ");\n");
             processedRows += 1;
             if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-              ioTPrinter.printf("\rExported %d rows of data", processedRows);
+              ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
               lastPrintTime = System.currentTimeMillis();
             }
           }
@@ -290,36 +289,39 @@ public class ExportDataTree extends AbstractExportData {
     while (iterator.next()) {
       final String finalFilePath = filePath + "_" + fileIndex + ".csv";
       CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
-      csvPrinterWrapper.printRecord(headers);
-      fromOuterloop = true;
-      int i = 0;
-      while (i++ < linesPerFile && (fromOuterloop || iterator.next())) {
-        fromOuterloop = false;
-        csvPrinterWrapper.print(timeTrans(iterator.getLong(1)));
-        for (int curColumnIndex = 1; curColumnIndex < totalColumns; curColumnIndex++) {
-          String columnValue = iterator.getString(curColumnIndex + 1);
-          if (columnValue.equals("null")) {
-            csvPrinterWrapper.print("");
-          } else {
-            String curType = columnTypeList.get(curColumnIndex);
-            if ((curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING"))
-                && !columnValue.startsWith("root.")) {
-              csvPrinterWrapper.print("\"" + columnValue + "\"");
+      try {
+        csvPrinterWrapper.printRecord(headers);
+        fromOuterloop = true;
+        int i = 0;
+        while (i++ < linesPerFile && (fromOuterloop || iterator.next())) {
+          fromOuterloop = false;
+          csvPrinterWrapper.print(timeTrans(iterator.getLong(1)));
+          for (int curColumnIndex = 1; curColumnIndex < totalColumns; curColumnIndex++) {
+            String columnValue = iterator.getString(curColumnIndex + 1);
+            if (columnValue.equals("null")) {
+              csvPrinterWrapper.print("");
             } else {
-              csvPrinterWrapper.print(columnValue);
+              String curType = columnTypeList.get(curColumnIndex);
+              if ((curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING"))
+                  && !columnValue.startsWith("root.")) {
+                csvPrinterWrapper.print("\"" + columnValue + "\"");
+              } else {
+                csvPrinterWrapper.print(columnValue);
+              }
             }
           }
+          csvPrinterWrapper.println();
+          processedRows += 1;
+          if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+            ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
+            lastPrintTime = System.currentTimeMillis();
+          }
         }
-        csvPrinterWrapper.println();
-        processedRows += 1;
-        if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-          ioTPrinter.printf("\rExported %d rows of data", processedRows);
-          lastPrintTime = System.currentTimeMillis();
-        }
+        fileIndex++;
+        csvPrinterWrapper.flush();
+      } finally {
+        csvPrinterWrapper.close();
       }
-      fileIndex++;
-      csvPrinterWrapper.flush();
-      csvPrinterWrapper.close();
     }
     ioTPrinter.print("\n");
   }
@@ -361,7 +363,7 @@ public class ExportDataTree extends AbstractExportData {
         }
       }
       if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-        ioTPrinter.printf("\rExported %d rows of data", processedRows);
+        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
         lastPrintTime = System.currentTimeMillis();
       }
     }
@@ -372,7 +374,7 @@ public class ExportDataTree extends AbstractExportData {
         processedRows += tablet.getRowSize();
       }
       if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-        ioTPrinter.printf("\rExported %d rows of data", processedRows);
+        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
         lastPrintTime = System.currentTimeMillis();
       }
     }
