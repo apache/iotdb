@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
@@ -766,6 +767,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern exchange() {
     return node(ExchangeNode.class).with(new ExchangeNodeMatcher());
+  }
+
+  public static PlanMatchPattern union(PlanMatchPattern... sources) {
+    return node(UnionNode.class, sources);
   }
 
   public static PlanMatchPattern enforceSingleRow(PlanMatchPattern source) {

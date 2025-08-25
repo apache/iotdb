@@ -21,16 +21,17 @@ import os
 import psutil
 import torch
 
-from ainode.core.inference.inference_request import InferenceRequest
-from ainode.core.inference.scheduler.abstract_scheduler import AbstractScheduler
+from ainode.core.inference.request_scheduler.abstract_request_scheduler import (
+    AbstractRequestScheduler,
+)
 from ainode.core.log import Logger
 
 logger = Logger()
 
 
-class BasicScheduler(AbstractScheduler):
+class BasicRequestScheduler(AbstractRequestScheduler):
     """
-    A simple FIFO scheduler that selects requests based on memory availability and activation/step size.
+    A simple FIFO request scheduler that selects requests based on memory availability and activation/step size.
     """
 
     def __init__(

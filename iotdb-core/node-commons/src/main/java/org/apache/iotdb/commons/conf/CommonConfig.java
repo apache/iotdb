@@ -308,7 +308,7 @@ public class CommonConfig {
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private volatile long pipeCheckMemoryEnoughIntervalMs = 10L;
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
-  private int pipeMaxAlignedSeriesNumInOneBatch = 15;
+  private long pipeMaxAlignedSeriesChunkSizeInOneBatch = (long) 16 * 1024 * 1024; // 16MB;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
@@ -1159,6 +1159,12 @@ public class CommonConfig {
   }
 
   public void setPipeAsyncConnectorSelectorNumber(int pipeAsyncConnectorSelectorNumber) {
+    if (pipeAsyncConnectorSelectorNumber <= 0) {
+      logger.info(
+          "pipeAsyncConnectorSelectorNumber should be greater than 0, configuring it not to change.");
+      return;
+    }
+    pipeAsyncConnectorSelectorNumber = Math.max(4, pipeAsyncConnectorSelectorNumber);
     if (this.pipeAsyncConnectorSelectorNumber == pipeAsyncConnectorSelectorNumber) {
       return;
     }
@@ -1171,6 +1177,12 @@ public class CommonConfig {
   }
 
   public void setPipeAsyncConnectorMaxClientNumber(int pipeAsyncConnectorMaxClientNumber) {
+    if (pipeAsyncConnectorMaxClientNumber <= 0) {
+      logger.info(
+          " pipeAsyncConnectorMaxClientNumber should be greater than 0, configuring it not to change.");
+      return;
+    }
+    pipeAsyncConnectorMaxClientNumber = Math.max(32, pipeAsyncConnectorMaxClientNumber);
     if (this.pipeAsyncConnectorMaxClientNumber == pipeAsyncConnectorMaxClientNumber) {
       return;
     }
@@ -1185,6 +1197,12 @@ public class CommonConfig {
 
   public void setPipeAsyncConnectorMaxTsFileClientNumber(
       int pipeAsyncConnectorMaxTsFileClientNumber) {
+    if (pipeAsyncConnectorMaxTsFileClientNumber <= 0) {
+      logger.info(
+          "pipeAsyncConnectorMaxTsFileClientNumber should be greater than 0, configuring it not to change.");
+      return;
+    }
+    pipeAsyncConnectorMaxTsFileClientNumber = Math.max(16, pipeAsyncConnectorMaxTsFileClientNumber);
     if (this.pipeAsyncConnectorMaxTsFileClientNumber == pipeAsyncConnectorMaxTsFileClientNumber) {
       return;
     }
@@ -1329,6 +1347,12 @@ public class CommonConfig {
   }
 
   public void setPipeSubtaskExecutorMaxThreadNum(int pipeSubtaskExecutorMaxThreadNum) {
+    if (pipeSubtaskExecutorMaxThreadNum <= 0) {
+      logger.info(
+          "pipeSubtaskExecutorMaxThreadNum should be greater than 0, configuring it not to change.");
+      return;
+    }
+    pipeSubtaskExecutorMaxThreadNum = Math.max(5, pipeSubtaskExecutorMaxThreadNum);
     if (this.pipeSubtaskExecutorMaxThreadNum == pipeSubtaskExecutorMaxThreadNum) {
       return;
     }
@@ -1679,17 +1703,19 @@ public class CommonConfig {
         "pipeLeaderCacheMemoryUsagePercentage is set to {}", pipeLeaderCacheMemoryUsagePercentage);
   }
 
-  public int getPipeMaxAlignedSeriesNumInOneBatch() {
-    return pipeMaxAlignedSeriesNumInOneBatch;
+  public long getPipeMaxAlignedSeriesChunkSizeInOneBatch() {
+    return pipeMaxAlignedSeriesChunkSizeInOneBatch;
   }
 
-  public void setPipeMaxAlignedSeriesNumInOneBatch(int pipeMaxAlignedSeriesNumInOneBatch) {
-    if (this.pipeMaxAlignedSeriesNumInOneBatch == pipeMaxAlignedSeriesNumInOneBatch) {
+  public void setPipeMaxAlignedSeriesChunkSizeInOneBatch(
+      long pipeMaxAlignedSeriesChunkSizeInOneBatch) {
+    if (this.pipeMaxAlignedSeriesChunkSizeInOneBatch == pipeMaxAlignedSeriesChunkSizeInOneBatch) {
       return;
     }
-    this.pipeMaxAlignedSeriesNumInOneBatch = pipeMaxAlignedSeriesNumInOneBatch;
+    this.pipeMaxAlignedSeriesChunkSizeInOneBatch = pipeMaxAlignedSeriesChunkSizeInOneBatch;
     logger.info(
-        "pipeMaxAlignedSeriesNumInOneBatch is set to {}", pipeMaxAlignedSeriesNumInOneBatch);
+        "pipeMaxAlignedSeriesChunkSizeInOneBatch is set to {}",
+        pipeMaxAlignedSeriesChunkSizeInOneBatch);
   }
 
   public long getPipeListeningQueueTransferSnapshotThreshold() {

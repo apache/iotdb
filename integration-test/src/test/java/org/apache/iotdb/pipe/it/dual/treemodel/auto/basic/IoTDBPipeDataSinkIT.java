@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
@@ -295,6 +296,12 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
   private void testReceiverAutoCreate(final Map<String, String> extractorAttributes)
       throws Exception {
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -359,12 +366,14 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                       "root.ln.wf01.wt01.date,null,root.ln,DATE,TS_2DIFF,LZ4,null,null,null,null,BASE,",
                       "root.ln.wf01.wt01.text,null,root.ln,TEXT,PLAIN,LZ4,null,null,null,null,BASE,",
                       "root.ln.wf01.wt01.string,null,root.ln,STRING,PLAIN,LZ4,null,null,null,null,BASE,",
-                      "root.ln.wf01.wt01.blob,null,root.ln,BLOB,PLAIN,LZ4,null,null,null,null,BASE,"))));
+                      "root.ln.wf01.wt01.blob,null,root.ln,BLOB,PLAIN,LZ4,null,null,null,null,BASE,"))),
+          handleFailure);
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show devices root.ln.wf01.wt02",
           "Device,IsAligned,Template,TTL(ms),",
-          Collections.singleton("root.ln.wf01.wt02,true,null,INF,"));
+          Collections.singleton("root.ln.wf01.wt02,true,null,INF,"),
+          handleFailure);
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -47,6 +48,8 @@ public class MemoryEstimationHelper {
       RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
   private static final long INTEGER_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+  public static final long TIME_RANGE_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
 
   private MemoryEstimationHelper() {
     // hide the constructor
@@ -95,6 +98,19 @@ public class MemoryEstimationHelper {
       totalSize += PARTIAL_PATH_INSTANCE_SIZE;
       totalSize += partialPath.getIDeviceID().ramBytesUsed();
       totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
+    }
+    return totalSize;
+  }
+
+  public static long getEstimatedSizeOfMeasurementPathNodes(
+      @Nullable final PartialPath partialPath) {
+    if (partialPath == null) {
+      return 0;
+    }
+    long totalSize = MEASUREMENT_PATH_INSTANCE_SIZE;
+    String[] nodes = partialPath.getNodes();
+    if (nodes != null && nodes.length > 0) {
+      totalSize += Arrays.stream(nodes).mapToLong(RamUsageEstimator::sizeOf).sum();
     }
     return totalSize;
   }
