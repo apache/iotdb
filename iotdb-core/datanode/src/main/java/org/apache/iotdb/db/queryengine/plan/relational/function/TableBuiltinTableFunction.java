@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.PatternMatchTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
@@ -40,7 +41,8 @@ public enum TableBuiltinTableFunction {
   SESSION("session"),
   VARIATION("variation"),
   CAPACITY("capacity"),
-  FORECAST("forecast");
+  FORECAST("forecast"),
+  PATTERN_MATCH("pattern_match");
 
   private final String functionName;
 
@@ -78,6 +80,8 @@ public enum TableBuiltinTableFunction {
         return new SessionTableFunction();
       case "variation":
         return new VariationTableFunction();
+      case "pattern_match":
+        return new PatternMatchTableFunction();
       case "capacity":
         return new CapacityTableFunction();
       case "forecast":
