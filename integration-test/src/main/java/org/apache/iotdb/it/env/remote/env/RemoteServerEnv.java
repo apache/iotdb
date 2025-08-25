@@ -143,6 +143,12 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public Connection getAvailableConnection(String username, String password, String sqlDialect)
+      throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password, String sqlDialect) {
     throw new UnsupportedOperationException();
