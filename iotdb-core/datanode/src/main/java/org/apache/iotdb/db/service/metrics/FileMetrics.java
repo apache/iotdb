@@ -22,6 +22,7 @@ package org.apache.iotdb.db.service.metrics;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.service.metrics.file.CompactionFileMetrics;
 import org.apache.iotdb.db.service.metrics.file.ModsFileMetrics;
+import org.apache.iotdb.db.service.metrics.file.ObjectFileMetrics;
 import org.apache.iotdb.db.service.metrics.file.SystemRelatedFileMetrics;
 import org.apache.iotdb.db.service.metrics.file.TsFileMetrics;
 import org.apache.iotdb.db.service.metrics.file.WalFileMetrics;
@@ -40,6 +41,7 @@ public class FileMetrics implements IMetricSet {
   private static final WalFileMetrics WAL_FILE_METRICS = new WalFileMetrics();
   private static final SystemRelatedFileMetrics SYSTEM_RELATED_FILE_METRICS =
       new SystemRelatedFileMetrics();
+  private static final ObjectFileMetrics OBJECT_FILE_METRICS = new ObjectFileMetrics();
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -48,6 +50,7 @@ public class FileMetrics implements IMetricSet {
     COMPACTION_FILE_METRICS.bindTo(metricService);
     WAL_FILE_METRICS.bindTo(metricService);
     SYSTEM_RELATED_FILE_METRICS.bindTo(metricService);
+    OBJECT_FILE_METRICS.bindTo(metricService);
   }
 
   @Override
@@ -57,6 +60,7 @@ public class FileMetrics implements IMetricSet {
     COMPACTION_FILE_METRICS.unbindFrom(metricService);
     WAL_FILE_METRICS.unbindFrom(metricService);
     SYSTEM_RELATED_FILE_METRICS.unbindFrom(metricService);
+    OBJECT_FILE_METRICS.unbindFrom(metricService);
   }
 
   // region TsFile Related Metrics Update
@@ -103,6 +107,22 @@ public class FileMetrics implements IMetricSet {
   }
 
   // endregion
+
+  public void increaseObjectFileNum(int num) {
+    OBJECT_FILE_METRICS.increaseObjectFileNum(num);
+  }
+
+  public void decreaseObjectFileNum(int num) {
+    OBJECT_FILE_METRICS.decreaseObjectFileNum(num);
+  }
+
+  public void increaseObjectFileSize(long size) {
+    OBJECT_FILE_METRICS.increaseObjectFileSize(size);
+  }
+
+  public void decreaseObjectFileSize(long size) {
+    OBJECT_FILE_METRICS.decreaseObjectFileSize(size);
+  }
 
   public Map<Integer, Long> getRegionSizeMap() {
     return TS_FILE_METRICS.getRegionSizeMap();

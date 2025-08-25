@@ -175,6 +175,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -205,6 +206,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.commons.utils.PathUtils.isTableModelDatabase;
@@ -1882,6 +1884,22 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteAllObjectFiles(List<String> folders) {
     for (String objectFolder : folders) {
       File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionId);
+      try (Stream<Path> paths = Files.walk(dataRegionObjectFolder.toPath())) {
+        paths
+            .filter(Files::isRegularFile)
+            .filter(
+                path -> {
+                  String name = path.getFileName().toString();
+                  return name.endsWith(".bin");
+                })
+            .forEach(
+                path -> {
+                  FileMetrics.getInstance().decreaseObjectFileNum(1);
+                  FileMetrics.getInstance().decreaseObjectFileSize(path.toFile().length());
+                });
+      } catch (IOException e) {
+        logger.error("Failed to check Object Files: {}", e.getMessage());
+      }
       if (FSUtils.getFSType(dataRegionObjectFolder) != FSType.LOCAL) {
         try {
           fsFactory.deleteDirectory(dataRegionObjectFolder.getPath());
@@ -3074,11 +3092,15 @@ public class DataRegion implements IDataRegionForQuery {
               objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
           Files.move(
               objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          FileMetrics.getInstance().decreaseObjectFileNum(1);
+          FileMetrics.getInstance().decreaseObjectFileSize(objectBackFile.length());
           Files.delete(objectBackFile.toPath());
         } else {
           Files.move(
               objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
+        FileMetrics.getInstance().increaseObjectFileNum(1);
+        FileMetrics.getInstance().increaseObjectFileSize(objectFile.length());
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
