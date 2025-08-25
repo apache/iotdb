@@ -62,6 +62,9 @@ public class ExportDataTree extends AbstractExportData {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static Session session;
+  private static long processedRows;
+  private static long lastPrintTime;
+  private static final int updateTimeInterval = 3000;
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException, TException {
@@ -131,6 +134,8 @@ public class ExportDataTree extends AbstractExportData {
 
   private void exportToSqlFile(SessionDataSet sessionDataSet, String filePath)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
+    processedRows = 0;
+    lastPrintTime = 0;
     List<String> headers = sessionDataSet.getColumnNames();
     int fileIndex = 0;
     String deviceName = null;
@@ -220,6 +225,11 @@ public class ExportDataTree extends AbstractExportData {
                     + sqlMiddle
                     + String.join(",", values)
                     + ");\n");
+            processedRows += 1;
+            if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+              ioTPrinter.printf("\rExported %d rows of data", processedRows);
+              lastPrintTime = System.currentTimeMillis();
+            }
           }
           hasNext = sessionDataSet.hasNext();
           if (!hasNext) {
@@ -234,6 +244,7 @@ public class ExportDataTree extends AbstractExportData {
       }
       fileIndex++;
     }
+    ioTPrinter.print("\n");
   }
 
   private static Boolean exportToTsFile(SessionDataSet sessionDataSet, String filePath)
@@ -276,6 +287,8 @@ public class ExportDataTree extends AbstractExportData {
 
   private void exportToCsvFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
+    processedRows = 0;
+    lastPrintTime = 0;
     List<String> headers = sessionDataSet.getColumnNames();
     int fileIndex = 0;
     boolean hasNext = sessionDataSet.hasNext();
@@ -306,6 +319,11 @@ public class ExportDataTree extends AbstractExportData {
                   }
                 });
         csvPrinterWrapper.println();
+        processedRows += 1;
+        if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+          ioTPrinter.printf("\rExported %d rows of data", processedRows);
+          lastPrintTime = System.currentTimeMillis();
+        }
         hasNext = sessionDataSet.hasNext();
         if (!hasNext) {
           break;
@@ -317,6 +335,7 @@ public class ExportDataTree extends AbstractExportData {
       }
       fileIndex++;
     }
+    ioTPrinter.print("\n");
   }
 
   private static void writeWithTablets(
@@ -329,6 +348,8 @@ public class ExportDataTree extends AbstractExportData {
           StatementExecutionException,
           IOException,
           WriteProcessException {
+    processedRows = 0;
+    lastPrintTime = 0;
     while (sessionDataSet.hasNext()) {
       RowRecord rowRecord = sessionDataSet.next();
       List<Field> fields = rowRecord.getFields();
@@ -349,16 +370,27 @@ public class ExportDataTree extends AbstractExportData {
 
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           writeToTsFile(alignedDevices, tsFileWriter, tablet);
+          processedRows += tablet.getRowSize();
           tablet.reset();
         }
+      }
+      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+        ioTPrinter.printf("\rExported %d rows of data", processedRows);
+        lastPrintTime = System.currentTimeMillis();
       }
     }
 
     for (Tablet tablet : tabletList) {
       if (tablet.getRowSize() != 0) {
         writeToTsFile(alignedDevices, tsFileWriter, tablet);
+        processedRows += tablet.getRowSize();
+      }
+      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+        ioTPrinter.printf("\rExported %d rows of data", processedRows);
+        lastPrintTime = System.currentTimeMillis();
       }
     }
+    ioTPrinter.print("\n");
   }
 
   private static void writeToTsFile(

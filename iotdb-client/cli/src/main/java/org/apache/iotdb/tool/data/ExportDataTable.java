@@ -326,10 +326,10 @@ public class ExportDataTable extends AbstractExportData {
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         writeToTsFile(tsFileWriter, tablet);
+        processedRows += tablet.getRowSize();
         tablet.initBitMaps();
         tablet.reset();
       }
-      processedRows += 1;
       if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
         ioTPrinter.printf("\rExported %d rows of data", processedRows);
         lastPrintTime = System.currentTimeMillis();
@@ -337,7 +337,13 @@ public class ExportDataTable extends AbstractExportData {
     }
     if (tablet.getRowSize() != 0) {
       writeToTsFile(tsFileWriter, tablet);
+      processedRows += tablet.getRowSize();
+      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+        ioTPrinter.printf("\rExported %d rows of data", processedRows);
+        lastPrintTime = System.currentTimeMillis();
+      }
     }
+    ioTPrinter.print("\n");
   }
 
   private static void writeToTsFile(ITsFileWriter tsFileWriter, Tablet tablet)
