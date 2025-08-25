@@ -212,6 +212,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
             builder.getColumnBuilder(0).writeBinary(binary);
             builder.declarePosition();
           }
+          next();
         }
         break;
       default:
