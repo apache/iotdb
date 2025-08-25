@@ -710,6 +710,38 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregation functions [%s] should only have three arguments", functionName));
         }
         break;
+      case SqlConstant.APPROX_PERCENTILE:
+        int argumentSize = argumentTypes.size();
+        if (argumentSize != 2 && argumentSize != 3) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have two or three arguments",
+                  functionName));
+        }
+
+        Type valueColumnType = argumentTypes.get(0);
+        if (!isNumericType(valueColumnType)) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName));
+        }
+
+        // Validate percentage and weight parameters
+        boolean hasInvalidTypes =
+            (argumentSize == 2 && !isDecimalType(argumentTypes.get(1)))
+                || (argumentSize == 3
+                    && (!isIntegerNumber(argumentTypes.get(1))
+                        || !isDecimalType(argumentTypes.get(2))));
+
+        if (hasInvalidTypes) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have weight as integer type and percentage as decimal type",
+                  functionName));
+        }
+
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -733,6 +765,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MIN:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
+      case SqlConstant.APPROX_PERCENTILE:
         return argumentTypes.get(0);
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -1009,6 +1042,10 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isBool(Type type) {
     return BOOLEAN.equals(type);
+  }
+
+  public static boolean isDecimalType(Type type) {
+    return DOUBLE.equals(type) || FLOAT.equals(type);
   }
 
   public static boolean isSupportedMathNumericType(Type type) {

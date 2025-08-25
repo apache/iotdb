@@ -29,6 +29,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.FloatGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxCountDistinctAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxPercentileAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxPercentileWithWeightAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAllAccumulator;
@@ -261,6 +263,12 @@ public class AccumulatorFactory {
         return new GroupedApproxCountDistinctAccumulator(inputDataTypes.get(0));
       case APPROX_MOST_FREQUENT:
         return getGroupedApproxMostFrequentAccumulator(inputDataTypes.get(0));
+      case APPROX_PERCENTILE:
+        if (inputDataTypes.size() == 2) {
+          return new GroupedApproxPercentileAccumulator(inputDataTypes.get(0));
+        } else {
+          return new GroupedApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
+        }
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -331,6 +339,12 @@ public class AccumulatorFactory {
         return new ApproxCountDistinctAccumulator(inputDataTypes.get(0));
       case APPROX_MOST_FREQUENT:
         return getApproxMostFrequentAccumulator(inputDataTypes.get(0));
+      case APPROX_PERCENTILE:
+        if (inputDataTypes.size() == 2) {
+          return new ApproxPercentileAccumulator(inputDataTypes.get(0));
+        } else {
+          return new ApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
+        }
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
