@@ -535,6 +535,7 @@ class Session {
 private:
     std::string host_;
     int rpcPort_;
+    std::vector<string> nodeUrls_;
     std::string username_;
     std::string password_;
     const TSProtocolVersion::type protocolVersion_ = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
@@ -605,7 +606,7 @@ private:
 
     void initZoneId();
 
-    void initNodesSupplier();
+    void initNodesSupplier(const std::vector<std::string>& nodeUrls = std::vector<std::string>());
 
     void initDefaultSessionConnection();
 
@@ -664,6 +665,12 @@ public:
         initNodesSupplier();
     }
 
+    Session(const std::vector<string>& nodeUrls, const std::string& username, const std::string& password)
+            : nodeUrls_(nodeUrls), username_(username), password_(password), version(Version::V_1_0) {
+        initZoneId();
+        initNodesSupplier(this->nodeUrls_);
+    }
+
     Session(const std::string& host, int rpcPort, const std::string& username, const std::string& password)
         : fetchSize_(DEFAULT_FETCH_SIZE) {
         this->host_ = host;
@@ -714,8 +721,9 @@ public:
         this->database_ = builder->database;
         this->enableAutoFetch_ = builder->enableAutoFetch;
         this->enableRedirection_ = builder->enableRedirections;
+        this->nodeUrls_ = builder->nodeUrls;
         initZoneId();
-        initNodesSupplier();
+        initNodesSupplier(this->nodeUrls_);
     }
 
     ~Session();

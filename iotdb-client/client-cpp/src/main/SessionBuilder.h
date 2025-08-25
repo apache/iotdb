@@ -17,64 +17,74 @@
  * under the License.
  */
 
-// This file is a translation of the Java file iotdb-client/session/src/main/java/org/apache/iotdb/session/TableSessionBuilder.java
+#ifndef IOTDB_SESSION_BUILDER_H
+#define IOTDB_SESSION_BUILDER_H
 
-#ifndef IOTDB_TABLESESSIONBUILDER_H
-#define IOTDB_TABLESESSIONBUILDER_H
-
-#include "TableSession.h"
 #include "AbstractSessionBuilder.h"
 
-class TableSessionBuilder : public AbstractSessionBuilder {
-    /*
-        std::string host;
-        int rpcPort;
-        std::string username;
-        std::string password;
-        std::string zoneId;
-        int fetchSize;
-        std::string sqlDialect = "tree"; // default sql dialect
-        std::string database;
-    */
+class SessionBuilder : public AbstractSessionBuilder {
 public:
-    TableSessionBuilder* host(const std::string &host) {
+    SessionBuilder* host(const std::string &host) {
         AbstractSessionBuilder::host = host;
         return this;
     }
-    TableSessionBuilder* rpcPort(int rpcPort) {
+
+    SessionBuilder* rpcPort(int rpcPort) {
         AbstractSessionBuilder::rpcPort = rpcPort;
         return this;
     }
-    TableSessionBuilder* username(const std::string &username) {
+
+    SessionBuilder* username(const std::string &username) {
         AbstractSessionBuilder::username = username;
         return this;
     }
-    TableSessionBuilder* password(const std::string &password) {
+
+    SessionBuilder* password(const std::string &password) {
         AbstractSessionBuilder::password = password;
         return this;
     }
-    TableSessionBuilder* zoneId(const std::string &zoneId) {
+
+    SessionBuilder* zoneId(const std::string &zoneId) {
         AbstractSessionBuilder::zoneId = zoneId;
         return this;
     }
-    TableSessionBuilder* fetchSize(int fetchSize) {
+
+    SessionBuilder* fetchSize(int fetchSize) {
         AbstractSessionBuilder::fetchSize = fetchSize;
         return this;
     }
-    TableSessionBuilder* database(const std::string &database) {
+
+    SessionBuilder* database(const std::string &database) {
         AbstractSessionBuilder::database = database;
         return this;
     }
-    TableSessionBuilder* nodeUrls(const std::vector<string>& nodeUrls) {
+
+    SessionBuilder* nodeUrls(const std::vector<std::string>& nodeUrls) {
         AbstractSessionBuilder::nodeUrls = nodeUrls;
         return this;
     }
-    TableSession* build() {
-        sqlDialect = "table";
+
+    SessionBuilder* enableAutoFetch(bool enableAutoFetch) {
+        AbstractSessionBuilder::enableAutoFetch = enableAutoFetch;
+        return this;
+    }
+
+    SessionBuilder* enableRedirections(bool enableRedirections) {
+        AbstractSessionBuilder::enableRedirections = enableRedirections;
+        return this;
+    }
+
+    SessionBuilder* enableRPCCompression(bool enableRPCCompression) {
+        AbstractSessionBuilder::enableRPCCompression = enableRPCCompression;
+        return this;
+    }
+
+    Session* build() {
+        sqlDialect = "tree";
         Session* newSession = new Session(this);
         newSession->open(false);
-        return new TableSession(newSession);
+        return new Session(this);
     }
 };
 
-#endif // IOTDB_TABLESESSIONBUILDER_H
+#endif // IOTDB_SESSION_BUILDER_H

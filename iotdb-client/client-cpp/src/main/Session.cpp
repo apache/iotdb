@@ -725,17 +725,35 @@ void Session::initZoneId() {
     zoneId_ = zoneStr;
 }
 
-void Session::initNodesSupplier() {
+void Session::initNodesSupplier(const std::vector<std::string>& nodeUrls) {
     std::vector<TEndPoint> endPoints;
-    TEndPoint endPoint;
-    endPoint.__set_ip(host_);
-    endPoint.__set_port(rpcPort_);
-    endPoints.emplace_back(endPoint);
+
+    if (nodeUrls.empty() && host_.empty()) {
+        throw IoTDBException("No available nodes: both nodeUrls and host are empty");
+    }
+
+    // Add local endpoint if nodeUrls is empty or doesn't contain host_
+    if (nodeUrls.empty()) {
+        TEndPoint endPoint;
+        endPoint.__set_ip(host_);
+        endPoint.__set_port(rpcPort_);
+        endPoints.emplace_back(std::move(endPoint));
+    } else {
+        for (auto& url : nodeUrls) {
+            endPoints.emplace_back(UrlUtils::parseTEndPointIpv4AndIpv6Url(url));
+        }
+    }
+
     if (enableAutoFetch_) {
         nodesSupplier_ = NodesSupplier::create(endPoints, username_, password_);
     }
     else {
         nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
+    }
+    if (host_.empty()) {
+        auto queryNode = nodesSupplier_->getQueryEndPoint();
+        host_ = queryNode.value().ip;
+        rpcPort_ = queryNode.value().port;
     }
 }
 

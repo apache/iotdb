@@ -35,6 +35,7 @@ public:
     bool enableAutoFetch = true;
     bool enableRedirections = true;
     bool enableRPCCompression = false;
+    std::vector<std::string> nodeUrls;
 };
 
 #endif // IOTDB_ABSTRACTSESSIONBUILDER_H
