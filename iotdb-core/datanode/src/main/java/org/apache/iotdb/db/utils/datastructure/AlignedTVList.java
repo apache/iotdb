@@ -1500,8 +1500,9 @@ public abstract class AlignedTVList extends TVList {
     }
 
     byte[] rowBitsArr = new byte[rowCount / Byte.SIZE + 1];
-    int bitsMapSize = rowCount / ARRAY_SIZE + 1;
-    boolean[] allNullArray = new boolean[bitsMapSize];
+    int bitsMapSize =
+        rowCount % ARRAY_SIZE == 0 ? rowCount / ARRAY_SIZE : rowCount / ARRAY_SIZE + 1;
+    boolean[] allNotNullArray = new boolean[bitsMapSize];
     Arrays.fill(rowBitsArr, (byte) 0xFF);
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
@@ -1512,7 +1513,7 @@ public abstract class AlignedTVList extends TVList {
         int row = 0;
         boolean isEnd = true;
         for (int i = 0; i < bitsMapSize; i++) {
-          if (allNullArray[i]) {
+          if (allNotNullArray[i]) {
             row += ARRAY_SIZE;
             continue;
           }
@@ -1524,18 +1525,18 @@ public abstract class AlignedTVList extends TVList {
 
           if (bitMap == null) {
             Arrays.fill(rowBitsArr, index, index + size, (byte) 0x00);
-            allNullArray[i] = true;
+            allNotNullArray[i] = true;
             continue;
           }
 
-          byte bits = (byte) 0XFF;
+          byte bits = (byte) 0X00;
           for (int j = 0; j < size; j++) {
             rowBitsArr[index] &= bitMap.getByteArray()[j];
-            bits &= rowBitsArr[index++];
+            bits |= rowBitsArr[index++];
             isEnd = false;
           }
 
-          allNullArray[i] = bits == (byte) 0;
+          allNotNullArray[i] = bits == (byte) 0;
         }
 
         if (isEnd) {
