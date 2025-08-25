@@ -19,6 +19,7 @@
 
 #include "catch.hpp"
 #include "Session.h"
+#include "SessionBuilder.h"
 
 using namespace std;
 
@@ -60,6 +61,42 @@ TEST_CASE("Create timeseries success", "[createTimeseries]") {
     }
     REQUIRE(session->checkTimeseriesExists("root.test.d1.s1") == true);
     session->deleteTimeseries("root.test.d1.s1");
+}
+
+TEST_CASE("Test Session constructor with nodeUrls", "[SessionInitAndOperate]") {
+    CaseReporter cr("SessionInitWithNodeUrls");
+
+    std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
+    std::shared_ptr<Session> localSession = std::make_shared<Session>(nodeUrls, "root", "root");
+    localSession->open();
+    if (!localSession->checkTimeseriesExists("root.test.d1.s1")) {
+        localSession->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    }
+    REQUIRE(localSession->checkTimeseriesExists("root.test.d1.s1") == true);
+    localSession->deleteTimeseries("root.test.d1.s1");
+    localSession->close();
+}
+
+TEST_CASE("Test Session builder with nodeUrls", "[SessionBuilderInit]") {
+    CaseReporter cr("SessionInitWithNodeUrls");
+
+    std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
+    auto builder = std::unique_ptr<SessionBuilder>(new SessionBuilder());
+    std::shared_ptr<Session> session =
+        std::shared_ptr<Session>(
+            builder
+            ->username("root")
+            ->password("root")
+            ->nodeUrls(nodeUrls)
+            ->build()
+        );
+    session->open();
+    if (!session->checkTimeseriesExists("root.test.d1.s1")) {
+        session->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    }
+    REQUIRE(session->checkTimeseriesExists("root.test.d1.s1") == true);
+    session->deleteTimeseries("root.test.d1.s1");
+    session->close();
 }
 
 TEST_CASE("Delete timeseries success", "[deleteTimeseries]") {
@@ -714,4 +751,63 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
     sessionDataSet = session->executeLastDataQuery(paths, 100000);
     sessionDataSet->setFetchSize(1024);
     REQUIRE(sessionDataSet->hasNext() == false);
+}
+
+// Helper function for comparing TEndPoint with detailed error message
+void assertTEndPointEqual(const TEndPoint& actual,
+                         const std::string& expectedIp,
+                         int expectedPort,
+                         const char* file,
+                         int line) {
+    if (actual.ip != expectedIp || actual.port != expectedPort) {
+        std::stringstream ss;
+        ss << "\nTEndPoint mismatch:\nExpected: " << expectedIp << ":" << expectedPort
+           << "\nActual:   " << actual.ip << ":" << actual.port;
+        Catch::SourceLineInfo location(file, line);
+        Catch::AssertionHandler handler("TEndPoint comparison", location, ss.str(), Catch::ResultDisposition::Normal);
+        handler.handleMessage(Catch::ResultWas::ExplicitFailure, ss.str());
+        handler.complete();
+    }
+}
+
+// Macro to simplify test assertions
+#define REQUIRE_TENDPOINT(actual, expectedIp, expectedPort) \
+    assertTEndPointEqual(actual, expectedIp, expectedPort, __FILE__, __LINE__)
+
+TEST_CASE("UrlUtils - parseTEndPointIpv4AndIpv6Url", "[UrlUtils]") {
+    // Test valid IPv4 addresses
+    SECTION("Valid IPv4") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("192.168.1.1:8080"), "192.168.1.1", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("10.0.0.1:80"), "10.0.0.1", 80);
+    }
+
+    // Test valid IPv6 addresses
+    SECTION("Valid IPv6") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("[2001:db8::1]:8080"), "2001:db8::1", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("[::1]:80"), "::1", 80);
+    }
+
+    // Test hostnames
+    SECTION("Hostnames") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("localhost:8080"), "localhost", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("example.com:443"), "example.com", 443);
+    }
+
+    // Test edge cases
+    SECTION("Edge cases") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url(""), "", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("127.0.0.1"), "127.0.0.1", 0);
+    }
+
+    // Test invalid inputs
+    SECTION("Invalid inputs") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("192.168.1.1:abc"), "192.168.1.1:abc", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("]invalid[:80"), "]invalid[", 80);
+    }
+
+    // Test port ranges
+    SECTION("Port ranges") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("localhost:0"), "localhost", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("127.0.0.1:65535"), "127.0.0.1", 65535);
+    }
 }
