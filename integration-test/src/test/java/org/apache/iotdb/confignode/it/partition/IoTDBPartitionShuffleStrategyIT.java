@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -40,6 +41,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -88,14 +91,30 @@ public class IoTDBPartitionShuffleStrategyIT {
 
   @Test
   public void testDataPartitionShuffleStrategy() throws Exception {
-    TDataPartitionTableResp dataPartitionTableResp =
-        ConfigNodeTestUtils.getOrCreateDataPartitionWithRetry(
-            database,
-            0,
-            testSeriesSlotNum,
-            0,
-            testTimePartitionSlotsNum,
-            testTimePartitionInterval);
+    List<Integer> randomTimeSlotList = new ArrayList<>();
+    for (int i = 0; i < testTimePartitionSlotsNum; i++) {
+      randomTimeSlotList.add(i);
+    }
+    Collections.shuffle(randomTimeSlotList);
+    for (int timeSlotId : randomTimeSlotList) {
+      // To test the shuffle strategy, we merely need to use a random time slot order
+      ConfigNodeTestUtils.getOrCreateDataPartitionWithRetry(
+          database, 0, testSeriesSlotNum, timeSlotId, timeSlotId + 1, testTimePartitionInterval);
+    }
+    TDataPartitionTableResp dataPartitionTableResp;
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      dataPartitionTableResp =
+          client.getDataPartitionTable(
+              new TDataPartitionReq(
+                  ConfigNodeTestUtils.constructPartitionSlotsMap(
+                      database,
+                      0,
+                      testSeriesSlotNum,
+                      0,
+                      testTimePartitionSlotsNum,
+                      testTimePartitionInterval)));
+    }
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         partitionTable = dataPartitionTableResp.getDataPartitionTable();
     for (long currentStartTime = testTimePartitionInterval;

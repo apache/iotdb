@@ -68,7 +68,7 @@ public class PartitionBalancer {
     // consistent as possible, while ensuring load balancing.
     INHERIT,
     // The SHUFFLE strategy tries to allocate adjacent DataPartitions as
-    // inconsistent with its predecessor as possible, note the result could be unbalanced.
+    // inconsistent as possible, note the result could be unbalanced.
     SHUFFLE
   }
 
@@ -287,12 +287,24 @@ public class PartitionBalancer {
       TConsensusGroupId predecessor =
           getPartitionManager()
               .getPredecessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
+      TConsensusGroupId successor =
+          getPartitionManager()
+              .getSuccessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
+      if (predecessor != null
+          && successor != null
+          && !predecessor.equals(successor)
+          && availableDataRegionGroups.size() == 2) {
+        // Only two available DataRegionGroups and predecessor equals successor
+        seriesPartitionTable.putDataPartition(
+            timePartitionSlot, random.nextBoolean() ? successor : predecessor);
+        continue;
+      }
       TConsensusGroupId targetGroupId;
       do {
         // Randomly pick a DataRegionGroup from availableDataRegionGroups
         targetGroupId =
             availableDataRegionGroups.get(random.nextInt(availableDataRegionGroups.size()));
-      } while (targetGroupId.equals(predecessor));
+      } while (targetGroupId.equals(predecessor) || targetGroupId.equals(successor));
       seriesPartitionTable.putDataPartition(timePartitionSlot, targetGroupId);
     }
   }
