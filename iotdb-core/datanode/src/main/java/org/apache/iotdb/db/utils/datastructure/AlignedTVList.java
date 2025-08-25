@@ -1639,7 +1639,13 @@ public abstract class AlignedTVList extends TVList {
           probeNext = true;
           return;
         }
-        Arrays.fill(selectedIndices, index);
+        if (scanOrder.isAscending()) {
+          Arrays.fill(selectedIndices, index);
+        } else {
+          for (int i = 0; i < selectedIndices.length; i++) {
+            selectedIndices[i] = isNullValue(index, i) ? -1 : index;
+          }
+        }
         findValidRow = true;
 
         // handle duplicated timestamp
@@ -1650,10 +1656,27 @@ public abstract class AlignedTVList extends TVList {
           if (allValueColDeletedMap == null
               || !allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(index)))) {
             for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
+              if (!scanOrder.isAscending()) {
+                // already set the latest point
+                if (selectedIndices[columnIndex] == -1) {
+                  // there was a null value
+                  if (!isNullValue(index, columnIndex)) {
+                    selectedIndices[columnIndex] = index;
+                  }
+                }
+                continue;
+              }
               // update selected index if the column is not null
               if (!isNullValue(index, columnIndex)) {
                 selectedIndices[columnIndex] = index;
               }
+            }
+          }
+        }
+        if (!scanOrder.isAscending()) {
+          for (int i = 0; i < selectedIndices.length; i++) {
+            if (selectedIndices[i] == -1) {
+              selectedIndices[i] = index;
             }
           }
         }
@@ -1856,8 +1879,13 @@ public abstract class AlignedTVList extends TVList {
             if (!outer.isNullValue(
                 getValueIndex(getScanOrderIndex(sortedRowIndex)), validColumnIndex)) {
               lastValidPointIndexForTimeDupCheck.left = getTime(getScanOrderIndex(sortedRowIndex));
-              lastValidPointIndexForTimeDupCheck.right =
-                  getValueIndex(getScanOrderIndex(sortedRowIndex));
+              if (scanOrder.isAscending()) {
+                lastValidPointIndexForTimeDupCheck.right =
+                    getValueIndex(getScanOrderIndex(sortedRowIndex));
+              } else if (lastValidPointIndexForTimeDupCheck.right == null) {
+                lastValidPointIndexForTimeDupCheck.right =
+                    getValueIndex(getScanOrderIndex(sortedRowIndex));
+              }
             }
             if (timeInvalidInfo.isMarked(sortedRowIndex)) {
               continue;
@@ -1882,8 +1910,10 @@ public abstract class AlignedTVList extends TVList {
           int originRowIndex;
           if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
               && (getTime(getScanOrderIndex(sortedRowIndex))
-                  == lastValidPointIndexForTimeDupCheck.left)) {
+                  == lastValidPointIndexForTimeDupCheck.left)
+              && Objects.nonNull(lastValidPointIndexForTimeDupCheck.right)) {
             originRowIndex = lastValidPointIndexForTimeDupCheck.right;
+            lastValidPointIndexForTimeDupCheck.right = null;
           } else {
             originRowIndex = getValueIndex(getScanOrderIndex(sortedRowIndex));
           }

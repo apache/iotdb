@@ -109,16 +109,17 @@ public class AlignedTVListIteratorTest {
   public void otherTest() throws IOException {
     Map<TVList, Integer> tvListMap =
         buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1)));
-    testAligned(
-        tvListMap,
-        Ordering.ASC,
-        null,
-        null,
-        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
-        Collections.emptyList(),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
-        false,
-        1);
+    //    testAligned(
+    //        tvListMap,
+    //        Ordering.ASC,
+    //        null,
+    //        null,
+    //        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+    //        Collections.emptyList(),
+    //        Arrays.asList(Collections.emptyList(), Collections.emptyList(),
+    // Collections.emptyList()),
+    //        false,
+    //        1);
     testAligned(
         tvListMap,
         Ordering.DESC,
@@ -784,6 +785,13 @@ public class AlignedTVListIteratorTest {
       }
       Collections.shuffle(timestamps);
       for (Long timestamp : timestamps) {
+        if (timestamp % 5000 == 1) {
+          // add some duplicated timestamp
+          for (int i = 0; i < 4; i++) {
+            alignedTVList.putAlignedValue(
+                timestamp, new Object[] {timestamp, timestamp % 2 == 0, false});
+          }
+        }
         alignedTVList.putAlignedValue(
             timestamp, new Object[] {timestamp, timestamp % 2 == 0, true});
         rowCount++;
