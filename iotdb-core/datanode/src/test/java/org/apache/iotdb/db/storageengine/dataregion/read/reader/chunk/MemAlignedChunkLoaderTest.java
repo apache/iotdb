@@ -117,6 +117,7 @@ public class MemAlignedChunkLoaderTest {
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(
             dataTypes, null, alignedTvLists, false, maxNumberOfPointsInPage);
+    timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 

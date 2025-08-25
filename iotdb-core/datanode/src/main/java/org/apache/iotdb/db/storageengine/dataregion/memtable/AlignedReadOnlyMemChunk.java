@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -39,6 +40,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -143,12 +145,15 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             dataTypes,
             columnIndexList,
             alignedTvLists,
+            Ordering.ASC,
+            null,
             timeColumnDeletion,
             valueColumnsDeletionList,
             floatPrecision,
             encodingList,
             context.isIgnoreAllNullRows(),
             MAX_NUMBER_OF_POINTS_IN_PAGE);
+    timeValuePairIterator.setStreamingQueryMemChunk(false);
 
     while (timeValuePairIterator.hasNextBatch()) {
       // create pageTimeStatistics and pageValueStatistics for new page
@@ -278,6 +283,100 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     cachedMetaData = alignedChunkMetadata;
   }
 
+  // To avoid loading too much data from disk when the time range is too large during query, we
+  // segment the data according to the time range and construct false statistics.
+  @Override
+  public void initChunkMetaFromTVListsWithFakeStatistics(
+      Ordering scanOrder, Filter globalTimeFilter) {
+    // create MergeSortAlignedTVListIterator
+    List<AlignedTVList> alignedTvLists =
+        alignedTvListQueryMap.keySet().stream()
+            .map(x -> (AlignedTVList) x)
+            .collect(Collectors.toList());
+
+    timeValuePairIterator =
+        MemPointIteratorFactory.create(
+            dataTypes,
+            columnIndexList,
+            alignedTvLists,
+            scanOrder,
+            globalTimeFilter,
+            timeColumnDeletion,
+            valueColumnsDeletionList,
+            floatPrecision,
+            encodingList,
+            context.isIgnoreAllNullRows(),
+            MAX_NUMBER_OF_POINTS_IN_PAGE);
+
+    long chunkStartTime = Long.MAX_VALUE;
+    long chunkEndTime = Long.MIN_VALUE;
+    long rowNum = 0;
+    for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
+      TVList tvList = entry.getKey();
+      chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
+      chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
+      rowNum += entry.getValue();
+    }
+
+    int pageNum =
+        (int)
+            Math.min(
+                MAX_NUMBER_OF_FAKE_CHUNK, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_CHUNK));
+    long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
+    for (int i = 0; i < pageNum; i++) {
+      long pageStartTime = chunkStartTime + i * timeInterval;
+      long pageEndTime = (i == pageNum - 1) ? chunkEndTime : (pageStartTime + timeInterval - 1);
+
+      Statistics<? extends Serializable>[] pageValueStatistics = new Statistics[dataTypes.size()];
+      for (int column = 0; column < dataTypes.size(); column++) {
+        pageValueStatistics[column] =
+            generateFakeStatistics(dataTypes.get(column), pageStartTime, pageEndTime);
+      }
+      valueStatisticsList.add(pageValueStatistics);
+      Statistics<? extends Serializable> pageTimeStatistics =
+          generateFakeStatistics(TSDataType.VECTOR, pageStartTime, pageEndTime);
+      timeStatisticsList.add(pageTimeStatistics);
+    }
+
+    Statistics<? extends Serializable>[] chunkValueStatistics = new Statistics[dataTypes.size()];
+    for (int column = 0; column < dataTypes.size(); column++) {
+      chunkValueStatistics[column] =
+          generateFakeStatistics(dataTypes.get(column), chunkStartTime, chunkEndTime);
+    }
+
+    // init chunk meta
+    Statistics<? extends Serializable> chunkTimeStatistics =
+        generateFakeStatistics(TSDataType.VECTOR, chunkStartTime, chunkEndTime);
+    IChunkMetadata timeChunkMetadata =
+        new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, chunkTimeStatistics);
+    timeChunkMetadata.setModified(true);
+
+    // value columns
+    List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
+    for (int column = 0; column < dataTypes.size(); column++) {
+      IChunkMetadata valueChunkMetadata =
+          new ChunkMetadata(
+              valueChunkNames.get(column),
+              dataTypes.get(column),
+              null,
+              null,
+              0,
+              chunkValueStatistics[column]);
+      valueChunkMetadata.setModified(true);
+      valueChunkMetadataList.add(valueChunkMetadata);
+    }
+
+    IChunkMetadata alignedChunkMetadata =
+        context.isIgnoreAllNullRows()
+            ? new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList)
+            : new TableDeviceChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
+    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this, true));
+    alignedChunkMetadata.setVersion(Long.MAX_VALUE);
+    // By setting Modified to true, we can prevent these fake statistics from being used.
+    alignedChunkMetadata.setModified(true);
+    cachedMetaData = alignedChunkMetadata;
+  }
+
   private int count() {
     int count = 0;
     for (TVList list : alignedTvListQueryMap.keySet()) {
@@ -324,6 +423,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             dataTypes,
             columnIndexList,
             alignedTvLists,
+            Ordering.ASC,
+            null,
             timeColumnDeletion,
             valueColumnsDeletionList,
             floatPrecision,

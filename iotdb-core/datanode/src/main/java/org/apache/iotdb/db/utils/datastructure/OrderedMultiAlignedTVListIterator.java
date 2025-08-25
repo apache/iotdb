@@ -19,20 +19,21 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterator {
   private final BitMap bitMap;
-  private final List<int[]> valueColumnDeleteCursor;
   private int iteratorIndex = 0;
   private int[] rowIndices;
 
@@ -40,6 +41,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
@@ -50,6 +53,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        scanOrder,
+        globalTimeFilter,
         timeColumnDeletion,
         valueColumnsDeletionList,
         floatPrecision,
@@ -57,10 +62,6 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
         ignoreAllNullRows,
         maxNumberOfPointsInPage);
     this.bitMap = new BitMap(tsDataTypeList.size());
-    this.valueColumnDeleteCursor = new ArrayList<>();
-    for (int i = 0; i < tsDataTypeList.size(); i++) {
-      valueColumnDeleteCursor.add(new int[] {0});
-    }
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
@@ -86,7 +87,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
                 && isPointDeleted(
                     currentTime,
                     valueColumnsDeletionList.get(columnIndex),
-                    valueColumnDeleteCursor.get(columnIndex)))
+                    valueColumnDeleteCursor.get(columnIndex),
+                    scanOrder))
             || iterator.isNullValue(rowIndices[columnIndex], columnIndex)) {
           bitMap.mark(columnIndex);
         }

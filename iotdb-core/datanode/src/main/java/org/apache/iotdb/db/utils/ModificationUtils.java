@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -214,16 +215,33 @@ public class ModificationUtils {
   // for the index of the deletionList
   public static boolean isPointDeleted(
       long timestamp, List<TimeRange> deletionList, int[] deleteCursor) {
+    return isPointDeleted(timestamp, deletionList, deleteCursor, Ordering.ASC);
+  }
+
+  public static boolean isPointDeleted(
+      long timestamp, List<TimeRange> deletionList, int[] deleteCursor, Ordering ordering) {
     if (deleteCursor.length != 1) {
       throw new IllegalArgumentException("deleteCursor should be an array whose size is 1");
     }
-    while (deletionList != null && deleteCursor[0] < deletionList.size()) {
-      if (deletionList.get(deleteCursor[0]).contains(timestamp)) {
-        return true;
-      } else if (deletionList.get(deleteCursor[0]).getMax() < timestamp) {
-        deleteCursor[0]++;
-      } else {
-        return false;
+    if (ordering.isAscending()) {
+      while (deletionList != null && deleteCursor[0] < deletionList.size()) {
+        if (deletionList.get(deleteCursor[0]).contains(timestamp)) {
+          return true;
+        } else if (deletionList.get(deleteCursor[0]).getMax() < timestamp) {
+          deleteCursor[0]++;
+        } else {
+          return false;
+        }
+      }
+    } else {
+      while (deletionList != null && !deletionList.isEmpty() && deleteCursor[0] >= 0) {
+        if (deletionList.get(deleteCursor[0]).contains(timestamp)) {
+          return true;
+        } else if (deletionList.get(deleteCursor[0]).getMin() >= timestamp) {
+          deleteCursor[0]--;
+        } else {
+          return false;
+        }
       }
     }
     return false;

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -26,7 +28,10 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.TsBlockUtil;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -34,7 +39,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class MultiAlignedTVListIterator implements MemPointIterator {
+public abstract class MultiAlignedTVListIterator extends MemPointIterator {
   protected List<TSDataType> tsDataTypeList;
   protected List<Integer> columnIndexList;
   protected List<AlignedTVList.AlignedTVListIterator> alignedTvListIterators;
@@ -46,51 +51,88 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
   protected boolean probeNext = false;
   protected boolean hasNext = false;
 
-  protected List<TsBlock> tsBlocks;
   protected long currentTime;
 
   // used by nextBatch during query
   protected final int maxNumberOfPointsInPage;
+  protected final List<int[]> valueColumnDeleteCursor;
 
   protected MultiAlignedTVListIterator(
       List<TSDataType> tsDataTypeList,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
       boolean ignoreAllNullRows,
       int maxNumberOfPointsInPage) {
+    super(scanOrder);
     this.tsDataTypeList = tsDataTypeList;
     this.columnIndexList = columnIndexList;
     this.alignedTvListIterators = new ArrayList<>(alignedTvLists.size());
-    for (AlignedTVList alignedTvList : alignedTvLists) {
-      alignedTvListIterators.add(
-          alignedTvList.iterator(
-              tsDataTypeList,
-              columnIndexList,
-              timeColumnDeletion,
-              null,
-              floatPrecision,
-              encodingList,
-              ignoreAllNullRows,
-              maxNumberOfPointsInPage));
+    if (scanOrder.isAscending()) {
+      for (AlignedTVList alignedTVList : alignedTvLists) {
+        AlignedTVList.AlignedTVListIterator iterator =
+            alignedTVList.iterator(
+                scanOrder,
+                globalTimeFilter,
+                tsDataTypeList,
+                columnIndexList,
+                timeColumnDeletion,
+                null,
+                floatPrecision,
+                encodingList,
+                ignoreAllNullRows,
+                maxNumberOfPointsInPage);
+        alignedTvListIterators.add(iterator);
+      }
+    } else {
+      for (int i = alignedTvLists.size() - 1; i >= 0; i--) {
+        AlignedTVList alignedTVList = alignedTvLists.get(i);
+        AlignedTVList.AlignedTVListIterator iterator =
+            alignedTVList.iterator(
+                scanOrder,
+                globalTimeFilter,
+                tsDataTypeList,
+                columnIndexList,
+                timeColumnDeletion,
+                null,
+                floatPrecision,
+                encodingList,
+                ignoreAllNullRows,
+                maxNumberOfPointsInPage);
+        alignedTvListIterators.add(iterator);
+      }
     }
     this.valueColumnsDeletionList = valueColumnsDeletionList;
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encodingList = encodingList;
     this.ignoreAllNullRows = ignoreAllNullRows;
-    this.tsBlocks = new ArrayList<>();
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+    this.valueColumnDeleteCursor = new ArrayList<>();
+    for (int i = 0; i < tsDataTypeList.size(); i++) {
+      List<TimeRange> valueColumnDeletions =
+          valueColumnsDeletionList == null ? null : valueColumnsDeletionList.get(i);
+      int cursor =
+          (valueColumnDeletions == null || scanOrder.isAscending())
+              ? 0
+              : (valueColumnDeletions.size() - 1);
+      valueColumnDeleteCursor.add(new int[] {cursor});
+    }
   }
 
   @Override
   public boolean hasNextTimeValuePair() {
+    if (!paginationController.hasCurLimit()) {
+      return false;
+    }
     if (!probeNext) {
       prepareNext();
     }
-    return hasNext;
+    return hasNext && !isCurrentTimeExceedTimeRange(currentTime);
   }
 
   @Override
@@ -100,8 +142,11 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
     }
     TsPrimitiveType[] vector = new TsPrimitiveType[tsDataTypeList.size()];
     for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
-      AlignedTVList.AlignedTVListIterator iterator =
-          alignedTvListIterators.get(currentIteratorIndex(columnIndex));
+      int iteratorIndex = currentIteratorIndex(columnIndex);
+      if (iteratorIndex == -1) {
+        continue;
+      }
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
       vector[columnIndex] =
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
     }
@@ -118,8 +163,11 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
     }
     TsPrimitiveType[] vector = new TsPrimitiveType[tsDataTypeList.size()];
     for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
-      AlignedTVList.AlignedTVListIterator iterator =
-          alignedTvListIterators.get(currentIteratorIndex(columnIndex));
+      int iteratorIndex = currentIteratorIndex(columnIndex);
+      if (iteratorIndex == -1) {
+        continue;
+      }
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
       vector[columnIndex] =
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
     }
@@ -133,7 +181,7 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
 
   @Override
   public TsBlock nextBatch() {
-    TsBlockBuilder builder = new TsBlockBuilder(tsDataTypeList);
+    TsBlockBuilder builder = new TsBlockBuilder(maxNumberOfPointsInPage, tsDataTypeList);
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
 
@@ -142,8 +190,14 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
       for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
         // Value column
         ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
-        AlignedTVList alignedTVList =
-            alignedTvListIterators.get(currentIteratorIndex(columnIndex)).getAlignedTVList();
+        int currentIteratorIndex = currentIteratorIndex(columnIndex);
+        if (currentIteratorIndex == -1) {
+          valueBuilder.appendNull();
+          continue;
+        }
+        AlignedTVList.AlignedTVListIterator alignedTVListIterator =
+            alignedTvListIterators.get(currentIteratorIndex);
+        AlignedTVList alignedTVList = alignedTVListIterator.getAlignedTVList();
 
         // sanity check
         int validColumnIndex =
@@ -153,7 +207,9 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
           continue;
         }
 
-        int valueIndex = alignedTVList.getValueIndex(currentRowIndex(columnIndex));
+        int valueIndex =
+            alignedTVList.getValueIndex(
+                alignedTVListIterator.getScanOrderIndex(currentRowIndex(columnIndex)));
         // null value
         if (alignedTVList.isNullValue(valueIndex, validColumnIndex)) {
           valueBuilder.appendNull();
@@ -207,7 +263,18 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
       builder.declarePosition();
     }
     TsBlock tsBlock = builder.build();
-    tsBlocks.add(tsBlock);
+    if (pushDownFilter != null) {
+      tsBlock =
+          TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+              tsBlock,
+              new TsBlockBuilder(
+                  Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()), tsDataTypeList),
+              pushDownFilter,
+              paginationController);
+    } else {
+      tsBlock = paginationController.applyTsBlock(tsBlock);
+    }
+    addTsBlock(tsBlock);
     return tsBlock;
   }
 
@@ -235,4 +302,22 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
   protected abstract void prepareNext();
 
   protected abstract void next();
+
+  @Override
+  public void setPushDownFilter(Filter pushDownFilter) {
+    for (AlignedTVList.AlignedTVListIterator iterator : alignedTvListIterators) {
+      iterator.setPushDownFilter(pushDownFilter);
+    }
+    this.pushDownFilter = pushDownFilter;
+  }
+
+  @Override
+  public void setLimitAndOffset(PaginationController paginationController) {
+    for (AlignedTVList.AlignedTVListIterator iterator : alignedTvListIterators) {
+      iterator.setLimitAndOffset(
+          new PaginationController(
+              paginationController.getCurLimit() + paginationController.getCurOffset(), 0));
+    }
+    this.paginationController = paginationController;
+  }
 }
