@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -616,7 +617,8 @@ public class SeriesScanUtil implements Accountable {
     long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-    if (chunkLoader instanceof MemChunkLoader) {
+    if (IoTDBDescriptor.getInstance().getConfig().isStreamingQueryMemChunk()
+        && (chunkLoader instanceof MemChunkLoader)) {
       unpackOneMemChunkMetaData(chunkMetaData, (MemChunkLoader) chunkLoader, timestampInFileName);
       return;
     }

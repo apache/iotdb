@@ -40,7 +40,6 @@ import java.util.List;
 public abstract class MultiTVListIterator extends MemPointIterator {
   protected TSDataType tsDataType;
   protected List<TVList.TVListIterator> tvListIterators;
-  protected List<TsBlock> tsBlocks;
   protected int floatPrecision;
   protected TSEncoding encoding;
 
@@ -83,7 +82,6 @@ public abstract class MultiTVListIterator extends MemPointIterator {
     }
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encoding = encoding;
-    this.tsBlocks = new ArrayList<>();
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
   }
 
@@ -220,8 +218,10 @@ public abstract class MultiTVListIterator extends MemPointIterator {
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", tsDataType));
     }
+    // There is no need to process pushDownFilter here because it has been applied when
+    // constructing the tsBlock
     TsBlock tsBlock = paginationController.applyTsBlock(builder.build());
-    tsBlocks.add(tsBlock);
+    addTsBlock(tsBlock);
     return tsBlock;
   }
 

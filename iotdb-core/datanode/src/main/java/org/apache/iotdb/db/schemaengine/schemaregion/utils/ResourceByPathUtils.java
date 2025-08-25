@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.utils;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -237,7 +238,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     timeTimeSeriesMetadata.setMeasurementId("");
     timeTimeSeriesMetadata.setTsDataType(TSDataType.VECTOR);
 
-    boolean useFakeStatistics = !readOnlyMemChunk.isEmpty();
+    boolean useFakeStatistics =
+        !readOnlyMemChunk.isEmpty()
+            && IoTDBDescriptor.getInstance().getConfig().isStreamingQueryMemChunk();
     long startTime = Long.MAX_VALUE;
     long endTime = Long.MIN_VALUE;
     Statistics<? extends Serializable> timeStatistics =
@@ -283,18 +286,39 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
       if (!memChunk.isEmpty()) {
         memChunk.sortTvLists();
-        memChunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
-        startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
-        endTime = Math.max(endTime, memChunk.getChunkMetaData().getEndTime());
+        if (useFakeStatistics) {
+          memChunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
+          startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
+          endTime = Math.max(endTime, memChunk.getChunkMetaData().getEndTime());
+        } else {
+          memChunk.initChunkMetaFromTvLists();
+        }
         AbstractAlignedChunkMetadata alignedChunkMetadata =
             (AbstractAlignedChunkMetadata) memChunk.getChunkMetaData();
         isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
+        if (!useFakeStatistics) {
+          timeStatistics.mergeStatistics(
+              alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
+          for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+            if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+              exist[i] = true;
+              valueTimeSeriesMetadataList
+                  .get(i)
+                  .getStatistics()
+                  .mergeStatistics(
+                      alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+            }
+          }
+        }
       }
     }
 
     timeTimeSeriesMetadata.setStatistics(timeStatistics);
-    timeStatistics.setStartTime(startTime);
-    timeStatistics.setEndTime(endTime);
+    if (useFakeStatistics) {
+      timeStatistics.setStartTime(startTime);
+      timeStatistics.setEndTime(endTime);
+      timeStatistics.setCount(1);
+    }
     timeTimeSeriesMetadata.setModified(useFakeStatistics || modified);
 
     for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
@@ -302,9 +326,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         TimeseriesMetadata valueTimeseriesMetadata = valueTimeSeriesMetadataList.get(i);
         valueTimeseriesMetadata.getStatistics().setStartTime(startTime);
         valueTimeseriesMetadata.getStatistics().setEndTime(endTime);
+        valueTimeseriesMetadata.getStatistics().setCount(1);
         valueTimeseriesMetadata.setModified(useFakeStatistics || modified);
-      }
-      if (!useFakeStatistics && !exist[i]) {
+      } else if (!exist[i]) {
         valueTimeSeriesMetadataList.set(i, null);
       }
     }
@@ -489,7 +513,9 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       List<IChunkMetadata> chunkMetadataList,
       Ordering scanOrder,
       Filter globalTimeFilter) {
-    boolean useFakeStatistics = !readOnlyMemChunk.isEmpty();
+    boolean useFakeStatistics =
+        !readOnlyMemChunk.isEmpty()
+            && IoTDBDescriptor.getInstance().getConfig().isStreamingQueryMemChunk();
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setMeasurementId(fullPath.getMeasurementSchema().getMeasurementName());
     timeSeriesMetadata.setTsDataType(fullPath.getMeasurementSchema().getType());
@@ -514,9 +540,14 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
       if (!memChunk.isEmpty()) {
         memChunk.sortTvLists();
-        memChunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
-        startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
-        endTime = Math.max(endTime, memChunk.getChunkMetaData().getEndTime());
+        if (useFakeStatistics) {
+          memChunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
+          startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
+          endTime = Math.max(endTime, memChunk.getChunkMetaData().getEndTime());
+        } else {
+          memChunk.initChunkMetaFromTvLists();
+          seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+        }
       }
     }
     if (useFakeStatistics) {

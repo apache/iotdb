@@ -675,7 +675,6 @@ public abstract class TVList implements WALEntryValue {
     protected int index;
     protected int rows;
     protected boolean probeNext;
-    protected List<TsBlock> tsBlocks;
 
     protected final Filter globalTimeFilter;
     private final List<TimeRange> deletionList;
@@ -701,7 +700,6 @@ public abstract class TVList implements WALEntryValue {
       this.index = 0;
       this.rows = rowCount;
       this.probeNext = false;
-      this.tsBlocks = new ArrayList<>();
       this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
       int cursor =
           (deletionList == null || scanOrder.isAscending()) ? 0 : (deletionList.size() - 1);
@@ -902,7 +900,7 @@ public abstract class TVList implements WALEntryValue {
       // There is no need to process pushDownFilter here because it has been applied when
       // constructing the tsBlock
       TsBlock tsBlock = paginationController.applyTsBlock(builder.build());
-      tsBlocks.add(tsBlock);
+      addTsBlock(tsBlock);
       return tsBlock;
     }
 

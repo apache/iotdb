@@ -1920,7 +1920,7 @@ public abstract class AlignedTVList extends TVList {
       } else {
         tsBlock = paginationController.applyTsBlock(tsBlock);
       }
-      tsBlocks.add(tsBlock);
+      addTsBlock(tsBlock);
 
       probeNext = false;
       return tsBlock;
