@@ -271,8 +271,7 @@ public class ExportDataTable extends AbstractExportData {
             csvPrinterWrapper.print("");
           } else {
             String curType = columnTypeList.get(curColumnIndex);
-            if (curType.equalsIgnoreCase("TEXT")
-                || curType.equalsIgnoreCase("STRING")) {
+            if (curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING")) {
               csvPrinterWrapper.print("\"" + columnValue + "\"");
             } else if (curType.equalsIgnoreCase("TIMESTAMP")) {
               csvPrinterWrapper.print(timeTrans(iterator.getLong(curColumnIndex + 1)));
@@ -329,6 +328,11 @@ public class ExportDataTable extends AbstractExportData {
         writeToTsFile(tsFileWriter, tablet);
         tablet.initBitMaps();
         tablet.reset();
+      }
+      processedRows += 1;
+      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+        ioTPrinter.printf("\rExported %d rows of data", processedRows);
+        lastPrintTime = System.currentTimeMillis();
       }
     }
     if (tablet.getRowSize() != 0) {
