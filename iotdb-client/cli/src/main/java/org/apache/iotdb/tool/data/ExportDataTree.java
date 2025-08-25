@@ -64,7 +64,7 @@ public class ExportDataTree extends AbstractExportData {
   private static Session session;
   private static long processedRows;
   private static long lastPrintTime;
-  private static final int updateTimeInterval = 3000;
+  private static final int updateTimeInterval = 1000;
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException, TException {
@@ -158,21 +158,24 @@ public class ExportDataTree extends AbstractExportData {
         }
       }
     }
-    boolean hasNext = sessionDataSet.hasNext();
-    while (hasNext) {
+    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+    List<String> columnTypeList = iterator.getColumnTypeList();
+    int totalColumns = columnTypeList.size();
+    boolean fromOuterloop = false;
+    while (iterator.next()) {
+      fromOuterloop = true;
       final String finalFilePath = filePath + "_" + fileIndex + ".sql";
       try (FileWriter writer = new FileWriter(finalFilePath)) {
         if (writeNull) {
           break;
         }
         int i = 0;
-        while (i++ < linesPerFile && hasNext) {
-          RowRecord rowRecord = sessionDataSet.next();
-          List<Field> fields = rowRecord.getFields();
+        while (i++ < linesPerFile && (fromOuterloop || iterator.next())) {
+          fromOuterloop = false;
           List<String> headersTemp = new ArrayList<>(seriesList);
           List<String> timeseries = new ArrayList<>();
           if (headers.contains("Device")) {
-            deviceName = fields.get(0).toString();
+            deviceName = iterator.getString(2);
             if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
               continue;
             }
@@ -186,33 +189,31 @@ public class ExportDataTree extends AbstractExportData {
             timeseries.addAll(headers);
             timeseries.remove(0);
           }
+          long timestamp = iterator.getLong(1);
           String sqlMiddle =
               Boolean.TRUE.equals(aligned)
-                  ? " ALIGNED VALUES (" + rowRecord.getTimestamp() + ","
-                  : " VALUES (" + rowRecord.getTimestamp() + ",";
+                  ? " ALIGNED VALUES (" + timestamp + ","
+                  : " VALUES (" + timestamp + ",";
           List<String> values = new ArrayList<>();
-          if (headers.contains("Device")) {
-            fields.remove(0);
-          }
-          for (int index = 0; index < fields.size(); index++) {
-            RowRecord next =
-                session
-                    .executeQueryStatement("SHOW TIMESERIES " + timeseries.get(index), timeout)
-                    .next();
-            if (ObjectUtils.isNotEmpty(next)) {
-              List<Field> timeseriesList = next.getFields();
-              String value = fields.get(index).toString();
+          int startIndex = headers.contains("Device") ? 2 : 1;
+          for (int index = startIndex; index < totalColumns; index++) {
+            SessionDataSet sessionDataSet2 =
+                session.executeQueryStatement(
+                    "SHOW TIMESERIES " + timeseries.get(index - startIndex), timeout);
+            SessionDataSet.DataIterator iterator2 = sessionDataSet2.iterator();
+            if (ObjectUtils.isNotEmpty(iterator2.next())) {
+              String value = iterator.getString(index + 1);
               if (value.equals("null")) {
-                headersTemp.remove(seriesList.get(index));
+                headersTemp.remove(seriesList.get(index - startIndex));
                 continue;
               }
-              if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
+              if ("TEXT".equalsIgnoreCase(iterator2.getString(4))) {
                 values.add("\"" + value + "\"");
               } else {
                 values.add(value);
               }
             } else {
-              headersTemp.remove(seriesList.get(index));
+              headersTemp.remove(seriesList.get(index - startIndex));
             }
           }
           if (CollectionUtils.isNotEmpty(headersTemp)) {
@@ -231,16 +232,8 @@ public class ExportDataTree extends AbstractExportData {
               lastPrintTime = System.currentTimeMillis();
             }
           }
-          hasNext = sessionDataSet.hasNext();
-          if (!hasNext) {
-            break;
-          }
         }
         writer.flush();
-      }
-      // 如果没有更多数据，退出循环
-      if (!hasNext) {
-        break;
       }
       fileIndex++;
     }
@@ -291,49 +284,43 @@ public class ExportDataTree extends AbstractExportData {
     lastPrintTime = 0;
     List<String> headers = sessionDataSet.getColumnNames();
     int fileIndex = 0;
-    boolean hasNext = sessionDataSet.hasNext();
-    while (hasNext) {
+    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+    List<String> columnTypeList = iterator.getColumnTypeList();
+    int totalColumns = columnTypeList.size();
+    boolean fromOuterloop = false;
+    while (iterator.next()) {
       final String finalFilePath = filePath + "_" + fileIndex + ".csv";
       CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
       csvPrinterWrapper.printRecord(headers);
+      fromOuterloop = true;
       int i = 0;
-      while (i++ < linesPerFile && hasNext) {
-        RowRecord rowRecord = sessionDataSet.next();
-        if (rowRecord.getTimestamp() != 0) {
-          csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
+      while (i++ < linesPerFile && (fromOuterloop || iterator.next())) {
+        fromOuterloop = false;
+        csvPrinterWrapper.print(timeTrans(iterator.getLong(1)));
+        for (int curColumnIndex = 1; curColumnIndex < totalColumns; curColumnIndex++) {
+          String columnValue = iterator.getString(curColumnIndex + 1);
+          if (columnValue.equals("null")) {
+            csvPrinterWrapper.print("");
+          } else {
+            String curType = columnTypeList.get(curColumnIndex);
+            if ((curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING"))
+                && !columnValue.startsWith("root.")) {
+              csvPrinterWrapper.print("\"" + columnValue + "\"");
+            } else {
+              csvPrinterWrapper.print(columnValue);
+            }
+          }
         }
-        rowRecord
-            .getFields()
-            .forEach(
-                field -> {
-                  String fieldStringValue = field.getStringValue();
-                  if (!"null".equals(field.getStringValue())) {
-                    if ((field.getDataType() == TSDataType.TEXT
-                            || field.getDataType() == TSDataType.STRING)
-                        && !fieldStringValue.startsWith("root.")) {
-                      fieldStringValue = "\"" + fieldStringValue + "\"";
-                    }
-                    csvPrinterWrapper.print(fieldStringValue);
-                  } else {
-                    csvPrinterWrapper.print("");
-                  }
-                });
         csvPrinterWrapper.println();
         processedRows += 1;
         if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
           ioTPrinter.printf("\rExported %d rows of data", processedRows);
           lastPrintTime = System.currentTimeMillis();
         }
-        hasNext = sessionDataSet.hasNext();
-        if (!hasNext) {
-          break;
-        }
-      }
-      csvPrinterWrapper.flush();
-      if (!hasNext) {
-        break;
       }
       fileIndex++;
+      csvPrinterWrapper.flush();
+      csvPrinterWrapper.close();
     }
     ioTPrinter.print("\n");
   }
