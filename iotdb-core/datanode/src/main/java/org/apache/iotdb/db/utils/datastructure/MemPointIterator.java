@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.common.TimeRange;
@@ -42,8 +41,7 @@ public abstract class MemPointIterator implements IPointReader {
       PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
   protected TimeRange timeRange;
   protected List<TsBlock> tsBlocks;
-  protected boolean streamingQueryMemChunk =
-      IoTDBDescriptor.getInstance().getConfig().isStreamingQueryMemChunk();
+  protected boolean streamingQueryMemChunk = true;
 
   public MemPointIterator(Ordering scanOrder) {
     this.scanOrder = scanOrder;
@@ -75,6 +73,10 @@ public abstract class MemPointIterator implements IPointReader {
   protected boolean isCurrentTimeExceedTimeRange(long time) {
     return timeRange != null
         && (scanOrder.isAscending() ? (time > timeRange.getMax()) : (time < timeRange.getMin()));
+  }
+
+  public void setStreamingQueryMemChunk(boolean streamingQueryMemChunk) {
+    this.streamingQueryMemChunk = streamingQueryMemChunk;
   }
 
   protected void addTsBlock(TsBlock tsBlock) {

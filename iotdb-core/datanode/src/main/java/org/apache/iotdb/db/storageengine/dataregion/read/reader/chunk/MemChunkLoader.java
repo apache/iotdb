@@ -36,13 +36,20 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INI
 public class MemChunkLoader implements IChunkLoader {
   protected final QueryContext context;
   protected final ReadOnlyMemChunk chunk;
+  protected final boolean streamingQueryMemChunk;
 
   protected static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
   public MemChunkLoader(QueryContext context, ReadOnlyMemChunk chunk) {
+    this(context, chunk, false);
+  }
+
+  public MemChunkLoader(
+      QueryContext context, ReadOnlyMemChunk chunk, boolean streamingQueryMemChunk) {
     this.context = context;
     this.chunk = chunk;
+    this.streamingQueryMemChunk = streamingQueryMemChunk;
   }
 
   @Override
@@ -70,5 +77,9 @@ public class MemChunkLoader implements IChunkLoader {
 
   public ReadOnlyMemChunk getReadOnlyMemChunk() {
     return chunk;
+  }
+
+  public boolean isStreamingQueryMemChunk() {
+    return streamingQueryMemChunk;
   }
 }

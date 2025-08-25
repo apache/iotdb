@@ -153,6 +153,7 @@ public class ReadOnlyMemChunk {
             floatPrecision,
             encoding,
             MAX_NUMBER_OF_POINTS_IN_PAGE);
+    timeValuePairIterator.setStreamingQueryMemChunk(false);
     while (timeValuePairIterator.hasNextBatch()) {
       // statistics for current batch
       Statistics<? extends Serializable> pageStatistics = Statistics.getStatsByType(dataType);
@@ -261,7 +262,7 @@ public class ReadOnlyMemChunk {
       pageStatisticsList.add(generateFakeStatistics(dataType, pageStartTime, pageEndTime));
     }
 
-    cachedMetaData.setChunkLoader(new MemChunkLoader(context, this));
+    cachedMetaData.setChunkLoader(new MemChunkLoader(context, this, true));
     cachedMetaData.setVersion(Long.MAX_VALUE);
     // By setting Modified to true, we can prevent these fake statistics from being used.
     cachedMetaData.setModified(true);

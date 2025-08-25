@@ -35,6 +35,11 @@ public class MemAlignedChunkLoader extends MemChunkLoader {
     super(context, chunk);
   }
 
+  public MemAlignedChunkLoader(
+      QueryContext context, AlignedReadOnlyMemChunk chunk, boolean streamingQueryMemChunk) {
+    super(context, chunk, streamingQueryMemChunk);
+  }
+
   @Override
   public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter) {
     long startTime = System.nanoTime();

@@ -51,7 +51,6 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
   protected boolean probeNext = false;
   protected boolean hasNext = false;
 
-  protected List<TsBlock> tsBlocks;
   protected long currentTime;
 
   // used by nextBatch during query
@@ -112,7 +111,6 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encodingList = encodingList;
     this.ignoreAllNullRows = ignoreAllNullRows;
-    this.tsBlocks = new ArrayList<>();
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     this.valueColumnDeleteCursor = new ArrayList<>();
     for (int i = 0; i < tsDataTypeList.size(); i++) {

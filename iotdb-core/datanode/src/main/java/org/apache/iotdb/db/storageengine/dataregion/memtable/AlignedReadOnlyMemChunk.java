@@ -153,6 +153,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             encodingList,
             context.isIgnoreAllNullRows(),
             MAX_NUMBER_OF_POINTS_IN_PAGE);
+    timeValuePairIterator.setStreamingQueryMemChunk(false);
 
     while (timeValuePairIterator.hasNextBatch()) {
       // create pageTimeStatistics and pageValueStatistics for new page
@@ -369,7 +370,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         context.isIgnoreAllNullRows()
             ? new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList)
             : new TableDeviceChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
-    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
+    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this, true));
     alignedChunkMetadata.setVersion(Long.MAX_VALUE);
     // By setting Modified to true, we can prevent these fake statistics from being used.
     alignedChunkMetadata.setModified(true);
