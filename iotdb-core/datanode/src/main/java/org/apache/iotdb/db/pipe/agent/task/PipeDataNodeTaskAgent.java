@@ -596,7 +596,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         parameters.getBooleanOrDefault(
             Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
             EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
-
     final boolean isRealtimeEnable =
         parameters.getBooleanOrDefault(
             Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
