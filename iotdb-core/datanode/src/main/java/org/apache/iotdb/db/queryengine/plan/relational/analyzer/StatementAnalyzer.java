@@ -190,6 +190,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowSpecificati
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
@@ -2974,7 +2975,9 @@ public class StatementAnalyzer {
         }
         for (int i = 0; i < descFieldSize; i++) {
           Type descFieldType = relationType.getFieldByIndex(i).getType();
-          if (descFieldType != outputFieldTypes[i]) {
+          Optional<Type> commonSuperType =
+              CompatibleResolver.getCommonSuperType(outputFieldTypes[i], descFieldType);
+          if (!commonSuperType.isPresent()) {
             throw new SemanticException(
                 String.format(
                     "column %d in %s query has incompatible types: %s, %s",
@@ -2983,6 +2986,7 @@ public class StatementAnalyzer {
                     outputFieldTypes[i].getDisplayName(),
                     descFieldType.getDisplayName()));
           }
+          outputFieldTypes[i] = commonSuperType.get();
         }
       }
 

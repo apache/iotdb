@@ -814,16 +814,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private Event supplyTsFileEvent(final TsFileResource resource) {
     if (!filteredTsFileResources.contains(resource)) {
       final ProgressReportEvent progressReportEvent =
-          new ProgressReportEvent(
-              pipeName,
-              creationTime,
-              pipeTaskMeta,
-              treePattern,
-              tablePattern,
-              userName,
-              skipIfNoPrivileges,
-              historicalDataExtractionStartTime,
-              historicalDataExtractionEndTime);
+          new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
       progressReportEvent.bindProgressIndex(resource.getMaxProgressIndex());
       final boolean isReferenceCountIncreased =
           progressReportEvent.increaseReferenceCount(

@@ -195,7 +195,8 @@ public class PipeSourceConstant {
   public static final long MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_DEFAULT_VALUE = 1048576;
 
   public static final String MQTT_PAYLOAD_FORMATTER_KEY = "mqtt.payload-formatter";
-  public static final String MQTT_PAYLOAD_FORMATTER_DEFAULT_VALUE = "json";
+  public static final String MQTT_PAYLOAD_FORMATTER_TREE_DIALECT_VALUE = "json";
+  public static final String MQTT_PAYLOAD_FORMATTER_TABLE_DIALECT_VALUE = "line";
 
   ///////////////////// pipe consensus /////////////////////
 

@@ -92,6 +92,7 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongConsumer;
 import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
@@ -1027,7 +1028,10 @@ public class IoTDBDescriptor {
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // The buffer for sort operator to calculate
-    loadSortBuffer(properties);
+    loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+
+    loadFixedSizeLimitForQuery(
+        properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
 
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
@@ -1088,26 +1092,27 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+
+    conf.setIncludeNullValueInWriteThroughputMetric(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "include_null_value_in_write_throughput_metric",
+                String.valueOf(conf.isIncludeNullValueInWriteThroughputMetric()))));
   }
 
-  private void loadSortBuffer(TrimProperties properties) {
-    long defaultValue = calculateDefaultSortBufferSize(memoryConfig);
-    long sortBufferSize =
-        Long.parseLong(
-            properties.getProperty("sort_buffer_size_in_bytes", Long.toString(defaultValue)));
-    if (sortBufferSize <= 0) {
-      sortBufferSize = defaultValue;
+  private void loadFixedSizeLimitForQuery(
+      TrimProperties properties, String name, LongConsumer setFunction) {
+    long defaultValue =
+        Math.min(
+            32 * 1024 * 1024L,
+            memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
+                / memoryConfig.getQueryThreadCount()
+                / 2);
+    long size = Long.parseLong(properties.getProperty(name, Long.toString(defaultValue)));
+    if (size <= 0) {
+      size = defaultValue;
     }
-    // The buffer for sort operator to calculate
-    conf.setSortBufferSize(sortBufferSize);
-  }
-
-  public static long calculateDefaultSortBufferSize(DataNodeMemoryConfig memoryConfig) {
-    return Math.min(
-        32 * 1024 * 1024L,
-        memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
-            / memoryConfig.getQueryThreadCount()
-            / 2);
+    setFunction.accept(size);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -1816,6 +1821,31 @@ public class IoTDBDescriptor {
     TSFileDescriptor.getInstance()
         .getConfig()
         .setEncryptType(properties.getProperty("encrypt_type", "UNENCRYPTED"));
+
+    String booleanCompressor = properties.getProperty("boolean_compressor");
+    if (booleanCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setBooleanCompression(booleanCompressor);
+    }
+    String int32Compressor = properties.getProperty("int32_compressor");
+    if (int32Compressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setInt32Compression(int32Compressor);
+    }
+    String int64Compressor = properties.getProperty("int64_compressor");
+    if (int64Compressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setInt64Compression(int64Compressor);
+    }
+    String floatCompressor = properties.getProperty("float_compressor");
+    if (floatCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setFloatCompression(floatCompressor);
+    }
+    String doubleCompressor = properties.getProperty("double_compressor");
+    if (doubleCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setDoubleCompression(doubleCompressor);
+    }
+    String textCompressor = properties.getProperty("text_compressor");
+    if (textCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setTextCompression(textCompressor);
+    }
   }
 
   // Mqtt related
@@ -2083,7 +2113,17 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
 
       // sort_buffer_size_in_bytes
-      loadSortBuffer(properties);
+      loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+
+      loadFixedSizeLimitForQuery(
+          properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
+
+      conf.setIncludeNullValueInWriteThroughputMetric(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "include_null_value_in_write_throughput_metric",
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "include_null_value_in_write_throughput_metric"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2267,6 +2307,18 @@ public class IoTDBDescriptor {
             ? conf.getLoadActiveListeningCheckIntervalSeconds()
             : loadActiveListeningCheckIntervalSeconds);
 
+    conf.setLoadTableSchemaCacheSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_table_schema_cache_size_in_bytes",
+                Long.toString(conf.getLoadTableSchemaCacheSizeInBytes()))));
+
+    conf.setLoadMeasurementCacheSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_measurement_cache_size_in_bytes",
+                Long.toString(conf.getLoadMeasurementIdCacheSizeInBytes()))));
+
     conf.setLoadActiveListeningMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -2331,6 +2383,7 @@ public class IoTDBDescriptor {
                 "load_active_listening_enable",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_active_listening_enable"))));
+
     conf.setLoadActiveListeningDirs(
         Arrays.stream(
                 properties
@@ -2669,6 +2722,8 @@ public class IoTDBDescriptor {
     conf.setSchemaRatisPeriodicSnapshotInterval(
         ratisConfig.getSchemaRegionPeriodicSnapshotInterval());
     conf.setDataRatisPeriodicSnapshotInterval(ratisConfig.getDataRegionPeriodicSnapshotInterval());
+
+    conf.setRatisTransferLeaderTimeoutMs(ratisConfig.getRatisTransferLeaderTimeoutMs());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

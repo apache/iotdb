@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -211,7 +212,9 @@ public abstract class AbstractMemTable implements IMemTable {
     int pointsInserted =
         insertRowNode.getMeasurements().length
             - insertRowNode.getFailedMeasurementNumber()
-            - nullPointsNumber;
+            - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
+                ? 0
+                : nullPointsNumber);
 
     totalPointsNum += pointsInserted;
     return pointsInserted;
@@ -224,12 +227,16 @@ public abstract class AbstractMemTable implements IMemTable {
     Object[] values = insertRowNode.getValues();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
+    int nullPointsNumber = 0;
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
       // Use measurements[i] to ignore failed partial insert
       if (measurements[i] == null
           || values[i] == null
           || insertRowNode.getColumnCategories() != null
               && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD) {
+        if (values[i] == null) {
+          nullPointsNumber++;
+        }
         schemaList.add(null);
         continue;
       }
@@ -244,7 +251,11 @@ public abstract class AbstractMemTable implements IMemTable {
         MemUtils.getAlignedRowRecordSize(dataTypes, values, insertRowNode.getColumnCategories());
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
     int pointsInserted =
-        insertRowNode.getMeasurementColumnCnt() - insertRowNode.getFailedMeasurementNumber();
+        insertRowNode.getMeasurementColumnCnt()
+            - insertRowNode.getFailedMeasurementNumber()
+            - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
+                ? 0
+                : nullPointsNumber);
     totalPointsNum += pointsInserted;
     return pointsInserted;
   }
@@ -253,11 +264,17 @@ public abstract class AbstractMemTable implements IMemTable {
   public int insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException {
     try {
+      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end);
       writeTabletNode(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
       int pointsInserted =
-          (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
-              * (end - start);
+          ((insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
+                  * (end - start))
+              - (IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .isIncludeNullValueInWriteThroughputMetric()
+                  ? 0
+                  : nullPointsNumber);
       totalPointsNum += pointsInserted;
       return pointsInserted;
     } catch (RuntimeException e) {
@@ -270,18 +287,43 @@ public abstract class AbstractMemTable implements IMemTable {
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     try {
+      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end);
       writeAlignedTablet(insertTabletNode, start, end, results);
       // TODO-Table: what is the relation between this and TsFileProcessor.checkMemCost
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
       int pointsInserted =
-          (insertTabletNode.getMeasurementColumnCnt()
-                  - insertTabletNode.getFailedMeasurementNumber())
-              * (end - start);
+          ((insertTabletNode.getMeasurementColumnCnt()
+                      - insertTabletNode.getFailedMeasurementNumber())
+                  * (end - start))
+              - (IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .isIncludeNullValueInWriteThroughputMetric()
+                  ? 0
+                  : nullPointsNumber);
       totalPointsNum += pointsInserted;
       return pointsInserted;
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
+  }
+
+  private static int computeTabletNullPointsNumber(
+      InsertTabletNode insertTabletNode, int start, int end) {
+    Object[] values = insertTabletNode.getBitMaps();
+    int nullPointsNumber = 0;
+    if (values != null) {
+      for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
+        BitMap bitMap = (BitMap) values[i];
+        if (bitMap != null && !bitMap.isAllUnmarked()) {
+          for (int j = start; j < end; j++) {
+            if (bitMap.isMarked(j)) {
+              nullPointsNumber++;
+            }
+          }
+        }
+      }
+    }
+    return nullPointsNumber;
   }
 
   @Override

@@ -78,14 +78,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
+
+import static org.apache.iotdb.db.queryengine.plan.Coordinator.recordQueries;
 
 public class RestApiServiceImpl extends RestApiService {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  private static final String FORMAT = "rest/v2/fastLastQuery %s";
 
   private final IPartitionFetcher partitionFetcher;
 
@@ -109,6 +114,7 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     boolean finish = false;
     long startTime = System.nanoTime();
+    Throwable t = null;
 
     try {
       RequestValidationHandler.validatePrefixPaths(prefixPathList);
@@ -149,10 +155,10 @@ public class RestApiServiceImpl extends RestApiService {
                 statement,
                 queryId,
                 sessionInfo,
-                "",
+                restFastLastQueryReq(prefixPathList),
                 partitionFetcher,
                 schemaFetcher,
-                config.getQueryTimeoutThreshold(),
+                CONFIG.getQueryTimeoutThreshold(),
                 true);
 
         finish = true;
@@ -203,13 +209,14 @@ public class RestApiServiceImpl extends RestApiService {
 
     } catch (Exception e) {
       finish = true;
+      t = e;
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
 
       StatementType statementType =
           Optional.ofNullable(statement)
-              .map(s -> s.getType())
+              .map(Statement::getType)
               .orElse(StatementType.FAST_LAST_QUERY);
 
       CommonUtils.addStatementExecutionLatency(
@@ -219,8 +226,28 @@ public class RestApiServiceImpl extends RestApiService {
       }
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
+      } else {
+        recordQueries(() -> costTime, new FastLastQueryContentSupplier(prefixPathList), t);
       }
     }
+  }
+
+  private static class FastLastQueryContentSupplier implements Supplier<String> {
+
+    private final PrefixPathList prefixPath;
+
+    private FastLastQueryContentSupplier(PrefixPathList prefixPath) {
+      this.prefixPath = prefixPath;
+    }
+
+    @Override
+    public String get() {
+      return restFastLastQueryReq(prefixPath);
+    }
+  }
+
+  public static String restFastLastQueryReq(PrefixPathList prefixPath) {
+    return String.format(FORMAT, String.join(".", prefixPath.getPrefixPaths()));
   }
 
   @Override
@@ -262,7 +289,7 @@ public class RestApiServiceImpl extends RestApiService {
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold(),
+              CONFIG.getQueryTimeoutThreshold(),
               false);
       finish = true;
       return responseGenerateHelper(result);
@@ -328,7 +355,7 @@ public class RestApiServiceImpl extends RestApiService {
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold(),
+              CONFIG.getQueryTimeoutThreshold(),
               true);
       finish = true;
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -394,7 +421,7 @@ public class RestApiServiceImpl extends RestApiService {
               "",
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold(),
+              CONFIG.getQueryTimeoutThreshold(),
               false);
       return responseGenerateHelper(result);
 
@@ -449,7 +476,7 @@ public class RestApiServiceImpl extends RestApiService {
               "",
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold(),
+              CONFIG.getQueryTimeoutThreshold(),
               false);
       return responseGenerateHelper(result);
     } catch (Exception e) {

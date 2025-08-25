@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -60,6 +62,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
   private final QueryContext queryContext;
+  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> curFileModEntries = null;
   // Used to cache the modifications of each timeseries
   private final Map<IDeviceID, Map<String, List<TimeRange>>> deviceToModifications;
 
@@ -80,7 +83,11 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp)
       throws IllegalPathException {
-    List<ModEntry> modifications = queryContext.getPathModifications(tsFileResource, deviceID);
+    curFileModEntries =
+        curFileModEntries != null
+            ? curFileModEntries
+            : queryContext.loadAllModificationsFromDisk(tsFileResource);
+    List<ModEntry> modifications = queryContext.getPathModifications(curFileModEntries, deviceID);
     List<TimeRange> timeRangeList =
         modifications.stream().map(ModEntry::getTimeRange).collect(Collectors.toList());
     return ModificationUtils.isPointDeletedWithoutOrderedRange(timestamp, timeRangeList);
@@ -89,14 +96,17 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public boolean isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long timestamp)
       throws IllegalPathException {
-
+    curFileModEntries =
+        curFileModEntries != null
+            ? curFileModEntries
+            : queryContext.loadAllModificationsFromDisk(tsFileResource);
     Map<String, List<TimeRange>> modificationTimeRange = deviceToModifications.get(deviceID);
     if (modificationTimeRange != null && modificationTimeRange.containsKey(timeSeriesName)) {
       return ModificationUtils.isPointDeleted(timestamp, modificationTimeRange.get(timeSeriesName));
     }
 
     List<ModEntry> modifications =
-        queryContext.getPathModifications(tsFileResource, deviceID, timeSeriesName);
+        queryContext.getPathModifications(curFileModEntries, deviceID, timeSeriesName);
     List<TimeRange> timeRangeList =
         modifications.stream().map(ModEntry::getTimeRange).collect(Collectors.toList());
     TimeRange.sortAndMerge(timeRangeList);

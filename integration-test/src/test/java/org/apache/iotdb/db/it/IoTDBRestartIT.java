@@ -24,9 +24,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,10 +39,13 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
@@ -369,6 +376,58 @@ public class IoTDBRestartIT {
         }
         assertEquals(1, cnt);
       }
+    }
+  }
+
+  @Test
+  public void testInsertLoadAndRecover() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.sg.d1.s1 with datatype=int32");
+      statement.execute("insert into root.sg.d1(time,s1) values(2,2)");
+      statement.execute("flush");
+    }
+    File tmpDir = new File(Files.createTempDirectory("load").toUri());
+    File tsfile = new File(tmpDir, "0-0-0-0.tsfile");
+    try {
+      try (final TsFileGenerator generator = new TsFileGenerator(tsfile)) {
+        generator.registerTimeseries(
+            "root.sg.d1", Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)));
+        generator.generateData("root.sg.d1", 1, 2, false);
+      }
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("insert into root.sg.d1(time,s1) values(1,1)");
+        statement.execute(String.format("load \"%s\" ", tsfile.getAbsolutePath()));
+        try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg.d1")) {
+          assertNotNull(resultSet);
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(String.valueOf(cnt + 1), resultSet.getString(1));
+            cnt++;
+          }
+          assertEquals(2, cnt);
+        }
+      }
+
+      // restart dn
+      TestUtils.stopForciblyAndRestartDataNodes();
+
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg.d1")) {
+          assertNotNull(resultSet);
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(String.valueOf(cnt + 1), resultSet.getString(1));
+            cnt++;
+          }
+          assertEquals(2, cnt);
+        }
+      }
+
+    } finally {
+      FileUtils.deleteDirectory(tmpDir);
     }
   }
 }

@@ -304,6 +304,8 @@ public class Constants {
   public static final String EXPORT_SCHEMA_COLUMNS_SELECT =
       "select * from information_schema.columns where database like '%s' and table_name like '%s'";
   public static final String EXPORT_SCHEMA_COLUMNS_DESC = "desc %s.%s details";
+  public static final String SHOW_CREATE_TABLE = "SHOW CREATE TABLE %s.%s";
+  public static final String DROP_TABLE_IF_EXIST = "DROP TABLE IF EXISTS %s";
 
   // import constants
   public static final String IMPORT_SCHEMA_CLI_PREFIX = "ImportSchema";
