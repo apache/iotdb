@@ -99,12 +99,12 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
           Arrays.asList(
-              "create table table1(a id, b attribute, c int32) with (ttl=3000)",
+              "create table table1(a tag, b attribute, c int32) with (ttl=3000)",
               "alter table table1 add column d int64",
               "alter table table1 drop column c",
               "alter table table1 set properties ttl=default",
               "insert into table1 (a, b, d) values(1, 1, 1)",
-              "create table noTransferTable(a id, b attribute, c int32) with (ttl=3000)"),
+              "create table noTransferTable(a tag, b attribute, c int32) with (ttl=3000)"),
           null)) {
         return;
       }
@@ -177,7 +177,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           new HashSet<>(
               Arrays.asList(
                   "time,TIMESTAMP,TIME,",
-                  "a,STRING,ID,",
+                  "a,STRING,TAG,",
                   "b,STRING,ATTRIBUTE,",
                   "d,INT64,MEASUREMENT,")),
           dbName);
@@ -300,7 +300,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
           Arrays.asList(
-              "create table table1(a id, b attribute, c int32) with (ttl=3000)",
+              "create table table1(a tag, b attribute, c int32) with (ttl=3000)",
               "alter table table1 add column d int64",
               "alter table table1 drop column b",
               "alter table table1 set properties ttl=default"),
