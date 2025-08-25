@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterDatabaseSecurityLabelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowCluste
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContinuousQueriesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDataNodesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDatabaseSecurityLabelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
@@ -82,9 +84,12 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.U
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.AlterLogicalViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.DeleteLogicalViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.RenameLogicalViewTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.AlterUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetSqlDialectTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
@@ -115,6 +120,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -133,16 +140,19 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
@@ -233,6 +243,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterDatabase(
       DatabaseSchemaStatement statement, MPPQueryContext context) {
     return new DatabaseSchemaTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitAlterDatabaseSecurityLabel(
+      AlterDatabaseSecurityLabelStatement statement, MPPQueryContext context) {
+    return new AlterDatabaseSecurityLabelTask(statement);
   }
 
   @Override
@@ -586,7 +602,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     final String pipeName = alterPipeStatement.getPipeName();
     final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
 
-    // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
+    // If the source is replaced, sql-dialect uses the current Alter Pipe
+    // sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
@@ -802,18 +819,24 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitDropModel(
       DropModelStatement dropModelStatement, MPPQueryContext context) {
-    return new DropModelTask(dropModelStatement.getModelId());
+    return new DropModelTask(dropModelStatement.getModelName());
   }
 
   @Override
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
-    return new ShowModelsTask(showModelsStatement.getModelId());
+    return new ShowModelsTask(showModelsStatement.getModelName());
   }
 
   @Override
   public IConfigTask visitShowCurrentUser(ShowCurrentUserStatement node, MPPQueryContext context) {
     return new ShowCurrentUserTask(context.getSession().getUserName());
+  }
+
+  @Override
+  public IConfigTask visitShowUserLabelPolicy(
+      ShowUserLabelPolicyStatement statement, MPPQueryContext context) {
+    return new ShowUserLabelPolicyTask(statement.getUsername(), statement.getScope());
   }
 
   @Override
@@ -836,5 +859,23 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
         createTrainingStatement.getTargetTimeRanges(),
         createTrainingStatement.getExistingModelId(),
         targetPathPatterns);
+  }
+
+  @Override
+  public IConfigTask visitAlterUserLabelPolicy(
+      AlterUserLabelPolicyStatement statement, MPPQueryContext context) {
+    return new AlterUserLabelPolicyTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitSetUserLabelPolicy(
+      SetUserLabelPolicyStatement statement, MPPQueryContext context) {
+    return new SetUserLabelPolicyTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitShowDatabaseSecurityLabel(
+      ShowDatabaseSecurityLabelStatement statement, MPPQueryContext context) {
+    return new ShowDatabaseSecurityLabelTask(statement);
   }
 }

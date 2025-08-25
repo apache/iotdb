@@ -67,8 +67,13 @@ public class CreateTimeSeriesStatement extends Statement {
     return Collections.singletonList(path);
   }
 
-  @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Use parent class's complete permission check flow (Root → RBAC → LBAC)
+    return super.checkPermissionBeforeProcess(userName);
+  }
+
+  @Override
+  public TSStatus checkRbacPermission(String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }

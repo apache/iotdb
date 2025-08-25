@@ -252,8 +252,8 @@ fi
 
 calculate_memory_sizes
 
-# on heap memory size
-#ON_HEAP_MEMORY="2G"
+#on heap memory size
+#ON_HEAP_MEMORY="5G"
 # off heap memory size
 #OFF_HEAP_MEMORY="512M"
 

@@ -86,6 +86,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.DatabaseLabelFetcher;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -417,7 +418,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
 
-    // We deserialize here instead of the underlying state machine because parallelism is possible
+    // We deserialize here instead of the underlying state machine because
+    // parallelism is possible
     // here but not at the underlying state machine
     final FragmentInstance fragmentInstance;
     try {
@@ -598,7 +600,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidatePartitionCache(final TInvalidateCacheReq req) {
+    // Clear partition cache
     ClusterPartitionFetcher.getInstance().invalidAllCache();
+
+    // Clear database security label cache
+    DatabaseLabelFetcher.clearCache();
+    LOGGER.info("Cleared database security label cache on DataNode");
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -934,7 +942,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             consensusGroupId -> {
               ReadWriteLock readWriteLock =
                   regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
-              // Count paths using template for unset template shall block all template activation
+              // Count paths using template for unset template shall block all template
+              // activation
               readWriteLock.writeLock().lock();
               try {
                 ISchemaRegion schemaRegion =
@@ -996,7 +1005,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             consensusGroupId -> {
               ReadWriteLock readWriteLock =
                   regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
-              // Check timeseries existence for set template shall block all timeseries creation
+              // Check timeseries existence for set template shall block all timeseries
+              // creation
               readWriteLock.writeLock().lock();
               try {
                 final ISchemaRegion schemaRegion =
@@ -1236,7 +1246,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPushPipeMetaResp pushMultiPipeMeta(TPushMultiPipeMetaReq req) {
     boolean hasException = false;
-    // If there is any exception, we use the size of exceptionMessages to record the fail index
+    // If there is any exception, we use the size of exceptionMessages to record the
+    // fail index
     List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
     try {
       if (req.isSetPipeNamesToDrop()) {
@@ -1349,7 +1360,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     boolean hasException = false;
-    // If there is any exception, we use the size of exceptionMessages to record the fail index
+    // If there is any exception, we use the size of exceptionMessages to record the
+    // fail index
     List<TPushTopicMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
     try {
       if (req.isSetTopicNamesToDrop()) {
@@ -2905,7 +2917,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     LOGGER.info("Execute stopAndClearDataNode RPC method");
 
     // kill the datanode process 30 seconds later
-    // because datanode process cannot exit normally for the reason of InterruptedException
+    // because datanode process cannot exit normally for the reason of
+    // InterruptedException
     new Thread(
             () -> {
               try {

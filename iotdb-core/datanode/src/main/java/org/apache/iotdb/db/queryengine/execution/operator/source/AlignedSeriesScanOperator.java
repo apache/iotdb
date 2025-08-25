@@ -41,44 +41,44 @@ import java.util.List;
 
 public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AlignedSeriesScanOperator.class);
+          RamUsageEstimator.shallowSizeOfInstance(AlignedSeriesScanOperator.class);
 
   private final int valueColumnCount;
   private int maxTsBlockLineNum = -1;
 
   public AlignedSeriesScanOperator(
-      OperatorContext context,
-      PlanNodeId sourceId,
-      AlignedFullPath seriesPath,
-      Ordering scanOrder,
-      SeriesScanOptions seriesScanOptions,
-      boolean queryAllSensors,
-      List<TSDataType> dataTypes,
-      int maxTsBlockLineNum) {
+          OperatorContext context,
+          PlanNodeId sourceId,
+          AlignedFullPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions seriesScanOptions,
+          boolean queryAllSensors,
+          List<TSDataType> dataTypes,
+          int maxTsBlockLineNum) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
-        new AlignedSeriesScanUtil(
-            seriesPath,
-            scanOrder,
-            seriesScanOptions,
-            context.getInstanceContext(),
-            queryAllSensors,
-            dataTypes);
+            new AlignedSeriesScanUtil(
+                    seriesPath,
+                    scanOrder,
+                    seriesScanOptions,
+                    context.getInstanceContext(),
+                    queryAllSensors,
+                    dataTypes);
     this.valueColumnCount = seriesPath.getColumnNum();
     this.maxReturnSize =
-        Math.min(
-            maxReturnSize,
-            (1L + valueColumnCount)
-                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+            Math.min(
+                    maxReturnSize,
+                    (1L + valueColumnCount)
+                            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = maxTsBlockLineNum;
   }
 
   @Override
   public long calculateMaxPeekMemory() {
     return Math.max(
-        maxReturnSize,
-        (1L + valueColumnCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+            maxReturnSize,
+            (1L + valueColumnCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
@@ -95,14 +95,14 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
       builder.declarePosition();
     }
     for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
-        columnIndex < columnSize;
-        columnIndex++) {
+         columnIndex < columnSize;
+         columnIndex++) {
       appendOneColumn(columnIndex, tsBlock, size, builder);
     }
   }
 
   private static void appendOneColumn(
-      int columnIndex, TsBlock tsBlock, int size, TsBlockBuilder builder) {
+          int columnIndex, TsBlock tsBlock, int size, TsBlockBuilder builder) {
     ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
     Column column = tsBlock.getColumn(columnIndex);
     if (column.mayHaveNull()) {
@@ -130,9 +130,9 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
-        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+            + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
   }
 }

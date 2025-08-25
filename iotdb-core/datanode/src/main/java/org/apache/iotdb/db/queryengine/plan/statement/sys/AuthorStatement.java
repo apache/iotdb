@@ -48,6 +48,8 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
+  private String readLabelPolicyExpression;
+  private String writeLabelPolicyExpression;
 
   /**
    * Constructor with AuthorType.
@@ -177,6 +179,22 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setGrantOpt(boolean grantOpt) {
     this.grantOpt = grantOpt;
+  }
+
+  public String getReadLabelPolicyExpression() {
+    return readLabelPolicyExpression;
+  }
+
+  public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
+    this.readLabelPolicyExpression = readLabelPolicyExpression;
+  }
+
+  public String getWriteLabelPolicyExpression() {
+    return writeLabelPolicyExpression;
+  }
+
+  public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
+    this.writeLabelPolicyExpression = writeLabelPolicyExpression;
   }
 
   @Override
@@ -386,5 +404,10 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
     }
     return null;
+
+  @Override
+  public PrivilegeType determinePrivilegeType() {
+    // Author statements are system-level operations, use MANAGE_USER as default
+    return PrivilegeType.MANAGE_USER;
   }
 }

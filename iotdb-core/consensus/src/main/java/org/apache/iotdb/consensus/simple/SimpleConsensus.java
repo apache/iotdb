@@ -38,7 +38,6 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +120,7 @@ class SimpleConsensus implements IConsensus {
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     // Schema Write when readOnly is handled at RegionWriteExecutor
     if (impl.isReadOnly() && groupId instanceof DataRegionId) {
-      return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
+      return StatusUtils.getStatus(org.apache.iotdb.rpc.TSStatusCode.SYSTEM_READ_ONLY);
     } else {
       TSStatus status;
       if (groupId instanceof DataRegionId) {

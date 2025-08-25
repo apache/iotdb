@@ -144,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -168,6 +169,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -183,6 +185,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStateme
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
@@ -324,7 +327,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       "For delete statement, where clause can only contain time expressions, "
           + "value filter is not currently supported.";
 
-  private static final String GROUP_BY_COMMON_ONLY_ONE_MSG =
+  private static final String GROUP_BY_COMMON_ONLY_MSG =
       "Only one of group by time or group by variation/series/session can be supported at a time";
 
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
@@ -748,7 +751,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitShowDatabases(IoTDBSqlParser.ShowDatabasesContext ctx) {
     ShowDatabaseStatement showDatabaseStatement;
 
-    // Parse prefixPath
     if (ctx.prefixPath() != null) {
       showDatabaseStatement = new ShowDatabaseStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
@@ -756,7 +758,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
 
-    // Is detailed
+    if (ctx.SECURITY_LABEL() != null) {
+      showDatabaseStatement.setShowSecurityLabel(true);
+    }
+
+
     showDatabaseStatement.setDetailed(ctx.DETAILS() != null);
 
     return showDatabaseStatement;
@@ -1461,7 +1467,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (IoTDBSqlParser.GroupByAttributeClauseContext groupByAttribute : groupByAttributes) {
         if (groupByAttribute.TIME() != null || groupByAttribute.interval != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -1482,7 +1488,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           queryStatement.setGroupByTagComponent(parseGroupByTagClause(groupByAttribute));
         } else if (groupByAttribute.VARIATION() != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -1490,7 +1496,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseGroupByClause(groupByAttribute, WindowType.VARIATION_WINDOW));
         } else if (groupByAttribute.CONDITION() != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -1498,7 +1504,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseGroupByClause(groupByAttribute, WindowType.CONDITION_WINDOW));
         } else if (groupByAttribute.SESSION() != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -1506,7 +1512,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseGroupByClause(groupByAttribute, WindowType.SESSION_WINDOW));
         } else if (groupByAttribute.COUNT() != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -2440,6 +2446,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.CREATE_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPassWord(parseStringLiteral(ctx.password.getText()));
+
+
+    if (ctx.readPolicyExpression != null) {
+
+      String readPolicyExpression = parsePolicyExpression(ctx.readPolicyExpression);
+      authorStatement.setReadLabelPolicyExpression(readPolicyExpression);
+    }
+
+    if (ctx.writePolicyExpression != null) {
+      String writePolicyExpression = parsePolicyExpression(ctx.writePolicyExpression);
+      authorStatement.setWriteLabelPolicyExpression(writePolicyExpression);
+    }
+
     return authorStatement;
   }
 
@@ -2455,10 +2474,49 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Alter Password
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
-    return authorStatement;
+    if (ctx.password != null) {
+      // Handle password change
+      AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
+      authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+      authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
+      return authorStatement;
+    } else if (ctx.DROP() != null && ctx.LABEL_POLICY() != null) {
+      // Handle dropping label policy
+      String username = parseIdentifier(ctx.userNameForLabel.getText());
+      String scopeText = ctx.labelPolicyScope().getText();
+      // Convert scope text to LabelPolicyScope enum
+      ShowUserLabelPolicyStatement.LabelPolicyScope scope;
+      if (scopeText.equalsIgnoreCase("READ")) {
+        scope = ShowUserLabelPolicyStatement.LabelPolicyScope.READ;
+      } else if (scopeText.equalsIgnoreCase("WRITE")) {
+        scope = ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE;
+      } else {
+        scope = ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE;
+      }
+      return new AlterUserLabelPolicyStatement(username, scope);
+    } else if (ctx.SET() != null && ctx.LABEL_POLICY() != null) {
+      // Handle setting label policy for READ independently
+      if (ctx.readPolicyExpression != null) {
+        String username = parseIdentifier(ctx.userNameForLabel.getText());
+        // Use parsePolicyExpression to properly handle the policy expression and
+        // preserve spacing
+        String readPolicyExpression = parsePolicyExpression(ctx.readPolicyExpression);
+        // Only set READ policy
+        return new SetUserLabelPolicyStatement(
+            username, readPolicyExpression, ShowUserLabelPolicyStatement.LabelPolicyScope.READ);
+      }
+      // Handle setting label policy for WRITE independently
+      if (ctx.writePolicyExpression != null) {
+        String username = parseIdentifier(ctx.userNameForLabel.getText());
+        // Use parsePolicyExpression to properly handle the policy expression and
+        // preserve spacing
+        String writePolicyExpression = parsePolicyExpression(ctx.writePolicyExpression);
+        // Only set WRITE policy
+        return new SetUserLabelPolicyStatement(
+            username, writePolicyExpression, ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE);
+      }
+    }
+    throw new SemanticException("Invalid ALTER USER statement");
   }
 
   // Grant User Privileges
@@ -2709,20 +2767,43 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       final IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
     for (final IoTDBSqlParser.DatabaseAttributeClauseContext attribute :
         ctx.databaseAttributeClause()) {
-      final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
-          attribute.databaseAttributeKey();
-      if (attributeKey.TTL() != null) {
-        final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setTtl(ttl);
-      } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
-        final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
-      } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
-        final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
-      } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
-        final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
+      // 判断分支类型：SECURITY_LABEL分支有SECURITY_LABEL关键字，否则为普通属性
+      if (attribute.getChild(0).getText().equalsIgnoreCase("SECURITY_LABEL")) {
+        // 处理安全标签
+        SecurityLabel securityLabel = new SecurityLabel();
+        // 第二个child是'(', 第三个child是securityLabelClause
+        IoTDBSqlParser.SecurityLabelClauseContext labelCtx =
+            (IoTDBSqlParser.SecurityLabelClauseContext) attribute.getChild(2);
+        if (labelCtx != null) {
+          for (IoTDBSqlParser.SecurityLabelPairContext pairCtx : labelCtx.securityLabelPair()) {
+            String key = parseIdentifier(pairCtx.key.getText());
+            String value;
+            if (pairCtx.value.getType() == IoTDBSqlParser.STRING_LITERAL) {
+              value = parseStringLiteral(pairCtx.value.getText());
+            } else {
+              value = pairCtx.value.getText();
+            }
+            securityLabel.setLabel(key, value);
+          }
+        }
+        databaseSchemaStatement.setSecurityLabel(securityLabel);
+      } else {
+        // 处理其他数据库属性
+        final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
+            attribute.databaseAttributeKey();
+        if (attributeKey.TTL() != null) {
+          final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+          databaseSchemaStatement.setTtl(ttl);
+        } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
+          final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+          databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
+        } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
+          final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+          databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
+        } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
+          final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+          databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
+        }
       }
     }
   }
@@ -4207,7 +4288,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           throw new UnsupportedOperationException();
       }
     } else {
-      throw new SemanticException("Get region id statement‘ expression must be a time expression");
+      throw new SemanticException("Get region id statement' expression must be a time expression");
     }
     return getRegionIdStatement;
   }
@@ -4778,5 +4859,95 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowCurrentUser(IoTDBSqlParser.ShowCurrentUserContext ctx) {
     return new ShowCurrentUserStatement();
+  }
+
+  @Override
+  public Statement visitShowUserLabelPolicy(IoTDBSqlParser.ShowUserLabelPolicyContext ctx) {
+    ShowUserLabelPolicyStatement statement = new ShowUserLabelPolicyStatement();
+
+    // Parse username (optional)
+    if (ctx.userName != null) {
+      statement.setUsername(ctx.userName.getText());
+    }
+
+    // Parse scope
+    if (ctx.labelPolicyScope() != null) {
+      // Get the raw text and normalize it
+      String scopeText = ctx.labelPolicyScope().getText().toUpperCase().trim();
+
+      // Parse based on the text content
+      if (scopeText.equals("READ")) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ);
+      } else if (scopeText.equals("WRITE")) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE);
+      } else if (scopeText.equals("READ,WRITE") || scopeText.equals("READ , WRITE")) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE);
+      } else if (scopeText.equals("WRITE,READ") || scopeText.equals("WRITE , READ")) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE_READ);
+      } else {
+        // Default to READ_WRITE if scope is not specified or unclear
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE);
+      }
+    } else {
+      // Default to READ_WRITE if scope is not specified
+      statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE);
+    }
+
+    return statement;
+  }
+
+  /**
+   * Parse policy expression and return the string representation
+   *
+   * @param ctx The policy expression context
+   * @return The string representation of the policy expression
+   */
+  private String parsePolicyExpression(IoTDBSqlParser.PolicyExpressionContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+
+    // Get the raw text and fix the spacing issues caused by ANTRL lexer
+    String rawText = ctx.getText();
+    return fixPolicyExpressionSpacing(rawText);
+  }
+
+  /**
+   * Fix spacing issues in policy expression caused by ANTRL lexer ignoring spaces Support single
+   * quotes only
+   *
+   * @param rawExpression The raw policy expression from ANTRL
+   * @return Properly formatted policy expression
+   */
+  private String fixPolicyExpressionSpacing(String rawExpression) {
+    if (rawExpression == null || rawExpression.trim().isEmpty()) {
+      return rawExpression;
+    }
+
+    String fixed =
+        rawExpression
+            // Fix 'and' operator spacing - support single quotes only
+            .replaceAll(
+                "([a-zA-Z][a-zA-Z0-9_]*\\s*=\\s*'[^']*')(and)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)(and)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll(
+                "([a-zA-Z][a-zA-Z0-9_]*\\s*=\\s*'[^']*')(AND)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)(AND)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            // Fix 'or' operator spacing
+            .replaceAll(
+                "([a-zA-Z][a-zA-Z0-9_]*\\s*=\\s*'[^']*')(or)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)(or)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll(
+                "([a-zA-Z][a-zA-Z0-9_]*\\s*=\\s*'[^']*')(OR)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)(OR)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            // Fix comparison operator spacing - support single quotes only
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*=\\s*('[^']*'|\\d+)", "$1 = $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*!=\\s*('[^']*'|\\d+)", "$1 != $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*>\\s*('[^']*'|\\d+)", "$1 > $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*<\\s*('[^']*'|\\d+)", "$1 < $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*>=\\s*('[^']*'|\\d+)", "$1 >= $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*<=\\s*('[^']*'|\\d+)", "$1 <= $2");
+
+    return fixed;
   }
 }

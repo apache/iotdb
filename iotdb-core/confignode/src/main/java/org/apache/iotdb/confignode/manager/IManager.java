@@ -154,6 +154,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
@@ -891,4 +893,6 @@ public interface IManager {
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 
   TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp);
+
+  TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req);
 }

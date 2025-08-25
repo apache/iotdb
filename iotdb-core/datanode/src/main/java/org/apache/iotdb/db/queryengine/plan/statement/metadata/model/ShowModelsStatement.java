@@ -34,22 +34,22 @@ import java.util.List;
 
 public class ShowModelsStatement extends Statement implements IConfigStatement {
 
-  private String modelId;
+  private String modelName;
 
   public ShowModelsStatement() {
     // do nothing
   }
 
-  public void setModelId(String modelId) {
-    this.modelId = modelId;
+  public void setModelName(String modelName) {
+    this.modelName = modelName;
   }
 
   public boolean isSetModelName() {
-    return modelId != null;
+    return modelName != null;
   }
 
-  public String getModelId() {
-    return modelId;
+  public String getModelName() {
+    return modelName;
   }
 
   @Override

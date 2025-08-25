@@ -26,7 +26,12 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class AuthorityInformationStatement extends Statement {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorityInformationStatement.class);
+
   protected PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
 
   public PathPatternTree getAuthorityScope() {
@@ -39,6 +44,7 @@ public abstract class AuthorityInformationStatement extends Statement {
       if (!AuthorityChecker.SUPER_USER.equals(userName)) {
         this.authorityScope =
             AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA);
+      } else {
       }
     } catch (AuthException e) {
       return new TSStatus(e.getCode().getStatusCode());

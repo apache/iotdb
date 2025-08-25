@@ -59,7 +59,6 @@ import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
 import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
@@ -233,13 +232,13 @@ public class IoTConsensus implements IConsensus {
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     if (impl.isReadOnly()) {
-      return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
+      return StatusUtils.getStatus(org.apache.iotdb.rpc.TSStatusCode.SYSTEM_READ_ONLY);
     } else if (!impl.isActive()) {
       String message =
           String.format(
               "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
               groupId.toString(), impl.getThisNode().getNodeId());
-      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, message);
+      return RpcUtils.getStatus(org.apache.iotdb.rpc.TSStatusCode.WRITE_PROCESS_REJECT, message);
     } else {
       return impl.write(request);
     }

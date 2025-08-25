@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SecurityLabel;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
@@ -44,7 +45,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private Integer dataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
 
-  // Deprecated
+  private SecurityLabel securityLabel = null;
+
   private Integer schemaReplicationFactor = null;
   private Integer dataReplicationFactor = null;
 
@@ -122,6 +124,14 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     this.enablePrintExceptionLog = enablePrintExceptionLog;
   }
 
+  public SecurityLabel getSecurityLabel() {
+    return securityLabel;
+  }
+
+  public void setSecurityLabel(final SecurityLabel securityLabel) {
+    this.securityLabel = securityLabel;
+  }
+
   @Override
   public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     switch (subType) {
@@ -170,6 +180,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
         + schemaRegionGroupNum
         + ", dataRegionGroupNum="
         + dataRegionGroupNum
+        + ", securityLabel="
+        + securityLabel
         + '}';
   }
 

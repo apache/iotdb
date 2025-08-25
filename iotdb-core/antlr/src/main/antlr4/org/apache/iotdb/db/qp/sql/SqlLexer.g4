@@ -442,6 +442,12 @@ LABEL
     : L A B E L
     ;
 
+LABEL_POLICY
+    : L A B E L '_' P O L I C Y
+    ;
+
+
+
 LAST
     : L A S T
     ;
@@ -748,6 +754,11 @@ RUNNING
 
 SCHEMA
     : S C H E M A
+    ;
+
+
+SECURITY_LABEL
+    : S E C U R I T Y '_' L A B E L
     ;
 
 SELECT

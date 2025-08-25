@@ -51,7 +51,6 @@ import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.RetryPolicy;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.ratis.client.RaftClientRpc;
@@ -326,7 +325,8 @@ class RatisConsensus implements IConsensus {
     }
 
     // current Peer is group leader and in ReadOnly State
-    // We only judge dataRegions here, because schema write when readOnly is handled at
+    // We only judge dataRegions here, because schema write when readOnly is handled
+    // at
     // RegionWriteExecutor
     if (isLeader(groupId) && Utils.rejectWrite(consensusGroupType)) {
       try {
@@ -334,7 +334,7 @@ class RatisConsensus implements IConsensus {
       } catch (Exception e) {
         logger.warn("leader {} read only, force step down failed due to, ", myself, e);
       }
-      return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
+      return StatusUtils.getStatus(org.apache.iotdb.rpc.TSStatusCode.SYSTEM_READ_ONLY);
     }
 
     // serialize request into Message
@@ -422,7 +422,8 @@ class RatisConsensus implements IConsensus {
       }
     } catch (ReadException | ReadIndexException | NotLeaderException e) {
       if (isLinearizableRead) {
-        // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve
+        // linearizable read failed. the RaftServer is recovering from Raft Log and
+        // cannot serve
         // read requests.
         throw new RatisReadUnavailableException(e);
       } else {
@@ -726,7 +727,8 @@ class RatisConsensus implements IConsensus {
   }
 
   private void forceStepDownLeader(RaftGroup group) throws Exception {
-    // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
+    // when newLeaderPeerId == null, ratis forces current leader to step down and
+    // raise new
     // election
     transferLeader(group, null);
   }

@@ -177,6 +177,117 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public void setUserLabelPolicy(
+      String username, String labelPolicyExpression, String labelPolicyScope) throws AuthException {
+    LOGGER.info(
+        "BasicAuthorizer.setUserLabelPolicy - User: {}, Policy: {}, Scope: {}",
+        username,
+        labelPolicyExpression,
+        labelPolicyScope);
+
+    User user = userManager.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+    }
+
+    // Check what policy we're setting
+    boolean isReadOnly =
+        labelPolicyScope.toUpperCase().contains("READ")
+            && !labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isWriteOnly =
+        !labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
+
+    // Update only the specific policy field - no combined policy setting
+    if (isReadOnly) {
+      // Set only READ policy
+      user.setReadLabelPolicyExpression(labelPolicyExpression);
+    } else if (isWriteOnly) {
+      // Set only WRITE policy
+      user.setWriteLabelPolicyExpression(labelPolicyExpression);
+    } else {
+      // Invalid scope - must be either READ or WRITE, not both
+      throw new AuthException(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "Label policy scope must be either 'READ' or 'WRITE', not both");
+    }
+
+    userManager.updateUser(user);
+  }
+
+  @Override
+  public void updateUserLabelPolicy(
+      String username, String labelPolicyExpression, String labelPolicyScope) throws AuthException {
+    User user = userManager.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+    }
+
+    boolean isReadOnly =
+        labelPolicyScope.toUpperCase().contains("READ")
+            && !labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isWriteOnly =
+        !labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
+
+    if (isReadOnly) {
+
+      user.setReadLabelPolicyExpression(labelPolicyExpression);
+    } else if (isWriteOnly) {
+
+      user.setWriteLabelPolicyExpression(labelPolicyExpression);
+    } else {
+
+      throw new AuthException(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "Label policy scope must be either 'READ' or 'WRITE', not both");
+    }
+
+    userManager.updateUser(user);
+  }
+
+  @Override
+  public void dropUserLabelPolicy(String username, String labelPolicyScope) throws AuthException {
+    User user = userManager.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+    }
+
+    boolean isReadWrite =
+        labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isReadOnly =
+        labelPolicyScope.toUpperCase().contains("READ")
+            && !labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isWriteOnly =
+        !labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
+
+    if (isReadWrite) {
+
+      user.setReadLabelPolicyExpression(null);
+      user.setWriteLabelPolicyExpression(null);
+    } else if (isReadOnly) {
+
+      user.setReadLabelPolicyExpression(null);
+    } else if (isWriteOnly) {
+
+      user.setWriteLabelPolicyExpression(null);
+    } else {
+      throw new AuthException(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "Invalid label policy scope: "
+              + labelPolicyScope
+              + ". Only READ, WRITE, or READ,WRITE is supported.");
+    }
+
+    userManager.updateUser(user);
+  }
+
+  @Override
   public void deleteUser(String username) throws AuthException {
     checkAdmin(username, "Default administrator cannot be deleted");
     if (!userManager.deleteEntity(username)) {
@@ -269,7 +380,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
-    // the role may be deleted before it ts granted to the user, so a double check is necessary.
+    // the role may be deleted before it ts granted to the user, so a double check
+    // is necessary.
     userManager.grantRoleToUser(roleName, userName);
     role = roleManager.getEntity(roleName);
     if (role == null) {
@@ -466,6 +578,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public User getUser(String username) throws AuthException {
     return userManager.getEntity(username);
+  }
+
+  @Override
+  public boolean hasUser(String username) {
+    return userManager.getEntity(username) != null;
   }
 
   @Override

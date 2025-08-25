@@ -56,7 +56,6 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCService;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -147,7 +146,8 @@ public class PipeConsensus implements IConsensus {
       Thread.currentThread().interrupt();
       LOGGER.warn("IoTV2 Recover Task is interrupted", ie);
     }
-    // only when we recover all consensus group can we launch async backend checker thread
+    // only when we recover all consensus group can we launch async backend checker
+    // thread
     consensusPipeGuardian.start(
         CONSENSUS_PIPE_GUARDIAN_TASK_ID,
         this::checkAllConsensusPipe,
@@ -285,11 +285,10 @@ public class PipeConsensus implements IConsensus {
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     if (impl.isReadOnly()) {
-      return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
+      return StatusUtils.getStatus(org.apache.iotdb.rpc.TSStatusCode.SYSTEM_READ_ONLY);
     } else if (!impl.isActive()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.WRITE_PROCESS_REJECT,
-          "current node is not active and is not ready to receive user write.");
+      String message = "Pipe consensus is not active.";
+      return RpcUtils.getStatus(org.apache.iotdb.rpc.TSStatusCode.WRITE_PROCESS_REJECT, message);
     } else {
       return impl.write(request);
     }
@@ -406,7 +405,8 @@ public class PipeConsensus implements IConsensus {
       impl.setRemotePeerActive(peer, false, false);
 
       // step 2: notify all the other Peers to create consensus pipes to newPeer
-      // NOTE: For this step, all the other peers will try to transfer its user write data to target
+      // NOTE: For this step, all the other peers will try to transfer its user write
+      // data to target
       LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
       impl.notifyPeersToCreateConsensusPipes(peer);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
@@ -545,7 +545,8 @@ public class PipeConsensus implements IConsensus {
     if (!stateMachineMap.containsKey(groupId)) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    // Do nothing here because we do not need to transfer snapshot when there are new peers
+    // Do nothing here because we do not need to transfer snapshot when there are
+    // new peers
   }
 
   @Override
@@ -590,7 +591,8 @@ public class PipeConsensus implements IConsensus {
 
   @Override
   public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
-    // PipeConsensus doesn't support reload consensus config, related config can be reloaded in
+    // PipeConsensus doesn't support reload consensus config, related config can be
+    // reloaded in
     // iotdb-core layer.
   }
 

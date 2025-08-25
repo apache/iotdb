@@ -45,69 +45,69 @@ import java.util.List;
 public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScanOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SeriesAggregationScanOperator.class)
-          + RamUsageEstimator.shallowSizeOfInstance(ITimeRangeIterator.class);
+          RamUsageEstimator.shallowSizeOfInstance(SeriesAggregationScanOperator.class)
+                  + RamUsageEstimator.shallowSizeOfInstance(ITimeRangeIterator.class);
 
   @SuppressWarnings("squid:S107")
   public SeriesAggregationScanOperator(
-      PlanNodeId sourceId,
-      IFullPath seriesPath,
-      Ordering scanOrder,
-      SeriesScanOptions scanOptions,
-      OperatorContext context,
-      List<TreeAggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator,
-      GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize,
-      boolean canUseStatistics) {
+          PlanNodeId sourceId,
+          IFullPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions scanOptions,
+          OperatorContext context,
+          List<TreeAggregator> aggregators,
+          ITimeRangeIterator timeRangeIterator,
+          GroupByTimeParameter groupByTimeParameter,
+          long maxReturnSize,
+          boolean canUseStatistics) {
     super(
-        sourceId,
-        context,
-        new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
-        1,
-        aggregators,
-        timeRangeIterator,
-        scanOrder.isAscending(),
-        false,
-        groupByTimeParameter,
-        maxReturnSize,
-        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
-        canUseStatistics);
+            sourceId,
+            context,
+            new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
+            1,
+            aggregators,
+            timeRangeIterator,
+            scanOrder.isAscending(),
+            false,
+            groupByTimeParameter,
+            maxReturnSize,
+            TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
+            canUseStatistics);
   }
 
   public SeriesAggregationScanOperator(
-      PlanNodeId sourceId,
-      IFullPath seriesPath,
-      Ordering scanOrder,
-      boolean outputEndTime,
-      SeriesScanOptions scanOptions,
-      OperatorContext context,
-      List<TreeAggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator,
-      GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize,
-      boolean canUseStatistics) {
+          PlanNodeId sourceId,
+          IFullPath seriesPath,
+          Ordering scanOrder,
+          boolean outputEndTime,
+          SeriesScanOptions scanOptions,
+          OperatorContext context,
+          List<TreeAggregator> aggregators,
+          ITimeRangeIterator timeRangeIterator,
+          GroupByTimeParameter groupByTimeParameter,
+          long maxReturnSize,
+          boolean canUseStatistics) {
     super(
-        sourceId,
-        context,
-        new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
-        1,
-        aggregators,
-        timeRangeIterator,
-        scanOrder.isAscending(),
-        outputEndTime,
-        groupByTimeParameter,
-        maxReturnSize,
-        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
-        canUseStatistics);
+            sourceId,
+            context,
+            new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
+            1,
+            aggregators,
+            timeRangeIterator,
+            scanOrder.isAscending(),
+            outputEndTime,
+            groupByTimeParameter,
+            maxReturnSize,
+            TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
+            canUseStatistics);
   }
 
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
-        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+            + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
   }
 }

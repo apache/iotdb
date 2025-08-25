@@ -161,6 +161,15 @@ statement
     | listUserStatement
     | listRoleStatement
 
+    // Security Label Statement
+
+    | alterUserLabelPolicyStatement
+    | dropUserLabelPolicyStatement
+    | showUserLabelPolicyStatement
+    | setDatabaseSecurityLabelStatement
+    | dropDatabaseSecurityLabelStatement
+    | showDatabaseSecurityLabelStatement
+
     // AI
     | createModelStatement
     | dropModelStatement
@@ -660,6 +669,87 @@ showCurrentSqlDialectStatement
     : SHOW CURRENT_SQL_DIALECT
     ;
 
+// ------------------------------------------- Security Label Statement ---------------------------------------------------------
+
+
+alterUserLabelPolicyStatement
+    : ALTER USER userName=identifier SET LABEL_POLICY readPolicyExpression=policyExpression FOR READ
+    | ALTER USER userName=identifier SET LABEL_POLICY writePolicyExpression=policyExpression FOR WRITE
+    ;
+
+dropUserLabelPolicyStatement
+    : ALTER USER userName=identifier DROP LABEL_POLICY FOR labelPolicyScope
+    ;
+
+showUserLabelPolicyStatement
+    : SHOW USER (userName=identifier)? LABEL_POLICY FOR labelPolicyScope
+    ;
+
+// Database Security Label Management - Independent Statements
+setDatabaseSecurityLabelStatement
+    : ALTER DATABASE database=identifier SET SECURITY_LABEL '(' securityLabelClause ')'
+    ;
+
+dropDatabaseSecurityLabelStatement
+    : ALTER DATABASE database=identifier DROP SECURITY_LABEL
+    ;
+
+showDatabaseSecurityLabelStatement
+    : SHOW DATABASES (database=identifier)? SECURITY_LABEL
+    ;
+
+// Policy Expression and Scope
+labelPolicyScope
+    : READ
+    | WRITE
+    | READ ',' WRITE
+    | WRITE ',' READ
+    ;
+
+policyExpression
+    : policyTerm (OR policyTerm)*
+    ;
+
+policyTerm
+    : policyFactor (AND policyFactor)*
+    ;
+
+policyFactor
+    : '(' policyExpression ')'
+    | policyComparison
+    ;
+
+policyComparison
+    : policyField policyOperator policyValue
+    ;
+
+policyField
+    : identifier
+    ;
+
+policyOperator
+    : EQ        // =
+    | NEQ       // !=
+    | GT        // >
+    | LT        // <
+    | GTE       // >=
+    | LTE       // <=
+    ;
+
+policyValue
+    : string
+    | INTEGER_VALUE
+    ;
+
+securityLabelClause
+    : securityLabelPair (',' securityLabelPair)*
+    ;
+
+securityLabelPair
+    : key=identifier EQ stringValue=string
+    | key=identifier EQ intValue=INTEGER_VALUE
+    ;
+
 setSqlDialectStatement
     : SET SQL_DIALECT EQ (TABLE | TREE)
     ;
@@ -681,6 +771,8 @@ showCurrentTimestampStatement
 
 createUserStatement
     : CREATE USER userName=identifier password=string
+    (WITH LABEL_POLICY readPolicyExpression=policyExpression FOR READ)?
+    (WITH LABEL_POLICY writePolicyExpression=policyExpression FOR WRITE)?
     ;
 
 createRoleStatement
@@ -1679,6 +1771,8 @@ SCHEMA: 'SCHEMA';
 SCHEMAS: 'SCHEMAS';
 SECOND: 'SECOND' | 'S';
 SECURITY: 'SECURITY';
+LABEL_POLICY: 'LABEL_POLICY';
+SECURITY_LABEL: 'SECURITY_LABEL';
 SEEK: 'SEEK';
 SELECT: 'SELECT';
 SERIALIZABLE: 'SERIALIZABLE';
@@ -1749,7 +1843,6 @@ UTF32: 'UTF32';
 UTF8: 'UTF8';
 VALIDATE: 'VALIDATE';
 VALUE: 'VALUE';
-VALUES: 'VALUES';
 VARIABLES: 'VARIABLES';
 VARIATION: 'VARIATION';
 VERBOSE: 'VERBOSE';

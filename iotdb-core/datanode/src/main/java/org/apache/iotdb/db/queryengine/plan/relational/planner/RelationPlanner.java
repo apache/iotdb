@@ -225,11 +225,13 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   @Override
   protected RelationPlan visitTable(final Table table, final Void context) {
-    // is this a recursive reference in expandable named query? If so, there's base relation already
+    // is this a recursive reference in expandable named query? If so, there's base
+    // relation already
     // planned.
     final RelationPlan expansion = recursiveSubqueries.get(NodeRef.of(table));
     if (expansion != null) {
-      // put the pre-planned recursive subquery in the actual outer context to enable resolving
+      // put the pre-planned recursive subquery in the actual outer context to enable
+      // resolving
       // correlation
       return new RelationPlan(
           expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings(), outerContext);
@@ -249,7 +251,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
             qualifiedName.getSuffix());
 
-    // on the basis of that the order of fields is same with the column category order of segments
+    // on the basis of that the order of fields is same with the column category
+    // order of segments
     // in DeviceEntry
     final Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
     int idIndex = 0;
@@ -300,9 +303,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                 tagAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
 
-    // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
+    // Collection<Field> fields =
+    // analysis.getMaterializedViewStorageTableFields(node);
     // Query namedQuery = analysis.getNamedQuery(node);
-    // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
+    // Collection<Field> fields =
+    // analysis.getMaterializedViewStorageTableFields(node);
     // plan = addRowFilters(node, plan);
     // plan = addColumnMasks(node, plan);
   }
@@ -355,30 +360,31 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   private RelationPlan planJoinUsing(Join node, RelationPlan left, RelationPlan right) {
-    /* Given: l JOIN r USING (k1, ..., kn)
-
-       produces:
-
-        - project
-                coalesce(l.k1, r.k1)
-                ...,
-                coalesce(l.kn, r.kn)
-                l.v1,
-                ...,
-                l.vn,
-                r.v1,
-                ...,
-                r.vn
-          - join (l.k1 = r.k1 and ... l.kn = r.kn)
-                - project
-                    cast(l.k1 as commonType(l.k1, r.k1))
-                    ...
-                - project
-                    cast(rl.k1 as commonType(l.k1, r.k1))
-
-        If casts are redundant (due to column type and common type being equal),
-        they will be removed by optimization passes.
-    */
+    /*
+     * Given: l JOIN r USING (k1, ..., kn)
+     *
+     * produces:
+     *
+     * - project
+     * coalesce(l.k1, r.k1)
+     * ...,
+     * coalesce(l.kn, r.kn)
+     * l.v1,
+     * ...,
+     * l.vn,
+     * r.v1,
+     * ...,
+     * r.vn
+     * - join (l.k1 = r.k1 and ... l.kn = r.kn)
+     * - project
+     * cast(l.k1 as commonType(l.k1, r.k1))
+     * ...
+     * - project
+     * cast(rl.k1 as commonType(l.k1, r.k1))
+     *
+     * If casts are redundant (due to column type and common type being equal),
+     * they will be removed by optimization passes.
+     */
 
     List<Identifier> joinColumns =
         ((JoinUsing)
@@ -402,14 +408,16 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       Identifier identifier = joinColumns.get(i);
       Type type = analysis.getType(identifier);
 
-      // compute the coercion for the field on the left to the common supertype of left & right
+      // compute the coercion for the field on the left to the common supertype of
+      // left & right
       Symbol leftOutput = symbolAllocator.newSymbol(identifier, type);
       int leftField = joinAnalysis.getLeftJoinFields().get(i);
       // will not appear the situation: Cast(toSqlType(type))
       leftCoercions.put(leftOutput, left.getSymbol(leftField).toSymbolReference());
       leftJoinColumns.put(identifier, leftOutput);
 
-      // compute the coercion for the field on the right to the common supertype of left & right
+      // compute the coercion for the field on the right to the common supertype of
+      // left & right
       Symbol rightOutput = symbolAllocator.newSymbol(identifier, type);
       int rightField = joinAnalysis.getRightJoinFields().get(i);
       rightCoercions.put(rightOutput, right.getSymbol(rightField).toSymbolReference());
@@ -538,7 +546,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           rightComparisonExpressions.add(firstExpression);
           joinConditionComparisonOperators.add(comparisonOperator.flip());
         } else {
-          // the case when we mix symbols from both left and right join side on either side of
+          // the case when we mix symbols from both left and right join side on either
+          // side of
           // condition.
           throw new SemanticException(
               format("Complex ASOF main join expression [%s] is not supported", asofCriteria));
@@ -557,9 +566,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
           if (dependencies.stream().allMatch(left::canResolve)
               || dependencies.stream().allMatch(right::canResolve)) {
-            // If the conjunct can be evaluated entirely with the inputs on either side of the join,
+            // If the conjunct can be evaluated entirely with the inputs on either side of
+            // the join,
             // add
-            // it to the list complex expressions and let the optimizers figure out how to push it
+            // it to the list complex expressions and let the optimizers figure out how to
+            // push it
             // down later.
             complexJoinExpressions.add(conjunct);
           } else if (conjunct instanceof ComparisonExpression) {
@@ -583,7 +594,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               rightComparisonExpressions.add(firstExpression);
               joinConditionComparisonOperators.add(comparisonOperator.flip());
             } else {
-              // the case when we mix symbols from both left and right join side on either side of
+              // the case when we mix symbols from both left and right join side on either
+              // side of
               // condition.
               complexJoinExpressions.add(conjunct);
             }
@@ -664,17 +676,20 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             SymbolsExtractor.extractNamesNoSubqueries(
                 complexExpression, analysis.getColumnReferences());
 
-        // This is for handling uncorreled subqueries. Correlated subqueries are not currently
+        // This is for handling uncorreled subqueries. Correlated subqueries are not
+        // currently
         // supported and are dealt with
         // during analysis.
-        // Make best effort to plan the subquery in the branch of the join involving the other
+        // Make best effort to plan the subquery in the branch of the join involving the
+        // other
         // inputs to the expression.
         // E.g.,
-        //  t JOIN u ON t.x = (...) get's planned on the t side
-        //  t JOIN u ON t.x = (...) get's planned on the u side
-        //  t JOIN u ON t.x + u.x = (...) get's planned on an arbitrary side
+        // t JOIN u ON t.x = (...) get's planned on the t side
+        // t JOIN u ON t.x = (...) get's planned on the u side
+        // t JOIN u ON t.x + u.x = (...) get's planned on an arbitrary side
         if (dependencies.stream().allMatch(left::canResolve)) {
-          // leftPlanBuilder = subqueryPlanner.handleSubqueries(leftPlanBuilder, complexExpression,
+          // leftPlanBuilder = subqueryPlanner.handleSubqueries(leftPlanBuilder,
+          // complexExpression,
           // subqueries);
         } else {
           // rightPlanBuilder = subqueryPlanner.handleSubqueries(rightPlanBuilder,
@@ -715,9 +730,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     if (type == INNER) {
-      // rewrite all the other conditions using output symbols from left + right plan node.
+      // rewrite all the other conditions using output symbols from left + right plan
+      // node.
       PlanBuilder rootPlanBuilder = new PlanBuilder(translationMap, root);
-      // rootPlanBuilder = subqueryPlanner.handleSubqueries(rootPlanBuilder, complexJoinExpressions,
+      // rootPlanBuilder = subqueryPlanner.handleSubqueries(rootPlanBuilder,
+      // complexJoinExpressions,
       // subqueries);
 
       for (Expression expression : complexJoinExpressions) {
@@ -767,7 +784,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     if (node.getColumnNames() != null) {
       ImmutableList.Builder<Symbol> newMappings = ImmutableList.builder();
 
-      // Adjust the mappings to expose only the columns visible in the scope of the aliased relation
+      // Adjust the mappings to expose only the columns visible in the scope of the
+      // aliased relation
       for (int i = 0; i < subPlan.getDescriptor().getAllFieldCount(); i++) {
         if (!subPlan.getDescriptor().getFieldByIndex(i).isHidden()) {
           newMappings.add(subPlan.getFieldMappings().get(i));
@@ -901,20 +919,26 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       Optional<SkipTo> skipTo,
       RowPattern pattern,
       List<VariableDefinition> variableDefinitions) {
-    // NOTE: There might be aggregate functions in measure definitions and variable definitions.
+    // NOTE: There might be aggregate functions in measure definitions and variable
+    // definitions.
     // They are handled different than top level aggregations in a query:
-    // 1. Their arguments are not pre-projected and replaced with single symbols. This is because
+    // 1. Their arguments are not pre-projected and replaced with single symbols.
+    // This is because
     // the arguments might
-    //    not be eligible for pre-projection, when they contain references to CLASSIFIER() or
+    // not be eligible for pre-projection, when they contain references to
+    // CLASSIFIER() or
     // MATCH_NUMBER() functions
-    //    which are evaluated at runtime. If some aggregation arguments can be pre-projected, it
+    // which are evaluated at runtime. If some aggregation arguments can be
+    // pre-projected, it
     // will be done in the
-    //    Optimizer.
-    // 2. Their arguments do not need to be coerced by hand. Since the pattern aggregation arguments
+    // Optimizer.
+    // 2. Their arguments do not need to be coerced by hand. Since the pattern
+    // aggregation arguments
     // are rewritten as
-    //    parts of enclosing expressions, and not as standalone expressions, all necessary coercions
+    // parts of enclosing expressions, and not as standalone expressions, all
+    // necessary coercions
     // will be applied by the
-    //    TranslationMap.
+    // TranslationMap.
 
     // rewrite subsets
     ImmutableMap.Builder<IrLabel, Set<IrLabel>> rewrittenSubsetsBuilder = ImmutableMap.builder();
@@ -1161,7 +1185,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         singleGroupingSet(node.getOutputSymbols()));
   }
 
-  // ================================ Implemented later =====================================
 
   @Override
   protected RelationPlan visitValues(Values node, Void context) {
@@ -1328,7 +1351,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       RelationPlan sourcePlan = process(tableArgument.getRelation(), context);
       PlanBuilder sourcePlanBuilder = newPlanBuilder(sourcePlan, analysis);
 
-      // required columns are a subset of visible columns of the source. remap required column
+      // required columns are a subset of visible columns of the source. remap
+      // required column
       // indexes to field indexes in source relation type.
       RelationType sourceRelationType = sourcePlan.getScope().getRelationType();
       int[] fieldIndexForVisibleColumn = new int[sourceRelationType.getVisibleFieldCount()];
@@ -1351,7 +1375,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       if (!tableArgument.isRowSemantics()) {
         // partition by
         List<Symbol> partitionBy = ImmutableList.of();
-        // if there are partitioning columns, they might have to be coerced for copartitioning
+        // if there are partitioning columns, they might have to be coerced for
+        // copartitioning
         if (tableArgument.getPartitionBy().isPresent()
             && !tableArgument.getPartitionBy().get().isEmpty()) {
           List<Expression> partitioningColumns = tableArgument.getPartitionBy().get();
@@ -1388,7 +1413,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           ImmutableList.builder();
       if (tableArgument.isPassThroughColumns()) {
         // the original output symbols from the source node, not coerced
-        // note: hidden columns are included. They are present in sourcePlan.fieldMappings
+        // note: hidden columns are included. They are present in
+        // sourcePlan.fieldMappings
         outputSymbols.addAll(sourcePlan.getFieldMappings());
         Set<Symbol> partitionBy =
             specification

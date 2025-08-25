@@ -82,9 +82,11 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
   protected static final String STRING_ENCODING = "utf-8";
   protected final String entityDirPath;
 
-  // It might be a good idea to use a Version number to control upgrade compatibility.
-  // Now it's version 1
-  protected static final int VERSION = 1;
+  // It might be a good idea to use a Version number to control upgrade
+  // compatibility.
+  // Version 1: original format without LBAC fields
+  // Version 2: format with LBAC fields for User
+  protected static final int VERSION = 2;
 
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
@@ -293,7 +295,8 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
   public static List<String> getEntityStrings(String[] names) {
     List<String> retList = new ArrayList<>();
     if (names != null) {
-      // in very rare situations, normal file and backup file may exist at the same time
+      // in very rare situations, normal file and backup file may exist at the same
+      // time
       // so a set is used to deduplicate
       Set<String> set = new HashSet<>();
       for (String fileName : names) {

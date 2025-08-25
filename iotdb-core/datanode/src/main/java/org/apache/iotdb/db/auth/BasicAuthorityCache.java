@@ -69,36 +69,57 @@ public class BasicAuthorityCache implements IAuthorCache {
   }
 
   /**
-   * Initialize user and role cache information.
+   * Invalidate user and role caches This method clears cached user and role information to ensure
+   * that policy changes are immediately reflected in permission checks
    *
-   * <p>If the permission information of the role changes, only the role cache information is
-   * cleared. During permission checking, if the role belongs to a user, the user will be
-   * initialized.
+   * @param userName The username whose cache should be invalidated
+   * @param roleName The role name whose cache should be invalidated
+   * @return true if invalidation was successful, false otherwise
    */
   @Override
   public boolean invalidateCache(final String userName, final String roleName) {
+    LOGGER.info("Invalidating permission cache - User: {}, Role: {}", userName, roleName);
+
     if (userName != null) {
-      if (userCache.getIfPresent(userName) != null) {
-        Set<String> roleSet = userCache.getIfPresent(userName).getRoleSet();
+      User cachedUser = userCache.getIfPresent(userName);
+      if (cachedUser != null) {
+        LOGGER.info("Found cached user {} with roles: {}", userName, cachedUser.getRoleSet());
+        Set<String> roleSet = cachedUser.getRoleSet();
         if (!roleSet.isEmpty()) {
+          LOGGER.info("Invalidating role cache for roles: {}", roleSet);
           roleCache.invalidateAll(roleSet);
         }
         userCache.invalidate(userName);
+        LOGGER.info("Successfully invalidated user cache for: {}", userName);
+      } else {
+        LOGGER.debug("No cached user found for: {}", userName);
       }
+
+      // Verify that cache was actually cleared
       if (userCache.getIfPresent(userName) != null) {
-        LOGGER.error("datanode cache initialization failed");
+        LOGGER.error("Failed to invalidate user cache for: {}", userName);
         return false;
       }
     }
+
     if (roleName != null) {
-      if (roleCache.getIfPresent(roleName) != null) {
+      Role cachedRole = roleCache.getIfPresent(roleName);
+      if (cachedRole != null) {
+        LOGGER.info("Found cached role: {}", roleName);
         roleCache.invalidate(roleName);
+        LOGGER.info("Successfully invalidated role cache for: {}", roleName);
+      } else {
+        LOGGER.debug("No cached role found for: {}", roleName);
       }
+
+      // Verify that cache was actually cleared
       if (roleCache.getIfPresent(roleName) != null) {
-        LOGGER.error("datanode cache initialization failed");
+        LOGGER.error("Failed to invalidate role cache for: {}", roleName);
         return false;
       }
     }
+
+    LOGGER.info("Permission cache invalidation completed successfully");
     return true;
   }
 

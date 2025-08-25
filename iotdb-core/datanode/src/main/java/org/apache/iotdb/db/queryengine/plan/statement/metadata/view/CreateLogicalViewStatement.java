@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata.view;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -45,7 +44,6 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 /** CREATE LOGICAL VIEW statement. */
 public class CreateLogicalViewStatement extends Statement {
@@ -101,18 +99,11 @@ public class CreateLogicalViewStatement extends Statement {
               PrivilegeType.READ_SCHEMA);
     }
 
-    final List<PartialPath> paths =
-        Objects.nonNull(getTargetPathList())
-            ? getTargetPathList()
-            : Collections.singletonList(
-                batchGenerationItem
-                    .getIntoDevice()
-                    .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return AuthorityChecker.getTSStatus(
           AuthorityChecker.checkFullPathOrPatternListPermission(
-              userName, paths, PrivilegeType.WRITE_SCHEMA),
-          paths,
+              userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA),
+          getTargetPathList(),
           PrivilegeType.WRITE_SCHEMA);
     }
     return status;

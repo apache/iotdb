@@ -35,6 +35,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -49,9 +53,12 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,6 +69,8 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_U
 // Authority checker is SingleTon working at datanode.
 // It checks permission in local. DCL statement will send to configNode.
 public class AuthorityChecker {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorityChecker.class);
 
   public static final String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
 
@@ -297,7 +306,7 @@ public class AuthorityChecker {
 
   public static boolean checkDBVisible(String userName, String database) {
     return authorityFetcher.get().checkDBVisible(userName, database).getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   public static boolean checkTableVisible(String userName, String database, String table) {
@@ -405,4 +414,7 @@ public class AuthorityChecker {
       }
     }
   }
+
+
+
 }

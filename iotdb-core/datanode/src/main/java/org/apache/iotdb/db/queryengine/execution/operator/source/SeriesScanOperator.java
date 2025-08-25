@@ -35,20 +35,20 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 public class SeriesScanOperator extends AbstractSeriesScanOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SeriesScanOperator.class);
+          RamUsageEstimator.shallowSizeOfInstance(SeriesScanOperator.class);
 
   public SeriesScanOperator(
-      OperatorContext context,
-      PlanNodeId sourceId,
-      IFullPath seriesPath,
-      Ordering scanOrder,
-      SeriesScanOptions seriesScanOptions) {
+          OperatorContext context,
+          PlanNodeId sourceId,
+          IFullPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions seriesScanOptions) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
-        new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
+            new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
     this.maxReturnSize =
-        Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+            Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
@@ -86,9 +86,9 @@ public class SeriesScanOperator extends AbstractSeriesScanOperator {
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
-        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+            + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
   }
 }
