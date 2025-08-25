@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.interval;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import java.util.TreeSet;
 
+@NotThreadSafe
 public class IntervalManager<T extends Interval<T>> {
   private final TreeSet<T> intervals = new TreeSet<>();
 
