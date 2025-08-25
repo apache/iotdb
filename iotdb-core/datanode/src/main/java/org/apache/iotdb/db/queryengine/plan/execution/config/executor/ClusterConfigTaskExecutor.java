@@ -314,6 +314,7 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
@@ -2025,12 +2026,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     extractorPipeParameters
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
-                                Collections.singletonMap(
-                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY, "true")))
-                        .addOrReplaceEquivalentAttributesWithClone(
-                            new PipeParameters(
-                                Collections.singletonMap(
-                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY, "false")))
+                                ImmutableMap.of(
+                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
+                                    Boolean.toString(true),
+                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
+                                    Boolean.toString(false))))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
                 .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
@@ -2053,12 +2053,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     extractorPipeParameters
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
-                                Collections.singletonMap(
-                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY, "false")))
-                        .addOrReplaceEquivalentAttributesWithClone(
-                            new PipeParameters(
-                                Collections.singletonMap(
-                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY, "true")))
+                                ImmutableMap.of(
+                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
+                                    Boolean.toString(false),
+                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
+                                    Boolean.toString(true))))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
                 .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
