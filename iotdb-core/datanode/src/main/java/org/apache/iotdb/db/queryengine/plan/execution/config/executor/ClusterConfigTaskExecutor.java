@@ -2007,6 +2007,78 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
+    // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
+    // and history are true), the pipe is split into history-only and realtime–only modes.
+    final PipeParameters extractorPipeParameters =
+        new PipeParameters(createPipeStatement.getExtractorAttributes());
+    if (PipeDataNodeAgent.task().isFullSync(extractorPipeParameters)) {
+      try (final ConfigNodeClient configNodeClient =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // 1. Send request to create the historical data synchronization pipeline
+        final TCreatePipeReq historyReq =
+            new TCreatePipeReq()
+                // Append suffix to the pipeline name for historical data
+                .setPipeName(createPipeStatement.getPipeName() + "_history")
+                .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+                // Use extractor parameters for historical data
+                .setExtractorAttributes(
+                    extractorPipeParameters
+                        .addOrReplaceEquivalentAttributesWithClone(
+                            new PipeParameters(
+                                Collections.singletonMap(
+                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY, "true")))
+                        .addOrReplaceEquivalentAttributesWithClone(
+                            new PipeParameters(
+                                Collections.singletonMap(
+                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY, "false")))
+                        .getAttribute())
+                .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+
+        final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
+        // If creation fails, immediately return with exception
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != historyTsStatus.getCode()) {
+          future.setException(new IoTDBException(historyTsStatus));
+          return future;
+        }
+
+        // 2. Send request to create the real-time data synchronization pipeline
+        final TCreatePipeReq realtimeReq =
+            new TCreatePipeReq()
+                // Append suffix to the pipeline name for real-time data
+                .setPipeName(createPipeStatement.getPipeName() + "_realtime")
+                .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+                // Use extractor parameters for real-time data
+                .setExtractorAttributes(
+                    extractorPipeParameters
+                        .addOrReplaceEquivalentAttributesWithClone(
+                            new PipeParameters(
+                                Collections.singletonMap(
+                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY, "false")))
+                        .addOrReplaceEquivalentAttributesWithClone(
+                            new PipeParameters(
+                                Collections.singletonMap(
+                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY, "true")))
+                        .getAttribute())
+                .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+
+        final TSStatus realtimeTsStatus = configNodeClient.createPipe(realtimeReq);
+        // If creation fails, immediately return with exception
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != realtimeTsStatus.getCode()) {
+          future.setException(new IoTDBException(realtimeTsStatus));
+          return future;
+        }
+
+        // 3. Set success status only if both pipelines are created successfully
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } catch (final Exception e) {
+        // Catch any other exceptions (e.g., network issues)
+        future.setException(e);
+      }
+      return future;
+    }
+
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreatePipeReq req =
