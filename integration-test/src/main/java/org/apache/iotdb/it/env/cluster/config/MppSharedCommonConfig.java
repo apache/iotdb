@@ -90,6 +90,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    cnConfig.setEnableGrantOption(enableGrantOption);
+    dnConfig.setEnableGrantOption(enableGrantOption);
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     cnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
     dnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);

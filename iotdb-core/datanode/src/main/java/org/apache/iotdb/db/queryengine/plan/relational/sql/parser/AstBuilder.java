@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
@@ -1808,6 +1809,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     String name;
     toUser = ctx.holderType().getText().equalsIgnoreCase("user");
     name = (((Identifier) visit(ctx.holderName)).getValue());
+    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOption()
+        && ctx.grantOpt() != null) {
+      throw new SemanticException(
+          "Grant Option is disabled, Please check the parameter enable_grant_option.");
+    }
     boolean grantOption = ctx.grantOpt() != null;
     boolean toTable;
     Set<PrivilegeType> privileges;
