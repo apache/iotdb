@@ -415,6 +415,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeEventReferenceEliminateIntervalSeconds();
   }
 
+  /////////////////////////////// Syntactic sugar ///////////////////////////////
+
+  public boolean getPipeAutoSplitFullEnabled() {
+    return COMMON_CONFIG.getPipeAutoSplitFullEnabled();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
@@ -605,6 +611,8 @@ public class PipeConfig {
     LOGGER.info(
         "PipeEventReferenceEliminateIntervalSeconds: {}",
         getPipeEventReferenceEliminateIntervalSeconds());
+
+    LOGGER.info("PipeAutoSplitFullEnabled: {}", getPipeAutoSplitFullEnabled());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

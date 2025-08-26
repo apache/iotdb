@@ -53,6 +53,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
@@ -2012,7 +2013,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // and history are true), the pipe is split into history-only and realtime–only modes.
     final PipeParameters extractorPipeParameters =
         new PipeParameters(createPipeStatement.getExtractorAttributes());
-    if (PipeDataNodeAgent.task().isFullSync(extractorPipeParameters)) {
+    if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
+        && PipeDataNodeAgent.task().isFullSync(extractorPipeParameters)) {
       try (final ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // 1. Send request to create the historical data synchronization pipeline
