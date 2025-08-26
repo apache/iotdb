@@ -48,6 +48,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import static org.junit.jupiter.api.Assertions.fail;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
@@ -321,7 +323,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "count timeseries root.db.**",
+          "count timeseries",
           "count(timeseries),",
           Collections.singleton("3,"),
           handleFailure);
