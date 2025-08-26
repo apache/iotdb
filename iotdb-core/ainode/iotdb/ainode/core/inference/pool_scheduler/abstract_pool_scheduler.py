@@ -34,6 +34,7 @@ class ScaleAction:
     action: ScaleActionType
     amount: int
     model_id: str
+    device_id: int
 
 
 class AbstractPoolScheduler(ABC):
@@ -41,7 +42,7 @@ class AbstractPoolScheduler(ABC):
     Abstract base class for pool scheduling strategies.
     """
 
-    def __init__(self, request_pool_map: Dict[str, PoolGroup]):
+    def __init__(self, request_pool_map: Dict[str, Dict[int, PoolGroup]]):
         """
         Args:
             request_pool_map: A mapping from model IDs to their corresponding pool groups.
