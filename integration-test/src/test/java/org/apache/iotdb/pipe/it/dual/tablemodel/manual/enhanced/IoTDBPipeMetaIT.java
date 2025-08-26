@@ -179,7 +179,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
                   "time,TIMESTAMP,TIME,",
                   "a,STRING,TAG,",
                   "b,STRING,ATTRIBUTE,",
-                  "d,INT64,MEASUREMENT,")),
+                  "d,INT64,FIELD,")),
           dbName);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
