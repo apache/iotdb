@@ -1087,14 +1087,20 @@ public class StorageEngine implements IService {
             .filter(
                 path -> {
                   String name = path.getFileName().toString();
-                  return name.endsWith(".bin.back");
+                  return name.endsWith(".bin.back") || name.endsWith(".bin");
                 })
             .forEach(
                 path -> {
-                  try {
-                    Files.delete(path);
-                  } catch (IOException e) {
-                    LOGGER.error("Failed to delete: {} -> {}", path, e.getMessage());
+                  String name = path.getFileName().toString();
+                  if (name.endsWith(".bin.back")) {
+                    try {
+                      Files.delete(path);
+                    } catch (IOException e) {
+                      LOGGER.error("Failed to delete: {} -> {}", path, e.getMessage());
+                    }
+                  } else if (name.endsWith(".bin")) {
+                    FileMetrics.getInstance().increaseObjectFileNum(1);
+                    FileMetrics.getInstance().increaseObjectFileSize(path.toFile().length());
                   }
                 });
       } catch (IOException e) {
