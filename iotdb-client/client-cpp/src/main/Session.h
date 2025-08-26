@@ -544,6 +544,7 @@ private:
     int fetchSize_;
     const static int DEFAULT_FETCH_SIZE = 10000;
     const static int DEFAULT_TIMEOUT_MS = 0;
+    int connectTimeoutMs_;
     Version::Version version;
     std::string sqlDialect_ = "tree"; // default sql dialect
     std::string database_;
@@ -721,6 +722,7 @@ public:
         this->database_ = builder->database;
         this->enableAutoFetch_ = builder->enableAutoFetch;
         this->enableRedirection_ = builder->enableRedirections;
+        this->connectTimeoutMs_ = builder->connectTimeoutMs;
         this->nodeUrls_ = builder->nodeUrls;
         initZoneId();
         initNodesSupplier(this->nodeUrls_);

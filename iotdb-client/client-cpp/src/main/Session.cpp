@@ -727,21 +727,39 @@ void Session::initZoneId() {
 
 void Session::initNodesSupplier(const std::vector<std::string>& nodeUrls) {
     std::vector<TEndPoint> endPoints;
+    std::unordered_set<std::string> uniqueEndpoints;
 
     if (nodeUrls.empty() && host_.empty()) {
-        throw IoTDBException("No available nodes: both nodeUrls and host are empty");
+        throw IoTDBException("No available nodes");
     }
 
-    // Add local endpoint if nodeUrls is empty or doesn't contain host_
-    if (nodeUrls.empty()) {
+    // Process provided node URLs
+    if (!nodeUrls.empty()) {
+        for (auto& url : nodeUrls) {
+            try {
+                TEndPoint endPoint = UrlUtils::parseTEndPointIpv4AndIpv6Url(url);
+                if (endPoint.port == 0) continue; // Skip invalid endpoints
+
+                std::string endpointKey = endPoint.ip + ":" + std::to_string(endPoint.port);
+                if (uniqueEndpoints.find(endpointKey) == uniqueEndpoints.end()) {
+                    endPoints.emplace_back(std::move(endPoint));
+                    uniqueEndpoints.insert(std::move(endpointKey));
+                }
+            } catch (...) {
+                continue; // Skip malformed URLs
+            }
+        }
+    }
+
+    // Fallback to local endpoint if no valid endpoints found
+    if (endPoints.empty()) {
+        if (host_.empty() || rpcPort_ == 0) {
+            throw IoTDBException("No valid endpoints available");
+        }
         TEndPoint endPoint;
         endPoint.__set_ip(host_);
         endPoint.__set_port(rpcPort_);
         endPoints.emplace_back(std::move(endPoint));
-    } else {
-        for (auto& url : nodeUrls) {
-            endPoints.emplace_back(UrlUtils::parseTEndPointIpv4AndIpv6Url(url));
-        }
     }
 
     if (enableAutoFetch_) {
@@ -750,19 +768,38 @@ void Session::initNodesSupplier(const std::vector<std::string>& nodeUrls) {
     else {
         nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
     }
-    if (host_.empty()) {
-        auto queryNode = nodesSupplier_->getQueryEndPoint();
-        host_ = queryNode.value().ip;
-        rpcPort_ = queryNode.value().port;
-    }
 }
 
 void Session::initDefaultSessionConnection() {
-    defaultEndPoint_.__set_ip(host_);
-    defaultEndPoint_.__set_port(rpcPort_);
-    defaultSessionConnection_ = make_shared<SessionConnection>(this, defaultEndPoint_, zoneId_, nodesSupplier_, fetchSize_,
-                                                              60, 500,
-                                                              sqlDialect_, database_);
+    // Try all endpoints from supplier until a connection is established.
+    auto endpoints = nodesSupplier_->getEndPointList();
+    bool connected = false;
+
+    for (const auto& endpoint : endpoints) {
+        try {
+            host_ = endpoint.ip;
+            rpcPort_ = endpoint.port;
+
+            defaultEndPoint_.__set_ip(host_);
+            defaultEndPoint_.__set_port(rpcPort_);
+
+            defaultSessionConnection_ = std::make_shared<SessionConnection>(
+                this, defaultEndPoint_, zoneId_, nodesSupplier_, fetchSize_,
+                3,
+                500, connectTimeoutMs_,
+                sqlDialect_, database_);
+
+            connected = true;
+            break;
+        } catch (const std::exception& e) {
+            std::cout << "Failed to connect to " << endpoint.ip << ":"
+                      << endpoint.port << " , error=" << e.what() << std::endl;
+        }
+    }
+
+    if (!connected) {
+        throw std::runtime_error("No available node to establish SessionConnection.");
+    }
 }
 
 void Session::insertStringRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
@@ -1873,6 +1910,9 @@ void Session::createAlignedTimeseries(const std::string& deviceId,
 bool Session::checkTimeseriesExists(const string& path) {
     try {
         std::unique_ptr<SessionDataSet> dataset = executeQueryStatement("SHOW TIMESERIES " + path);
+        if (dataset == nullptr) {
+            throw IoTDBException("executeQueryStatement failed");
+        }
         bool isExisted = dataset->hasNext();
         dataset->closeOperationHandle();
         return isExisted;
@@ -1897,7 +1937,7 @@ shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
     shared_ptr<SessionConnection> newConnection;
     try {
         newConnection = make_shared<SessionConnection>(this, endPoint.value(), zoneId_, nodesSupplier_,
-                                                       fetchSize_, 60, 500, sqlDialect_, database_);
+                                                       fetchSize_, 60, 500, connectTimeoutMs_, sqlDialect_, database_);
         endPointToSessionConnection.emplace(endPoint.value(), newConnection);
         return newConnection;
     }
@@ -1955,7 +1995,7 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
     else {
         try {
             newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
-                                                           fetchSize_, 60, 500, sqlDialect_, database_);
+                                                           fetchSize_, 60, 500, connectTimeoutMs_, sqlDialect_, database_);
 
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
@@ -1979,7 +2019,7 @@ void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint)
     else {
         try {
             newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
-                                                           fetchSize_, 60, 500, sqlDialect_, database_);
+                                                           fetchSize_, 60, 500, 1000, sqlDialect_, database_);
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
         catch (exception& e) {
@@ -2002,7 +2042,7 @@ void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& devic
     else {
         try {
             newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
-                                                           fetchSize_, 60, 500, sqlDialect_, database_);
+                                                           fetchSize_, 3, 500, connectTimeoutMs_, sqlDialect_, database_);
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
         catch (exception& e) {
