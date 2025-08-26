@@ -167,12 +167,14 @@ public class IntoNode extends SingleChildProcessNode {
     return database.equals(that.database)
         && table.equals(that.table)
         && rowCountSymbol.equals(that.rowCountSymbol)
-        && Objects.deepEquals(columns, that.columns);
+        && Objects.deepEquals(columns, that.columns)
+        && Objects.deepEquals(neededInputColumnNames, that.neededInputColumnNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), database, table, rowCountSymbol, columns);
+    return Objects.hash(
+        super.hashCode(), database, table, rowCountSymbol, columns, neededInputColumnNames);
   }
 
   public List<Type> getOutputType() {

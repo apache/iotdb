@@ -41,7 +41,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Coun
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -54,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -93,6 +96,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
@@ -262,11 +266,31 @@ public class TableLogicalPlanner {
     Analysis.Insert insert = analysis.getInsert();
     List<ColumnSchema> insertColumns = insert.getColumns();
 
+    Assignments.Builder assignments = Assignments.builder();
     List<Symbol> neededInputColumnNames = new ArrayList<>(insertColumns.size());
 
     for (int i = 0, size = insertColumns.size(); i < size; i++) {
-      neededInputColumnNames.add(visibleFieldMappings.get(i));
+      Symbol output =
+          symbolAllocator.newSymbol(insertColumns.get(i).getName(), insertColumns.get(i).getType());
+      Symbol input = visibleFieldMappings.get(i);
+      neededInputColumnNames.add(output);
+      assignments.put(output, input.toSymbolReference());
     }
+
+    // Project Node
+    ProjectNode projectNode =
+        new ProjectNode(
+            queryContext.getQueryId().genPlanNodeId(), plan.getRoot(), assignments.build());
+    List<Field> fields =
+        insertColumns.stream()
+            .map(
+                column ->
+                    Field.newUnqualified(
+                        column.getName(), column.getType(), column.getColumnCategory()))
+            .collect(toImmutableList());
+    Scope scope =
+        Scope.builder().withRelationType(RelationId.anonymous(), new RelationType(fields)).build();
+    plan = new RelationPlan(projectNode, scope, projectNode.getOutputSymbols(), Optional.empty());
 
     // Into Node
     IntoNode intoNode =
