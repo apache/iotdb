@@ -803,17 +803,18 @@ public class ProcedureExecutor<Env> {
       // Check if any of the worker is stuck
       int runningCount = 0, stuckCount = 0;
       for (WorkerThread worker : workerThreads) {
-        if (worker.activeProcedure.get() == null) {
+        final Procedure<?> proc = worker.activeProcedure.get();
+        if (proc == null) {
           continue;
         }
         runningCount++;
         // WARN the worker is stuck
-        if (worker.getCurrentRunTime() < DEFAULT_WORKER_STUCK_THRESHOLD) {
+        if (worker.getCurrentRunTime() > DEFAULT_WORKER_STUCK_THRESHOLD) {
           stuckCount++;
           LOG.warn(
               "Worker stuck {}({}), run time {} ms",
               worker,
-              worker.activeProcedure.get().getProcType(),
+              proc.getProcType(),
               worker.getCurrentRunTime());
         }
         LOG.info(
