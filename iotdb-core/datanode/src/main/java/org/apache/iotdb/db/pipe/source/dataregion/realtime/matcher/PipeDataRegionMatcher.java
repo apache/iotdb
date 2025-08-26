@@ -32,10 +32,10 @@ public interface PipeDataRegionMatcher {
    * Register a extractor. If the extractor's pattern matches the event's schema info, the event
    * will be assigned to the extractor.
    */
-  void register(PipeRealtimeDataRegionSource extractor);
+  void register(final PipeRealtimeDataRegionSource extractor);
 
   /** Deregister a extractor. */
-  void deregister(PipeRealtimeDataRegionSource extractor);
+  void deregister(final PipeRealtimeDataRegionSource extractor);
 
   /** Get the number of registered extractors in this matcher. */
   int getRegisterCount();
@@ -48,7 +48,7 @@ public interface PipeDataRegionMatcher {
    * @return pair of matched extractors and unmatched extractors.
    */
   Pair<Set<PipeRealtimeDataRegionSource>, Set<PipeRealtimeDataRegionSource>> match(
-      PipeRealtimeEvent event);
+      final PipeRealtimeEvent event);
 
   /** Clear all the registered extractors and internal data structures. */
   void clear();
