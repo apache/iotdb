@@ -126,6 +126,8 @@ public interface CommonConfig {
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
+  CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy);
+
   CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass);
 
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);

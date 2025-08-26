@@ -394,6 +394,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    setProperty("data_partition_allocation_strategy", dataPartitionAllocationStrategy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     setProperty("series_partition_executor_class", seriesPartitionExecutorClass);
     return this;

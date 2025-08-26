@@ -397,6 +397,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    cnConfig.setDataPartitionAllocationStrategy(dataPartitionAllocationStrategy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     cnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
     dnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);

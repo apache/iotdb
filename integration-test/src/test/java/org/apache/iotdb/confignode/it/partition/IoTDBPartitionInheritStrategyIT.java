@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBPartitionInheritPolicyIT {
+public class IoTDBPartitionInheritStrategyIT {
 
   private static final String testDataRegionConsensusProtocolClass =
       ConsensusFactory.RATIS_CONSENSUS;
@@ -91,7 +91,7 @@ public class IoTDBPartitionInheritPolicyIT {
   }
 
   @Test
-  public void testDataPartitionInheritPolicy() throws Exception {
+  public void testDataPartitionInheritStrategy() throws Exception {
     final long baseStartTime = 1000;
     Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotTable1 = new ConcurrentHashMap<>();
 
