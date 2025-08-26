@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
 public class IoTDBPipePattern extends PipePattern {
 
   private final PartialPath patternPartialPath;
+  private static volatile DevicePathGetter devicePathGetter = PartialPath::new;
+  private static volatile MeasurementPathGetter measurementPathGetter = PartialPath::new;
 
   public IoTDBPipePattern(final String pattern) {
     super(pattern);
@@ -99,7 +101,7 @@ public class IoTDBPipePattern extends PipePattern {
     try {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
-      return patternPartialPath.matchPrefixPath(new PartialPath(device));
+      return patternPartialPath.matchPrefixPath(devicePathGetter.apply(device));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -122,7 +124,7 @@ public class IoTDBPipePattern extends PipePattern {
     }
 
     try {
-      return patternPartialPath.matchFullPath(new PartialPath(device, measurement));
+      return patternPartialPath.matchFullPath(measurementPathGetter.apply(device, measurement));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -198,8 +200,24 @@ public class IoTDBPipePattern extends PipePattern {
     return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
   }
 
+  public static void setDevicePathGetter(final DevicePathGetter devicePathGetter) {
+    IoTDBPipePattern.devicePathGetter = devicePathGetter;
+  }
+
+  public static void setMeasurementPathGetter(final MeasurementPathGetter measurementPathGetter) {
+    IoTDBPipePattern.measurementPathGetter = measurementPathGetter;
+  }
+
   @Override
   public String toString() {
     return "IoTDBPipePattern" + super.toString();
+  }
+
+  public interface DevicePathGetter {
+    PartialPath apply(final String deviceId) throws IllegalPathException;
+  }
+
+  public interface MeasurementPathGetter {
+    PartialPath apply(final String deviceId, final String measurement) throws IllegalPathException;
   }
 }
