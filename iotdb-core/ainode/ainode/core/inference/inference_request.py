@@ -59,6 +59,7 @@ class InferenceRequest:
         self.batch_size = inputs.size(0)
         self.state = InferenceRequestState.WAITING
         self.cur_step_idx = 0  # Current write position in the output step index
+        self.assigned_pool_id = -1  # The pool handling this request
 
         # Preallocate output buffer [batch_size, max_new_tokens]
         self.output_tensor = torch.zeros(

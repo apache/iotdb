@@ -90,12 +90,12 @@ class PoolController:
         if not ready_event.wait(timeout=30):
             self.unregister_pool(model_id, 0)
             logger.error(
-                f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-0] First pool failed to be ready in time"
+                f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-0] Pool failed to be ready in time"
             )
         else:
             self.set_state(model_id, 0, PoolState.RUNNING)
             logger.info(
-                f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-0] Initialized inference request pool for model {model_id}"
+                f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-0] Pool started running for model {model_id}"
             )
 
     def _expand_pools(self, model_id, start_idx, count):
@@ -125,7 +125,7 @@ class PoolController:
             else:
                 self.set_state(model_id, pool_id, PoolState.RUNNING)
                 logger.info(
-                    f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool.pool_id}] New inference request pool started for model {model_id}"
+                    f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_id}] Pool started running for model {model_id}"
                 )
 
     def add_request(self, model_id: str, req: InferenceRequest):
@@ -134,6 +134,10 @@ class PoolController:
         if not self.has_request_pools(model_id):
             self.first_req_init(model_id)
         self._request_pool_map[model_id].dispatch_request(req)
+
+    def remove_request(self, model_id: str, pool_id: int):
+        pool_group = self._request_pool_map.get(model_id)
+        pool_group.remove_request(pool_id)
 
     def get_state(self, model_id, pool_id) -> PoolState:
         return self._request_pool_map[model_id].get_state(pool_id)
@@ -145,6 +149,9 @@ class PoolController:
         self.set_request_pool_map(model_id, pool_id, request_pool, request_queue)
         pool_group = self._request_pool_map.get(model_id)
         pool_group.set_state(pool_id, PoolState.INITIALIZING)
+        logger.info(
+            f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_id}] Pool initializing for model {model_id}"
+        )
 
     def unregister_pool(self, model_id, pool_id):
         self._request_pool_map[model_id].remove_pool(pool_id)

@@ -191,6 +191,9 @@ class InferenceManager:
                 self._result_wrapper_map[infer_req.req_id].set_result(
                     infer_req.get_final_output()
                 )
+                self._pool_controller.remove_request(
+                    infer_req.model_id, infer_req.assigned_pool_id
+                )
 
     def process_request(self, req):
         req_id = req.req_id
