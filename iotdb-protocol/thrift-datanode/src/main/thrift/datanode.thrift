@@ -660,6 +660,7 @@ struct TFetchFragmentInstanceStatisticsResp {
   14: optional i64 blockQueuedTime
   15: optional string ip
   16: optional string state
+  17: optional i32 initDataQuerySourceRetryCount
 }
 
 /**
