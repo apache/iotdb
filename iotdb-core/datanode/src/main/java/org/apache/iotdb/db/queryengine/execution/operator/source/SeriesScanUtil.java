@@ -674,8 +674,11 @@ public class SeriesScanUtil implements Accountable {
         isAligned
             ? ((AlignedReadOnlyMemChunk) readOnlyMemChunk).getTimeStatisticsList()
             : readOnlyMemChunk.getPageStatisticsList();
+
+    // we need to create a new MemPointIterator for SeriesScanUtil because streaming scan method
+    // don't support sharing MemPointIterator
     MemPointIterator memPointIterator =
-        readOnlyMemChunk.getMemPointIterator(
+        readOnlyMemChunk.createMemPointIterator(
             orderUtils.getScanOrder(), scanOptions.getGlobalTimeFilter());
     for (Statistics<? extends Serializable> statistics : statisticsList) {
       VersionPageReader versionPageReader =

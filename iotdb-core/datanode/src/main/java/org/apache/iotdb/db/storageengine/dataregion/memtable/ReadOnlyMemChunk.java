@@ -142,7 +142,7 @@ public class ReadOnlyMemChunk {
   public void initChunkMetaFromTvLists(Filter globalTimeFilter) {
     // create chunk statistics
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
-    timeValuePairIterator = getMemPointIterator(Ordering.ASC, globalTimeFilter);
+    timeValuePairIterator = createMemPointIterator(Ordering.ASC, globalTimeFilter);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     while (timeValuePairIterator.hasNextBatch()) {
       // statistics for current batch
@@ -378,7 +378,7 @@ public class ReadOnlyMemChunk {
     return timeValuePairIterator;
   }
 
-  public MemPointIterator getMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
+  public MemPointIterator createMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     return MemPointIteratorFactory.create(
         dataType,

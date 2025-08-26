@@ -649,7 +649,7 @@ public class AlignedTVListIteratorTest {
     chunk.sortTvLists();
     chunk.initChunkMetaFromTVListsWithFakeStatistics();
 
-    MemPointIterator memPointIterator = chunk.getMemPointIterator(scanOrder, globalTimeFilter);
+    MemPointIterator memPointIterator = chunk.createMemPointIterator(scanOrder, globalTimeFilter);
     memPointIterator.setLimitAndOffset(paginationController);
     memPointIterator.setPushDownFilter(pushDownFilter);
     List<Statistics<? extends Serializable>> pageStatisticsList = chunk.getTimeStatisticsList();
@@ -720,7 +720,7 @@ public class AlignedTVListIteratorTest {
     }
 
     chunk.initChunkMetaFromTVListsWithFakeStatistics();
-    memPointIterator = chunk.getMemPointIterator(scanOrder, globalTimeFilter);
+    memPointIterator = chunk.createMemPointIterator(scanOrder, globalTimeFilter);
     count = 0;
     while (memPointIterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = memPointIterator.nextTimeValuePair();

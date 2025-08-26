@@ -77,7 +77,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   // When we select two of time series [s1, s3], the column index list should be [0, 2]
   private final List<Integer> columnIndexList;
 
-  private MemPointIterator timeValuePairIterator;
+  // Only used when StreamingQueryMemChunk is configured as false
+  private MemPointIterator nonStreamingTimeValuePairIterator;
 
   /**
    * The constructor for Aligned type.
@@ -134,10 +135,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       chunkValueStatistics[column] = Statistics.getStatsByType(dataTypes.get(column));
     }
 
-    timeValuePairIterator = getMemPointIterator(Ordering.ASC, globalTimeFilter);
-    timeValuePairIterator.setStreamingQueryMemChunk(false);
+    nonStreamingTimeValuePairIterator = createMemPointIterator(Ordering.ASC, globalTimeFilter);
+    nonStreamingTimeValuePairIterator.setStreamingQueryMemChunk(false);
 
-    while (timeValuePairIterator.hasNextBatch()) {
+    while (nonStreamingTimeValuePairIterator.hasNextBatch()) {
       // create pageTimeStatistics and pageValueStatistics for new page
       Statistics<? extends Serializable> pageTimeStatistics =
           Statistics.getStatsByType(TSDataType.VECTOR);
@@ -150,7 +151,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       }
       valueStatisticsList.add(pageValueStatistics);
 
-      TsBlock tsBlock = timeValuePairIterator.nextBatch();
+      TsBlock tsBlock = nonStreamingTimeValuePairIterator.nextBatch();
       // time column
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         pageTimeStatistics.update(tsBlock.getTimeByIndex(i));
@@ -467,11 +468,13 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     return valueStatisticsList;
   }
 
+  @Override
   public MemPointIterator getMemPointIterator() {
-    return timeValuePairIterator;
+    return nonStreamingTimeValuePairIterator;
   }
 
-  public MemPointIterator getMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
+  @Override
+  public MemPointIterator createMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
     List<AlignedTVList> alignedTvLists =
         alignedTvListQueryMap.keySet().stream()
             .map(x -> (AlignedTVList) x)
