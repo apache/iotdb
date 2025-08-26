@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -344,6 +345,69 @@ public final class PlanMemoryEstimator {
         size += sizeOfExpr(tp);
       }
       size += RamUsageEstimator.sizeOfObject(node.getTimeFilter());
+
+      return size;
+    }
+
+    @Override
+    public Long visitAggregationTableScan(AggregationTableScanNode node, Void ctx) {
+      if (node == null || !seen.mark(node)) {
+        return 0L;
+      }
+
+      long size = sizeOfPlan(node);
+
+      // ===== the field of superclass DeviceTableScanNode =====
+      size += RamUsageEstimator.sizeOfObject(node.getQualifiedObjectName());
+      if (node.getOutputSymbols() != null) {
+        for (Object s : node.getOutputSymbols()) {
+          size += RamUsageEstimator.sizeOfObject(s);
+        }
+      }
+      if (node.getAssignments() != null) {
+        size += RamUsageEstimator.sizeOfMap(node.getAssignments());
+      }
+      size += sizeOfExpr(node.getPushDownPredicate());
+      size += RamUsageEstimator.sizeOfObject(node.getRegionReplicaSet());
+
+      if (node.getDeviceEntries() != null) {
+        for (Object d : node.getDeviceEntries()) {
+          size += RamUsageEstimator.sizeOfObject(d);
+        }
+      }
+      if (node.getTagAndAttributeIndexMap() != null) {
+        size += RamUsageEstimator.sizeOfMap(node.getTagAndAttributeIndexMap());
+      }
+      if (node.getTimePredicate().isPresent()) {
+        Expression tp = node.getTimePredicate().get();
+        size += sizeOfExpr(tp);
+      }
+      size += RamUsageEstimator.sizeOfObject(node.getTimeFilter());
+
+      // ===== the field of AggregationTableScanNode =====
+      if (node.getProjection() != null) {
+        size += RamUsageEstimator.sizeOfObject(node.getProjection());
+      }
+      if (node.getAggregations() != null) {
+        size += RamUsageEstimator.sizeOfMap(node.getAggregations());
+        for (AggregationNode.Aggregation agg : node.getAggregations().values()) {
+          size += RamUsageEstimator.sizeOfObject(agg);
+        }
+      }
+      if (node.getGroupingSets() != null) {
+        size += RamUsageEstimator.sizeOfObject(node.getGroupingSets());
+      }
+      if (node.getPreGroupedSymbols() != null) {
+        for (Symbol s : node.getPreGroupedSymbols()) {
+          size += RamUsageEstimator.sizeOfObject(s);
+        }
+      }
+      if (node.getStep() != null) {
+        size += RamUsageEstimator.sizeOfObject(node.getStep());
+      }
+      if (node.getGroupIdSymbol() != null) {
+        size += RamUsageEstimator.sizeOfObject(node.getGroupIdSymbol());
+      }
 
       return size;
     }
