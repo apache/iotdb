@@ -40,6 +40,8 @@ import java.util.stream.Collectors;
 public class IoTDBTreePattern extends TreePattern {
 
   private final PartialPath patternPartialPath;
+  private static volatile DevicePathGetter devicePathGetter = PartialPath::new;
+  private static volatile MeasurementPathGetter measurementPathGetter = MeasurementPath::new;
 
   public IoTDBTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
     super(isTreeModelDataAllowedToBeCaptured, pattern);
@@ -115,7 +117,7 @@ public class IoTDBTreePattern extends TreePattern {
     try {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
-      return patternPartialPath.matchPrefixPath(new PartialPath(device));
+      return patternPartialPath.matchPrefixPath(devicePathGetter.apply(device));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -129,7 +131,7 @@ public class IoTDBTreePattern extends TreePattern {
     }
 
     try {
-      return patternPartialPath.matchFullPath(new MeasurementPath(device, measurement));
+      return patternPartialPath.matchFullPath(measurementPathGetter.apply(device, measurement));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -208,8 +210,25 @@ public class IoTDBTreePattern extends TreePattern {
     return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
   }
 
+  public static void setDevicePathGetter(final DevicePathGetter devicePathGetter) {
+    IoTDBTreePattern.devicePathGetter = devicePathGetter;
+  }
+
+  public static void setMeasurementPathGetter(final MeasurementPathGetter measurementPathGetter) {
+    IoTDBTreePattern.measurementPathGetter = measurementPathGetter;
+  }
+
   @Override
   public String toString() {
     return "IoTDBPipePattern" + super.toString();
+  }
+
+  public interface DevicePathGetter {
+    PartialPath apply(final IDeviceID deviceId) throws IllegalPathException;
+  }
+
+  public interface MeasurementPathGetter {
+    MeasurementPath apply(final IDeviceID deviceId, final String measurement)
+        throws IllegalPathException;
   }
 }
