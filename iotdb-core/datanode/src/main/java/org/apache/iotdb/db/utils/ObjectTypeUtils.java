@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -67,6 +68,10 @@ public class ObjectTypeUtils {
     File bakFile = new File(file.get().getPath() + ".back");
     logger.info("Remove object file {}", file.get().getAbsolutePath());
     for (int i = 0; i < 2; i++) {
+      if (file.get().exists()) {
+        FileMetrics.getInstance().decreaseObjectFileNum(1);
+        FileMetrics.getInstance().decreaseObjectFileSize(file.get().length());
+      }
       try {
         Files.deleteIfExists(file.get().toPath());
         Files.deleteIfExists(tmpFile.toPath());
