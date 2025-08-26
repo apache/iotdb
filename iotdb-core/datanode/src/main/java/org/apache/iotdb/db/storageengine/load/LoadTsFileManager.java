@@ -460,12 +460,19 @@ public class LoadTsFileManager {
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
 
       String device = chunkData.getDevice();
-      String lastDevice = dataPartition2LastDevice.getOrDefault(partitionInfo, "");
+      String lastDevice = dataPartition2LastDevice.get(partitionInfo);
 
       if (!Objects.equals(device, lastDevice)) {
-        if (dataPartition2LastDevice.containsKey(partitionInfo)) {
-          writer.endChunkGroup();
-          writer.checkMetadataSizeAndMayFlush();
+        if (lastDevice != null && device2Partition.containsKey(lastDevice)) {
+          Set<DataPartitionInfo> partitions = device2Partition.get(lastDevice);
+          for (DataPartitionInfo partition : partitions) {
+            TsFileIOWriter w = dataPartition2Writer.get(partition);
+            if (dataPartition2LastDevice.containsKey(partition) && w != null) {
+              w.endChunkGroup();
+              w.checkMetadataSizeAndMayFlush();
+            }
+          }
+          device2Partition.remove(lastDevice);
         }
 
         if (writer.isWritingChunkGroup()) {
