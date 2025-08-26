@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegio
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.Objects;
@@ -141,7 +142,9 @@ public class PipeInsertionDataNodeListener {
       final String regionId, final AbstractDeleteDataNode node) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(regionId);
     // only events from registered data region will be extracted
-    if (assigner == null) {
+    if (assigner == null
+        || node instanceof RelationalDeleteDataNode
+            && ((RelationalDeleteDataNode) node).getModEntries().isEmpty()) {
       return null;
     }
 
