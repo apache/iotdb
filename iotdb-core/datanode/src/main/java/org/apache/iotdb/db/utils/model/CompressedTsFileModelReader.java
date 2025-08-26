@@ -134,12 +134,13 @@ public class CompressedTsFileModelReader extends ModelReader {
                 Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
 
             byte[] bitmap = null;
+            int size = 0;
             if (uncompressedPageData.hasRemaining()) {
-              int size = ReadWriteIOUtils.readInt(uncompressedPageData);
+              size = ReadWriteIOUtils.readInt(uncompressedPageData);
               bitmap = new byte[(size + 7) / 8];
               uncompressedPageData.get(bitmap);
             }
-            while (decoder.hasNext(uncompressedPageData)) {
+            for (int i = 0; i < size; i++) {
               float[] currentQueryResult = results.get(indexes[currentQueryIndex]);
               if (currentResultSetIndex >= currentQueryResult.length) {
                 currentQueryIndex++;
