@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -126,7 +127,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           dbName,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
-          "insert into table1 (a, b) values(1, 2)",
+          "insert into table1 (a, b, d) values(1, 2, 1)",
           null)) {
         return;
       }
@@ -148,7 +149,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       }
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from table1", "a,b,d,", Collections.emptySet(), dbName);
+          receiverEnv, "select * from table1", "time,a,b,d,", Collections.emptySet(), dbName);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           dbName,
@@ -334,9 +335,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
         return;
       }
 
-      final String dbName = "test";
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          dbName,
+          null,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
           Arrays.asList(
@@ -370,10 +370,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.startPipeExtended(new TStartPipeReq("testPipe").setIsTableModel(true)).getCode());
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          dbName,
+          null,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
           "grant alter on any to user testUser with grant option",
@@ -392,7 +393,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
                   ",,MAINTAIN,false,",
                   ",*.*,ALTER,true,",
                   ",test.*,DROP,false,")),
-          dbName);
+          (String) null);
     }
   }
 
