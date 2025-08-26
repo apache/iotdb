@@ -96,7 +96,6 @@ public class AuthorInfo implements SnapshotProcessor {
   private IAuthorizer authorizer;
 
   private ConfigManager configManager;
-  
 
   public AuthorInfo(ConfigManager configManager) {
     try {

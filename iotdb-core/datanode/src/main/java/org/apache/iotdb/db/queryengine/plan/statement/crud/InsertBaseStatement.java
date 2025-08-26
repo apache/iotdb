@@ -201,8 +201,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             userName, checkedPaths, PrivilegeType.WRITE_DATA),
         checkedPaths,
         PrivilegeType.WRITE_DATA);
-    }
-
+  }
 
   public abstract ISchemaValidation getSchemaValidation();
 
@@ -212,38 +211,38 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   /** Check whether data types are matched with measurement schemas */
   public void selfCheckDataTypes(int index)
-          throws DataTypeMismatchException, PathNotExistException {
+      throws DataTypeMismatchException, PathNotExistException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
       // if enable partial insert, mark failed measurements with exception
       if (measurementSchemas[index] == null) {
         markFailedMeasurement(
-                index,
-                new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
+            index,
+            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
       } else if ((dataTypes[index] != measurementSchemas[index].getType()
-              && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
+          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
         markFailedMeasurement(
-                index,
-                new DataTypeMismatchException(
-                        devicePath.getFullPath(),
-                        measurements[index],
-                        dataTypes[index],
-                        measurementSchemas[index].getType(),
-                        getMinTime(),
-                        getFirstValueOfIndex(index)));
+            index,
+            new DataTypeMismatchException(
+                devicePath.getFullPath(),
+                measurements[index],
+                dataTypes[index],
+                measurementSchemas[index].getType(),
+                getMinTime(),
+                getFirstValueOfIndex(index)));
       }
     } else {
       // if not enable partial insert, throw the exception directly
       if (measurementSchemas[index] == null) {
         throw new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath());
       } else if ((dataTypes[index] != measurementSchemas[index].getType()
-              && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
+          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
         throw new DataTypeMismatchException(
-                devicePath.getFullPath(),
-                measurements[index],
-                dataTypes[index],
-                measurementSchemas[index].getType(),
-                getMinTime(),
-                getFirstValueOfIndex(index));
+            devicePath.getFullPath(),
+            measurements[index],
+            dataTypes[index],
+            measurementSchemas[index].getType(),
+            getMinTime(),
+            getFirstValueOfIndex(index));
       }
     }
   }
@@ -259,7 +258,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
         throw new SemanticException(
-                "Measurement contains null or empty string: " + Arrays.toString(measurements));
+            "Measurement contains null or empty string: " + Arrays.toString(measurements));
       }
       if (deduplicatedMeasurements.contains(measurement)) {
         throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
@@ -354,8 +353,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public List<String> getFailedMeasurements() {
     return failedMeasurementIndex2Info == null
-            ? Collections.emptyList()
-            : failedMeasurementIndex2Info.values().stream()
+        ? Collections.emptyList()
+        : failedMeasurementIndex2Info.values().stream()
             .map(info -> info.measurement)
             .collect(Collectors.toList());
   }
@@ -366,24 +365,24 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public List<Exception> getFailedExceptions() {
     return failedMeasurementIndex2Info == null
-            ? Collections.emptyList()
-            : failedMeasurementIndex2Info.values().stream()
+        ? Collections.emptyList()
+        : failedMeasurementIndex2Info.values().stream()
             .map(info -> info.cause)
             .collect(Collectors.toList());
   }
 
   public List<String> getFailedMessages() {
     return failedMeasurementIndex2Info == null
-            ? Collections.emptyList()
-            : failedMeasurementIndex2Info.values().stream()
+        ? Collections.emptyList()
+        : failedMeasurementIndex2Info.values().stream()
             .map(
-                    info -> {
-                      Throwable cause = info.cause;
-                      while (cause.getCause() != null) {
-                        cause = cause.getCause();
-                      }
-                      return cause.getMessage();
-                    })
+                info -> {
+                  Throwable cause = info.cause;
+                  while (cause.getCause() != null) {
+                    cause = cause.getCause();
+                  }
+                  return cause.getMessage();
+                })
             .collect(Collectors.toList());
   }
 
@@ -406,13 +405,13 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
     if (failedMeasurementIndex2Info != null) {
       failedMeasurementIndex2Info =
-              failedMeasurementIndex2Info.entrySet().stream()
-                      .collect(Collectors.toMap(e -> columnsToKeep.indexOf(e.getKey()), Entry::getValue));
+          failedMeasurementIndex2Info.entrySet().stream()
+              .collect(Collectors.toMap(e -> columnsToKeep.indexOf(e.getKey()), Entry::getValue));
     }
 
     if (measurementSchemas != null) {
       measurementSchemas =
-              columnsToKeep.stream().map(i -> measurementSchemas[i]).toArray(MeasurementSchema[]::new);
+          columnsToKeep.stream().map(i -> measurementSchemas[i]).toArray(MeasurementSchema[]::new);
     }
     if (measurements != null) {
       measurements = columnsToKeep.stream().map(i -> measurements[i]).toArray(String[]::new);
@@ -422,9 +421,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     }
     if (columnCategories != null) {
       columnCategories =
-              columnsToKeep.stream()
-                      .map(i -> columnCategories[i])
-                      .toArray(TsTableColumnCategory[]::new);
+          columnsToKeep.stream()
+              .map(i -> columnCategories[i])
+              .toArray(TsTableColumnCategory[]::new);
     }
 
     subRemoveAttributeColumns(columnsToKeep);
@@ -443,7 +442,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     protected Exception cause;
 
     public FailedMeasurementInfo(
-            String measurement, TSDataType dataType, Object value, Exception cause) {
+        String measurement, TSDataType dataType, Object value, Exception cause) {
       this.measurement = measurement;
       this.dataType = dataType;
       this.value = value;
@@ -473,7 +472,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   public abstract InsertBaseStatement removeLogicalView();
 
   public void setFailedMeasurementIndex2Info(
-          Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info) {
+      Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info) {
     this.failedMeasurementIndex2Info = failedMeasurementIndex2Info;
   }
 
@@ -500,16 +499,16 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     // measurement
     // schema
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
-            new HashMap<>();
+        new HashMap<>();
     for (int i = 0; i < this.measurements.length; i++) {
       PartialPath targetDevicePath;
       String measurementName;
       if (isLogicalView[i]) {
         int viewIndex = indexMapToLogicalViewList[i];
         targetDevicePath =
-                this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
+            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
         measurementName =
-                this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
+            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
       } else {
         targetDevicePath = this.devicePath;
         measurementName = this.measurements[i];
@@ -517,17 +516,17 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       int index = i;
       final String finalMeasurementName = measurementName;
       mapFromDeviceToMeasurementAndIndex.compute(
-              targetDevicePath,
-              (k, v) -> {
-                if (v == null) {
-                  List<Pair<String, Integer>> valueList = new ArrayList<>();
-                  valueList.add(new Pair<>(finalMeasurementName, index));
-                  return valueList;
-                } else {
-                  v.add(new Pair<>(finalMeasurementName, index));
-                  return v;
-                }
-              });
+          targetDevicePath,
+          (k, v) -> {
+            if (v == null) {
+              List<Pair<String, Integer>> valueList = new ArrayList<>();
+              valueList.add(new Pair<>(finalMeasurementName, index));
+              return valueList;
+            } else {
+              v.add(new Pair<>(finalMeasurementName, index));
+              return v;
+            }
+          });
     }
     // check this map, ensure that all time series (measurements in each device)
     // only appear once
@@ -536,7 +535,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   }
 
   protected static void validateMapFromDeviceToMeasurement(
-          Map<PartialPath, List<Pair<String, Integer>>> map) {
+      Map<PartialPath, List<Pair<String, Integer>>> map) {
     if (map == null) {
       return;
     }
@@ -551,7 +550,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         if (!measurementNotExists) {
           PartialPath devicePath = entry.getKey();
           throw new SemanticException(
-                  new DuplicateInsertException(devicePath.getFullPath(), thisPair.left));
+              new DuplicateInsertException(devicePath.getFullPath(), thisPair.left));
         }
       }
     }
@@ -566,8 +565,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       final MeasurementSchema[] tmp = new MeasurementSchema[measurementSchemas.length + 1];
       System.arraycopy(measurementSchemas, 0, tmp, 0, pos);
       tmp[pos] =
-              new MeasurementSchema(
-                      columnSchema.getName(), InternalTypeManager.getTSDataType(columnSchema.getType()));
+          new MeasurementSchema(
+              columnSchema.getName(), InternalTypeManager.getTSDataType(columnSchema.getType()));
       System.arraycopy(measurementSchemas, pos, tmp, pos + 1, measurementSchemas.length - pos);
       measurementSchemas = tmp;
     }
@@ -595,11 +594,11 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       columnCategories[pos] = columnSchema.getColumnCategory();
     } else {
       final TsTableColumnCategory[] tmpCategories =
-              new TsTableColumnCategory[columnCategories.length + 1];
+          new TsTableColumnCategory[columnCategories.length + 1];
       System.arraycopy(columnCategories, 0, tmpCategories, 0, pos);
       tmpCategories[pos] = columnSchema.getColumnCategory();
       System.arraycopy(
-              columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
+          columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
       columnCategories = tmpCategories;
       tagColumnIndices = null;
     }
@@ -627,7 +626,6 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       CommonUtils.swapArray(inputLocations, src, target);
     }
     tagColumnIndices = null;
-    idColumnIndices = null;
   }
 
   public boolean isWriteToTable() {
@@ -668,7 +666,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       for (final MeasurementSchema measurementSchema : measurementSchemas) {
         if (measurementSchema != null) {
           measurementSchema.setMeasurementName(
-                  measurementSchema.getMeasurementName().toLowerCase());
+              measurementSchema.getMeasurementName().toLowerCase());
         }
       }
     }
@@ -709,38 +707,26 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             + RamUsageEstimator.shallowSizeOf(columnCategories)
             // We assume that the integers are all cached by JVM
             + shallowSizeOfList(tagColumnIndices)
-            + shallowSizeOfList(idColumnIndices)
             + shallowSizeOfList(attrColumnIndices)
             + shallowSizeOfList(logicalViewSchemaList)
             + (Objects.nonNull(logicalViewSchemaList)
                 ? logicalViewSchemaList.stream()
-            InsertNodeMemoryEstimator.sizeOfPartialPath(devicePath)
-                    + InsertNodeMemoryEstimator.sizeOfMeasurementSchemas(measurementSchemas)
-                    + InsertNodeMemoryEstimator.sizeOfStringArray(measurements)
-                    + RamUsageEstimator.shallowSizeOf(dataTypes)
-                    + RamUsageEstimator.shallowSizeOf(columnCategories)
-                    // We assume that the integers are all cached by JVM
-                    + shallowSizeOfList(idColumnIndices)
-                    + shallowSizeOfList(attrColumnIndices)
-                    + shallowSizeOfList(logicalViewSchemaList)
-                    + (Objects.nonNull(logicalViewSchemaList)
-                    ? logicalViewSchemaList.stream()
                     .mapToLong(LogicalViewSchema::ramBytesUsed)
                     .reduce(0L, Long::sum)
-                    : 0L)
-                    + shallowSizeOfList(indexOfSourcePathsOfLogicalViews)
-                    + RamUsageEstimator.sizeOf(databaseName)
-                    + calculateBytesUsed();
+                : 0L)
+            + shallowSizeOfList(indexOfSourcePathsOfLogicalViews)
+            + RamUsageEstimator.sizeOf(databaseName)
+            + calculateBytesUsed();
     return ramBytesUsed;
   }
 
   private long shallowSizeOfList(List<?> list) {
     return Objects.nonNull(list)
-            ? UpdateDetailContainer.LIST_SIZE
+        ? UpdateDetailContainer.LIST_SIZE
             + RamUsageEstimator.alignObjectSize(
-            RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+                RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
                     + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * list.size())
-            : 0L;
+        : 0L;
   }
 
   protected abstract long calculateBytesUsed();

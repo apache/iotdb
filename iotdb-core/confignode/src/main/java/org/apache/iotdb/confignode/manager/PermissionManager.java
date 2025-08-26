@@ -148,10 +148,9 @@ public class PermissionManager {
     return authorInfo.checkRoleOfUser(username, rolename);
   }
 
-
   public TPermissionInfoResp getUser(String username) throws AuthException {
     return authorInfo.getUser(username);
-
+  }
 
   public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req) {
     return authorInfo.showUserLabelPolicy(req);

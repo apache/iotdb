@@ -1185,7 +1185,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         singleGroupingSet(node.getOutputSymbols()));
   }
 
-
   @Override
   protected RelationPlan visitValues(Values node, Void context) {
     throw new IllegalStateException("Values is not supported in current version.");

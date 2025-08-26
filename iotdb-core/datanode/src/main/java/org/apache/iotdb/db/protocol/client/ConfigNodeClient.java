@@ -1460,12 +1460,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-
   public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp)
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.pushHeartbeat(dataNodeId, resp), status -> !updateConfigNodeLeader(status));
+  }
 
+  @Override
   public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req)
       throws TException {
     return executeRemoteCallWithRetry(
@@ -1552,7 +1553,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus showClusterInfo(TShowClusterInfoReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showClusterInfo(req), status -> !updateConfigNodeLeader(status));
-
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {

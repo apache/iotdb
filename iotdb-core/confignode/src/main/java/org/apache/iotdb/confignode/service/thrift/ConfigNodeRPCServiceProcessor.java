@@ -233,6 +233,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
@@ -1563,9 +1564,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
     return configManager.pushHeartbeat(dataNodeId, resp);
+  }
 
-
-  public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req){
+  public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req) {
     return configManager.showUserLabelPolicy(req);
   }
 

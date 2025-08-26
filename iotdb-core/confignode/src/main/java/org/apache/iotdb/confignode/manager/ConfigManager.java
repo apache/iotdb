@@ -357,8 +357,6 @@ public class ConfigManager implements IManager {
 
   private static final String DOT = ".";
 
-  private final AuthorInfo authorInfo;
-
   public ConfigManager() throws IOException {
     // Build the persistence module
     ClusterInfo clusterInfo = new ClusterInfo();
@@ -375,11 +373,6 @@ public class ConfigManager implements IManager {
     QuotaInfo quotaInfo = new QuotaInfo();
     TTLInfo ttlInfo = new TTLInfo();
     SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-
-    // Initialize AuthorInfo and set ConfigManager reference for cache invalidation
-    this.authorInfo = new AuthorInfo();
-    this.authorInfo.setConfigManager(this);
-    this.permissionManager = new PermissionManager(this, this.authorInfo);
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -410,6 +403,8 @@ public class ConfigManager implements IManager {
             new ClusterSchemaQuotaStatistics(
                 COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
     this.partitionManager = new PartitionManager(this, partitionInfo);
+    this.permissionManager = new PermissionManager(this, authorInfo);
+
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
@@ -3017,7 +3012,6 @@ public class ConfigManager implements IManager {
   public TSStatus showClusterInfo(org.apache.iotdb.confignode.rpc.thrift.TShowClusterInfoReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // 这里实现集群信息显示逻辑
       return RpcUtils.SUCCESS_STATUS;
     } else {
       return status;

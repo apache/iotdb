@@ -522,7 +522,7 @@ public class LbacPermissionChecker {
    * Extract database path from device path This method extracts the first two parts of the device
    * path as the database path and handles cases with wildcards.
    *
-   * @param Path the  path to extract database path from
+   * @param Path the path to extract database path from
    * @return the extracted database path or null if not applicable
    */
   public static String extractDatabasePathFromPath(String Path) {
@@ -569,8 +569,7 @@ public class LbacPermissionChecker {
       // Get security label from database
       return DatabaseLabelFetcher.getSecurityLabelForPath(databasePath);
     } catch (Exception e) {
-      LOGGER.warn(
-          "Error getting database security label for path {}: {}", Path, e.getMessage());
+      LOGGER.warn("Error getting database security label for path {}: {}", Path, e.getMessage());
       return null;
     }
   }
@@ -664,6 +663,7 @@ public class LbacPermissionChecker {
     }
     return false;
   }
+
   /**
    * Convert RBAC privilege type to LBAC operation type. RBAC write_data + write_schema → LBAC write
    * RBAC read_data + read_schema → LBAC read
@@ -672,7 +672,7 @@ public class LbacPermissionChecker {
    * @return The corresponding LBAC operation type, or null for non-database operations
    */
   public static LbacOperationClassifier.OperationType convertPrivilegeTypeToLbacOperation(
-          PrivilegeType privilegeType) {
+      PrivilegeType privilegeType) {
     switch (privilegeType) {
       case READ_DATA:
       case READ_SCHEMA:
@@ -697,7 +697,7 @@ public class LbacPermissionChecker {
    * @return Filtered map containing only databases the user can access
    */
   public static <T> Map<String, T> filterDatabaseMapByPermissions(
-          Map<String, T> originalMap, String userName, PrivilegeType privilegeType) {
+      Map<String, T> originalMap, String userName, PrivilegeType privilegeType) {
 
     if (originalMap == null || originalMap.isEmpty()) {
       return Collections.emptyMap();
@@ -719,7 +719,7 @@ public class LbacPermissionChecker {
       try {
         // Step 1: RBAC check using checkFullPathOrPatternPermission method
         boolean rbacAllowed =
-                checkFullPathOrPatternPermission(userName, new PartialPath(database), privilegeType);
+            checkFullPathOrPatternPermission(userName, new PartialPath(database), privilegeType);
 
         if (rbacAllowed) {
           rbacAllowedCount++;
@@ -728,12 +728,12 @@ public class LbacPermissionChecker {
           if (LbacPermissionChecker.isLbacEnabled()) {
             // Convert PrivilegeType to LBAC operation type
             LbacOperationClassifier.OperationType lbacOpType =
-                    convertPrivilegeTypeToLbacOperation(privilegeType);
+                convertPrivilegeTypeToLbacOperation(privilegeType);
 
             if (lbacOpType != null) {
               boolean lbacAllowed =
-                      LbacPermissionChecker.checkLbacPermissionForDatabase(
-                              userName, database, lbacOpType);
+                  LbacPermissionChecker.checkLbacPermissionForDatabase(
+                      userName, database, lbacOpType);
               if (lbacAllowed) {
                 filteredMap.put(database, entry.getValue());
                 lbacAllowedCount++;
@@ -757,13 +757,12 @@ public class LbacPermissionChecker {
     }
 
     LOGGER.info(
-            "Database filtering complete - Total: {}, RBAC allowed: {}, LBAC allowed: {}, Final: {}",
-            totalCount,
-            rbacAllowedCount,
-            lbacAllowedCount,
-            filteredMap.size());
+        "Database filtering complete - Total: {}, RBAC allowed: {}, LBAC allowed: {}, Final: {}",
+        totalCount,
+        rbacAllowedCount,
+        lbacAllowedCount,
+        filteredMap.size());
 
     return filteredMap;
   }
-
 }

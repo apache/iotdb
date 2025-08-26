@@ -47,10 +47,10 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
   private static final long MAX_SIZE =
-          TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final long INSTANCE_SIZE =
-          RamUsageEstimator.shallowSizeOfInstance(SchemaQueryScanOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(SchemaQueryScanOperator.class);
 
   protected PlanNodeId sourceId;
 
@@ -74,22 +74,22 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   private long count = 0;
 
   public SchemaQueryScanOperator(
-          final PlanNodeId sourceId,
-          final OperatorContext operatorContext,
-          final ISchemaSource<T> schemaSource) {
+      final PlanNodeId sourceId,
+      final OperatorContext operatorContext,
+      final ISchemaSource<T> schemaSource) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.schemaSource = schemaSource;
     this.outputDataTypes =
-            schemaSource.getInfoQueryColumnHeaders().stream()
-                    .map(ColumnHeader::getColumnType)
-                    .collect(Collectors.toList());
+        schemaSource.getInfoQueryColumnHeaders().stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
     this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   protected ISchemaReader<T> createSchemaReader() {
     return schemaSource.getSchemaReader(
-            ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
+        ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
   }
 
   private void setColumns(final T element, final TsBlockBuilder builder) {
@@ -131,12 +131,12 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         if (!readerBlocked.isDone()) {
           final SettableFuture<?> settableFuture = SettableFuture.create();
           readerBlocked.addListener(
-                  () -> {
-                    next = tsBlockBuilder.build();
-                    tsBlockBuilder.reset();
-                    settableFuture.set(null);
-                  },
-                  directExecutor());
+              () -> {
+                next = tsBlockBuilder.build();
+                tsBlockBuilder.reset();
+                settableFuture.set(null);
+              },
+              directExecutor());
           return settableFuture;
         } else if (schemaReader.hasNext() && (limit < 0 || count < offset + limit)) {
           final T element = schemaReader.next();
@@ -216,9 +216,9 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   protected String getDatabase() {
     if (database == null) {
       database =
-              ((SchemaDriverContext) operatorContext.getDriverContext())
-                      .getSchemaRegion()
-                      .getDatabaseFullPath();
+          ((SchemaDriverContext) operatorContext.getDriverContext())
+              .getSchemaRegion()
+              .getDatabaseFullPath();
     }
     return database;
   }
@@ -234,8 +234,8 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
-            + RamUsageEstimator.sizeOf(database);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + RamUsageEstimator.sizeOf(database);
   }
 }

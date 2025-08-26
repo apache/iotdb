@@ -1432,7 +1432,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDropModel(DropModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new DropModelTask(node.getModelId());
-
+  }
 
   @Override
   protected IConfigTask visitSetUserReadLabelPolicy(

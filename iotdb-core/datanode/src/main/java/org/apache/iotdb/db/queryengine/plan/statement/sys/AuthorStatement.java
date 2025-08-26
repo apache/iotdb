@@ -404,10 +404,5 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
     }
     return null;
-
-  @Override
-  public PrivilegeType determinePrivilegeType() {
-    // Author statements are system-level operations, use MANAGE_USER as default
-    return PrivilegeType.MANAGE_USER;
   }
 }

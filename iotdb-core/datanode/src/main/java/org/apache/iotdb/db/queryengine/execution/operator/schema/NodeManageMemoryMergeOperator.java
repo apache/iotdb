@@ -54,22 +54,22 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   private final List<TSDataType> outputDataTypes;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-          TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final long INSTANCE_SIZE =
-          RamUsageEstimator.shallowSizeOfInstance(NodeManageMemoryMergeOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(NodeManageMemoryMergeOperator.class);
 
   public NodeManageMemoryMergeOperator(
-          OperatorContext operatorContext, Set<TSchemaNode> data, Operator child) {
+      OperatorContext operatorContext, Set<TSchemaNode> data, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.data = data;
     nameSet = data.stream().map(TSchemaNode::getNodeName).collect(Collectors.toSet());
     this.child = requireNonNull(child, "child operator is null");
     isReadingMemory = true;
     this.outputDataTypes =
-            ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
-                    .map(ColumnHeader::getColumnType)
-                    .collect(Collectors.toList());
+        ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -96,9 +96,9 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
       Set<TSchemaNode> nodePaths = new HashSet<>();
       for (int i = 0; i < block.getPositionCount(); i++) {
         TSchemaNode schemaNode =
-                new TSchemaNode(
-                        block.getColumn(0).getBinary(i).toString(),
-                        Byte.parseByte(block.getColumn(1).getBinary(i).toString()));
+            new TSchemaNode(
+                block.getColumn(0).getBinary(i).toString(),
+                Byte.parseByte(block.getColumn(1).getBinary(i).toString()));
         if (!nameSet.contains(schemaNode.getNodeName())) {
           nodePaths.add(schemaNode);
           nameSet.add(schemaNode.getNodeName());
@@ -112,28 +112,28 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     // sort by node type
     Set<TSchemaNode> sortSet =
-            new TreeSet<>(
-                    (o1, o2) -> {
-                      if (o1.getNodeType() == o2.getNodeType()) {
-                        return o1.getNodeName().compareTo(o2.getNodeName());
-                      }
-                      return o1.getNodeType() - o2.getNodeType();
-                    });
+        new TreeSet<>(
+            (o1, o2) -> {
+              if (o1.getNodeType() == o2.getNodeType()) {
+                return o1.getNodeName().compareTo(o2.getNodeName());
+              }
+              return o1.getNodeType() - o2.getNodeType();
+            });
     sortSet.addAll(nodePaths);
     sortSet.forEach(
-            node -> {
-              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-              tsBlockBuilder
-                      .getColumnBuilder(0)
-                      .writeBinary(new Binary(node.getNodeName(), TSFileConfig.STRING_CHARSET));
-              tsBlockBuilder
-                      .getColumnBuilder(1)
-                      .writeBinary(
-                              new Binary(
-                                      MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName(),
-                                      TSFileConfig.STRING_CHARSET));
-              tsBlockBuilder.declarePosition();
-            });
+        node -> {
+          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+          tsBlockBuilder
+              .getColumnBuilder(0)
+              .writeBinary(new Binary(node.getNodeName(), TSFileConfig.STRING_CHARSET));
+          tsBlockBuilder
+              .getColumnBuilder(1)
+              .writeBinary(
+                  new Binary(
+                      MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName(),
+                      TSFileConfig.STRING_CHARSET));
+          tsBlockBuilder.declarePosition();
+        });
     return tsBlockBuilder.build();
   }
 
@@ -172,7 +172,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child);
   }
 }
