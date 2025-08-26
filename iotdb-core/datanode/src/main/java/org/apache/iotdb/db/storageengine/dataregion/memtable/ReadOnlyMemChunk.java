@@ -84,9 +84,9 @@ public class ReadOnlyMemChunk {
   protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
-  protected final int MAX_NUMBER_OF_POINTS_IN_FAKE_CHUNK = 10 * MAX_NUMBER_OF_POINTS_IN_PAGE;
+  protected final int MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE = 10 * MAX_NUMBER_OF_POINTS_IN_PAGE;
 
-  protected final int MAX_NUMBER_OF_FAKE_CHUNK = 100;
+  protected final int MAX_NUMBER_OF_FAKE_PAGE = 100;
 
   protected ReadOnlyMemChunk(QueryContext context) {
     this.context = context;
@@ -232,7 +232,7 @@ public class ReadOnlyMemChunk {
     int pageNum =
         (int)
             Math.min(
-                MAX_NUMBER_OF_FAKE_CHUNK, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_CHUNK));
+                MAX_NUMBER_OF_FAKE_PAGE, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE));
     long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
     for (int i = 0; i < pageNum; i++) {
       long pageStartTime = chunkStartTime + i * timeInterval;
