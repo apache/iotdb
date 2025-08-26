@@ -80,6 +80,7 @@ public class SqlConstant {
 
   public static final String APPROX_COUNT_DISTINCT = "approx_count_distinct";
   public static final String APPROX_MOST_FREQUENT = "approx_most_frequent";
+  public static final String APPROX_PERCENTILE = "approx_percentile";
 
   // names of scalar functions
   public static final String DIFF = "diff";
