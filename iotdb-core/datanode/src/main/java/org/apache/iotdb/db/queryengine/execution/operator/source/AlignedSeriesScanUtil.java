@@ -98,7 +98,6 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         resource,
         (AlignedFullPath) seriesPath,
         context,
-        orderUtils.getScanOrder(),
         scanOptions.getGlobalTimeFilter(),
         isSeq,
         ignoreAllNullRows);

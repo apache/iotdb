@@ -139,20 +139,10 @@ public class ReadOnlyMemChunk {
     }
   }
 
-  public void initChunkMetaFromTvLists() {
+  public void initChunkMetaFromTvLists(Filter globalTimeFilter) {
     // create chunk statistics
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
-    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataType,
-            tvLists,
-            Ordering.ASC,
-            null,
-            deletionList,
-            floatPrecision,
-            encoding,
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+    timeValuePairIterator = getMemPointIterator(Ordering.ASC, globalTimeFilter);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     while (timeValuePairIterator.hasNextBatch()) {
       // statistics for current batch
@@ -225,19 +215,7 @@ public class ReadOnlyMemChunk {
 
   // To avoid loading too much data from disk when the time range is too large during query, we
   // segment the data according to the time range and construct false statistics.
-  public void initChunkMetaFromTVListsWithFakeStatistics(
-      Ordering scanOrder, Filter globalTimeFilter) {
-    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataType,
-            tvLists,
-            scanOrder,
-            globalTimeFilter,
-            deletionList,
-            floatPrecision,
-            encoding,
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+  public void initChunkMetaFromTVListsWithFakeStatistics() {
     long chunkStartTime = Long.MAX_VALUE;
     long chunkEndTime = Long.MIN_VALUE;
     long rowNum = 0;
@@ -398,5 +376,18 @@ public class ReadOnlyMemChunk {
 
   public MemPointIterator getMemPointIterator() {
     return timeValuePairIterator;
+  }
+
+  public MemPointIterator getMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
+    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
+    return MemPointIteratorFactory.create(
+        dataType,
+        tvLists,
+        scanOrder,
+        globalTimeFilter,
+        deletionList,
+        floatPrecision,
+        encoding,
+        MAX_NUMBER_OF_POINTS_IN_PAGE);
   }
 }

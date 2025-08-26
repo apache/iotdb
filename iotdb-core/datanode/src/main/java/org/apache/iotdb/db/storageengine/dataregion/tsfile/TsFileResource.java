@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -1060,8 +1059,8 @@ public class TsFileResource implements PersistentResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(
-      IFullPath seriesPath, Ordering scanOrder, Filter globalTimeFilter) throws IOException {
+  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath, Filter globalTimeFilter)
+      throws IOException {
     try {
       return pathToTimeSeriesMetadataMap.computeIfAbsent(
           seriesPath,
@@ -1072,7 +1071,6 @@ public class TsFileResource implements PersistentResource {
                     .generateTimeSeriesMetadata(
                         pathToReadOnlyMemChunkMap.get(seriesPath),
                         pathToChunkMetadataListMap.get(seriesPath),
-                        scanOrder,
                         globalTimeFilter);
               } catch (IOException e) {
                 throw new UncheckedIOException(e);

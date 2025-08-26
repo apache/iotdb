@@ -674,7 +674,9 @@ public class SeriesScanUtil implements Accountable {
         isAligned
             ? ((AlignedReadOnlyMemChunk) readOnlyMemChunk).getTimeStatisticsList()
             : readOnlyMemChunk.getPageStatisticsList();
-    MemPointIterator memPointIterator = readOnlyMemChunk.getMemPointIterator();
+    MemPointIterator memPointIterator =
+        readOnlyMemChunk.getMemPointIterator(
+            orderUtils.getScanOrder(), scanOptions.getGlobalTimeFilter());
     for (Statistics<? extends Serializable> statistics : statisticsList) {
       VersionPageReader versionPageReader =
           new LazyMemVersionPageReader(
@@ -1302,7 +1304,6 @@ public class SeriesScanUtil implements Accountable {
         resource,
         (NonAlignedFullPath) seriesPath,
         context,
-        this.orderUtils.getScanOrder(),
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),
         isSeq);

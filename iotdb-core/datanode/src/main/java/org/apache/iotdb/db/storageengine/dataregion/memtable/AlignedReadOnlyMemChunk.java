@@ -123,7 +123,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   }
 
   @Override
-  public void initChunkMetaFromTvLists() {
+  public void initChunkMetaFromTvLists(Filter globalTimeFilter) {
     // init chunk meta
     Statistics<? extends Serializable> chunkTimeStatistics =
         Statistics.getStatsByType(TSDataType.VECTOR);
@@ -134,25 +134,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       chunkValueStatistics[column] = Statistics.getStatsByType(dataTypes.get(column));
     }
 
-    // create MergeSortAlignedTVListIterator
-    List<AlignedTVList> alignedTvLists =
-        alignedTvListQueryMap.keySet().stream()
-            .map(x -> (AlignedTVList) x)
-            .collect(Collectors.toList());
-
-    timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataTypes,
-            columnIndexList,
-            alignedTvLists,
-            Ordering.ASC,
-            null,
-            timeColumnDeletion,
-            valueColumnsDeletionList,
-            floatPrecision,
-            encodingList,
-            context.isIgnoreAllNullRows(),
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+    timeValuePairIterator = getMemPointIterator(Ordering.ASC, globalTimeFilter);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
 
     while (timeValuePairIterator.hasNextBatch()) {
@@ -286,27 +268,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   // To avoid loading too much data from disk when the time range is too large during query, we
   // segment the data according to the time range and construct false statistics.
   @Override
-  public void initChunkMetaFromTVListsWithFakeStatistics(
-      Ordering scanOrder, Filter globalTimeFilter) {
-    // create MergeSortAlignedTVListIterator
-    List<AlignedTVList> alignedTvLists =
-        alignedTvListQueryMap.keySet().stream()
-            .map(x -> (AlignedTVList) x)
-            .collect(Collectors.toList());
-
-    timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataTypes,
-            columnIndexList,
-            alignedTvLists,
-            scanOrder,
-            globalTimeFilter,
-            timeColumnDeletion,
-            valueColumnsDeletionList,
-            floatPrecision,
-            encodingList,
-            context.isIgnoreAllNullRows(),
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+  public void initChunkMetaFromTVListsWithFakeStatistics() {
 
     long chunkStartTime = Long.MAX_VALUE;
     long chunkEndTime = Long.MIN_VALUE;
@@ -507,5 +469,24 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   public MemPointIterator getMemPointIterator() {
     return timeValuePairIterator;
+  }
+
+  public MemPointIterator getMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
+    List<AlignedTVList> alignedTvLists =
+        alignedTvListQueryMap.keySet().stream()
+            .map(x -> (AlignedTVList) x)
+            .collect(Collectors.toList());
+    return MemPointIteratorFactory.create(
+        dataTypes,
+        columnIndexList,
+        alignedTvLists,
+        scanOrder,
+        globalTimeFilter,
+        timeColumnDeletion,
+        valueColumnsDeletionList,
+        floatPrecision,
+        encodingList,
+        context.isIgnoreAllNullRows(),
+        MAX_NUMBER_OF_POINTS_IN_PAGE);
   }
 }

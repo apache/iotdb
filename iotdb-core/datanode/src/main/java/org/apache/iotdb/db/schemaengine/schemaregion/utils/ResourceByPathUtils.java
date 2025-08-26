@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunkGroup;
@@ -93,7 +92,6 @@ public abstract class ResourceByPathUtils {
   public abstract ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
-      Ordering scanOrder,
       Filter globalTimeFilter)
       throws IOException;
 
@@ -231,7 +229,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   public AbstractAlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
-      Ordering scanOrder,
       Filter globalTimeFilter) {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
@@ -287,11 +284,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       if (!memChunk.isEmpty()) {
         memChunk.sortTvLists();
         if (useFakeStatistics) {
-          memChunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
+          memChunk.initChunkMetaFromTVListsWithFakeStatistics();
           startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
           endTime = Math.max(endTime, memChunk.getChunkMetaData().getEndTime());
         } else {
-          memChunk.initChunkMetaFromTvLists();
+          memChunk.initChunkMetaFromTvLists(globalTimeFilter);
         }
         AbstractAlignedChunkMetadata alignedChunkMetadata =
             (AbstractAlignedChunkMetadata) memChunk.getChunkMetaData();
@@ -511,7 +508,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   public ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
-      Ordering scanOrder,
       Filter globalTimeFilter) {
     boolean useFakeStatistics =
         !readOnlyMemChunk.isEmpty()
@@ -541,11 +537,11 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       if (!memChunk.isEmpty()) {
         memChunk.sortTvLists();
         if (useFakeStatistics) {
-          memChunk.initChunkMetaFromTVListsWithFakeStatistics(scanOrder, globalTimeFilter);
+          memChunk.initChunkMetaFromTVListsWithFakeStatistics();
           startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
           endTime = Math.max(endTime, memChunk.getChunkMetaData().getEndTime());
         } else {
-          memChunk.initChunkMetaFromTvLists();
+          memChunk.initChunkMetaFromTvLists(globalTimeFilter);
           seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
         }
       }

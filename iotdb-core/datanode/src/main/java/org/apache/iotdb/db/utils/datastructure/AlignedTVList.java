@@ -1656,14 +1656,8 @@ public abstract class AlignedTVList extends TVList {
           if (allValueColDeletedMap == null
               || !allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(index)))) {
             for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
-              if (!scanOrder.isAscending()) {
-                // already set the latest point
-                if (selectedIndices[columnIndex] == -1) {
-                  // there was a null value
-                  if (!isNullValue(index, columnIndex)) {
-                    selectedIndices[columnIndex] = index;
-                  }
-                }
+              if (!scanOrder.isAscending() && selectedIndices[columnIndex] != -1) {
+                // non -1 value means it already set the latest point index
                 continue;
               }
               // update selected index if the column is not null
