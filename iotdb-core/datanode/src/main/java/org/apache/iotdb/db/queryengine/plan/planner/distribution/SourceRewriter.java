@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.BaseSourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -211,7 +212,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
       if (regionReplicaSets.size() > 1 && !existDeviceCrossRegion) {
         existDeviceCrossRegion = true;
-        if (analysis.isDeviceViewSpecialProcess() && aggregationCannotUseMergeSort()) {
+        if (analysis.isDeviceViewSpecialProcess() && cannotUseAggMergeSort()) {
           return processSpecialDeviceView(node, context);
         }
       }
@@ -380,10 +381,12 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   /**
-   * aggregation align by device, and aggregation is `count_if` or `diff`, or aggregation used with
-   * group by parameter (session, variation, count), use the old aggregation logic
+   * 1. aggregation align by device, and aggregation is `count_if` or `diff`, or aggregation used
+   * with 2. group by parameter (session, variation, count), use the old aggregation logic 3.
+   * non-mappable UDTF, we just need to check UDTF in this method, because caller has already
+   * checked analysis.isDeviceViewSpecialProcess()
    */
-  private boolean aggregationCannotUseMergeSort() {
+  private boolean cannotUseAggMergeSort() {
     if (analysis.hasGroupByParameter()) {
       return true;
     }
@@ -391,7 +394,9 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     for (Expression expression : analysis.getDeviceViewOutputExpressions()) {
       if (expression instanceof FunctionExpression) {
         String functionName = ((FunctionExpression) expression).getFunctionName();
-        if (COUNT_IF.equalsIgnoreCase(functionName) || DIFF.equalsIgnoreCase(functionName)) {
+        if (((FunctionExpression) expression).getFunctionType() == FunctionType.UDTF
+            || COUNT_IF.equalsIgnoreCase(functionName)
+            || DIFF.equalsIgnoreCase(functionName)) {
           return true;
         }
       }
