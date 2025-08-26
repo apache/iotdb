@@ -341,6 +341,7 @@ public class TableLogicalPlanner {
         logger.info(
             "Logical plan is cached, fetch schema cost time: {}",
             queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
+
         return new LogicalQueryPlan(queryContext, newPlan);
       }
       // Following implementation of plan should be based on the generalizedStatement

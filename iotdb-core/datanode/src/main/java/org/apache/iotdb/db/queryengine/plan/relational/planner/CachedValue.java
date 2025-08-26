@@ -26,13 +26,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
@@ -62,6 +62,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class CachedValue {
   private static final int INSTANCE_SIZE =
@@ -215,9 +216,12 @@ public class CachedValue {
     @Override
     public PlanNode visitOutput(OutputNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      OutputNode newNode = (OutputNode) node.clone();
-      newNode.setChild(newChild);
-      return newNode;
+
+      return new OutputNode(
+          context.getQueryId().genPlanNodeId(),
+          newChild,
+          node.getColumnNames(),
+          node.getOutputSymbols());
     }
 
     @Override
@@ -310,27 +314,116 @@ public class CachedValue {
     }
 
     @Override
+    public PlanNode visitAggregationTableScan(
+        AggregationTableScanNode node, ClonerContext context) {
+      // deep copy pushDownPredicate
+      Expression newPredicate =
+          node.getPushDownPredicate() == null
+              ? null
+              : node.getPushDownPredicate()
+                  .accept(new ExpressionCloner(), context.getNewLiterals());
+
+      // deep copy timePredicate
+      Expression newTimePredicate =
+          node.getTimePredicate()
+              .map(tp -> tp.accept(new ExpressionCloner(), context.getNewLiterals()))
+              .orElse(null);
+
+      // deep copy projection
+      Assignments newProjection = node.getProjection() == null ? null : node.getProjection();
+
+      // deep copy aggregations
+      Map<Symbol, AggregationNode.Aggregation> newAggregations = new HashMap<>();
+      for (Map.Entry<Symbol, AggregationNode.Aggregation> entry :
+          node.getAggregations().entrySet()) {
+        AggregationNode.Aggregation agg = entry.getValue();
+        AggregationNode.Aggregation newAgg =
+            new AggregationNode.Aggregation(
+                agg.getResolvedFunction(),
+                agg.getArguments().stream()
+                    .map(arg -> arg.accept(new ExpressionCloner(), context.getNewLiterals()))
+                    .collect(Collectors.toList()),
+                agg.isDistinct(),
+                agg.getFilter(),
+                agg.getOrderingScheme(),
+                agg.getMask());
+        newAggregations.put(entry.getKey(), newAgg);
+      }
+
+      // deep copy groupingSets
+      AggregationNode.GroupingSetDescriptor newGroupingSets = node.getGroupingSets();
+
+      // deep copy preGroupedSymbols
+      List<Symbol> newPreGroupedSymbols = ImmutableList.copyOf(node.getPreGroupedSymbols());
+
+      return new AggregationTableScanNode(
+          context.getQueryId().genPlanNodeId(),
+          node.getQualifiedObjectName(),
+          node.getOutputSymbols(),
+          node.getAssignments(),
+          node.getDeviceEntries(),
+          node.getTagAndAttributeIndexMap(),
+          node.getScanOrder(),
+          newTimePredicate,
+          newPredicate,
+          node.getPushDownLimit(),
+          node.getPushDownOffset(),
+          node.isPushLimitToEachDevice(),
+          node.containsNonAlignedDevice(),
+          newProjection,
+          newAggregations,
+          newGroupingSets,
+          newPreGroupedSymbols,
+          node.getStep(),
+          node.getGroupIdSymbol());
+    }
+
+    @Override
     public PlanNode visitPatternRecognition(PatternRecognitionNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      PatternRecognitionNode newNode = (PatternRecognitionNode) node.clone();
-      newNode.setChild(newChild);
+      PatternRecognitionNode newNode =
+          new PatternRecognitionNode(
+              context.getQueryId().genPlanNodeId(), // 🔑 新的 PlanNodeId
+              newChild,
+              node.getPartitionBy(),
+              node.getOrderingScheme(),
+              node.getHashSymbol(),
+              node.getMeasures(),
+              node.getRowsPerMatch(),
+              node.getSkipToLabels(),
+              node.getSkipToPosition(),
+              node.getPattern(),
+              node.getVariableDefinitions());
       return newNode;
     }
 
     @Override
     public PlanNode visitAggregation(AggregationNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      AggregationNode newNode = (AggregationNode) node.clone();
-      newNode.setChild(newChild);
-      return newNode;
+
+      return new AggregationNode(
+          context.getQueryId().genPlanNodeId(),
+          newChild,
+          node.getAggregations(),
+          node.getGroupingSets(),
+          node.getPreGroupedSymbols(),
+          node.getStep(),
+          node.getHashSymbol(),
+          node.getGroupIdSymbol());
     }
 
     @Override
     public PlanNode visitWindowFunction(WindowNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      WindowNode newNode = (WindowNode) node.clone();
-      newNode.setChild(newChild);
-      return newNode;
+
+      return new WindowNode(
+          context.getQueryId().genPlanNodeId(),
+          newChild,
+          node.getSpecification(),
+          node.getWindowFunctions(),
+          node.getHashSymbol(),
+          node.getPrePartitionedInputs(),
+          node.getPreSortedOrderPrefix());
     }
 
     @Override
@@ -339,54 +432,65 @@ public class CachedValue {
       for (PlanNode child : node.getChildren()) {
         newChildren.add(child.accept(this, context));
       }
-      TableFunctionNode newNode = (TableFunctionNode) node.clone();
-      newNode.setChildren(newChildren);
-      return newNode;
+
+      return new TableFunctionNode(
+          context.getQueryId().genPlanNodeId(),
+          node.getName(),
+          node.getTableFunctionHandle(),
+          node.getProperOutputs(),
+          newChildren,
+          node.getTableArgumentProperties());
     }
 
     @Override
     public PlanNode visitTableFunctionProcessor(
         TableFunctionProcessorNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      TableFunctionProcessorNode newNode = (TableFunctionProcessorNode) node.clone();
-      newNode.setChild(newChild);
-      return newNode;
-    }
 
-    @Override
-    public PlanNode visitLimit(LimitNode node, ClonerContext context) {
-      PlanNode newChild = node.getChild().accept(this, context);
-      LimitNode newNode = (LimitNode) node.clone();
-      newNode.setChild(newChild);
-      return newNode;
+      return new TableFunctionProcessorNode(
+          context.getQueryId().genPlanNodeId(),
+          node.getName(),
+          node.getProperOutputs(),
+          Optional.ofNullable(newChild),
+          node.getPassThroughSpecification(),
+          node.getRequiredSymbols(),
+          node.getDataOrganizationSpecification(),
+          node.isRowSemantic(),
+          node.getTableFunctionHandle(),
+          node.isRequireRecordSnapshot());
     }
 
     @Override
     public PlanNode visitOffset(OffsetNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      OffsetNode newNode = (OffsetNode) node.clone();
-      newNode.setChild(newChild);
-      return newNode;
+      return new OffsetNode(context.getQueryId().genPlanNodeId(), newChild, node.getCount());
     }
 
     @Override
     public PlanNode visitApply(ApplyNode node, ClonerContext context) {
       PlanNode newLeft = node.getLeftChild().accept(this, context);
       PlanNode newRight = node.getRightChild().accept(this, context);
-      ApplyNode newNode = (ApplyNode) node.clone();
-      newNode.setLeftChild(newLeft);
-      newNode.setRightChild(newRight);
-      return newNode;
+      return new ApplyNode(
+          context.getQueryId().genPlanNodeId(),
+          newLeft,
+          newRight,
+          node.getSubqueryAssignments(),
+          node.getCorrelation(),
+          node.getOriginSubquery());
     }
 
     @Override
     public PlanNode visitCorrelatedJoin(CorrelatedJoinNode node, ClonerContext context) {
       PlanNode newLeft = node.getLeftChild().accept(this, context);
       PlanNode newRight = node.getRightChild().accept(this, context);
-      CorrelatedJoinNode newNode = (CorrelatedJoinNode) node.clone();
-      newNode.setLeftChild(newLeft);
-      newNode.setRightChild(newRight);
-      return newNode;
+      return new CorrelatedJoinNode(
+          context.getQueryId().genPlanNodeId(),
+          newLeft,
+          newRight,
+          node.getCorrelation(),
+          node.getJoinType(),
+          node.getFilter(),
+          node.getOriginSubquery());
     }
 
     @Override
@@ -408,17 +512,18 @@ public class CachedValue {
     @Override
     public PlanNode visitValueFill(ValueFillNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      ValueFillNode newNode = (ValueFillNode) node.clone();
-      newNode.setChild(newChild);
-      return newNode;
+      return new ValueFillNode(
+          context.getQueryId().genPlanNodeId(), newChild, node.getFilledValue());
     }
 
     @Override
     public PlanNode visitGroup(GroupNode node, ClonerContext context) {
       PlanNode newChild = node.getChild().accept(this, context);
-      GroupNode newNode = (GroupNode) node.clone();
-      newNode.setChild(newChild);
-      return newNode;
+      return new GroupNode(
+          context.getQueryId().genPlanNodeId(),
+          newChild,
+          node.getOrderingScheme(),
+          node.getPartitionKeyCount());
     }
 
     @Override
@@ -427,31 +532,44 @@ public class CachedValue {
       for (PlanNode child : node.getChildren()) {
         newChildren.add(child.accept(this, context));
       }
-      TopKNode newNode = (TopKNode) node.clone();
-      newNode.setChildren(newChildren);
-      return newNode;
+      return new TopKNode(
+          context.getQueryId().genPlanNodeId(),
+          newChildren,
+          node.getOrderingScheme(),
+          node.getCount(),
+          node.getOutputSymbols(),
+          node.isChildrenDataInOrder());
     }
 
     @Override
     public PlanNode visitSemiJoin(SemiJoinNode node, ClonerContext context) {
       PlanNode newLeft = node.getLeftChild().accept(this, context);
       PlanNode newRight = node.getRightChild().accept(this, context);
-      SemiJoinNode newNode = (SemiJoinNode) node.clone();
-      newNode.setLeftChild(newLeft);
-      newNode.setRightChild(newRight);
-      return newNode;
+      return new SemiJoinNode(
+          context.getQueryId().genPlanNodeId(),
+          newLeft,
+          newRight,
+          node.getSourceJoinSymbol(),
+          node.getFilteringSourceJoinSymbol(),
+          node.getSemiJoinOutput());
     }
 
     @Override
     public PlanNode visitGroupReference(GroupReference node, ClonerContext context) {
-      GroupReference newNode = (GroupReference) node.clone();
-      return newNode;
+      return new GroupReference(
+          context.getQueryId().genPlanNodeId(), node.getGroupId(), node.getOutputSymbols());
     }
 
     @Override
     public PlanNode visitTreeDeviceViewScan(TreeDeviceViewScanNode node, ClonerContext context) {
-      TreeDeviceViewScanNode newNode = (TreeDeviceViewScanNode) node.clone();
-      return newNode;
+      return new TreeDeviceViewScanNode(
+          context.getQueryId().genPlanNodeId(),
+          node.getQualifiedObjectName(),
+          node.getOutputSymbols(),
+          node.getAssignments(),
+          node.getTagAndAttributeIndexMap(),
+          node.getTreeDBName(),
+          node.getMeasurementColumnNameMap());
     }
   }
 
