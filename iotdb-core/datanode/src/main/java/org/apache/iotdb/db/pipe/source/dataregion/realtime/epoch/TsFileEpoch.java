@@ -55,6 +55,7 @@ public class TsFileEpoch {
     if (stateRef == null) {
       dataRegionExtractor2State.putIfAbsent(
           extractor, stateRef = new AtomicReference<>(State.EMPTY));
+      extractor.increaseExtractEpochSize();
       setExtractorsRecentProcessedTsFileEpochState();
     }
 
