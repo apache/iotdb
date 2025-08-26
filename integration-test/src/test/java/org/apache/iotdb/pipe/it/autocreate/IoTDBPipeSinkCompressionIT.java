@@ -46,8 +46,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.Assert.fail;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
@@ -129,6 +128,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
             ? receiverDataNode.getPipeAirGapReceiverPort()
             : receiverDataNode.getPort();
 
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
@@ -170,7 +175,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
+          Collections.singleton("2,"),
+          handleFailure);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
@@ -189,7 +195,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("8,"));
+          Collections.singleton("8,"),
+          handleFailure);
     }
   }
 
@@ -199,6 +206,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -307,7 +320,11 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(3, showPipeResult.size());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("3,"),
+          handleFailure);
     }
   }
 }
