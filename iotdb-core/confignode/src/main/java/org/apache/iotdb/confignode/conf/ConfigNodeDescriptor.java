@@ -195,6 +195,10 @@ public class ConfigNodeDescriptor {
         properties.getProperty(
             "data_partition_allocation_strategy", conf.getDataPartitionAllocationStrategy()));
 
+    conf.setDataPartitionAllocationStrategy(
+        properties.getProperty(
+            "data_partition_allocation_strategy", conf.getDataPartitionAllocationStrategy()));
+
     conf.setConfigNodeConsensusProtocolClass(
         properties
             .getProperty(
