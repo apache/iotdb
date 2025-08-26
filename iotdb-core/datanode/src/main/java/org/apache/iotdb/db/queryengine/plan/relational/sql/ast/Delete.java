@@ -44,8 +44,9 @@ public class Delete extends Statement {
   private String databaseName;
   private Collection<TRegionReplicaSet> replicaSets;
 
-  public Delete() {
+  public Delete(final Table table) {
     super(null);
+    this.table = requireNonNull(table, "table is null");
   }
 
   public Delete(final NodeLocation location, final Table table) {
