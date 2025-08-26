@@ -110,12 +110,16 @@ public class IntoNodeSerdeTest {
             new ColumnSchema("id", StringType.STRING, false, TsTableColumnCategory.TAG),
             new ColumnSchema("voltage", FloatType.FLOAT, false, TsTableColumnCategory.FIELD));
 
+    List<Symbol> neededInputColumnNames =
+        ImmutableList.of(new Symbol("time"), new Symbol("voltage"), new Symbol("id"));
+
     return new org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode(
         new PlanNodeId("TestIntoNode"),
         null,
         "testdb",
         "testtb",
         sourceColumns,
+        neededInputColumnNames,
         new Symbol("rows"));
   }
 }

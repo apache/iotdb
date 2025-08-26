@@ -227,6 +227,7 @@ public class TableDistributedPlanGenerator
               node.getDatabase(),
               node.getTable(),
               node.getColumns(),
+              node.getNeededInputColumnNames(),
               node.getRowCountSymbol());
       resultNodeList.add(subIntoNode);
     }
