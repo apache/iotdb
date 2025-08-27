@@ -60,11 +60,6 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
     return this;
   }

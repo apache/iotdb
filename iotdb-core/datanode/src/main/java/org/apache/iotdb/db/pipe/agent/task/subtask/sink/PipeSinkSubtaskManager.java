@@ -132,10 +132,8 @@ public class PipeSinkSubtaskManager {
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
             isDataRegionConnector
-                ? PipeDataNodeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters)
-                : PipeDataNodeAgent.plugin()
-                    .schemaRegion()
-                    .reflectConnector(pipeConnectorParameters);
+                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeConnectorParameters)
+                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeConnectorParameters);
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {

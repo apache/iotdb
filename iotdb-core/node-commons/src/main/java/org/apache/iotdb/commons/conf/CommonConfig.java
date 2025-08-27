@@ -415,6 +415,8 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
+  private String userEncryptTokenHint = "not set yet";
+
   private boolean enforceStrongPassword = false;
   private long passwordExpirationDays = -1;
   // an old password cannot be reused within the given interval if >= 0.
@@ -459,6 +461,16 @@ public class CommonConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public void setUserEncryptTokenHint(String userEncryptTokenHint) {
+    if (userEncryptTokenHint != null && !userEncryptTokenHint.isEmpty()) {
+      this.userEncryptTokenHint = userEncryptTokenHint;
+    }
+  }
+
+  public String getUserEncryptTokenHint() {
+    return userEncryptTokenHint;
   }
 
   public String getOpenIdProviderUrl() {
