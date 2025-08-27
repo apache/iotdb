@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
@@ -99,7 +100,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -837,7 +837,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (node.getMonthDuration() != 0) {
       boxValue.add(String.format("Interval: %smo", node.getMonthDuration()));
     } else {
-      boxValue.add(String.format("Interval: %s" + TIMESTAMP_PRECISION, node.getNonMonthDuration()));
+      boxValue.add(
+          String.format(
+              "Interval: %s" + CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+              node.getNonMonthDuration()));
     }
     boxValue.add(String.format("GapFillColumn: %s", node.getGapFillColumn()));
     if (!node.getGapFillGroupingKeys().isEmpty()) {
