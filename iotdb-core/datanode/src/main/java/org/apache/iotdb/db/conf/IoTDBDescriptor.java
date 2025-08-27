@@ -2498,6 +2498,12 @@ public class IoTDBDescriptor {
             ? conf.getLoadActiveListeningCheckIntervalSeconds()
             : loadActiveListeningCheckIntervalSeconds);
 
+    conf.setLoadMeasurementIdCacheSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_measurement_id_cache_size_in_bytes",
+                Long.toString(conf.getLoadMeasurementIdCacheSizeInBytes()))));
+
     conf.setLoadActiveListeningMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -2562,6 +2568,7 @@ public class IoTDBDescriptor {
                 "load_active_listening_enable",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_active_listening_enable"))));
+
     conf.setLoadActiveListeningDirs(
         Arrays.stream(
                 properties
