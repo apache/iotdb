@@ -3697,7 +3697,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       List<TSDataType> inputColumnTypes = new ArrayList<>();
       List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
 
-      List<ColumnSchema> inputColumns = node.getColumns();
+      List<ColumnSchema> originColumns = node.getColumns();
+      List<Symbol> originInputColumnNames = node.getNeededInputColumnNames();
+      int size = originColumns.size();
+      List<ColumnSchema> inputColumns = new ArrayList<>(size);
+
+      List<Symbol> childOutputName = node.getChild().getOutputSymbols();
+      Map<Symbol, Integer> map = new HashMap<>(childOutputName.size());
+      for (int i = 0; i < size; i++) {
+        map.put(childOutputName.get(i), i);
+        inputColumns.add(null);
+      }
+      for (int i = 0; i < size; i++) {
+        int index = map.get(originInputColumnNames.get(i));
+        inputColumns.set(index, originColumns.get(i));
+      }
+
       for (int i = 0; i < inputColumns.size(); i++) {
         String columnName = inputColumns.get(i).getName();
         inputLocationMap.put(columnName, new InputLocation(0, i));

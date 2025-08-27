@@ -24,6 +24,7 @@
 #include <utility>
 
 const std::string NodesSupplier::SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
+const std::string NodesSupplier::RUNNING_STATUS = "Running";
 const std::string NodesSupplier::STATUS_COLUMN_NAME = "Status";
 const std::string NodesSupplier::IP_COLUMN_NAME = "RpcAddress";
 const std::string NodesSupplier::PORT_COLUMN_NAME = "RpcPort";
@@ -137,6 +138,7 @@ void NodesSupplier::deduplicateEndpoints() {
 
 void NodesSupplier::startBackgroundRefresh(std::chrono::milliseconds interval) {
     isRunning_ = true;
+    refreshEndpointList();
     refreshThread_ = std::thread([this, interval] {
         while (isRunning_) {
             refreshEndpointList();
@@ -149,60 +151,66 @@ void NodesSupplier::startBackgroundRefresh(std::chrono::milliseconds interval) {
 }
 
 std::vector<TEndPoint> NodesSupplier::fetchLatestEndpoints() {
+  for (const auto& endpoint : endpoints_) {
     try {
-        if (client_ == nullptr) {
-            client_ = std::make_shared<ThriftConnection>(selectionPolicy_(endpoints_));
-            client_->init(userName_, password_, enableRPCCompression_, zoneId_, version);
+      if (client_ == nullptr) {
+        client_ = std::make_shared<ThriftConnection>(endpoint);
+        client_->init(userName_, password_, enableRPCCompression_, zoneId_, version);
+      }
+
+      auto sessionDataSet = client_->executeQueryStatement(SHOW_DATA_NODES_COMMAND);
+
+      uint32_t columnAddrIdx = -1, columnPortIdx = -1, columnStatusIdx = -1;
+      auto columnNames = sessionDataSet->getColumnNames();
+      for (uint32_t i = 0; i < columnNames.size(); i++) {
+        if (columnNames[i] == IP_COLUMN_NAME) {
+          columnAddrIdx = i;
+        } else if (columnNames[i] == PORT_COLUMN_NAME) {
+          columnPortIdx = i;
+        } else if (columnNames[i] == STATUS_COLUMN_NAME) {
+          columnStatusIdx = i;
+        }
+      }
+
+      if (columnAddrIdx == -1 || columnPortIdx == -1 || columnStatusIdx == -1) {
+        throw IoTDBException("Required columns not found in query result.");
+      }
+
+      std::vector<TEndPoint> ret;
+      while (sessionDataSet->hasNext()) {
+        auto record = sessionDataSet->next();
+        std::string ip;
+        int32_t port = 0;
+        std::string status;
+
+        if (record->fields.at(columnAddrIdx).stringV.is_initialized()) {
+          ip = record->fields.at(columnAddrIdx).stringV.value();
+        }
+        if (record->fields.at(columnPortIdx).intV.is_initialized()) {
+          port = record->fields.at(columnPortIdx).intV.value();
+        }
+        if (record->fields.at(columnStatusIdx).stringV.is_initialized()) {
+          status = record->fields.at(columnStatusIdx).stringV.value();
         }
 
-        auto sessionDataSet = client_->executeQueryStatement(SHOW_DATA_NODES_COMMAND);
-
-        uint32_t columnAddrIdx = -1, columnPortIdx = -1, columnStatusIdx = -1;
-        auto columnNames = sessionDataSet->getColumnNames();
-        for (uint32_t i = 0; i < columnNames.size(); i++) {
-            if (columnNames[i] == IP_COLUMN_NAME) {
-                columnAddrIdx = i;
-            } else if (columnNames[i] == PORT_COLUMN_NAME) {
-                columnPortIdx = i;
-            } else if (columnNames[i] == STATUS_COLUMN_NAME) {
-                columnStatusIdx = i;
-            }
+        if (ip == "0.0.0.0" || status != RUNNING_STATUS) {
+          log_warn("Skipping invalid node: " + ip + ":" + std::to_string(port));
+          continue;
         }
-
-        if (columnAddrIdx == -1 || columnPortIdx == -1 || columnStatusIdx == -1) {
-            throw IoTDBException("Required columns not found in query result.");
-        }
-
-        std::vector<TEndPoint> ret;
-        while (sessionDataSet->hasNext()) {
-            auto record = sessionDataSet->next();
-            std::string ip;
-            int32_t port;
-            std::string status;
-            if (record->fields.at(columnAddrIdx).stringV.is_initialized()) {
-                ip = record->fields.at(columnAddrIdx).stringV.value();
-            }
-            if (record->fields.at(columnPortIdx).intV.is_initialized()) {
-                port = record->fields.at(columnPortIdx).intV.value();
-            }
-            if (record->fields.at(columnStatusIdx).stringV.is_initialized()) {
-                status = record->fields.at(columnStatusIdx).stringV.value();
-            }
-            if (ip == "0.0.0.0" || status == REMOVING_STATUS) {
-                log_warn("Skipping invalid node: " + ip + ":" + to_string(port));
-                continue;
-            }
-            TEndPoint endpoint;
-            endpoint.ip = ip;
-            endpoint.port = port;
-            ret.emplace_back(endpoint);
-        }
-
-        return ret;
-    } catch (const IoTDBException& e) {
-        client_.reset();
-        throw IoTDBException(std::string("NodesSupplier::fetchLatestEndpoints failed: ") + e.what());
+        TEndPoint newEndpoint;
+        newEndpoint.ip = ip;
+        newEndpoint.port = port;
+        ret.emplace_back(newEndpoint);
+      }
+      return ret;  // success
+    } catch (const std::exception& e) {
+      log_warn("Failed to fetch endpoints from " + endpoint.ip + ":" +
+               std::to_string(endpoint.port) + " , error=" + e.what());
+      client_.reset();  // reset client before retrying next endpoint
+      continue;         // try next endpoint
     }
+  }
+  throw IoTDBException("NodesSupplier::fetchLatestEndpoints failed: all nodes unreachable.");
 }
 
 void NodesSupplier::refreshEndpointList() {

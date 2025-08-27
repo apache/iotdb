@@ -44,6 +44,7 @@ public class IntoNode extends SingleChildProcessNode {
   private final String database;
   private final String table;
   private final List<ColumnSchema> columns;
+  private final List<Symbol> neededInputColumnNames;
   private final Symbol rowCountSymbol;
 
   public IntoNode(
@@ -52,11 +53,17 @@ public class IntoNode extends SingleChildProcessNode {
       String database,
       String table,
       List<ColumnSchema> columns,
+      List<Symbol> neededInputColumnNames,
       Symbol rowCountSymbol) {
     super(id, child);
     this.database = database;
     this.table = table;
     this.columns = columns;
+    this.neededInputColumnNames = neededInputColumnNames;
+    if (columns.size() != neededInputColumnNames.size()) {
+      throw new IllegalArgumentException(
+          "insert into table columns's size should be same as query result");
+    }
     this.rowCountSymbol = rowCountSymbol;
   }
 
@@ -67,7 +74,7 @@ public class IntoNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new IntoNode(id, null, database, table, columns, rowCountSymbol);
+    return new IntoNode(id, null, database, table, columns, neededInputColumnNames, rowCountSymbol);
   }
 
   @Override
@@ -90,6 +97,9 @@ public class IntoNode extends SingleChildProcessNode {
     for (ColumnSchema tableColumn : columns) {
       ColumnSchema.serialize(tableColumn, byteBuffer);
     }
+    for (Symbol column : neededInputColumnNames) {
+      Symbol.serialize(column, byteBuffer);
+    }
   }
 
   @Override
@@ -102,6 +112,9 @@ public class IntoNode extends SingleChildProcessNode {
     for (ColumnSchema tableColumn : columns) {
       ColumnSchema.serialize(tableColumn, stream);
     }
+    for (Symbol column : neededInputColumnNames) {
+      Symbol.serialize(column, stream);
+    }
   }
 
   public static IntoNode deserialize(ByteBuffer byteBuffer) {
@@ -113,14 +126,25 @@ public class IntoNode extends SingleChildProcessNode {
     for (int i = 0; i < columnSize; i++) {
       columns.add(ColumnSchema.deserialize(byteBuffer));
     }
+    List<Symbol> neededInputColumnNames = new ArrayList<>(columnSize);
+    for (int i = 0; i < columnSize; i++) {
+      neededInputColumnNames.add(Symbol.deserialize(byteBuffer));
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new IntoNode(planNodeId, null, database, table, columns, rowCountSymbol);
+    return new IntoNode(
+        planNodeId, null, database, table, columns, neededInputColumnNames, rowCountSymbol);
   }
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     return new IntoNode(
-        id, Iterables.getOnlyElement(newChildren), database, table, columns, rowCountSymbol);
+        id,
+        Iterables.getOnlyElement(newChildren),
+        database,
+        table,
+        columns,
+        neededInputColumnNames,
+        rowCountSymbol);
   }
 
   @Override
@@ -143,12 +167,14 @@ public class IntoNode extends SingleChildProcessNode {
     return database.equals(that.database)
         && table.equals(that.table)
         && rowCountSymbol.equals(that.rowCountSymbol)
-        && Objects.deepEquals(columns, that.columns);
+        && Objects.deepEquals(columns, that.columns)
+        && Objects.deepEquals(neededInputColumnNames, that.neededInputColumnNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), database, table, rowCountSymbol, columns);
+    return Objects.hash(
+        super.hashCode(), database, table, rowCountSymbol, columns, neededInputColumnNames);
   }
 
   public List<Type> getOutputType() {
@@ -165,6 +191,10 @@ public class IntoNode extends SingleChildProcessNode {
 
   public List<ColumnSchema> getColumns() {
     return columns;
+  }
+
+  public List<Symbol> getNeededInputColumnNames() {
+    return neededInputColumnNames;
   }
 
   public Symbol getRowCountSymbol() {

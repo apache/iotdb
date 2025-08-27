@@ -411,9 +411,18 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     @Override
     public PlanAndMappings visitInto(IntoNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
 
       return new PlanAndMappings(
-          node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
+          new IntoNode(
+              node.getPlanNodeId(),
+              rewrittenSource.root,
+              node.getDatabase(),
+              node.getTable(),
+              node.getColumns(),
+              mapper.map(node.getNeededInputColumnNames()),
+              node.getRowCountSymbol()),
           rewrittenSource.getMappings());
     }
 

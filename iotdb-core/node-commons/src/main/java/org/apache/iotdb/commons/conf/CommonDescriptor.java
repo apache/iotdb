@@ -92,6 +92,10 @@ public class CommonDescriptor {
 
     config.setUserEncryptTokenHint(System.getenv("user_encrypt_token_hint"));
 
+    config.setEnableGrantOption(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_grant_option", String.valueOf("true"))));
+
     String[] tierTTLStr = new String[config.getTierTTLInMs().length];
     for (int i = 0; i < tierTTLStr.length; ++i) {
       tierTTLStr[i] = String.valueOf(config.getTierTTLInMs()[i]);

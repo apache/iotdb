@@ -193,7 +193,8 @@ public class Analysis implements IAnalysis {
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
-  // deviceViewSpecialProcess equals true when all Aggregation Functions and DIFF
+  // deviceViewSpecialProcess equals true when all Aggregation Functions and non-mappable UDTF and
+  // DIFF
   private boolean deviceViewSpecialProcess;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
