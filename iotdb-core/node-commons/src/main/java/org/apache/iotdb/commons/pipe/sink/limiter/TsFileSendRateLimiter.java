@@ -17,40 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.load.limiter;
+package org.apache.iotdb.commons.pipe.sink.limiter;
 
-import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRateLimiter;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
-public class LoadTsFileRateLimiter extends GlobalRateLimiter {
+public class TsFileSendRateLimiter extends GlobalRateLimiter {
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-
-  @Override
-  public void acquire(long bytes) {
-    LoadTsFileCostMetricsSet.getInstance().recordDiskIO(bytes);
-    super.acquire(bytes);
-  }
+  private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
   @Override
   protected double getThroughputBytesPerSecond() {
-    return CONFIG.getLoadWriteThroughputBytesPerSecond();
+    return CONFIG.getPipeSendTsFileRateLimitBytesPerSecond();
   }
 
   //////////////////////////// Singleton ////////////////////////////
 
-  private static class LoadTsFileRateLimiterHolder {
+  private static class TsFileSendRateLimiterHolder {
 
-    private static final LoadTsFileRateLimiter INSTANCE = new LoadTsFileRateLimiter();
+    private static final TsFileSendRateLimiter INSTANCE = new TsFileSendRateLimiter();
 
-    private LoadTsFileRateLimiterHolder() {
+    private TsFileSendRateLimiterHolder() {
       // Prevent instantiation
     }
   }
 
-  public static LoadTsFileRateLimiter getInstance() {
-    return LoadTsFileRateLimiterHolder.INSTANCE;
+  public static TsFileSendRateLimiter getInstance() {
+    return TsFileSendRateLimiter.TsFileSendRateLimiterHolder.INSTANCE;
   }
 }
