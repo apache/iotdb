@@ -28,6 +28,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -201,7 +202,7 @@ public class ExportDataTree extends AbstractExportData {
             SessionDataSet.DataIterator iterator2 = sessionDataSet2.iterator();
             if (iterator2.next()) {
               String value = iterator.getString(index + 1);
-              if (value.equals("null")) {
+              if (StringUtils.isEmpty(value)) {
                 headersTemp.remove(seriesList.get(index - startIndex));
                 continue;
               }
@@ -298,7 +299,7 @@ public class ExportDataTree extends AbstractExportData {
           csvPrinterWrapper.print(timeTrans(iterator.getLong(1)));
           for (int curColumnIndex = 1; curColumnIndex < totalColumns; curColumnIndex++) {
             String columnValue = iterator.getString(curColumnIndex + 1);
-            if (columnValue.equals("null")) {
+            if (StringUtils.isEmpty(columnValue)) {
               csvPrinterWrapper.print("");
             } else {
               String curType = columnTypeList.get(curColumnIndex);

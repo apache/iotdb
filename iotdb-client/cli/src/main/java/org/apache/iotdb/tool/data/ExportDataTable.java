@@ -271,7 +271,7 @@ public class ExportDataTable extends AbstractExportData {
               csvPrinterWrapper.print(timeTrans(iterator.getLong(curColumnIndex + 1)));
             } else {
               String columnValue = iterator.getString(curColumnIndex + 1);
-              if (columnValue.equals("null")) {
+              if (StringUtils.isEmpty(columnValue)) {
                 csvPrinterWrapper.print("");
               } else {
                 if (curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING")) {
