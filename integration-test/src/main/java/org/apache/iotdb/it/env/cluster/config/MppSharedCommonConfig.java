@@ -90,6 +90,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    cnConfig.setEnableGrantOption(enableGrantOption);
+    dnConfig.setEnableGrantOption(enableGrantOption);
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     cnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
     dnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
@@ -386,6 +393,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    cnConfig.setDataPartitionAllocationStrategy(dataPartitionAllocationStrategy);
     return this;
   }
 

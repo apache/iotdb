@@ -65,6 +65,7 @@ private:
 class NodesSupplier : public INodesSupplier {
 public:
     static const std::string SHOW_DATA_NODES_COMMAND;
+    static const std::string RUNNING_STATUS;
     static const std::string STATUS_COLUMN_NAME;
     static const std::string IP_COLUMN_NAME;
     static const std::string PORT_COLUMN_NAME;

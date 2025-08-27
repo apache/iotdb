@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -237,11 +236,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
     // Validate tree pattern and table pattern
-    final TreePattern treePattern =
-        TreePattern.parsePipePatternFromSourceParameters(validator.getParameters());
-    final TablePattern tablePattern =
-        TablePattern.parsePipePatternFromSourceParameters(validator.getParameters());
-    validatePattern(treePattern, tablePattern);
+    validatePattern(TreePattern.parsePipePatternFromSourceParameters(validator.getParameters()));
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
@@ -302,7 +297,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     realtimeExtractor.validate(validator);
   }
 
-  private void validatePattern(final TreePattern treePattern, final TablePattern tablePattern) {
+  private void validatePattern(final TreePattern treePattern) {
     if (!treePattern.isLegal()) {
       throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", treePattern));
     }
@@ -315,13 +310,6 @@ public class IoTDBDataRegionSource extends IoTDBSource {
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               treePattern));
-    }
-
-    if (shouldExtractDeletion && tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern()) {
-      throw new IllegalArgumentException(
-          String.format(
-              "The table model pattern %s can not be specified when deletion capture is enabled.",
-              tablePattern));
     }
   }
 

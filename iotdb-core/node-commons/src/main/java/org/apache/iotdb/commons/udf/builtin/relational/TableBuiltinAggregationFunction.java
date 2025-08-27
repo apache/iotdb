@@ -58,7 +58,8 @@ public enum TableBuiltinAggregationFunction {
   VAR_POP("var_pop"),
   VAR_SAMP("var_samp"),
   APPROX_COUNT_DISTINCT("approx_count_distinct"),
-  APPROX_MOST_FREQUENT("approx_most_frequent");
+  APPROX_MOST_FREQUENT("approx_most_frequent"),
+  APPROX_PERCENTILE("approx_percentile");
 
   private final String functionName;
 
@@ -104,6 +105,7 @@ public enum TableBuiltinAggregationFunction {
       case "var_pop":
       case "var_samp":
       case "approx_count_distinct":
+      case "approx_percentile":
         return RowType.anonymous(Collections.emptyList());
       case "extreme":
       case "max":

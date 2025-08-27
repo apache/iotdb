@@ -65,6 +65,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     return this;
   }
@@ -271,6 +276,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
     return this;
   }
 

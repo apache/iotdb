@@ -40,6 +40,8 @@ public interface CommonConfig {
 
   CommonConfig setEncryptKeyPath(String encryptKeyPath);
 
+  CommonConfig setEnableGrantOption(boolean enableGrantOption);
+
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);
@@ -123,6 +125,8 @@ public interface CommonConfig {
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
+
+  CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy);
 
   CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass);
 
