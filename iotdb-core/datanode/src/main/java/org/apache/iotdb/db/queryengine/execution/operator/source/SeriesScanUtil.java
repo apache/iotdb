@@ -110,9 +110,9 @@ public class SeriesScanUtil implements Accountable {
   private final PriorityQueue<IChunkMetadata> cachedChunkMetadata;
 
   // page cache
-  private VersionPageReader firstPageReader;
-  private final List<VersionPageReader> seqPageReaders;
-  private final PriorityQueue<VersionPageReader> unSeqPageReaders;
+  private IVersionPageReader firstPageReader;
+  private final List<IVersionPageReader> seqPageReaders;
+  private final PriorityQueue<IVersionPageReader> unSeqPageReaders;
 
   // point cache
   private final PriorityMergeReader mergeReader;
@@ -681,7 +681,7 @@ public class SeriesScanUtil implements Accountable {
         readOnlyMemChunk.createMemPointIterator(
             orderUtils.getScanOrder(), scanOptions.getGlobalTimeFilter());
     for (Statistics<? extends Serializable> statistics : statisticsList) {
-      VersionPageReader versionPageReader =
+      IVersionPageReader versionPageReader =
           new LazyMemVersionPageReader(
               context,
               timestampInFileName,
@@ -735,8 +735,8 @@ public class SeriesScanUtil implements Accountable {
     if (currentPageOverlapped() || firstPageReader.isModified()) {
       return false;
     }
-    return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstPageReader.data)
-        && filterAllSatisfy(scanOptions.getPushDownFilter(), firstPageReader.data);
+    return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstPageReader.getPageReader())
+        && filterAllSatisfy(scanOptions.getPushDownFilter(), firstPageReader.getPageReader());
   }
 
   @SuppressWarnings("squid:S3740")
@@ -827,7 +827,7 @@ public class SeriesScanUtil implements Accountable {
       return;
     }
 
-    IPageReader pageReader = firstPageReader.data;
+    IPageReader pageReader = firstPageReader.getPageReader();
 
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
@@ -941,7 +941,7 @@ public class SeriesScanUtil implements Accountable {
                 return hasCachedNextOverlappedPage;
               } else if (orderUtils.isOverlapped(
                   timeValuePair.getTimestamp(), seqPageReaders.get(0).getStatistics())) {
-                VersionPageReader pageReader = seqPageReaders.remove(0);
+                IVersionPageReader pageReader = seqPageReaders.remove(0);
                 putPageReaderToMergeReader(pageReader);
                 currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, pageReader);
               }
@@ -979,7 +979,7 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
-  private long updateEndPointTime(long currentPageEndPointTime, VersionPageReader pageReader) {
+  private long updateEndPointTime(long currentPageEndPointTime, IVersionPageReader pageReader) {
     if (orderUtils.getAscending()) {
       return Math.min(currentPageEndPointTime, pageReader.getStatistics().getEndTime());
     } else {
@@ -1059,7 +1059,7 @@ public class SeriesScanUtil implements Accountable {
 
   private void initFirstPageReader() throws IOException {
     while (this.firstPageReader == null) {
-      VersionPageReader firstPageReader = getFirstPageReaderFromCachedReaders();
+      IVersionPageReader firstPageReader = getFirstPageReaderFromCachedReaders();
 
       // unpack overlapped page using current page reader
       if (firstPageReader != null) {
@@ -1087,8 +1087,8 @@ public class SeriesScanUtil implements Accountable {
   }
 
   // We use get() and peek() here in case it's not the first page reader before unpacking
-  private VersionPageReader getFirstPageReaderFromCachedReaders() {
-    VersionPageReader firstPageReader = null;
+  private IVersionPageReader getFirstPageReaderFromCachedReaders() {
+    IVersionPageReader firstPageReader = null;
     if (!seqPageReaders.isEmpty() && !unSeqPageReaders.isEmpty()) {
       if (orderUtils.isTakeSeqAsFirst(
           seqPageReaders.get(0).getStatistics(), unSeqPageReaders.peek().getStatistics())) {
@@ -1118,7 +1118,7 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
-  private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
+  private void putPageReaderToMergeReader(IVersionPageReader pageReader) throws IOException {
     IPointReader pointReader;
     if (pageReader instanceof LazyMemVersionPageReader) {
       // There may be many VersionPageReaders belonging to the same MemChunk sharing a
@@ -1137,7 +1137,7 @@ public class SeriesScanUtil implements Accountable {
     }
     mergeReader.addReader(
         pointReader,
-        pageReader.version,
+        pageReader.getVersion(),
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
     context
         .getQueryStatistics()
@@ -1328,7 +1328,29 @@ public class SeriesScanUtil implements Accountable {
     return filter == null || filter.allSatisfy(metadata);
   }
 
-  protected static class VersionPageReader {
+  protected interface IVersionPageReader {
+    Statistics getStatistics();
+
+    Statistics getMeasurementStatistics(int index);
+
+    Statistics getTimeStatistics();
+
+    TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException;
+
+    MergeReaderPriority getVersion();
+
+    IPageReader getPageReader();
+
+    void addPushDownFilter(Filter pushDownFilter);
+
+    boolean isModified();
+
+    boolean isSeq();
+
+    void setLimitOffset(PaginationController paginationController);
+  }
+
+  protected static class VersionPageReader implements IVersionPageReader {
     protected final QueryContext context;
     protected final MergeReaderPriority version;
     protected final IPageReader data;
@@ -1355,38 +1377,31 @@ public class SeriesScanUtil implements Accountable {
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
     }
 
-    protected VersionPageReader(
-        QueryContext context,
-        long fileTimestamp,
-        long version,
-        long offset,
-        boolean isSeq,
-        boolean isAligned,
-        boolean isMem) {
-      this.context = context;
-      this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
-      this.data = null;
-      this.isSeq = isSeq;
-      this.isAligned = isAligned;
-      this.isMem = isMem;
-    }
-
     @SuppressWarnings("squid:S3740")
-    Statistics getStatistics() {
+    public Statistics getStatistics() {
       return data.getStatistics();
     }
 
     @SuppressWarnings("squid:S3740")
-    Statistics getMeasurementStatistics(int index) {
+    public Statistics getMeasurementStatistics(int index) {
       return data.getMeasurementStatistics(index).orElse(null);
     }
 
     @SuppressWarnings("squid:S3740")
-    Statistics getTimeStatistics() {
+    public Statistics getTimeStatistics() {
       return data.getTimeStatistics();
     }
 
-    TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
+    @Override
+    public MergeReaderPriority getVersion() {
+      return version;
+    }
+
+    public IPageReader getPageReader() {
+      return data;
+    }
+
+    public TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
       long startTime = System.nanoTime();
       try {
         TsBlock tsBlock = data.getAllSatisfiedData();
@@ -1416,11 +1431,11 @@ public class SeriesScanUtil implements Accountable {
       }
     }
 
-    void addPushDownFilter(Filter pushDownFilter) {
+    public void addPushDownFilter(Filter pushDownFilter) {
       data.addRecordFilter(pushDownFilter);
     }
 
-    boolean isModified() {
+    public boolean isModified() {
       return data.isModified();
     }
 
@@ -1433,10 +1448,15 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
-  protected static class LazyMemVersionPageReader extends VersionPageReader {
+  protected static class LazyMemVersionPageReader implements IVersionPageReader {
 
     private final Statistics<? extends Serializable> statistics;
     private final MemPointIterator memPointIterator;
+    protected final QueryContext context;
+    protected final MergeReaderPriority version;
+
+    protected final boolean isSeq;
+    protected final boolean isAligned;
     private boolean inited = false;
 
     LazyMemVersionPageReader(
@@ -1448,9 +1468,12 @@ public class SeriesScanUtil implements Accountable {
         Statistics<? extends Serializable> statistics,
         MemPointIterator memPointIterator,
         boolean isSeq) {
-      super(context, fileTimestamp, version, offset, isSeq, isAligned, true);
       this.statistics = statistics;
       this.memPointIterator = memPointIterator;
+      this.context = context;
+      this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
+      this.isSeq = isSeq;
+      this.isAligned = isAligned;
     }
 
     public IPointReader getPointReader() {
@@ -1474,21 +1497,53 @@ public class SeriesScanUtil implements Accountable {
     }
 
     public TsBlock nextBatch() {
-      return memPointIterator.nextBatch();
+      long startTime = System.nanoTime();
+      try {
+        return memPointIterator.nextBatch();
+      } finally {
+        long time = System.nanoTime() - startTime;
+        if (isAligned) {
+          context.getQueryStatistics().getPageReadersDecodeAlignedMemCount().getAndAdd(1);
+          context.getQueryStatistics().getPageReadersDecodeAlignedMemTime().getAndAdd(time);
+        } else {
+          context.getQueryStatistics().getPageReadersDecodeAlignedMemCount().getAndAdd(1);
+          context.getQueryStatistics().getPageReadersDecodeNonAlignedMemTime().getAndAdd(time);
+        }
+      }
     }
 
     @Override
-    Statistics getStatistics() {
+    public Statistics getStatistics() {
       return statistics;
     }
 
     @Override
-    Statistics getTimeStatistics() {
+    public Statistics getMeasurementStatistics(int index) {
       return statistics;
     }
 
     @Override
-    void addPushDownFilter(Filter pushDownFilter) {
+    public Statistics getTimeStatistics() {
+      return statistics;
+    }
+
+    @Override
+    public TsBlock getAllSatisfiedPageData(boolean ascending) {
+      throw new UnsupportedOperationException("getAllSatisfiedPageData() shouldn't be called here");
+    }
+
+    @Override
+    public MergeReaderPriority getVersion() {
+      return version;
+    }
+
+    @Override
+    public IPageReader getPageReader() {
+      throw new UnsupportedOperationException("getPageReader() shouldn't be called here");
+    }
+
+    @Override
+    public void addPushDownFilter(Filter pushDownFilter) {
       if (inited) {
         return;
       }
@@ -1504,8 +1559,13 @@ public class SeriesScanUtil implements Accountable {
     }
 
     @Override
-    boolean isModified() {
+    public boolean isModified() {
       return true;
+    }
+
+    @Override
+    public boolean isSeq() {
+      return false;
     }
 
     public void setInited() {
