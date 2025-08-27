@@ -108,13 +108,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       }
 
       if (event instanceof TabletInsertionEvent) {
-        outputPipeConnector.transfer((TabletInsertionEvent) event);
+        outputPipeSink.transfer((TabletInsertionEvent) event);
         PipeDataRegionSinkMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
-        outputPipeConnector.transfer((TsFileInsertionEvent) event);
+        outputPipeSink.transfer((TsFileInsertionEvent) event);
         PipeDataRegionSinkMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        outputPipeConnector.transfer(event);
+        outputPipeSink.transfer(event);
         if (((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
             != PlanNodeType.DELETE_DATA) {
           // Only plan nodes in schema region will be marked, delete data node is currently not
@@ -124,7 +124,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
-        outputPipeConnector.transfer(
+        outputPipeSink.transfer(
             event instanceof UserDefinedEnrichedEvent
                 ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
                 : event);
@@ -171,12 +171,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
 
     try {
-      outputPipeConnector.heartbeat();
-      outputPipeConnector.transfer(event);
+      outputPipeSink.heartbeat();
+      outputPipeSink.transfer(event);
     } catch (final Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: "
-              + outputPipeConnector.getClass().getName()
+              + outputPipeSink.getClass().getName()
               + "(id: "
               + taskID
               + ")"
@@ -200,11 +200,11 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     isClosed.set(true);
     try {
       final long startTime = System.currentTimeMillis();
-      outputPipeConnector.close();
+      outputPipeSink.close();
       LOGGER.info(
           "Pipe: connector subtask {} ({}) was closed within {} ms",
           taskID,
-          outputPipeConnector,
+          outputPipeSink,
           System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.info(
@@ -271,8 +271,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       decreaseHighPriorityTaskCount();
     }
 
-    if (outputPipeConnector instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop, regionId);
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).discardEventsOfPipe(pipeNameToDrop, regionId);
     }
   }
 
@@ -302,68 +302,68 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   public int getAsyncConnectorRetryEventQueueSize() {
-    return outputPipeConnector instanceof IoTDBDataRegionAsyncSink
-        ? ((IoTDBDataRegionAsyncSink) outputPipeConnector).getRetryEventQueueSize()
+    return outputPipeSink instanceof IoTDBDataRegionAsyncSink
+        ? ((IoTDBDataRegionAsyncSink) outputPipeSink).getRetryEventQueueSize()
         : 0;
   }
 
   public int getPendingHandlersSize() {
-    return outputPipeConnector instanceof IoTDBDataRegionAsyncSink
-        ? ((IoTDBDataRegionAsyncSink) outputPipeConnector).getPendingHandlersSize()
+    return outputPipeSink instanceof IoTDBDataRegionAsyncSink
+        ? ((IoTDBDataRegionAsyncSink) outputPipeSink).getPendingHandlersSize()
         : 0;
   }
 
   public int getBatchSize() {
-    if (outputPipeConnector instanceof IoTDBDataRegionAsyncSink) {
-      return ((IoTDBDataRegionAsyncSink) outputPipeConnector).getBatchSize();
+    if (outputPipeSink instanceof IoTDBDataRegionAsyncSink) {
+      return ((IoTDBDataRegionAsyncSink) outputPipeSink).getBatchSize();
     }
-    if (outputPipeConnector instanceof IoTDBDataRegionSyncSink) {
-      return ((IoTDBDataRegionSyncSink) outputPipeConnector).getBatchSize();
+    if (outputPipeSink instanceof IoTDBDataRegionSyncSink) {
+      return ((IoTDBDataRegionSyncSink) outputPipeSink).getBatchSize();
     }
     return 0;
   }
 
   public double getTotalUncompressedSize() {
-    return outputPipeConnector instanceof IoTDBSink
-        ? ((IoTDBSink) outputPipeConnector).getTotalUncompressedSize()
+    return outputPipeSink instanceof IoTDBSink
+        ? ((IoTDBSink) outputPipeSink).getTotalUncompressedSize()
         : 0;
   }
 
   public double getTotalCompressedSize() {
-    return outputPipeConnector instanceof IoTDBSink
-        ? ((IoTDBSink) outputPipeConnector).getTotalCompressedSize()
+    return outputPipeSink instanceof IoTDBSink
+        ? ((IoTDBSink) outputPipeSink).getTotalCompressedSize()
         : 0;
   }
 
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
-    if (outputPipeConnector instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeConnector).setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
     }
   }
 
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
-    if (outputPipeConnector instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeConnector).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
     }
   }
 
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
-    if (outputPipeConnector instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeConnector)
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink)
           .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
     }
   }
 
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
-    if (outputPipeConnector instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeConnector)
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink)
           .setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
     }
   }
 
   public void setEventSizeHistogram(Histogram eventSizeHistogram) {
-    if (outputPipeConnector instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeConnector).setBatchEventSizeHistogram(eventSizeHistogram);
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setBatchEventSizeHistogram(eventSizeHistogram);
     }
   }
 

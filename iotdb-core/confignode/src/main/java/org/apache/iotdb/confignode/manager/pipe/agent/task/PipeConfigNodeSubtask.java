@@ -56,7 +56,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   private final PipeTaskMeta pipeTaskMeta;
 
   // Pipe plugins for this subtask
-  private PipeExtractor extractor;
+  private PipeExtractor source;
 
   // TODO: currently unused
   @SuppressWarnings("unused")
@@ -88,21 +88,21 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
 
     // 1. Construct extractor
-    extractor = PipeConfigNodeAgent.plugin().reflectSource(sourceParameters);
+    source = PipeConfigNodeAgent.plugin().reflectSource(sourceParameters);
 
     try {
       // 2. Validate extractor parameters
-      extractor.validate(new PipeParameterValidator(sourceParameters));
+      source.validate(new PipeParameterValidator(sourceParameters));
 
       // 3. Customize extractor
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
                   pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
-      extractor.customize(sourceParameters, runtimeConfiguration);
+      source.customize(sourceParameters, runtimeConfiguration);
     } catch (final Exception e) {
       try {
-        extractor.close();
+        source.close();
       } catch (Exception closeException) {
         LOGGER.warn(
             "Failed to close extractor after failed to initialize extractor. "
@@ -135,27 +135,26 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
 
     // 1. Construct connector
-    outputPipeConnector = PipeConfigNodeAgent.plugin().reflectSink(sinkParameters);
+    outputPipeSink = PipeConfigNodeAgent.plugin().reflectSink(sinkParameters);
 
     try {
       // 2. Validate connector parameters
-      outputPipeConnector.validate(new PipeParameterValidator(sinkParameters));
+      outputPipeSink.validate(new PipeParameterValidator(sinkParameters));
 
       // 3. Customize connector
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
-      outputPipeConnector.customize(sinkParameters, runtimeConfiguration);
+      outputPipeSink.customize(sinkParameters, runtimeConfiguration);
 
       // 4. Handshake
-      outputPipeConnector.handshake();
+      outputPipeSink.handshake();
     } catch (final Exception e) {
       try {
-        outputPipeConnector.close();
+        outputPipeSink.close();
       } catch (final Exception closeException) {
         LOGGER.warn(
-            "Failed to close connector after failed to initialize connector. "
-                + "Ignore this exception.",
+            "Failed to close sink after failed to initialize it. Ignore this exception.",
             closeException);
       }
       throw e;
@@ -175,7 +174,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : extractor.supply();
+    final Event event = lastEvent != null ? lastEvent : source.supply();
     // Record the last event for retry when exception occurs
     setLastEvent(event);
 
@@ -185,7 +184,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       }
 
       if (!(event instanceof ProgressReportEvent)) {
-        outputPipeConnector.transfer(event);
+        outputPipeSink.transfer(event);
         PipeConfigRegionSinkMetrics.getInstance().markConfigEvent(taskID);
       }
       decreaseReferenceCountAndReleaseLastEvent(event, true);
@@ -226,7 +225,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     PipeConfigRegionSinkMetrics.getInstance().deregister(taskID);
 
     try {
-      extractor.close();
+      source.close();
     } catch (final Exception e) {
       LOGGER.info("Error occurred during closing PipeExtractor.", e);
     }
@@ -238,7 +237,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     }
 
     try {
-      outputPipeConnector.close();
+      outputPipeSink.close();
     } catch (final Exception e) {
       LOGGER.info("Error occurred during closing PipeConnector.", e);
     } finally {
