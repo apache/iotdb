@@ -117,6 +117,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -140,6 +141,16 @@ public class ClusterSchemaManager {
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
+  // Cache for database security labels to improve performance
+  private static final Map<String, String> SECURITY_LABEL_CACHE = new ConcurrentHashMap<>();
+  private static volatile long lastCacheUpdateTime = 0;
+  private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL
+  private static final Object CACHE_LOCK = new Object();
+
+  private static final List<String> DATABASE_NAMES_CACHE = new ArrayList<>();
+  private static volatile long lastDatabaseNamesUpdateTime = 0;
+  private static final long DATABASE_NAMES_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes TTL
+
   private static final String CONSENSUS_READ_ERROR =
       "Failed in the read API executing the consensus layer due to: ";
 
@@ -153,6 +164,176 @@ public class ClusterSchemaManager {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.schemaQuotaStatistics = schemaQuotaStatistics;
+  }
+
+  /**
+   * Get all database security labels with optimized direct access This method uses direct path
+   * lookup for each database, avoiding expensive batch operations
+   */
+  public Map<String, String> getAllDatabaseSecurityLabelsOptimized() {
+    synchronized (CACHE_LOCK) {
+      long currentTime = System.currentTimeMillis();
+
+      // Check if cache is valid
+      if (lastCacheUpdateTime > 0 && (currentTime - lastCacheUpdateTime) < CACHE_TTL_MS) {
+        LOGGER.debug(
+            "Returning cached security labels for {} databases", SECURITY_LABEL_CACHE.size());
+        return new HashMap<>(SECURITY_LABEL_CACHE);
+      }
+
+      // Cache expired or not exists, update from underlying storage with direct
+      // access
+      LOGGER.info("Updating security label cache from underlying storage with direct access...");
+      Map<String, String> newCache = new HashMap<>();
+
+      try {
+        // Get all database names first (single traversal)
+        List<String> allDatabaseNames = getDatabaseNames(null);
+
+        // Direct path lookup for each database (same as single database query)
+        for (String dbName : allDatabaseNames) {
+          try {
+            // Direct path access - O(depth) operation, same as single database query
+            TDatabaseSchema schema = clusterSchemaInfo.getMatchedDatabaseSchemaByName(dbName);
+            String securityLabel = "";
+
+            if (schema != null
+                && schema.isSetSecurityLabel()
+                && schema.getSecurityLabel() != null) {
+              Map<String, String> securityLabelMap = schema.getSecurityLabel();
+              if (!securityLabelMap.isEmpty()) {
+                securityLabel =
+                    securityLabelMap.entrySet().stream()
+                        .map(
+                            labelEntry -> {
+                              String key = labelEntry.getKey();
+                              String value = labelEntry.getValue();
+                              // Add single quotes for string values, keep numeric values as is
+                              if (isNumericValue(value)) {
+                                return key + " = " + value;
+                              } else {
+                                return key + " = '" + value + "'";
+                              }
+                            })
+                        .collect(Collectors.joining(" , "));
+              }
+            }
+
+            newCache.put(dbName, securityLabel);
+          } catch (Exception e) {
+            LOGGER.warn("Error getting security label for database {}: {}", dbName, e.getMessage());
+            newCache.put(dbName, "");
+          }
+        }
+
+        // Update cache atomically
+        SECURITY_LABEL_CACHE.clear();
+        SECURITY_LABEL_CACHE.putAll(newCache);
+        lastCacheUpdateTime = currentTime;
+
+        LOGGER.info(
+            "Successfully updated security label cache with {} databases using direct access",
+            newCache.size());
+        return new HashMap<>(newCache);
+
+      } catch (Exception e) {
+        LOGGER.error("Failed to update security label cache with direct access", e);
+        // Return existing cache if available, otherwise empty map
+        return new HashMap<>(SECURITY_LABEL_CACHE);
+      }
+    }
+  }
+
+  /** Get single database security label from cache */
+  public Map<String, String> getDatabaseSecurityLabel(String databaseName)
+      throws DatabaseNotExistsException {
+    synchronized (CACHE_LOCK) {
+      // Handle null databaseName case - return all database security labels
+      if (databaseName == null) {
+        LOGGER.debug(
+            "getDatabaseSecurityLabel called with null databaseName, returning all database security labels");
+        return getAllDatabaseSecurityLabelsOptimized();
+      }
+
+      // Check if database exists first
+      if (!isDatabaseExist(databaseName)) {
+        LOGGER.warn("Database does not exist: {}", databaseName);
+        throw new DatabaseNotExistsException(databaseName);
+      }
+
+      long currentTime = System.currentTimeMillis();
+
+      // Check if cache is valid
+      if (lastCacheUpdateTime > 0 && (currentTime - lastCacheUpdateTime) < CACHE_TTL_MS) {
+        String label = SECURITY_LABEL_CACHE.getOrDefault(databaseName, "");
+        Map<String, String> result = new HashMap<>();
+        // Always include the database name, even if label is empty
+        result.put(databaseName, label);
+        return result;
+      }
+
+      // Cache expired or not initialized, rebuild cache
+      getAllDatabaseSecurityLabelsOptimized();
+
+      // Get from rebuilt cache
+      String label = SECURITY_LABEL_CACHE.getOrDefault(databaseName, "");
+      Map<String, String> result = new HashMap<>();
+      // Always include the database name, even if label is empty
+      result.put(databaseName, label);
+      return result;
+    }
+  }
+
+  /** Clear security label cache when database schema changes */
+  public void clearSecurityLabelCache() {
+    synchronized (CACHE_LOCK) {
+      SECURITY_LABEL_CACHE.clear();
+      lastCacheUpdateTime = 0;
+      LOGGER.debug("Security label cache cleared");
+    }
+  }
+
+  /** Get cached database names to avoid expensive memory tree traversal */
+  private List<String> getCachedDatabaseNames() {
+    synchronized (CACHE_LOCK) {
+      long currentTime = System.currentTimeMillis();
+
+      // Check if database names cache is valid
+      if (lastDatabaseNamesUpdateTime > 0
+          && (currentTime - lastDatabaseNamesUpdateTime) < DATABASE_NAMES_CACHE_TTL_MS) {
+        LOGGER.debug("Returning cached database names: {}", DATABASE_NAMES_CACHE.size());
+        return new ArrayList<>(DATABASE_NAMES_CACHE);
+      }
+
+      // Cache expired, update from underlying storage
+      LOGGER.info("Updating database names cache from underlying storage...");
+      try {
+        List<String> allDatabaseNames = getDatabaseNames(null);
+
+        // Update cache atomically
+        DATABASE_NAMES_CACHE.clear();
+        DATABASE_NAMES_CACHE.addAll(allDatabaseNames);
+        lastDatabaseNamesUpdateTime = currentTime;
+
+        LOGGER.info(
+            "Successfully updated database names cache with {} databases", allDatabaseNames.size());
+        return new ArrayList<>(allDatabaseNames);
+
+      } catch (Exception e) {
+        LOGGER.error("Failed to update database names cache", e);
+        // Return existing cache if available, otherwise empty list
+        return new ArrayList<>(DATABASE_NAMES_CACHE);
+      }
+    }
+  }
+
+  /** Clear database names cache when database schema changes */
+  public void clearDatabaseNamesCache() {
+    synchronized (CACHE_LOCK) {
+      DATABASE_NAMES_CACHE.clear();
+      lastDatabaseNamesUpdateTime = 0;
+      LOGGER.debug("Database names cache cleared");
+    }
   }
 
   // ======================================================
@@ -208,6 +389,12 @@ public class ClusterSchemaManager {
       result.setMessage(metadataException.getMessage());
     } finally {
       createDatabaseLock.unlock();
+    }
+
+    // Clear cache when database is created/modified
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      clearSecurityLabelCache();
+      clearDatabaseNamesCache();
     }
 
     return result;
@@ -269,13 +456,18 @@ public class ClusterSchemaManager {
           databaseSchemaPlan.getSchema().getName(),
           databaseSchemaPlan.getSchema().getDataReplicationFactor(),
           databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
-      return result;
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
-      return result;
     }
+
+    // Clear cache when database is altered
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      clearSecurityLabelCache();
+    }
+
+    return result;
   }
 
   /** Delete DatabaseSchema. */
@@ -296,6 +488,9 @@ public class ClusterSchemaManager {
     }
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       adjustMaxRegionGroupNum();
+      // Clear cache when database is deleted
+      clearSecurityLabelCache();
+      clearDatabaseNamesCache(); // 添加这行
     }
     return result;
   }
@@ -400,9 +595,18 @@ public class ClusterSchemaManager {
         continue;
       }
 
+      // Set security label information
+      if (databaseSchema.isSetSecurityLabel() && databaseSchema.getSecurityLabel() != null) {
+        databaseInfo.setSecurityLabel(databaseSchema.getSecurityLabel());
+      }
+
       infoMap.put(database, databaseInfo);
     }
 
+    LOGGER.warn(
+        "[DEBUG] ClusterSchemaManager.showDatabase called, isTableModel: {}",
+        getDatabasePlan.isTableModel());
+    LOGGER.warn("[DEBUG] DatabaseInfoMap keys: {}", infoMap.keySet());
     return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
@@ -578,7 +782,8 @@ public class ClusterSchemaManager {
                     // The maxRegionGroupNum of the current Database is expected to be:
                     // (resourceWeight * resource) / (createdDatabaseNum * replicationFactor)
                     resourceWeight * resource / (databaseNum * replicationFactor)),
-            // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
+            // The maxRegionGroupNum should be great or equal to the
+            // allocatedRegionGroupCount
             allocatedRegionGroupCount));
   }
 
@@ -1337,7 +1542,7 @@ public class ClusterSchemaManager {
         });
 
     if (columnSchemaList.isEmpty()) {
-      return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
+      return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
     }
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
@@ -1573,5 +1778,20 @@ public class ClusterSchemaManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  /**
+   * Check if a string value is numeric
+   *
+   * @param value the string value to check
+   * @return true if the value is numeric, false otherwise
+   */
+  private boolean isNumericValue(String value) {
+    try {
+      Double.parseDouble(value);
+      return true;
+    } catch (NumberFormatException e) {
+      return false;
+    }
   }
 }

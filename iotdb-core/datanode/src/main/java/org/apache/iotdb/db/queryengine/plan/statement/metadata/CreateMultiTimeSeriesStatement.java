@@ -58,7 +58,6 @@ public class CreateMultiTimeSeriesStatement extends Statement {
     return paths;
   }
 
-  @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

@@ -40,7 +40,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
@@ -78,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
@@ -173,6 +176,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserReadLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserWriteLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -193,6 +198,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatem
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
@@ -1952,17 +1959,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 .toLowerCase();
       }
 
-      // The REVOKE ALL command can revoke privileges for users, databases, and tables.
+      // The REVOKE ALL command can revoke privileges for users, databases, and
+      // tables.
       // When AuthorRType is REVOKE_USER_ALL:
       // If both database and table are empty, it clears all privileges globally.
-      // If a database is specified (non-empty), it revokes all privileges within that database
+      // If a database is specified (non-empty), it revokes all privileges within that
+      // database
       // scope.
-      // If a table is specified (non-empty), it revokes privileges specifically for that table.
-      // For operations involving the ANY scope, REVOKE_USER_ALL cannot be combined with
+      // If a table is specified (non-empty), it revokes privileges specifically for
+      // that table.
+      // For operations involving the ANY scope, REVOKE_USER_ALL cannot be combined
+      // with
       // database/table
-      // specifications. However, since ALL privileges are resolved as concrete privileges in this
+      // specifications. However, since ALL privileges are resolved as concrete
+      // privileges in this
       // context,
-      // equivalent effects can be achieved by supplementing with REVOKE_USER_ANY operations.
+      // equivalent effects can be achieved by supplementing with REVOKE_USER_ANY
+      // operations.
 
       if (revokeAll && ctx.privilegeObjectScope().ANY() == null) {
         return new RelationalAuthorStatement(
@@ -3272,7 +3285,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               new DereferenceExpression(getLocation(ctx.label), (Identifier) visit(ctx.label)));
     }
 
-    // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) => first_by(s1,s2,time)
+    // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) =>
+    // first_by(s1,s2,time)
     // So do last and last_by.
     if (name.toString().equalsIgnoreCase(FIRST_AGGREGATION)
         || name.toString().equalsIgnoreCase(LAST_AGGREGATION)) {
@@ -3964,5 +3978,308 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             + "To alias an argument, precede the alias with \"AS\". "
             + "To specify co-partitioning, change the argument order so that the last argument cannot be aliased.",
         context);
+  }
+
+  // =============================== Table Model LBAC Statements
+  // ===============================
+
+  /**
+   * Parse ALTER USER username SET LABEL_POLICY 'expression' FOR (READ | WRITE | READ,WRITE) for
+   * table model LBAC
+   */
+  @Override
+  public Node visitAlterUserLabelPolicyStatement(
+      RelationalSqlParser.AlterUserLabelPolicyStatementContext ctx) {
+    String username = ((Identifier) visit(ctx.userName)).getValue();
+
+    if (ctx.readPolicyExpression != null && ctx.writePolicyExpression == null) {
+      String readPolicyExpression = parsePolicyExpression(ctx.readPolicyExpression);
+      return new SetUserReadLabelPolicyStatement(getLocation(ctx), username, readPolicyExpression);
+    } else if (ctx.writePolicyExpression != null && ctx.readPolicyExpression == null) {
+      String writePolicyExpression = parsePolicyExpression(ctx.writePolicyExpression);
+      return new SetUserWriteLabelPolicyStatement(
+          getLocation(ctx), username, writePolicyExpression);
+    } else {
+      throw parseError("You must set either READ or WRITE label policy, not both.", ctx);
+    }
+  }
+
+  /**
+   * Parse ALTER USER username DROP LABEL_POLICY FOR (READ | WRITE | READ,WRITE) for table model
+   * LBAC
+   */
+  @Override
+  public Node visitDropUserLabelPolicyStatement(
+      RelationalSqlParser.DropUserLabelPolicyStatementContext ctx) {
+    String username = ((Identifier) visit(ctx.userName)).getValue();
+    String scope = parseLabelPolicyScope(ctx.labelPolicyScope());
+
+    return new AlterUserLabelPolicyStatement(getLocation(ctx), username, scope);
+  }
+
+  /**
+   * Parse SHOW USER (username)? LABEL_POLICY FOR (READ | WRITE | READ,WRITE) for table model LBAC
+   */
+  @Override
+  public Node visitShowUserLabelPolicyStatement(
+      RelationalSqlParser.ShowUserLabelPolicyStatementContext ctx) {
+    String username = null;
+    if (ctx.userName != null) {
+      username = ((Identifier) visit(ctx.userName)).getValue();
+    }
+
+    ShowTableUserLabelPolicyStatement.PolicyScope policyScope =
+        parseTableUserLabelPolicyScope(ctx.labelPolicyScope());
+
+    return new ShowTableUserLabelPolicyStatement(getLocation(ctx), username, policyScope);
+  }
+
+  /**
+   * Parse ALTER DATABASE database SET SECURITY_LABEL (key=value [, key=value ...]) for table model
+   * LBAC
+   */
+  @Override
+  public Node visitSetDatabaseSecurityLabelStatement(
+      RelationalSqlParser.SetDatabaseSecurityLabelStatementContext ctx) {
+    String database = ((Identifier) visit(ctx.database)).getValue();
+    Map<String, String> securityLabels = parseSecurityLabelClause(ctx.securityLabelClause());
+
+    return new AlterDatabaseSecurityLabelStatement(getLocation(ctx), database, securityLabels);
+  }
+
+  /** Parse ALTER DATABASE database DROP SECURITY_LABEL for table model LBAC */
+  @Override
+  public Node visitDropDatabaseSecurityLabelStatement(
+      RelationalSqlParser.DropDatabaseSecurityLabelStatementContext ctx) {
+    String database = ((Identifier) visit(ctx.database)).getValue();
+
+    return new DropDatabaseSecurityLabelStatement(getLocation(ctx), database);
+  }
+
+  /** Parse SHOW DATABASES (database)? SECURITY_LABEL for table model LBAC */
+  @Override
+  public Node visitShowDatabaseSecurityLabelStatement(
+      RelationalSqlParser.ShowDatabaseSecurityLabelStatementContext ctx) {
+    String database = null;
+    if (ctx.database != null) {
+      database = ((Identifier) visit(ctx.database)).getValue();
+    }
+
+    return new ShowTableDatabaseSecurityLabelStatement(getLocation(ctx), database);
+  }
+
+  // =============================== Helper Methods for Table Model LBAC
+  // ===============================
+
+  /**
+   * Parse policy expression for table model LBAC
+   *
+   * @param ctx the policy expression context
+   * @return the parsed policy expression string
+   */
+  private String parsePolicyExpression(RelationalSqlParser.PolicyExpressionContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+
+    // Convert the policy expression context to string
+    StringBuilder sb = new StringBuilder();
+    for (RelationalSqlParser.PolicyTermContext termCtx : ctx.policyTerm()) {
+      if (sb.length() > 0) {
+        sb.append(" OR ");
+      }
+      sb.append(parsePolicyTerm(termCtx));
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Parse policy term for table model LBAC
+   *
+   * @param ctx the policy term context
+   * @return the parsed policy term string
+   */
+  private String parsePolicyTerm(RelationalSqlParser.PolicyTermContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+
+    StringBuilder sb = new StringBuilder();
+    for (RelationalSqlParser.PolicyFactorContext factorCtx : ctx.policyFactor()) {
+      if (sb.length() > 0) {
+        sb.append(" AND ");
+      }
+      sb.append(parsePolicyFactor(factorCtx));
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Parse policy factor for table model LBAC
+   *
+   * @param ctx the policy factor context
+   * @return the parsed policy factor string
+   */
+  private String parsePolicyFactor(RelationalSqlParser.PolicyFactorContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+
+    if (ctx.policyExpression() != null) {
+      return "(" + parsePolicyExpression(ctx.policyExpression()) + ")";
+    } else if (ctx.policyComparison() != null) {
+      return parsePolicyComparison(ctx.policyComparison());
+    }
+
+    return null;
+  }
+
+  /**
+   * Parse policy comparison for table model LBAC
+   *
+   * @param ctx the policy comparison context
+   * @return the parsed policy comparison string
+   */
+  private String parsePolicyComparison(RelationalSqlParser.PolicyComparisonContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+
+    String field = ((Identifier) visit(ctx.policyField())).getValue();
+    String operator = parsePolicyOperator(ctx.policyOperator());
+    String value = parsePolicyValue(ctx.policyValue());
+
+    return field + " " + operator + " " + value;
+  }
+
+  /**
+   * Parse policy operator for table model LBAC
+   *
+   * @param ctx the policy operator context
+   * @return the parsed policy operator string
+   */
+  private String parsePolicyOperator(RelationalSqlParser.PolicyOperatorContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+
+    // Map the operator token to string representation
+    switch (ctx.getStart().getType()) {
+      case RelationalSqlLexer.EQ:
+        return "=";
+      case RelationalSqlLexer.NEQ:
+        return "!=";
+      case RelationalSqlLexer.GT:
+        return ">";
+      case RelationalSqlLexer.LT:
+        return "<";
+      case RelationalSqlLexer.GTE:
+        return ">=";
+      case RelationalSqlLexer.LTE:
+        return "<=";
+      default:
+        return ctx.getText();
+    }
+  }
+
+  /**
+   * Parse policy value for table model LBAC
+   *
+   * @param ctx the policy value context
+   * @return the parsed policy value string
+   */
+  private String parsePolicyValue(RelationalSqlParser.PolicyValueContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+
+    // PolicyValue can be either string or INTEGER_VALUE
+    if (ctx.string() != null) {
+      return ((StringLiteral) visit(ctx.string())).getValue();
+    } else if (ctx.INTEGER_VALUE() != null) {
+      return ctx.INTEGER_VALUE().getText();
+    }
+
+    // Fallback to getText() if neither is available
+    return ctx.getText();
+  }
+
+  /**
+   * Parse label policy scope for table model LBAC
+   *
+   * @param ctx the label policy scope context
+   * @return the parsed scope string
+   */
+  private String parseLabelPolicyScope(RelationalSqlParser.LabelPolicyScopeContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+
+    String scope = ctx.getText().toUpperCase();
+
+    // Handle combined scopes
+    if (scope.contains("READ") && scope.contains("WRITE")) {
+      return "READ_WRITE";
+    }
+
+    return scope;
+  }
+
+  /**
+   * Parse table user label policy scope for table model LBAC
+   *
+   * @param ctx the label policy scope context
+   * @return the parsed PolicyScope enum
+   */
+  private ShowTableUserLabelPolicyStatement.PolicyScope parseTableUserLabelPolicyScope(
+      RelationalSqlParser.LabelPolicyScopeContext ctx) {
+    if (ctx == null) {
+      return ShowTableUserLabelPolicyStatement.PolicyScope.READ;
+    }
+
+    String scope = ctx.getText().toUpperCase();
+
+    // Handle combined scopes
+    if (scope.contains("READ") && scope.contains("WRITE")) {
+      return ShowTableUserLabelPolicyStatement.PolicyScope.READ_WRITE;
+    } else if (scope.contains("READ")) {
+      return ShowTableUserLabelPolicyStatement.PolicyScope.READ;
+    } else if (scope.contains("WRITE")) {
+      return ShowTableUserLabelPolicyStatement.PolicyScope.WRITE;
+    }
+
+    return ShowTableUserLabelPolicyStatement.PolicyScope.READ;
+  }
+
+  /**
+   * Parse security label clause for table model LBAC
+   *
+   * @param ctx the security label clause context
+   * @return the parsed security labels map
+   */
+  private Map<String, String> parseSecurityLabelClause(
+      RelationalSqlParser.SecurityLabelClauseContext ctx) {
+    Map<String, String> securityLabels = new HashMap<>();
+
+    if (ctx == null) {
+      return securityLabels;
+    }
+
+    for (RelationalSqlParser.SecurityLabelPairContext pairCtx : ctx.securityLabelPair()) {
+      String key = ((Identifier) visit(pairCtx.key)).getValue();
+      String value;
+
+      if (pairCtx.stringValue != null) {
+        value = ((StringLiteral) visit(pairCtx.stringValue)).getValue();
+      } else if (pairCtx.intValue != null) {
+        value = pairCtx.intValue.getText();
+      } else {
+        value = pairCtx.getText();
+      }
+
+      securityLabels.put(key, value);
+    }
+
+    return securityLabels;
   }
 }

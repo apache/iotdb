@@ -33,7 +33,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -59,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -67,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesSt
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
@@ -74,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStateme
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
@@ -204,6 +209,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitAlterDatabase(DatabaseSchemaStatement databaseSchemaStatement, C context) {
     return visitStatement(databaseSchemaStatement, context);
+  }
+
+  public R visitAlterDatabaseSecurityLabel(
+      AlterDatabaseSecurityLabelStatement alterDatabaseSecurityLabelStatement, C context) {
+    return visitStatement(alterDatabaseSecurityLabelStatement, context);
   }
 
   // Alter TTL
@@ -690,6 +700,26 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowCurrentUser(ShowCurrentUserStatement showCurrentUserStatement, C context) {
     return visitStatement(showCurrentUserStatement, context);
+  }
+
+  public R visitShowUserLabelPolicy(
+      ShowUserLabelPolicyStatement showUserLabelPolicyStatement, C context) {
+    return visitStatement(showUserLabelPolicyStatement, context);
+  }
+
+  public R visitAlterUserLabelPolicy(
+      AlterUserLabelPolicyStatement alterUserLabelPolicyStatement, C context) {
+    return visitStatement(alterUserLabelPolicyStatement, context);
+  }
+
+  public R visitSetUserLabelPolicy(
+      SetUserLabelPolicyStatement setUserLabelPolicyStatement, C context) {
+    return visitStatement(setUserLabelPolicyStatement, context);
+  }
+
+  public R visitShowDatabaseSecurityLabel(
+      ShowDatabaseSecurityLabelStatement showDatabaseSecurityLabelStatement, C context) {
+    return visitStatement(showDatabaseSecurityLabelStatement, context);
   }
 
   public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {

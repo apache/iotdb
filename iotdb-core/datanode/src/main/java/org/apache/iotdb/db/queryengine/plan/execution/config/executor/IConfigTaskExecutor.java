@@ -44,7 +44,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -60,9 +62,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -112,6 +116,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> setDatabase(DatabaseSchemaStatement databaseSchemaStatement);
 
   SettableFuture<ConfigTaskResult> alterDatabase(DatabaseSchemaStatement databaseSchemaStatement);
+
+  SettableFuture<ConfigTaskResult> alterDatabaseSecurityLabel(
+      AlterDatabaseSecurityLabelStatement alterDatabaseSecurityLabelStatement);
 
   SettableFuture<ConfigTaskResult> showDatabase(ShowDatabaseStatement showDatabaseStatement);
 
@@ -298,7 +305,8 @@ public interface IConfigTaskExecutor {
 
   void handlePipeConfigClientExit(String clientId);
 
-  // =============================== table syntax =========================================
+  // =============================== table syntax
+  // =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
       final ShowDB showDB, final Predicate<String> canSeenDB);
@@ -415,6 +423,48 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase);
 
   SettableFuture<ConfigTaskResult> showCurrentTimestamp();
+
+  SettableFuture<ConfigTaskResult> showUserLabelPolicy(
+      String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> alterUserLabelPolicy(
+      String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> setUserLabelPolicy(
+      String username,
+      String policyExpression,
+      ShowUserLabelPolicyStatement.LabelPolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> showUserLabelPolicyTableModel(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> alterUserLabelPolicyTableModel(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> setTableUserLabelPolicy(
+      String username,
+      String policyExpression,
+      ShowTableUserLabelPolicyStatement.PolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> dropTableUserLabelPolicy(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> setUserReadLabelPolicy(String username, String policyExpression);
+
+  SettableFuture<ConfigTaskResult> setUserWriteLabelPolicy(
+      String username, String policyExpression);
+
+  // =============================== Table Model LBAC  =========================================
+  SettableFuture<ConfigTaskResult> alterDatabaseSecurityLabelTableModel(
+      String databaseName, String securityLabel);
+
+  SettableFuture<ConfigTaskResult> dropDatabaseSecurityLabelTableModel(String databaseName);
+
+  SettableFuture<ConfigTaskResult> showDatabaseSecurityLabelTableModel(String databaseName);
+
+  // =============================== Tree Model LBAC =========================================
+  SettableFuture<ConfigTaskResult> showDatabaseSecurityLabel(
+      ShowDatabaseSecurityLabelStatement statement);
 
   // =============================== AI =========================================
   SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);

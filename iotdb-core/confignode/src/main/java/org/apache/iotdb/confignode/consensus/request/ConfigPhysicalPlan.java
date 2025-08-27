@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDatabaseSecurityLabelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
@@ -218,6 +219,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case AlterDatabase:
           plan = new DatabaseSchemaPlan(configPhysicalPlanType);
+          break;
+        case SetDatabaseSecurityLabel:
+          plan = new SetDatabaseSecurityLabelPlan();
           break;
         case SetTTL:
           plan = new SetTTLPlan();

@@ -37,7 +37,7 @@ statement
 
 ddlStatement
     // Database
-    : createDatabase | dropDatabase | dropPartition | alterDatabase | showDatabases | countDatabases
+    : createDatabase | dropDatabase | dropPartition | alterDatabase | showDatabases | countDatabases |showDatabaseSecurityLabel
     // Timeseries & Path
     | createTimeseries | dropTimeseries | alterTimeseries
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
@@ -82,7 +82,7 @@ dmlStatement
 dclStatement
     : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
     | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
-    | listUser | listRole | listPrivilegesUser | listPrivilegesRole
+    | listUser | listRole | listPrivilegesUser | listPrivilegesRole | showUserLabelPolicy
     ;
 
 utilityStatement
@@ -110,6 +110,7 @@ databaseAttributesClause
 
 databaseAttributeClause
     : databaseAttributeKey operator_eq INTEGER_LITERAL
+    | SECURITY_LABEL LR_BRACKET securityLabelClause RR_BRACKET
     ;
 
 databaseAttributeKey
@@ -131,12 +132,26 @@ dropPartition
 
 // ---- Alter Database
 alterDatabase
-    : ALTER (STORAGE GROUP | DATABASE) prefixPath databaseAttributesClause
+   : ALTER DATABASE prefixPath SET SECURITY_LABEL LR_BRACKET securityLabelClause RR_BRACKET #alterDatabaseSecurityLabel
+    | ALTER DATABASE prefixPath DROP SECURITY_LABEL #dropDatabaseSecurityLabel
+    | ALTER (STORAGE GROUP | DATABASE) prefixPath databaseAttributesClause #alterDatabaseProperty
+    ;
+securityLabelClause
+    : securityLabelPair (COMMA securityLabelPair)*
+    ;
+
+securityLabelPair
+    : key=identifier operator_eq value=(STRING_LITERAL | INTEGER_LITERAL)
     ;
 
 // ---- Show Databases
 showDatabases
     : SHOW (STORAGE GROUP | DATABASES) DETAILS? prefixPath?
+    ;
+
+// ---- Show Database Security Label
+showDatabaseSecurityLabel
+    : SHOW DATABASES prefixPath? SECURITY_LABEL
     ;
 
 // ---- Count Databases
@@ -183,6 +198,7 @@ aliasClause
 timeConditionClause
     :whereClause
     ;
+
 
 // ---- Show Devices
 showDevices
@@ -1029,6 +1045,8 @@ deleteStatement
 // Create User
 createUser
     : CREATE USER userName=identifier password=STRING_LITERAL
+    (WITH LABEL_POLICY readPolicyExpression=policyExpression FOR READ)?
+    (WITH LABEL_POLICY writePolicyExpression=policyExpression FOR WRITE)?
     ;
 
 // Create Role
@@ -1039,6 +1057,9 @@ createRole
 // Alter Password
 alterUser
     : ALTER USER userName=usernameWithRoot SET PASSWORD password=STRING_LITERAL
+    | ALTER USER userNameForLabel=identifier DROP LABEL_POLICY FOR labelPolicyScope
+    | ALTER USER userNameForLabel=identifier SET LABEL_POLICY readPolicyExpression=policyExpression FOR READ
+    | ALTER USER userNameForLabel=identifier SET LABEL_POLICY writePolicyExpression=policyExpression FOR WRITE
     ;
 
 // Grant User Privileges
@@ -1109,6 +1130,12 @@ listPrivilegesRole
 privileges
     : privilegeValue (COMMA privilegeValue)*
     ;
+
+// Show User Label Policy
+showUserLabelPolicy
+    : SHOW USER (userName=identifier)? LABEL_POLICY FOR labelPolicyScope
+    ;
+
 
 privilegeValue
     : ALL
@@ -1430,28 +1457,28 @@ operator_or
     | OPERATOR_BITWISE_OR
     | OPERATOR_LOGICAL_OR
     ;
-    
+
 operator_not
     : NOT
     | OPERATOR_NOT
     ;
-    
+
 operator_contains
     : CONTAINS
     ;
-    
+
 operator_between
     : BETWEEN
     ;
-    
+
 operator_is
     : IS
     ;
-    
+
 operator_in
     : IN
     ;
-    
+
 null_literal
     : NULL
     ;
@@ -1518,4 +1545,47 @@ subStringExpression
 
 signedIntegerLiteral
     : (PLUS|MINUS)?INTEGER_LITERAL
+    ;
+
+// Policy expression rules
+
+labelPolicyScope
+    : READ
+    | WRITE
+    | READ COMMA WRITE
+    | WRITE COMMA READ
+    ;
+
+policyExpression
+    : policyTerm (OR policyTerm)*
+    ;
+
+policyTerm
+    : policyFactor (AND policyFactor)*
+    ;
+
+policyFactor
+    : LR_BRACKET policyExpression RR_BRACKET
+    | policyComparison
+    ;
+
+policyComparison
+    : policyField policyOperator policyValue
+    ;
+
+policyField
+    : identifier
+    ;
+
+policyOperator
+    : OPERATOR_SEQ        // =
+    | OPERATOR_NEQ       // !=
+    | OPERATOR_GT        // >
+    | OPERATOR_LT        // <
+    | OPERATOR_GTE       // >=
+    | OPERATOR_LTE       // <=
+    ;
+policyValue
+    : STRING_LITERAL     // For string values
+    | INTEGER_LITERAL    // For numeric values
     ;

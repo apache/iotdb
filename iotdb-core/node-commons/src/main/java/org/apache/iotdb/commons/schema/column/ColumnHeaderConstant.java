@@ -704,4 +704,16 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS =
       ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.TIMESTAMP));
+
+  public static final List<ColumnHeader> SHOW_USER_LABEL_POLICY_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader("Username", TSDataType.STRING),
+          new ColumnHeader("Scope", TSDataType.STRING),
+          new ColumnHeader("Policy", TSDataType.STRING));
+
+  // Column headers for showing database security labels
+  public static final List<ColumnHeader> SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader("SecurityLabel", TSDataType.TEXT));
 }

@@ -58,7 +58,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
@@ -83,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpres
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
@@ -90,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
@@ -155,6 +159,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
@@ -520,7 +526,8 @@ public class StatementAnalyzer {
         return null;
       }
 
-      // If node.location is absent, this is a pipe-transferred update, namely the assignments are
+      // If node.location is absent, this is a pipe-transferred update, namely the
+      // assignments are
       // already parsed at the sender
       if (node.getLocation().isPresent()) {
         final Set<SymbolReference> attributeNames = new HashSet<>();
@@ -769,7 +776,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
-      // The LoadTsFile statement is a special case, it needs isGeneratedByPipe information
+      // The LoadTsFile statement is a special case, it needs isGeneratedByPipe
+      // information
       // in the analyzer to execute the tsfile-tablet conversion in some cases.
       if (node.getInnerStatement() instanceof LoadTsFile) {
         ((LoadTsFile) node.getInnerStatement()).markIsGeneratedByPipe();
@@ -901,9 +909,11 @@ public class StatementAnalyzer {
           // cannot nest pattern recognition within recursive query
 
           isRecursive = tryProcessRecursiveQuery(withQuery, name, withScopeBuilder);
-          // WITH query is not shaped accordingly to the rules for expandable query and will be
+          // WITH query is not shaped accordingly to the rules for expandable query and
+          // will be
           // processed like a plain WITH query.
-          // Since RECURSIVE is specified, any reference to WITH query name is considered a
+          // Since RECURSIVE is specified, any reference to WITH query name is considered
+          // a
           // recursive reference and is not allowed.
           if (!isRecursive) {
             List<Node> recursiveReferences =
@@ -945,7 +955,8 @@ public class StatementAnalyzer {
               child -> {
                 throw new SemanticException("nested recursive WITH query");
               });
-      // if RECURSIVE is specified, all queries in the WITH list are considered potentially
+      // if RECURSIVE is specified, all queries in the WITH list are considered
+      // potentially
       // recursive
       // try resolve WITH query as expandable query
       // a) validate shape of the query and location of recursive reference
@@ -1046,7 +1057,8 @@ public class StatementAnalyzer {
       Scope parentScope = withScopeBuilder.build();
       // process expandable query -- anchor
       Scope anchorScope = process(anchor, parentScope);
-      // set aliases in anchor scope as defined for WITH query. Recursion step will refer to anchor
+      // set aliases in anchor scope as defined for WITH query. Recursion step will
+      // refer to anchor
       // fields by aliases.
       Scope aliasedAnchorScope =
           setAliases(anchorScope, withQuery.getName(), withQuery.getColumnNames().get());
@@ -1073,7 +1085,8 @@ public class StatementAnalyzer {
 
       for (int i = 0; i < anchorFieldTypes.size(); i++) {
         if (stepFieldTypes.get(i) != anchorFieldTypes.get(i)) {
-          // TODO for more precise error location, pass the mismatching select expression instead of
+          // TODO for more precise error location, pass the mismatching select expression
+          // instead of
           // `step`
           throw new SemanticException(
               String.format(
@@ -1107,7 +1120,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
-      // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
+      // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER
+      // BY expressions
       // to pass down to analyzeFrom
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
 
@@ -1291,9 +1305,11 @@ public class StatementAnalyzer {
         Analysis.ResolvedWindow resolvedWindow =
             resolveWindowSpecification(node, windowDefinition.getWindow());
 
-        // Analyze window after it is resolved, because resolving might provide necessary
+        // Analyze window after it is resolved, because resolving might provide
+        // necessary
         // information, e.g. ORDER BY necessary for frame analysis.
-        // Analyze only newly introduced window properties. Properties of the referenced window have
+        // Analyze only newly introduced window properties. Properties of the referenced
+        // window have
         // been already analyzed.
         analyzeWindow(node, resolvedWindow, scope, windowDefinition.getWindow());
 
@@ -1444,13 +1460,13 @@ public class StatementAnalyzer {
 
       Type predicateType = expressionAnalysis.getType(predicate);
       if (!predicateType.equals(BOOLEAN)) {
-        //        if (!predicateType.equals(UNKNOWN)) {
+        // if (!predicateType.equals(UNKNOWN)) {
         throw new SemanticException(
             String.format(
                 "WHERE clause must evaluate to a boolean: actual type %s", predicateType));
-        //        }
+        // }
         // coerce null to boolean
-        //        analysis.addCoercion(predicate, BOOLEAN, false);
+        // analysis.addCoercion(predicate, BOOLEAN, false);
       }
 
       analysis.setWhere(node, predicate);
@@ -1540,9 +1556,11 @@ public class StatementAnalyzer {
 
     private class ExpandColumnsVisitor extends AstVisitor<List<Expression>, Scope> {
       private final Identifier alias;
-      // Record Columns expanded result in process, not always equals with final result
+      // Record Columns expanded result in process, not always equals with final
+      // result
       private List<Expression> expandedExpressions;
-      // Records the actual output column name of each Expression, used to compute output Scope.
+      // Records the actual output column name of each Expression, used to compute
+      // output Scope.
       private List<String> accordingColumnNames;
 
       private ExpandColumnsVisitor(Identifier alias) {
@@ -1651,7 +1669,8 @@ public class StatementAnalyzer {
         int maxSize = Math.max(leftSize, rightSize);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
         AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -1701,7 +1720,8 @@ public class StatementAnalyzer {
         int maxSize = Math.max(valueResultSize, Math.max(minResultSize, maxResultSize));
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger valueIndex = (valueResultSize == maxSize) ? baseIndex : new AtomicInteger(0);
         AtomicInteger minIndex = (minResultSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -1750,7 +1770,8 @@ public class StatementAnalyzer {
         int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
         for (int i = 0; i < childrenIndexes.length; i++) {
@@ -1786,7 +1807,8 @@ public class StatementAnalyzer {
         int maxSize = Math.max(leftSize, rightSize);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
         AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -1834,7 +1856,8 @@ public class StatementAnalyzer {
         int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
         for (int i = 0; i < childrenIndexes.length; i++) {
@@ -1876,7 +1899,8 @@ public class StatementAnalyzer {
         int maxSize = Math.max(thirdSize, Math.max(firstSize, secondSize));
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
         AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -1909,7 +1933,8 @@ public class StatementAnalyzer {
         int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
         for (int i = 0; i < childrenIndexes.length; i++) {
@@ -1944,7 +1969,8 @@ public class StatementAnalyzer {
         int maxSize = Math.max(leftSize, rightSize);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
         AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -2007,7 +2033,8 @@ public class StatementAnalyzer {
         int maxSize = Math.max(thirdSize, Math.max(firstSize, secondSize));
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
         AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -2045,7 +2072,8 @@ public class StatementAnalyzer {
         int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
         for (int i = 0; i < childrenIndexes.length; i++) {
@@ -2151,7 +2179,8 @@ public class StatementAnalyzer {
         maxSize = Math.max(maxSize, secondSize);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger[] childrenIndexes = new AtomicInteger[firstChildResultList.size()];
         for (int i = 0; i < childrenIndexes.length; i++) {
@@ -2201,7 +2230,8 @@ public class StatementAnalyzer {
         maxSize = Math.max(Math.max(firstSize, maxSize), secondSize);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger[] childrenIndexes = new AtomicInteger[whenResultList.size()];
         AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -2251,7 +2281,8 @@ public class StatementAnalyzer {
         int maxSize = Math.max(secondSize, firstSize);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
         AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -2283,7 +2314,8 @@ public class StatementAnalyzer {
         int maxSize = Math.max(leftSize, rightSize);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // if child is expanded, index of it reference the baseIndex, else the index of
+        // it always be
         // 0
         AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
         AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
@@ -2353,9 +2385,9 @@ public class StatementAnalyzer {
         // QualifiedName
         throw new SemanticException(
             "identifierChainBasis.get().getBasisType == FIELD or target expression isn't a QualifiedName");
-        //        analyzeAllFieldsFromRowTypeExpression(expression, allColumns, node, scope,
+        // analyzeAllFieldsFromRowTypeExpression(expression, allColumns, node, scope,
         // outputExpressionBuilder,
-        //            selectExpressionBuilder);
+        // selectExpressionBuilder);
       } else {
         // analyze AllColumns without target expression ('*')
         if (!allColumns.getAliases().isEmpty()) {
@@ -2408,15 +2440,15 @@ public class StatementAnalyzer {
           .asMap()
           .forEach(
               (table, tableFields) -> {
-                //              Set<String> accessibleColumns = accessControl.filterColumns(
-                //                      session.toSecurityContext(),
-                //                      table.getCatalogName(),
-                //                      ImmutableMap.of(
-                //                          table.asSchemaTableName(),
-                //                          tableFields.stream()
-                //                              .map(field -> field.getOriginColumnName().get())
-                //                              .collect(toImmutableSet())))
-                //                  .getOrDefault(table.asSchemaTableName(), ImmutableSet.of());
+                // Set<String> accessibleColumns = accessControl.filterColumns(
+                // session.toSecurityContext(),
+                // table.getCatalogName(),
+                // ImmutableMap.of(
+                // table.asSchemaTableName(),
+                // tableFields.stream()
+                // .map(field -> field.getOriginColumnName().get())
+                // .collect(toImmutableSet())))
+                // .getOrDefault(table.asSchemaTableName(), ImmutableSet.of());
                 accessibleFields.addAll(
                     tableFields.stream()
                         // .filter(field ->
@@ -2490,52 +2522,57 @@ public class StatementAnalyzer {
       analysis.setSelectAllResultFields(allColumns, itemOutputFieldBuilder.build());
     }
 
-    //    private void analyzeAllFieldsFromRowTypeExpression(
-    //        Expression expression,
-    //        AllColumns allColumns,
-    //        QuerySpecification node,
-    //        Scope scope,
-    //        ImmutableList.Builder<Expression> outputExpressionBuilder,
-    //        ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder) {
-    //      ImmutableList.Builder<Field> itemOutputFieldBuilder = ImmutableList.builder();
+    // private void analyzeAllFieldsFromRowTypeExpression(
+    // Expression expression,
+    // AllColumns allColumns,
+    // QuerySpecification node,
+    // Scope scope,
+    // ImmutableList.Builder<Expression> outputExpressionBuilder,
+    // ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder) {
+    // ImmutableList.Builder<Field> itemOutputFieldBuilder =
+    // ImmutableList.builder();
     //
-    //      ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, scope);
-    //      Type type = expressionAnalysis.getType(expression);
-    //      if (!(type instanceof RowType)) {
-    //        throw semanticException(TYPE_MISMATCH, node.getSelect(), "expected expression of type
+    // ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, scope);
+    // Type type = expressionAnalysis.getType(expression);
+    // if (!(type instanceof RowType)) {
+    // throw semanticException(TYPE_MISMATCH, node.getSelect(), "expected expression
+    // of type
     // Row");
-    //      }
-    //      int referencedFieldsCount = ((RowType) type).getFields().size();
-    //      if (!allColumns.getAliases().isEmpty()) {
-    //        validateColumnAliasesCount(allColumns.getAliases(), referencedFieldsCount);
-    //      }
-    //      analysis.recordSubqueries(node, expressionAnalysis);
+    // }
+    // int referencedFieldsCount = ((RowType) type).getFields().size();
+    // if (!allColumns.getAliases().isEmpty()) {
+    // validateColumnAliasesCount(allColumns.getAliases(), referencedFieldsCount);
+    // }
+    // analysis.recordSubqueries(node, expressionAnalysis);
     //
-    //      ImmutableList.Builder<Expression> unfoldedExpressionsBuilder = ImmutableList.builder();
-    //      for (int i = 0; i < referencedFieldsCount; i++) {
-    //        Expression outputExpression = new SubscriptExpression(expression, new LongLiteral("" +
+    // ImmutableList.Builder<Expression> unfoldedExpressionsBuilder =
+    // ImmutableList.builder();
+    // for (int i = 0; i < referencedFieldsCount; i++) {
+    // Expression outputExpression = new SubscriptExpression(expression, new
+    // LongLiteral("" +
     // (i + 1)));
-    //        outputExpressionBuilder.add(outputExpression);
-    //        analyzeExpression(outputExpression, scope);
-    //        unfoldedExpressionsBuilder.add(outputExpression);
+    // outputExpressionBuilder.add(outputExpression);
+    // analyzeExpression(outputExpression, scope);
+    // unfoldedExpressionsBuilder.add(outputExpression);
     //
-    //        Type outputExpressionType = type.getTypeParameters().get(i);
-    //        if (node.getSelect().isDistinct() && !outputExpressionType.isComparable()) {
-    //          throw semanticException(TYPE_MISMATCH, node.getSelect(),
-    //              "DISTINCT can only be applied to comparable types (actual: %s)",
+    // Type outputExpressionType = type.getTypeParameters().get(i);
+    // if (node.getSelect().isDistinct() && !outputExpressionType.isComparable()) {
+    // throw semanticException(TYPE_MISMATCH, node.getSelect(),
+    // "DISTINCT can only be applied to comparable types (actual: %s)",
     // type.getTypeParameters().get(i));
-    //        }
+    // }
     //
-    //        Optional<String> name = ((RowType) type).getFields().get(i).getName();
-    //        if (!allColumns.getAliases().isEmpty()) {
-    //          name = Optional.of(allColumns.getAliases().get(i).getValue());
-    //        }
-    //        itemOutputFieldBuilder.add(Field.newUnqualified(name, outputExpressionType));
-    //      }
-    //      selectExpressionBuilder.add(new SelectExpression(expression,
+    // Optional<String> name = ((RowType) type).getFields().get(i).getName();
+    // if (!allColumns.getAliases().isEmpty()) {
+    // name = Optional.of(allColumns.getAliases().get(i).getValue());
+    // }
+    // itemOutputFieldBuilder.add(Field.newUnqualified(name, outputExpressionType));
+    // }
+    // selectExpressionBuilder.add(new SelectExpression(expression,
     // Optional.of(unfoldedExpressionsBuilder.build())));
-    //      analysis.setSelectAllResultFields(allColumns, itemOutputFieldBuilder.build());
-    //    }
+    // analysis.setSelectAllResultFields(allColumns,
+    // itemOutputFieldBuilder.build());
+    // }
 
     private void analyzeSelectSingleColumn(
         Expression expression,
@@ -2704,7 +2741,8 @@ public class StatementAnalyzer {
     }
 
     private void checkGroupingSetsCount(GroupBy node) {
-      // If groupBy is distinct then crossProduct will be overestimated if there are duplicate
+      // If groupBy is distinct then crossProduct will be overestimated if there are
+      // duplicate
       // grouping sets.
       int crossProduct = 1;
       for (GroupingElement element : node.getGroupingElements()) {
@@ -2738,11 +2776,11 @@ public class StatementAnalyzer {
           throw new SemanticException(
               String.format("GROUP BY has more than %s grouping sets", Integer.MAX_VALUE));
         }
-        //        if (crossProduct > getMaxGroupingSets(session)) {
-        //          throw semanticException(TOO_MANY_GROUPING_SETS, node,
-        //              "GROUP BY has %s grouping sets but can contain at most %s", crossProduct,
+        // if (crossProduct > getMaxGroupingSets(session)) {
+        // throw semanticException(TOO_MANY_GROUPING_SETS, node,
+        // "GROUP BY has %s grouping sets but can contain at most %s", crossProduct,
         // getMaxGroupingSets(session));
-        //        }
+        // }
       }
     }
 
@@ -2808,7 +2846,8 @@ public class StatementAnalyzer {
               // expanded Columns in analyzeSelect, so we needn't process alias here.
               Optional<String> field = Optional.empty();
               Optional<QualifiedObjectName> originTable = Optional.empty();
-              // Put accordingColumnName into originColumn to rename expr in OutputNode if necessary
+              // Put accordingColumnName into originColumn to rename expr in OutputNode if
+              // necessary
               Optional<String> originColumn = Optional.of(column.getAccordingColumnNames().get(i));
               QualifiedName name = null;
 
@@ -3052,12 +3091,14 @@ public class StatementAnalyzer {
           analysis.setRelationName(table, table.getName());
           return createScopeForCommonTableExpression(table, scope, withQuery.get());
         }
-        // is this a recursive reference in expandable WITH query? If so, there's base scope
+        // is this a recursive reference in expandable WITH query? If so, there's base
+        // scope
         // recorded.
         Optional<Scope> expandableBaseScope = analysis.getExpandableBaseScope(table);
         if (expandableBaseScope.isPresent()) {
           Scope baseScope = expandableBaseScope.get();
-          // adjust local and outer parent scopes accordingly to the local context of the recursive
+          // adjust local and outer parent scopes accordingly to the local context of the
+          // recursive
           // reference
           Scope resultScope =
               scopeBuilder(scope)
@@ -3101,7 +3142,8 @@ public class StatementAnalyzer {
       Query query = withQuery.getQuery();
       analysis.registerNamedQuery(table, query);
 
-      // re-alias the fields with the name assigned to the query in the WITH declaration
+      // re-alias the fields with the name assigned to the query in the WITH
+      // declaration
       RelationType queryDescriptor = analysis.getOutputDescriptor(query);
 
       List<Field> fields;
@@ -3158,7 +3200,8 @@ public class StatementAnalyzer {
 
     private List<Field> analyzeTableOutputFields(
         final Table table, final QualifiedObjectName tableName, final TableSchema tableSchema) {
-      // TODO: discover columns lazily based on where they are needed (to support connectors that
+      // TODO: discover columns lazily based on where they are needed (to support
+      // connectors that
       // can't enumerate all tables)
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
       for (ColumnSchema column : tableSchema.getColumns()) {
@@ -3179,40 +3222,44 @@ public class StatementAnalyzer {
       return fields.build();
     }
 
-    //    private void analyzeFiltersAndMasks(Table table, QualifiedObjectName name, RelationType
+    // private void analyzeFiltersAndMasks(Table table, QualifiedObjectName name,
+    // RelationType
     // relationType,
-    //                                        Scope accessControlScope) {
-    //      for (int index = 0; index < relationType.getAllFieldCount(); index++) {
-    //        Field field = relationType.getFieldByIndex(index);
-    //        if (field.getName().isPresent()) {
-    //          Optional<ViewExpression> mask =
-    //              accessControl.getColumnMask(session.toSecurityContext(), name,
+    // Scope accessControlScope) {
+    // for (int index = 0; index < relationType.getAllFieldCount(); index++) {
+    // Field field = relationType.getFieldByIndex(index);
+    // if (field.getName().isPresent()) {
+    // Optional<ViewExpression> mask =
+    // accessControl.getColumnMask(session.toSecurityContext(), name,
     // field.getName().get(), field.getType());
     //
-    //          if (mask.isPresent() && checkCanSelectFromColumn(name,
+    // if (mask.isPresent() && checkCanSelectFromColumn(name,
     // field.getName().orElseThrow())) {
-    //            analyzeColumnMask(session.getIdentity().getUser(), table, name, field,
+    // analyzeColumnMask(session.getIdentity().getUser(), table, name, field,
     // accessControlScope, mask.get());
-    //          }
-    //        }
-    //      }
+    // }
+    // }
+    // }
     //
-    //      accessControl.getRowFilters(session.toSecurityContext(), name)
-    //          .forEach(
-    //              filter -> analyzeRowFilter(session.getIdentity().getUser(), table, name,
+    // accessControl.getRowFilters(session.toSecurityContext(), name)
+    // .forEach(
+    // filter -> analyzeRowFilter(session.getIdentity().getUser(), table, name,
     // accessControlScope, filter));
-    //    }
+    // }
 
     protected Scope visitPatternRecognitionRelation(
         PatternRecognitionRelation relation, Optional<Scope> scope) {
       Scope inputScope = process(relation.getInput(), scope);
 
       // check that input table column names are not ambiguous
-      // Note: This check is not compliant with SQL identifier semantics. Quoted identifiers should
+      // Note: This check is not compliant with SQL identifier semantics. Quoted
+      // identifiers should
       // have different comparison rules than unquoted identifiers.
-      // However, field names do not contain the information about quotation, and so every
+      // However, field names do not contain the information about quotation, and so
+      // every
       // comparison is case-insensitive. For example, if there are fields named
-      // 'a' and 'A' (quoted), they should be considered non-ambiguous. However, their names will be
+      // 'a' and 'A' (quoted), they should be considered non-ambiguous. However, their
+      // names will be
       // compared case-insensitive and will cause failure as ambiguous.
       Set<String> inputNames = new HashSet<>();
       for (Field field : inputScope.getRelationType().getAllFields()) {
@@ -3281,20 +3328,28 @@ public class StatementAnalyzer {
       PatternRecognitionAnalyzer.validatePatternExclusions(
           relation.getRowsPerMatch(), relation.getPattern());
 
-      // Notes on potential name ambiguity between pattern labels and other identifiers:
-      // Labels are allowed in expressions of MEASURES and DEFINE clauses. In those expressions,
+      // Notes on potential name ambiguity between pattern labels and other
+      // identifiers:
+      // Labels are allowed in expressions of MEASURES and DEFINE clauses. In those
+      // expressions,
       // qualifying column names with table name is not allowed.
-      // Theoretically, user might define pattern label "T" where input table name was "T". Then a
+      // Theoretically, user might define pattern label "T" where input table name was
+      // "T". Then a
       // dereference "T.column" would refer to:
       // - input table's column, if it was in PARTITION BY or ORDER BY clause,
-      // - subset of rows matched with label "T", if it was in MEASURES or DEFINE clause.
-      // There could be a check to catch such non-intuitive situation and produce a warning.
-      // Similarly, it is possible to define pattern label with the same name as some input column.
+      // - subset of rows matched with label "T", if it was in MEASURES or DEFINE
+      // clause.
+      // There could be a check to catch such non-intuitive situation and produce a
+      // warning.
+      // Similarly, it is possible to define pattern label with the same name as some
+      // input column.
       // However, this causes no ambiguity, as labels can only
-      // appear as column name's prefix, and column names in pattern recognition context cannot be
+      // appear as column name's prefix, and column names in pattern recognition
+      // context cannot be
       // dereferenced.
 
-      // analyze expressions in MEASURES and DEFINE (with set of all labels passed as context)
+      // analyze expressions in MEASURES and DEFINE (with set of all labels passed as
+      // context)
       for (VariableDefinition variableDefinition : relation.getVariableDefinitions()) {
         Expression expression = variableDefinition.getExpression();
         ExpressionAnalysis expressionAnalysis =
@@ -3323,8 +3378,10 @@ public class StatementAnalyzer {
       Map<NodeRef<Node>, Type> measureTypes = measureTypesBuilder.buildOrThrow();
 
       // create output scope
-      // ONE ROW PER MATCH: PARTITION BY columns, then MEASURES columns in order of declaration
-      // ALL ROWS PER MATCH: PARTITION BY columns, ORDER BY columns, MEASURES columns, then any
+      // ONE ROW PER MATCH: PARTITION BY columns, then MEASURES columns in order of
+      // declaration
+      // ALL ROWS PER MATCH: PARTITION BY columns, ORDER BY columns, MEASURES columns,
+      // then any
       // remaining input table columns in order of declaration
       // Note: row pattern input table name should not be exposed on output
       PatternRecognitionRelation.RowsPerMatch rowsPerMatch = relation.getRowsPerMatch().orElse(ONE);
@@ -3442,12 +3499,12 @@ public class StatementAnalyzer {
         }
 
         // determine common super type of the rows
-        //        commonSuperType = typeCoercion.getCommonSuperType(rowType, commonSuperType)
-        //            .orElseThrow(() -> semanticException(TYPE_MISMATCH,
-        //                node,
-        //                "Values rows have mismatched types: %s vs %s",
-        //                rowTypes.get(0),
-        //                rowType));
+        // commonSuperType = typeCoercion.getCommonSuperType(rowType, commonSuperType)
+        // .orElseThrow(() -> semanticException(TYPE_MISMATCH,
+        // node,
+        // "Values rows have mismatched types: %s vs %s",
+        // rowTypes.get(0),
+        // rowType));
       }
 
       // add coercions
@@ -3455,14 +3512,17 @@ public class StatementAnalyzer {
       for (Expression row : node.getRows()) {
         Type actualType = analysis.getType(row);
         if (row instanceof Row) {
-          // coerce Row by fields to preserve Row structure and enable optimizations based on this
+          // coerce Row by fields to preserve Row structure and enable optimizations based
+          // on this
           // structure, e.g.pruning, predicate extraction
-          // TODO coerce the whole Row and add an Optimizer rule that converts CAST(ROW(...) AS
+          // TODO coerce the whole Row and add an Optimizer rule that converts
+          // CAST(ROW(...) AS
           // ...)into ROW (CAST(...),CAST(...), ...).
-          //  The rule would also handle Row-type expressions that were specified as CAST(ROW).It
+          // The rule would also handle Row-type expressions that were specified as
+          // CAST(ROW).It
           // should support multiple casts over a ROW.
           for (int i = 0; i < actualType.getTypeParameters().size(); i++) {
-            //            Expression item = ((Row) row).getItems().get(i);
+            // Expression item = ((Row) row).getItems().get(i);
             Type actualItemType = actualType.getTypeParameters().get(i);
             Type expectedItemType = commonSuperType.getTypeParameters().get(i);
             if (!actualItemType.equals(expectedItemType)) {
@@ -3470,17 +3530,17 @@ public class StatementAnalyzer {
                   String.format(
                       "Type of row %d column %d is mismatched, expected: %s, actual: %s",
                       rowIndex, i, expectedItemType, actualItemType));
-              //              analysis.addCoercion(item, expectedItemType,
-              //                  typeCoercion.isTypeOnlyCoercion(actualItemType,
+              // analysis.addCoercion(item, expectedItemType,
+              // typeCoercion.isTypeOnlyCoercion(actualItemType,
               // expectedItemType));
             }
           }
         } else if (actualType instanceof RowType) {
           // coerce row-type expression as a whole
-          //          if (!actualType.equals(commonSuperType)) {
-          //            analysis.addCoercion(row, commonSuperType,
-          //                typeCoercion.isTypeOnlyCoercion(actualType, commonSuperType));
-          //          }
+          // if (!actualType.equals(commonSuperType)) {
+          // analysis.addCoercion(row, commonSuperType,
+          // typeCoercion.isTypeOnlyCoercion(actualType, commonSuperType));
+          // }
 
           throw new SemanticException(
               String.format(
@@ -3490,9 +3550,9 @@ public class StatementAnalyzer {
           // coerce field. it will be wrapped in Row by Planner
           Type superType = getOnlyElement(commonSuperType.getTypeParameters());
           if (!actualType.equals(superType)) {
-            //            analysis.addCoercion(row, superType,
+            // analysis.addCoercion(row, superType,
             // typeCoercion.isTypeOnlyCoercion(actualType,
-            //                superType));
+            // superType));
             throw new SemanticException(
                 String.format(
                     "Type of row %d is mismatched, expected: %s, actual: %s",
@@ -3520,7 +3580,8 @@ public class StatementAnalyzer {
       Scope relationScope = process(relation.getRelation(), scope);
       RelationType relationType = relationScope.getRelationType();
 
-      // todo this check should be inside of TupleDescriptor.withAlias, but the exception needs the
+      // todo this check should be inside of TupleDescriptor.withAlias, but the
+      // exception needs the
       // node object
       if (relation.getColumnNames() != null) {
         int totalColumns = relationType.getVisibleFieldCount();
@@ -3587,7 +3648,8 @@ public class StatementAnalyzer {
         if (expression != null) {
           verifyNoAggregateWindowOrGroupingFunctions(expression, "JOIN clause");
 
-          // Need to register coercions in case when join criteria requires coercion (e.g. join on
+          // Need to register coercions in case when join criteria requires coercion (e.g.
+          // join on
           // char(1) = char(2))
           // Correlations are only currently support in the join criteria for INNER joins
           ExpressionAnalysis expressionAnalysis =
@@ -3599,18 +3661,18 @@ public class StatementAnalyzer {
                       : CorrelationSupport.DISALLOWED);
           Type clauseType = expressionAnalysis.getType(expression);
           if (!clauseType.equals(BOOLEAN)) {
-            //          if (!clauseType.equals(UNKNOWN)) {
-            //            throw semanticException(
-            //                TYPE_MISMATCH,
-            //                expression,
-            //                "JOIN ON clause must evaluate to a boolean: actual type %s",
-            //                clauseType);
-            //          }
+            // if (!clauseType.equals(UNKNOWN)) {
+            // throw semanticException(
+            // TYPE_MISMATCH,
+            // expression,
+            // "JOIN ON clause must evaluate to a boolean: actual type %s",
+            // clauseType);
+            // }
             throw new SemanticException(
                 String.format(
                     "JOIN ON clause must evaluate to a boolean: actual type %s", clauseType));
             // coerce expression to boolean
-            //          analysis.addCoercion(expression, BOOLEAN, false);
+            // analysis.addCoercion(expression, BOOLEAN, false);
           }
 
           if (!isAsofJoin) {
@@ -3619,7 +3681,8 @@ public class StatementAnalyzer {
         }
 
         if (isAsofJoin) {
-          // The asofExpression must be ComparisonExpression, it has been checked in AstBuilder
+          // The asofExpression must be ComparisonExpression, it has been checked in
+          // AstBuilder
           ComparisonExpression asofExpression =
               (ComparisonExpression) ((AsofJoinOn) criteria).getAsofExpression();
 
@@ -3700,13 +3763,14 @@ public class StatementAnalyzer {
                                 "Column '%s' is missing from right side of join",
                                 column.getValue())));
 
-        // ensure a comparison operator exists for the given types (applying coercions if necessary)
-        //        try {
-        //          metadata.resolveOperator(OperatorType.EQUAL, ImmutableList.of(
-        //              leftField.getType(), rightField.getType()));
-        //        } catch (OperatorNotFoundException e) {
-        //          throw semanticException(TYPE_MISMATCH, column, e, "%s", e.getMessage());
-        //        }
+        // ensure a comparison operator exists for the given types (applying coercions
+        // if necessary)
+        // try {
+        // metadata.resolveOperator(OperatorType.EQUAL, ImmutableList.of(
+        // leftField.getType(), rightField.getType()));
+        // } catch (OperatorNotFoundException e) {
+        // throw semanticException(TYPE_MISMATCH, column, e, "%s", e.getMessage());
+        // }
         if (leftField.getType() != rightField.getType()) {
           throw new SemanticException(
               String.format(
@@ -3829,7 +3893,8 @@ public class StatementAnalyzer {
         helperColumn =
             getFieldReferenceForTimeColumn(node.getTimeColumnIndex().get(), scope, fillMethod);
       } else {
-        // if user doesn't specify the index of helper column, we use first column whose data type
+        // if user doesn't specify the index of helper column, we use first column whose
+        // data type
         // is TIMESTAMP instead.
         int index = -1;
         for (Field field : scope.getRelationType().getVisibleFields()) {
@@ -3967,15 +4032,15 @@ public class StatementAnalyzer {
       if (node.getRowCount() instanceof LongLiteral) {
         rowCount = ((LongLiteral) node.getRowCount()).getParsedValue();
       } else {
-        //        checkState(
-        //            node.getRowCount() instanceof Parameter,
-        //            "unexpected OFFSET rowCount: " +
+        // checkState(
+        // node.getRowCount() instanceof Parameter,
+        // "unexpected OFFSET rowCount: " +
         // node.getRowCount().getClass().getSimpleName());
         throw new SemanticException(
             "unexpected OFFSET rowCount: " + node.getRowCount().getClass().getSimpleName());
-        //        OptionalLong providedValue =
-        //            analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope, "OFFSET");
-        //        rowCount = providedValue.orElse(0);
+        // OptionalLong providedValue =
+        // analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope, "OFFSET");
+        // rowCount = providedValue.orElse(0);
       }
       if (rowCount < 0) {
         throw new SemanticException(
@@ -3990,44 +4055,45 @@ public class StatementAnalyzer {
      *     must contain orderBy (i.e., for FetchFirst with ties).
      */
     private boolean analyzeLimit(Node node, Scope scope) {
-      //      checkState(
-      //          node instanceof FetchFirst || node instanceof Limit,
-      //          "Invalid limit node type. Expected: FetchFirst or Limit. Actual: %s",
+      // checkState(
+      // node instanceof FetchFirst || node instanceof Limit,
+      // "Invalid limit node type. Expected: FetchFirst or Limit. Actual: %s",
       // node.getClass().getName());
       checkState(
           node instanceof Limit,
           "Invalid limit node type. Expected: Limit. Actual: %s",
           node.getClass().getName());
-      //      if (node instanceof FetchFirst) {
-      //        return analyzeLimit((FetchFirst) node, scope);
-      //      }
+      // if (node instanceof FetchFirst) {
+      // return analyzeLimit((FetchFirst) node, scope);
+      // }
       return analyzeLimit((Limit) node, scope);
     }
 
-    //    private boolean analyzeLimit(FetchFirst node, Scope scope) {
-    //      long rowCount = 1;
-    //      if (node.getRowCount().isPresent()) {
-    //        Expression count = node.getRowCount().get();
-    //        if (count instanceof LongLiteral) {
-    //          rowCount = ((LongLiteral) count).getParsedValue();
-    //        } else {
-    //          checkState(count instanceof Parameter,
-    //              "unexpected FETCH FIRST rowCount: " + count.getClass().getSimpleName());
-    //          OptionalLong providedValue = analyzeParameterAsRowCount((Parameter) count, scope,
+    // private boolean analyzeLimit(FetchFirst node, Scope scope) {
+    // long rowCount = 1;
+    // if (node.getRowCount().isPresent()) {
+    // Expression count = node.getRowCount().get();
+    // if (count instanceof LongLiteral) {
+    // rowCount = ((LongLiteral) count).getParsedValue();
+    // } else {
+    // checkState(count instanceof Parameter,
+    // "unexpected FETCH FIRST rowCount: " + count.getClass().getSimpleName());
+    // OptionalLong providedValue = analyzeParameterAsRowCount((Parameter) count,
+    // scope,
     // "FETCH FIRST");
-    //          if (providedValue.isPresent()) {
-    //            rowCount = providedValue.getAsLong();
-    //          }
-    //        }
-    //      }
-    //      if (rowCount <= 0) {
-    //        throw semanticException(NUMERIC_VALUE_OUT_OF_RANGE, node,
-    //            "FETCH FIRST row count must be positive (actual value: %s)", rowCount);
-    //      }
-    //      analysis.setLimit(node, rowCount);
+    // if (providedValue.isPresent()) {
+    // rowCount = providedValue.getAsLong();
+    // }
+    // }
+    // }
+    // if (rowCount <= 0) {
+    // throw semanticException(NUMERIC_VALUE_OUT_OF_RANGE, node,
+    // "FETCH FIRST row count must be positive (actual value: %s)", rowCount);
+    // }
+    // analysis.setLimit(node, rowCount);
     //
-    //      return node.isWithTies();
-    //    }
+    // return node.isWithTies();
+    // }
 
     private boolean analyzeLimit(Limit node, Scope scope) {
       OptionalLong rowCount;
@@ -4036,13 +4102,13 @@ public class StatementAnalyzer {
       } else if (node.getRowCount() instanceof LongLiteral) {
         rowCount = OptionalLong.of(((LongLiteral) node.getRowCount()).getParsedValue());
       } else {
-        //        checkState(
-        //            node.getRowCount() instanceof Parameter,
-        //            "unexpected LIMIT rowCount: " +
+        // checkState(
+        // node.getRowCount() instanceof Parameter,
+        // "unexpected LIMIT rowCount: " +
         // node.getRowCount().getClass().getSimpleName());
         throw new SemanticException(
             "unexpected LIMIT rowCount: " + node.getRowCount().getClass().getSimpleName());
-        //        rowCount = analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope,
+        // rowCount = analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope,
         // "LIMIT");
       }
       rowCount.ifPresent(
@@ -4059,32 +4125,34 @@ public class StatementAnalyzer {
       return false;
     }
 
-    //    private OptionalLong analyzeParameterAsRowCount(
-    //        Parameter parameter, Scope scope, String context) {
-    //      // validate parameter index
-    //      analyzeExpression(parameter, scope);
-    //      Expression providedValue = analysis.getParameters().get(NodeRef.of(parameter));
-    //      Object value;
-    //      try {
-    //        value =
-    //            evaluateConstantExpression(
-    //                providedValue,
-    //                BIGINT,
-    //                plannerContext,
-    //                session,
-    //                accessControl,
-    //                analysis.getParameters());
-    //      } catch (VerifyException e) {
-    //        throw new SemanticException(
-    //            String.format("Non constant parameter value for %s: %s", context, providedValue));
-    //      }
-    //      if (value == null) {
-    //        throw new SemanticException(
-    //            String.format("Parameter value provided for %s is NULL: %s", context,
+    // private OptionalLong analyzeParameterAsRowCount(
+    // Parameter parameter, Scope scope, String context) {
+    // // validate parameter index
+    // analyzeExpression(parameter, scope);
+    // Expression providedValue =
+    // analysis.getParameters().get(NodeRef.of(parameter));
+    // Object value;
+    // try {
+    // value =
+    // evaluateConstantExpression(
+    // providedValue,
+    // BIGINT,
+    // plannerContext,
+    // session,
+    // accessControl,
+    // analysis.getParameters());
+    // } catch (VerifyException e) {
+    // throw new SemanticException(
+    // String.format("Non constant parameter value for %s: %s", context,
     // providedValue));
-    //      }
-    //      return OptionalLong.of((long) value);
-    //    }
+    // }
+    // if (value == null) {
+    // throw new SemanticException(
+    // String.format("Parameter value provided for %s is NULL: %s", context,
+    // providedValue));
+    // }
+    // return OptionalLong.of((long) value);
+    // }
 
     private void analyzeAggregations(
         QuerySpecification node,
@@ -4104,9 +4172,9 @@ public class StatementAnalyzer {
       if (analysis.isAggregation(node)) {
         // ensure SELECT, ORDER BY and HAVING are constant with respect to group
         // e.g, these are all valid expressions:
-        //     SELECT f(a) GROUP BY a
-        //     SELECT f(a + 1) GROUP BY a + 1
-        //     SELECT a + sum(b) GROUP BY a
+        // SELECT f(a) GROUP BY a
+        // SELECT f(a + 1) GROUP BY a + 1
+        // SELECT a + sum(b) GROUP BY a
         List<Expression> distinctGroupingColumns =
             ImmutableSet.copyOf(groupByAnalysis.getOriginalExpressions()).asList();
 
@@ -4154,8 +4222,10 @@ public class StatementAnalyzer {
     private List<Node> findReferences(Node node, Identifier name) {
       Stream<Node> allReferences = preOrder(node).filter(isTableWithName(name));
 
-      // TODO: recursive references could be supported in subquery before the point of shadowing.
-      // currently, the recursive query name is considered shadowed in the whole subquery if the
+      // TODO: recursive references could be supported in subquery before the point of
+      // shadowing.
+      // currently, the recursive query name is considered shadowed in the whole
+      // subquery if the
       // subquery defines a common table with the same name
       Set<Node> shadowedReferences =
           preOrder(node)
@@ -4288,10 +4358,12 @@ public class StatementAnalyzer {
         }
 
         // In a query such as
-        //    SELECT a FROM t ORDER BY a
-        // the "a" in the SELECT clause is bound to the FROM scope, while the "a" in ORDER BY clause
+        // SELECT a FROM t ORDER BY a
+        // the "a" in the SELECT clause is bound to the FROM scope, while the "a" in
+        // ORDER BY clause
         // is bound
-        // to the "a" from the SELECT clause, so we can't compare by field id / relation id.
+        // to the "a" from the SELECT clause, so we can't compare by field id / relation
+        // id.
         if (expression instanceof Identifier
             && aliases.contains(canonicalizationAwareKey(expression))) {
           continue;
@@ -4303,12 +4375,12 @@ public class StatementAnalyzer {
         }
       }
 
-      //      for (Expression expression : orderByExpressions) {
-      //        if (!isDeterministic(expression, this::getResolvedFunction)) {
-      //          throw new SemanticException("Non deterministic ORDER BY expression is not
+      // for (Expression expression : orderByExpressions) {
+      // if (!isDeterministic(expression, this::getResolvedFunction)) {
+      // throw new SemanticException("Non deterministic ORDER BY expression is not
       // supported with SELECT DISTINCT");
-      //        }
-      //      }
+      // }
+      // }
     }
 
     private Set<CanonicalizationAware<Identifier>> getAliases(Select node) {
@@ -4519,8 +4591,10 @@ public class StatementAnalyzer {
       }
     }
 
-    // NOTICE: We construct transition map here because currently we set the used fields in
-    // the statement. Other queries shall not do this and shall do it in logical plan phase.
+    // NOTICE: We construct transition map here because currently we set the used
+    // fields in
+    // the statement. Other queries shall not do this and shall do it in logical
+    // plan phase.
     private TranslationMap analyzeTraverseDevice(
         final AbstractTraverseDevice node,
         final Optional<Scope> context,
@@ -4747,8 +4821,10 @@ public class StatementAnalyzer {
       // The result relation type of a table function consists of:
       // 1. columns created by the table function, called the proper columns.
       // 2. passed columns from input tables:
-      // - for tables with the "pass through columns" option, these are all columns of the table,
-      // - for tables without the "pass through columns" option, these are the partitioning columns
+      // - for tables with the "pass through columns" option, these are all columns of
+      // the table,
+      // - for tables without the "pass through columns" option, these are the
+      // partitioning columns
       // of the table, if any.
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
       Optional<DescribedSchema> properSchema = functionAnalysis.getProperColumnSchema();
@@ -4849,14 +4925,16 @@ public class StatementAnalyzer {
           if (argumentSpecificationsByName.put(
                   parameterSpecification.getName(), parameterSpecification)
               != null) {
-            // this should never happen, because the argument names are validated at function
+            // this should never happen, because the argument names are validated at
+            // function
             // registration time
             throw new IllegalStateException(
                 "Duplicate argument specification for name: " + parameterSpecification.getName());
           }
         }
 
-        // append order by time asc for built-in forecast tvf if user doesn't specify order by
+        // append order by time asc for built-in forecast tvf if user doesn't specify
+        // order by
         // clause
         tryUpdateOrderByForForecastByName(functionName, arguments, argumentSpecificationsByName);
 
@@ -4891,7 +4969,8 @@ public class StatementAnalyzer {
               analyzeDefault(parameterSpecification, errorLocation));
         }
       } else {
-        // append order by time asc for built-in forecast tvf if user doesn't specify order by
+        // append order by time asc for built-in forecast tvf if user doesn't specify
+        // order by
         // clause
         tryUpdateOrderByForForecastByPosition(functionName, arguments, parameterSpecifications);
         for (int i = 0; i < arguments.size(); i++) {
@@ -4913,7 +4992,8 @@ public class StatementAnalyzer {
       return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
     }
 
-    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    // append order by time asc for built-in forecast tvf if user doesn't specify
+    // order by clause
     private void tryUpdateOrderByForForecastByName(
         String functionName,
         List<TableFunctionArgument> arguments,
@@ -4933,7 +5013,8 @@ public class StatementAnalyzer {
       }
     }
 
-    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    // append order by time asc for built-in forecast tvf if user doesn't specify
+    // order by clause
     private void tryUpdateOrderByForForecastByPosition(
         String functionName,
         List<TableFunctionArgument> arguments,
@@ -4960,7 +5041,8 @@ public class StatementAnalyzer {
       }
     }
 
-    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    // append order by time asc for built-in forecast tvf if user doesn't specify
+    // order by clause
     private void tryUpdateOrderByForForecast(
         List<TableFunctionArgument> arguments, String timeColumn) {
       if (timeColumn == null || timeColumn.isEmpty()) {
@@ -5221,6 +5303,53 @@ public class StatementAnalyzer {
 
       return field.get().getField();
     }
+
+    // =============================== Table Model LBAC Statements ===============================
+
+    @Override
+    protected Scope visitDropUserLabelPolicy(
+        DropUserLabelPolicyStatement node, Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.WRITE);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitAlterUserLabelPolicy(
+        AlterUserLabelPolicyStatement node, Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.WRITE);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowUserLabelPolicy(
+        ShowTableUserLabelPolicyStatement node, Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.READ);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitSetDatabaseSecurityLabel(
+        AlterDatabaseSecurityLabelStatement node, Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.WRITE);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitDropDatabaseSecurityLabel(
+        DropDatabaseSecurityLabelStatement node, Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.WRITE);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowDatabaseSecurityLabel(
+        ShowTableDatabaseSecurityLabelStatement node, Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.READ);
+      return createAndAssignScope(node, context);
+    }
+
+    // =============================== End Table Model LBAC Statements
+    // ===============================
   }
 
   private static boolean hasScopeAsLocalParent(Scope root, Scope parent) {

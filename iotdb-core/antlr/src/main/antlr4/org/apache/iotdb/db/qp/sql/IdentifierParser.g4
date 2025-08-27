@@ -132,6 +132,7 @@ keyWords
     | IS
     | KILL
     | LABEL
+    |LABEL_POLICY
     | LAST
     | LATEST
     | LEVEL
@@ -209,6 +210,7 @@ keyWords
     | SCHEMA
     | SCHEMA_REPLICATION_FACTOR
     | SCHEMA_REGION_GROUP_NUM
+    | SECURITY_LABEL
     | SELECT
     | SERIESSLOTID
     | SESSION

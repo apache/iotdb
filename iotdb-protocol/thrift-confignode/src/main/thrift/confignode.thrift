@@ -214,6 +214,21 @@ struct TDatabaseSchema {
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
     11: optional bool isTableModel
+    12: optional map<string, string> securityLabel
+}
+
+struct TAlterDatabaseSecurityLabelReq {
+  1: required string databasePath
+  2: optional map<string, string> securityLabel
+}
+
+struct TGetDatabaseSecurityLabelReq {
+  1: optional string databasePath
+}
+
+struct TGetDatabaseSecurityLabelResp {
+  1: required common.TSStatus status
+  2: optional map<string, string> securityLabel
 }
 
 // Schema
@@ -343,6 +358,8 @@ struct TAuthorizerReq {
   6: required set<i32> permissions
   7: required bool grantOpt
   8: required binary nodeNameList
+  9: optional string readLabelPolicyExpression
+  10: optional string writeLabelPolicyExpression
 }
 
 struct TAuthorizerRelationalReq {
@@ -368,6 +385,8 @@ struct TUserResp {
   2: required string password
   3: required set<string> roleSet
   4: required bool isOpenIdUser
+  5: optional string readLabelPolicyExpression
+  8: optional string writeLabelPolicyExpression
 }
 
 struct TRoleResp {
@@ -689,6 +708,7 @@ struct TDatabaseInfo {
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
+  13: optional map<string, string> securityLabel
 }
 
 struct TGetDatabaseReq {
@@ -1127,10 +1147,96 @@ struct TShowThrottleReq {
   1: optional string userName;
 }
 
+// ======================================================
+// Show User Label Policy
+// ======================================================
+struct TShowUserLabelPolicyReq {
+  1: optional string username
+  2: required string scope
+}
 
-// ====================================================
+struct TShowUserLabelPolicyResp {
+  1: required common.TSStatus status
+  2: required list<TUserLabelPolicyInfo> userLabelPolicyList
+}
+
+struct TUserLabelPolicyInfo {
+  1: required string username
+  2: required string scope
+  3: optional string policyExpression
+}
+
+struct TDropUserLabelPolicyReq {
+  1: required string username
+  2: required string scope
+}
+
+struct TSetUserLabelPolicyReq {
+  1: required string username
+  2: required string policyExpression
+  3: required string scope
+}
+
+struct TAlterUserLabelPolicyReq {
+  1: required string username
+  2: required string scope
+}
+
+struct TShowDatabaseSecurityLabelReq {
+  1: optional string databaseName
+}
+
+struct TShowDatabaseSecurityLabelResp {
+  1: required common.TSStatus status
+  2: optional map<string, string> securityLabel
+}
+
+// ======================================================
+// Table Model LBAC - Additional structures
+// ======================================================
+struct TSetTableUserLabelPolicyReq {
+  1: required string username
+  2: required string policyExpression
+  3: required string scope
+}
+
+struct TShowTableUserLabelPolicyReq {
+  1: optional string username
+  2: required string scope
+}
+
+struct TShowTableUserLabelPolicyResp {
+  1: required common.TSStatus status
+  2: required list<TUserLabelPolicyInfo> userLabelPolicyList
+}
+
+struct TAlterTableUserLabelPolicyReq {
+  1: required string username
+  2: required string scope
+}
+
+struct TDropTableUserLabelPolicyReq {
+  1: required string username
+  2: required string scope
+}
+
+struct TShowTableDatabaseSecurityLabelReq {
+  1: optional string databaseName
+}
+
+struct TShowTableDatabaseSecurityLabelResp {
+  1: required common.TSStatus status
+  2: optional map<string, string> securityLabel
+}
+
+struct TAlterTableDatabaseSecurityLabelReq {
+  1: required string databaseName
+  2: optional map<string, string> securityLabel
+}
+
+// ======================================================
 // Activation
-// ====================================================
+// ======================================================
 struct TLicenseContentResp {
     1: required common.TSStatus status
     2: optional common.TLicense licenseContent
@@ -1140,9 +1246,9 @@ enum TActivationControl {
   ALL_LICENSE_FILE_DELETED
 }
 
-// ====================================================
+// ======================================================
 // AINode
-// ====================================================
+// ======================================================
 
 struct TAINodeConfigurationResp {
   1: required common.TSStatus status
@@ -1258,6 +1364,15 @@ struct TCreateTableViewReq {
     2: required bool replace
 }
 
+// ======================================================
+// Cluster Info
+// ======================================================
+
+// Define the TShowClusterInfoReq struct
+struct TShowClusterInfoReq {
+  1: optional bool verbose
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1367,6 +1482,22 @@ service IConfigNodeRPCService {
    *         DATABASE_NOT_EXIST if the specified Database doesn't exist
    */
   common.TSStatus alterDatabase(TDatabaseSchema databaseSchema)
+
+  /**
+   * Alter a Database's security label
+   *
+   * @return SUCCESS_STATUS if the specified Database's security label is altered successfully
+   *         DATABASE_NOT_EXIST if the specified Database doesn't exist
+   */
+  common.TSStatus alterDatabaseSecurityLabel(TAlterDatabaseSecurityLabelReq req)
+
+  /**
+   * Get a Database's security label
+   *
+   * @return SUCCESS_STATUS if the specified Database's security label is retrieved successfully
+   *         DATABASE_NOT_EXIST if the specified Database doesn't exist
+   */
+  TGetDatabaseSecurityLabelResp getDatabaseSecurityLabel(TGetDatabaseSecurityLabelReq req)
 
   /**
    * Generate a DeleteDatabaseProcedure to delete a specified Database
@@ -2020,6 +2151,45 @@ service IConfigNodeRPCService {
   common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
 
   // ======================================================
+  // Show User Label Policy
+  // ======================================================
+  /** Show user label policy */
+  TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req)
+
+  /** Drop user label policy */
+  common.TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req)
+
+  /** Set user label policy */
+  common.TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req)
+
+  /** Alter user label policy */
+  common.TSStatus alterUserLabelPolicy(TAlterUserLabelPolicyReq req)
+
+  /** Show database security label */
+  TShowDatabaseSecurityLabelResp showDatabaseSecurityLabel(TShowDatabaseSecurityLabelReq req)
+
+  // ======================================================
+  // Table Model LBAC - Complete CRUD operations
+  // ======================================================
+  /** Set table user label policy (for table model) */
+  common.TSStatus setTableUserLabelPolicy(TSetTableUserLabelPolicyReq req)
+
+  /** Show table user label policy (for table model) */
+  TShowTableUserLabelPolicyResp showTableUserLabelPolicy(TShowTableUserLabelPolicyReq req)
+
+  /** Alter table user label policy (for table model) */
+  common.TSStatus alterTableUserLabelPolicy(TAlterTableUserLabelPolicyReq req)
+
+  /** Drop table user label policy (for table model) */
+  common.TSStatus dropTableUserLabelPolicy(TDropTableUserLabelPolicyReq req)
+
+  /** Show table database security label (for table model) */
+  TShowTableDatabaseSecurityLabelResp showTableDatabaseSecurityLabel(TShowTableDatabaseSecurityLabelReq req)
+
+  /** Alter table database security label (for table model) */
+  common.TSStatus alterTableDatabaseSecurityLabel(TAlterTableDatabaseSecurityLabelReq req)
+
+  // ======================================================
   // Table Or View
   // ======================================================
 
@@ -2042,5 +2212,7 @@ service IConfigNodeRPCService {
   // Table view
 
   common.TSStatus createTableView(TCreateTableViewReq req)
+
+  common.TSStatus showClusterInfo(TShowClusterInfoReq req)
 }
 

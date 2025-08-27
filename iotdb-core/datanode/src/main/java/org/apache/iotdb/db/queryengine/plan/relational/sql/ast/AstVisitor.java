@@ -833,4 +833,43 @@ public abstract class AstVisitor<R, C> {
   protected R visitRangeQuantifier(RangeQuantifier node, C context) {
     return visitPatternQuantifier(node, context);
   }
+
+  // =============================== Table Model LBAC =========================================
+
+  protected R visitSetUserReadLabelPolicy(SetUserReadLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitSetUserWriteLabelPolicy(SetUserWriteLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropUserLabelPolicy(DropUserLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitAlterUserLabelPolicy(AlterUserLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowUserLabelPolicy(ShowTableUserLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropDatabaseSecurityLabel(DropDatabaseSecurityLabelStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitAlterDatabaseSecurityLabel(AlterDatabaseSecurityLabelStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowDatabaseSecurityLabel(
+      ShowTableDatabaseSecurityLabelStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitSetDatabaseSecurityLabel(AlterDatabaseSecurityLabelStatement node, C context) {
+    return visitStatement(node, context);
+  }
 }

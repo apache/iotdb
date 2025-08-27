@@ -34,7 +34,8 @@ public enum AuthorType {
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIVILEGE,
-  LIST_ROLE_PRIVILEGE;
+  LIST_ROLE_PRIVILEGE,
+  DROP_USER_LABEL_POLICY;
 
   /**
    * deserialize short number.
@@ -74,6 +75,8 @@ public enum AuthorType {
         return LIST_USER_PRIVILEGE;
       case 14:
         return LIST_ROLE_PRIVILEGE;
+      case 15:
+        return DROP_USER_LABEL_POLICY;
       default:
         return null;
     }
@@ -116,6 +119,8 @@ public enum AuthorType {
         return 13;
       case LIST_ROLE_PRIVILEGE:
         return 14;
+      case DROP_USER_LABEL_POLICY:
+        return 15;
       default:
         return -1;
     }

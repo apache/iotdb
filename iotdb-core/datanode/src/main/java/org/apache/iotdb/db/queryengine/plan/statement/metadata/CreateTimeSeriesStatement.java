@@ -67,7 +67,6 @@ public class CreateTimeSeriesStatement extends Statement {
     return Collections.singletonList(path);
   }
 
-  @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

@@ -262,4 +262,14 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowCurrentSqlDialectHeader() {
     return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_SQL_DIALECT_COLUMN_HEADERS, true);
   }
+
+  public static DatasetHeader getShowUserLabelPolicyHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_USER_LABEL_POLICY_COLUMN_HEADERS, true);
+  }
+
+  // Header for SHOW DATABASE SECURITY_LABEL
+  public static DatasetHeader getShowDatabaseSecurityLabelHeader() {
+    return new DatasetHeader(
+        ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS, true);
+  }
 }

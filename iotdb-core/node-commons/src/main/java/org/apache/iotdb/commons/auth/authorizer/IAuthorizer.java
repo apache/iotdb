@@ -208,6 +208,14 @@ public interface IAuthorizer extends SnapshotProcessor {
   User getUser(String username) throws AuthException;
 
   /**
+   * Check if a user exists.
+   *
+   * @param username the name of the user.
+   * @return True if the user exists, false otherwise.
+   */
+  boolean hasUser(String username);
+
+  /**
    * get all user
    *
    * @return key-> userName, value->user
@@ -231,4 +239,35 @@ public interface IAuthorizer extends SnapshotProcessor {
   void createUserWithoutCheck(String username, String password) throws AuthException;
 
   void createUserWithRawPassword(String username, String password) throws AuthException;
+
+  /**
+   * Set label policy for a user.
+   *
+   * @param username The username of the user
+   * @param labelPolicyExpression The label policy expression
+   * @param labelPolicyScope The label policy scope (READ, WRITE, READ,WRITE)
+   * @throws AuthException If the user does not exist or the policy is invalid
+   */
+  void setUserLabelPolicy(String username, String labelPolicyExpression, String labelPolicyScope)
+      throws AuthException;
+
+  /**
+   * Update label policy for a user.
+   *
+   * @param username The username of the user
+   * @param labelPolicyExpression The label policy expression
+   * @param labelPolicyScope The label policy scope (READ, WRITE, READ,WRITE)
+   * @throws AuthException If the user does not exist or the policy is invalid
+   */
+  void updateUserLabelPolicy(String username, String labelPolicyExpression, String labelPolicyScope)
+      throws AuthException;
+
+  /**
+   * Drop label policy for a user.
+   *
+   * @param username The username of the user
+   * @param labelPolicyScope The label policy scope to drop (READ, WRITE, READ,WRITE)
+   * @throws AuthException If the user does not exist
+   */
+  void dropUserLabelPolicy(String username, String labelPolicyScope) throws AuthException;
 }

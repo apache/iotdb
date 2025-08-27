@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.SecurityLabel;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -64,6 +65,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDatabaseSecurityLabelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
@@ -79,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -90,10 +93,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterDatabaseSecurityLabelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -144,8 +151,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -155,6 +164,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
@@ -189,15 +200,20 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseSecurityLabelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
@@ -209,10 +225,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
@@ -238,6 +260,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -476,6 +499,113 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus alterDatabaseSecurityLabel(final TAlterDatabaseSecurityLabelReq req) {
+    try {
+      // Check if database exists
+      if (!configManager.getClusterSchemaManager().isDatabaseExist(req.getDatabasePath())) {
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+            .setMessage("Database [" + req.getDatabasePath() + "] does not exist");
+      }
+
+      // Create SecurityLabel from the request
+      SecurityLabel securityLabel = new SecurityLabel(req.getSecurityLabel());
+
+      // Create SetDatabaseSecurityLabelPlan
+      SetDatabaseSecurityLabelPlan setSecurityLabelPlan =
+          new SetDatabaseSecurityLabelPlan(new PartialPath(req.getDatabasePath()), securityLabel);
+
+      // Execute the plan through consensus
+      TSStatus result = configManager.getConsensusManager().write(setSecurityLabelPlan);
+
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Clear ConfigNode cache immediately
+        configManager.getClusterSchemaManager().clearSecurityLabelCache();
+        LOGGER.info(
+            "Cleared ConfigNode security label cache after setting label for database: {}",
+            req.getDatabasePath());
+
+        // Notify DataNodes to clear their cache
+        try {
+          configManager.getProcedureManager().getEnv().invalidateCache(req.getDatabasePath());
+          LOGGER.info(
+              "Notified DataNodes to clear security label cache for database: {}",
+              req.getDatabasePath());
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to notify DataNodes to clear cache for database: {}",
+              req.getDatabasePath(),
+              e);
+        }
+
+        if (req.getSecurityLabel() == null || req.getSecurityLabel().isEmpty()) {
+          LOGGER.info(
+              "Successfully dropped security label for database: {}", req.getDatabasePath());
+        } else {
+          LOGGER.info(
+              "Successfully set security label for database: {}, labels: {}",
+              req.getDatabasePath(),
+              req.getSecurityLabel());
+        }
+      } else {
+        LOGGER.error(
+            "Failed to alter database security label for: {}, error: {}",
+            req.getDatabasePath(),
+            result.getMessage());
+      }
+
+      return result;
+
+    } catch (Exception e) {
+      LOGGER.error("Failed to alter database security label for: {}", req.getDatabasePath(), e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to alter database security label: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public TGetDatabaseSecurityLabelResp getDatabaseSecurityLabel(
+      final TGetDatabaseSecurityLabelReq req) {
+    TGetDatabaseSecurityLabelResp resp = new TGetDatabaseSecurityLabelResp();
+    String dbPath = null;
+    try {
+      dbPath = req.getDatabasePath();
+      LOGGER.info("getDatabaseSecurityLabel called with dbPath: '{}'", dbPath);
+
+      // If dbPath is null or empty, return all databases' security labels
+      if (dbPath == null || dbPath.trim().isEmpty()) {
+        // Use optimized method to get all database security labels
+        Map<String, String> allLabels =
+            configManager.getClusterSchemaManager().getAllDatabaseSecurityLabelsOptimized();
+
+        // Set all labels to response
+        resp.setSecurityLabel(allLabels);
+        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        return resp;
+      }
+
+      // Single database query - use existing fast method
+      Map<String, String> securityLabel =
+          configManager.getClusterSchemaManager().getDatabaseSecurityLabel(dbPath);
+
+      resp.setSecurityLabel(securityLabel);
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
+    } catch (DatabaseNotExistsException e) {
+      LOGGER.warn("Database does not exist: {}", dbPath);
+      TSStatus errorStatus = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      errorStatus.setMessage("Database does not exist: " + dbPath);
+      resp.setStatus(errorStatus);
+    } catch (Exception e) {
+      LOGGER.error("Error in getDatabaseSecurityLabel", e);
+      TSStatus errorStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      errorStatus.setMessage(e.getMessage());
+      resp.setStatus(errorStatus);
+    }
+
+    return resp;
+  }
+
+  @Override
   public TSStatus deleteDatabase(final TDeleteDatabaseReq tDeleteReq) {
     return configManager.deleteDatabases(
         new TDeleteDatabasesReq(Collections.singletonList(tDeleteReq.getPrefixPath()))
@@ -624,7 +754,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
-    return configManager.operatePermission(
+
+    AuthorTreePlan authorTreePlan =
         new AuthorTreePlan(
             ConfigPhysicalPlanType.values()[
                 req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
@@ -634,7 +765,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getNewPassword(),
             req.getPermissions(),
             req.isGrantOpt(),
-            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
+    // Set LBAC policies if present
+    if (req.isSetReadLabelPolicyExpression()) {
+      authorTreePlan.setReadLabelPolicyExpression(req.getReadLabelPolicyExpression());
+    }
+    if (req.isSetWriteLabelPolicyExpression()) {
+      authorTreePlan.setWriteLabelPolicyExpression(req.getWriteLabelPolicyExpression());
+    }
+    return configManager.operatePermission(authorTreePlan);
   }
 
   @Override
@@ -764,7 +903,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
-    // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
+    // Print log to record the ConfigNode that performs the
+    // RegisterConfigNodeRequest
     LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
 
     return resp;
@@ -836,11 +976,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
-            // TODO: Perhaps we should find some other way of shutting down the config node, adding
+            // TODO: Perhaps we should find some other way of shutting down the config node,
+            // adding
             // a hard dependency
-            //  in order to do this feels a bit odd. Dispatching a shutdown event which is processed
+            // in order to do this feels a bit odd. Dispatching a shutdown event which is
+            // processed
             // where the
-            //  instance is created feels cleaner.
+            // instance is created feels cleaner.
             () -> {
               try {
                 // Sleep 5s before stop itself
@@ -1422,5 +1564,297 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
     return configManager.pushHeartbeat(dataNodeId, resp);
+  }
+
+  public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req) {
+    return configManager.showUserLabelPolicy(req);
+  }
+
+  @Override
+  public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) throws TException {
+    try {
+      return configManager.getPermissionManager().dropUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when drop user label policy", e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) throws TException {
+    try {
+      return configManager.getPermissionManager().setUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when set user label policy", e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus showClusterInfo(TShowClusterInfoReq req) throws TException {
+    return configManager.showClusterInfo(req);
+  }
+
+  // =============================== Table Model Database Security Label
+  // ===============================
+
+  @Override
+  public TSStatus alterTableDatabaseSecurityLabel(TAlterTableDatabaseSecurityLabelReq req) {
+    try {
+      // Check if database exists
+      if (!configManager.getClusterSchemaManager().isDatabaseExist(req.getDatabaseName())) {
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+            .setMessage("Database [" + req.getDatabaseName() + "] does not exist");
+      }
+
+      // Create SecurityLabel from the request
+      SecurityLabel securityLabel = new SecurityLabel(req.getSecurityLabel());
+
+      // Create SetDatabaseSecurityLabelPlan for table model
+      SetDatabaseSecurityLabelPlan setSecurityLabelPlan =
+          new SetDatabaseSecurityLabelPlan(new PartialPath(req.getDatabaseName()), securityLabel);
+
+      // Execute the plan through consensus
+      TSStatus result = configManager.getConsensusManager().write(setSecurityLabelPlan);
+
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Clear ConfigNode cache immediately
+        configManager.getClusterSchemaManager().clearSecurityLabelCache();
+        LOGGER.info(
+            "Cleared ConfigNode security label cache after setting table model label for database: {}",
+            req.getDatabaseName());
+
+        // Notify DataNodes to clear their cache
+        try {
+          configManager.getProcedureManager().getEnv().invalidateCache(req.getDatabaseName());
+          LOGGER.info(
+              "Notified DataNodes to clear table model security label cache for database: {}",
+              req.getDatabaseName());
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to notify DataNodes to clear table model cache for database: {}",
+              req.getDatabaseName(),
+              e);
+        }
+
+        if (req.getSecurityLabel() == null || req.getSecurityLabel().isEmpty()) {
+          LOGGER.info(
+              "Successfully dropped table model security label for database: {}",
+              req.getDatabaseName());
+        } else {
+          LOGGER.info(
+              "Successfully set table model security label for database: {}, labels: {}",
+              req.getDatabaseName(),
+              req.getSecurityLabel());
+        }
+      } else {
+        LOGGER.error(
+            "Failed to alter table model database security label for: {}, error: {}",
+            req.getDatabaseName(),
+            result.getMessage());
+      }
+
+      return result;
+
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to alter table model database security label for: {}", req.getDatabaseName(), e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to alter table model database security label: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public TShowTableDatabaseSecurityLabelResp showTableDatabaseSecurityLabel(
+      TShowTableDatabaseSecurityLabelReq req) {
+    try {
+      TShowTableDatabaseSecurityLabelResp resp = new TShowTableDatabaseSecurityLabelResp();
+
+      // Handle null request case
+      if (req == null) {
+        LOGGER.warn("showTableDatabaseSecurityLabel called with null request");
+        resp.setSecurityLabel(new HashMap<>());
+        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        return resp;
+      }
+
+      // Get database name from request, handle null case
+      String databaseName = req.getDatabaseName();
+      LOGGER.debug("showTableDatabaseSecurityLabel called with databaseName: '{}'", databaseName);
+
+      // Get security label from ConfigManager
+      Map<String, String> securityLabelMap =
+          configManager.getClusterSchemaManager().getDatabaseSecurityLabel(databaseName);
+
+      // Apply model filtering for table model - only show databases that don't start
+      // with "root."
+      Map<String, String> filteredMap = new HashMap<>();
+
+      if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
+        for (Map.Entry<String, String> entry : securityLabelMap.entrySet()) {
+          String dbName = entry.getKey();
+          String label = entry.getValue();
+
+          // For table model, only show databases that don't start with "root."
+          if (!dbName.startsWith("root.")) {
+            filteredMap.put(dbName, label);
+            LOGGER.debug("Added table model database {} with label '{}'", dbName, label);
+          } else {
+            LOGGER.debug("Filtered out tree model database {} for table model", dbName);
+          }
+        }
+      } else {
+        // If securityLabelMap is empty but database exists, we should still include the
+        // database
+        // with empty label for table model databases
+        if (databaseName != null
+            && !databaseName.trim().isEmpty()
+            && !databaseName.startsWith("root.")) {
+          filteredMap.put(databaseName, "");
+          LOGGER.debug("Added table model database {} with empty label", databaseName);
+        }
+      }
+
+      resp.setSecurityLabel(filteredMap);
+      LOGGER.info(
+          "Successfully retrieved table model security label (filtered): {} databases, labels: {}",
+          filteredMap.size(),
+          filteredMap);
+
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      return resp;
+
+    } catch (DatabaseNotExistsException e) {
+      String databaseName = (req != null) ? req.getDatabaseName() : "null";
+      LOGGER.warn("Database does not exist: {}", databaseName);
+      TShowTableDatabaseSecurityLabelResp resp = new TShowTableDatabaseSecurityLabelResp();
+      resp.setStatus(
+          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+              .setMessage("Database does not exist: " + databaseName));
+      return resp;
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to show table model database security label for: {}", req.getDatabaseName(), e);
+      TShowTableDatabaseSecurityLabelResp resp = new TShowTableDatabaseSecurityLabelResp();
+      resp.setStatus(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage("Failed to show table model database security label: " + e.getMessage()));
+      return resp;
+    }
+  }
+
+  // =============================== Table Model User Label Policy
+  // ===============================
+
+  @Override
+  public TSStatus setTableUserLabelPolicy(TSetTableUserLabelPolicyReq req) {
+    try {
+      return configManager.getPermissionManager().setTableUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when set table user label policy", e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  @Override
+  public TShowTableUserLabelPolicyResp showTableUserLabelPolicy(TShowTableUserLabelPolicyReq req) {
+    try {
+      return configManager.getPermissionManager().showTableUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when show table user label policy", e);
+      TShowTableUserLabelPolicyResp resp = new TShowTableUserLabelPolicyResp();
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
+      return resp;
+    }
+  }
+
+  @Override
+  public TSStatus alterTableUserLabelPolicy(TAlterTableUserLabelPolicyReq req) {
+    try {
+      return configManager.getPermissionManager().alterTableUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when alter table user label policy", e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus dropTableUserLabelPolicy(TDropTableUserLabelPolicyReq req) {
+    try {
+      return configManager.getPermissionManager().dropTableUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when drop table user label policy", e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  // =============================== Tree Model User Label Policy
+  // ===============================
+
+  @Override
+  public TSStatus alterUserLabelPolicy(TAlterUserLabelPolicyReq req) {
+    try {
+      return configManager.getPermissionManager().alterUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when alter user label policy", e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  @Override
+  public TShowDatabaseSecurityLabelResp showDatabaseSecurityLabel(
+      TShowDatabaseSecurityLabelReq req) {
+    try {
+      TShowDatabaseSecurityLabelResp resp = new TShowDatabaseSecurityLabelResp();
+
+      String dbPath = req.getDatabaseName();
+
+      // If dbPath is null or empty, return all databases' security labels
+      if (dbPath == null || dbPath.trim().isEmpty()) {
+        // Use optimized method to get all database security labels
+        Map<String, String> allLabels =
+            configManager.getClusterSchemaManager().getAllDatabaseSecurityLabelsOptimized();
+
+        // Set all labels to response
+        resp.setSecurityLabel(allLabels);
+        LOGGER.info("Successfully retrieved all database security labels for tree model");
+      } else {
+        // Single database query - check if database exists first
+        if (!configManager.getClusterSchemaManager().isDatabaseExist(dbPath)) {
+          LOGGER.warn("Database does not exist: {}", dbPath);
+          resp.setStatus(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage("Database does not exist: " + dbPath));
+          return resp;
+        }
+
+        // Database exists, get security label
+        Map<String, String> securityLabel =
+            configManager.getClusterSchemaManager().getDatabaseSecurityLabel(dbPath);
+
+        resp.setSecurityLabel(securityLabel);
+        LOGGER.info("Successfully retrieved tree model security label for database: {}", dbPath);
+      }
+
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      return resp;
+
+    } catch (DatabaseNotExistsException e) {
+      String databaseName = (req != null) ? req.getDatabaseName() : "null";
+      LOGGER.warn("Database does not exist: {}", databaseName);
+      TShowDatabaseSecurityLabelResp resp = new TShowDatabaseSecurityLabelResp();
+      resp.setStatus(
+          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+              .setMessage("Database does not exist: " + databaseName));
+      return resp;
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to show tree model database security label for: {}", req.getDatabaseName(), e);
+      TShowDatabaseSecurityLabelResp resp = new TShowDatabaseSecurityLabelResp();
+      resp.setStatus(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage("Failed to show tree model database security label: " + e.getMessage()));
+      return resp;
+    }
   }
 }

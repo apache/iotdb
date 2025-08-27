@@ -72,6 +72,9 @@ public class DatabaseSchemaTask implements IConfigTask {
     if (databaseSchemaStatement.getDataRegionGroupNum() != null) {
       databaseSchema.setMinDataRegionGroupNum(databaseSchemaStatement.getDataRegionGroupNum());
     }
+    if (databaseSchemaStatement.getSecurityLabel() != null) {
+      databaseSchema.setSecurityLabel(databaseSchemaStatement.getSecurityLabel().getLabels());
+    }
     databaseSchema.setIsTableModel(false);
     return databaseSchema;
   }

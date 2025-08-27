@@ -40,6 +40,10 @@ public class User extends Role {
 
   private boolean isOpenIdUser = false; // default NO openIdUser
 
+  private String readLabelPolicyExpression;
+
+  private String writeLabelPolicyExpression;
+
   public User() {
     // empty constructor
   }
@@ -73,7 +77,23 @@ public class User extends Role {
     roleSet.add(roleName);
   }
 
+  public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
+    this.readLabelPolicyExpression = readLabelPolicyExpression;
+  }
+
+  public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
+    this.writeLabelPolicyExpression = writeLabelPolicyExpression;
+  }
+
   /** ------------ get func ----------------* */
+  public String getReadLabelPolicyExpression() {
+    return readLabelPolicyExpression;
+  }
+
+  public String getWriteLabelPolicyExpression() {
+    return writeLabelPolicyExpression;
+  }
+
   public String getPassword() {
     return password;
   }
@@ -96,6 +116,9 @@ public class User extends Role {
     resp.setPassword(password);
     resp.setIsOpenIdUser(isOpenIdUser);
     resp.setRoleSet(roleSet);
+    // Set new read/write label policy fields
+    resp.setReadLabelPolicyExpression(readLabelPolicyExpression);
+    resp.setWriteLabelPolicyExpression(writeLabelPolicyExpression);
     return resp;
   }
 
@@ -117,7 +140,9 @@ public class User extends Role {
     return super.equals((Role) user)
         && Objects.equals(roleSet, user.roleSet)
         && Objects.equals(password, user.password)
-        && Objects.equals(isOpenIdUser, user.isOpenIdUser);
+        && Objects.equals(isOpenIdUser, user.isOpenIdUser)
+        && Objects.equals(readLabelPolicyExpression, user.readLabelPolicyExpression)
+        && Objects.equals(writeLabelPolicyExpression, user.writeLabelPolicyExpression);
   }
 
   @Override
@@ -128,7 +153,9 @@ public class User extends Role {
         super.getPathPrivilegeList(),
         super.getSysPrivilege(),
         roleSet,
-        isOpenIdUser);
+        isOpenIdUser,
+        readLabelPolicyExpression,
+        writeLabelPolicyExpression);
   }
 
   @Override
@@ -138,6 +165,10 @@ public class User extends Role {
 
     SerializeUtils.serialize(super.getName(), dataOutputStream);
     SerializeUtils.serialize(password, dataOutputStream);
+
+    // Serialize the new fields
+    SerializeUtils.serialize(readLabelPolicyExpression, dataOutputStream);
+    SerializeUtils.serialize(writeLabelPolicyExpression, dataOutputStream);
 
     try {
       dataOutputStream.writeInt(super.getSysPrivilege().size());
@@ -164,6 +195,10 @@ public class User extends Role {
   public void deserialize(ByteBuffer buffer) {
     super.setName(SerializeUtils.deserializeString(buffer));
     password = SerializeUtils.deserializeString(buffer);
+    // Deserialize the new fields
+    readLabelPolicyExpression = SerializeUtils.deserializeString(buffer);
+    writeLabelPolicyExpression = SerializeUtils.deserializeString(buffer);
+
     int systemPriSize = buffer.getInt();
     Set<PrivilegeType> sysPri = new HashSet<>();
     for (int i = 0; i < systemPriSize; i++) {
@@ -211,6 +246,10 @@ public class User extends Role {
         + roleSet
         + ", isOpenIdUser="
         + isOpenIdUser
+        + ", readLabelPolicyExpression="
+        + readLabelPolicyExpression
+        + ", writeLabelPolicyExpression="
+        + writeLabelPolicyExpression
         + '}';
   }
 }
