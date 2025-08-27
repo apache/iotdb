@@ -51,7 +51,7 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
   @Override
   public synchronized void addMemoryUsage(long memoryInBytes) {
     if (memoryUsageInBytes.addAndGet(memoryInBytes) > totalMemorySizeInBytes) {
-      LOGGER.warn("{} has exceed total memory size", this);
+      LOGGER.debug("{} has exceed total memory size", this);
     }
 
     MetricService.getInstance()
