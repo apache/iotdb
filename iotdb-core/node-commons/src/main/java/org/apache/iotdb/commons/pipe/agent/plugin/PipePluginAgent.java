@@ -69,7 +69,7 @@ public abstract class PipePluginAgent {
   protected abstract PipeSinkConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  public final PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
+  public final PipeExtractor reflectSource(PipeParameters extractorParameters) {
     return pipeExtractorConstructor.reflectPlugin(extractorParameters);
   }
 
@@ -77,7 +77,7 @@ public abstract class PipePluginAgent {
     return pipeProcessorConstructor.reflectPlugin(processorParameters);
   }
 
-  public final PipeConnector reflectConnector(PipeParameters connectorParameters) {
+  public final PipeConnector reflectSink(PipeParameters connectorParameters) {
     return pipeSinkConstructor.reflectPlugin(connectorParameters);
   }
 
@@ -95,7 +95,7 @@ public abstract class PipePluginAgent {
   protected PipeExtractor validateExtractor(Map<String, String> extractorAttributes)
       throws Exception {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
-    final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
+    final PipeExtractor temporaryExtractor = reflectSource(extractorParameters);
     try {
       temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
     } finally {
@@ -127,7 +127,7 @@ public abstract class PipePluginAgent {
   protected PipeConnector validateConnector(
       String pipeName, Map<String, String> connectorAttributes) throws Exception {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
-    final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
+    final PipeConnector temporaryConnector = reflectSink(connectorParameters);
     try {
       temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
       temporaryConnector.customize(

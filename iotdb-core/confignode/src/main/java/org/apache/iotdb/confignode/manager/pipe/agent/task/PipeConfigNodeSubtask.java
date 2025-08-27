@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -65,9 +65,9 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   public PipeConfigNodeSubtask(
       final String pipeName,
       final long creationTime,
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final Map<String, String> processorAttributes,
-      final Map<String, String> connectorAttributes,
+      final Map<String, String> sinkAttributes,
       final PipeTaskMeta pipeTaskMeta)
       throws Exception {
     // We initialize outputPipeConnector by initConnector()
@@ -75,31 +75,31 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
 
-    initExtractor(extractorAttributes);
+    initSource(sourceAttributes);
     initProcessor(processorAttributes);
-    initConnector(connectorAttributes);
+    initSink(sinkAttributes);
 
     PipeConfigRegionSinkMetrics.getInstance().register(this);
     PipeEventCommitManager.getInstance()
         .register(pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeName + "_" + creationTime);
   }
 
-  private void initExtractor(final Map<String, String> extractorAttributes) throws Exception {
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+  private void initSource(final Map<String, String> sourceAttributes) throws Exception {
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
 
     // 1. Construct extractor
-    extractor = PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
+    extractor = PipeConfigNodeAgent.plugin().reflectSource(sourceParameters);
 
     try {
       // 2. Validate extractor parameters
-      extractor.validate(new PipeParameterValidator(extractorParameters));
+      extractor.validate(new PipeParameterValidator(sourceParameters));
 
       // 3. Customize extractor
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
+              new PipeTaskSourceRuntimeEnvironment(
                   pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
-      extractor.customize(extractorParameters, runtimeConfiguration);
+      extractor.customize(sourceParameters, runtimeConfiguration);
     } catch (final Exception e) {
       try {
         extractor.close();
@@ -131,21 +131,21 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
                 runtimeConfiguration);
   }
 
-  private void initConnector(final Map<String, String> connectorAttributes) throws Exception {
-    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+  private void initSink(final Map<String, String> sinkAttributes) throws Exception {
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
 
     // 1. Construct connector
-    outputPipeConnector = PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
+    outputPipeConnector = PipeConfigNodeAgent.plugin().reflectSink(sinkParameters);
 
     try {
       // 2. Validate connector parameters
-      outputPipeConnector.validate(new PipeParameterValidator(connectorParameters));
+      outputPipeConnector.validate(new PipeParameterValidator(sinkParameters));
 
       // 3. Customize connector
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
-      outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
+      outputPipeConnector.customize(sinkParameters, runtimeConfiguration);
 
       // 4. Handshake
       outputPipeConnector.handshake();

@@ -599,9 +599,7 @@ public abstract class AbstractOperatePipeProcedureV2
 
               try {
                 return !DataRegionListeningFilter.shouldDatabaseBeListened(
-                    copiedPipeMeta.getStaticMeta().getExtractorParameters(),
-                    isTableModel,
-                    database);
+                    copiedPipeMeta.getStaticMeta().getSourceParameters(), isTableModel, database);
               } catch (final Exception e) {
                 return false;
               }

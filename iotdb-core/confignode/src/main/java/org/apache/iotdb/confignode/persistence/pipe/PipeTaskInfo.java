@@ -214,9 +214,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
         new PipeStaticMeta(
             pipeStaticMetaFromCoordinator.getPipeName(),
             pipeStaticMetaFromCoordinator.getCreationTime(),
-            new HashMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute()),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getSourceParameters().getAttribute()),
             new HashMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute()),
-            new HashMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute()));
+            new HashMap<>(pipeStaticMetaFromCoordinator.getSinkParameters().getAttribute()));
 
     // 1. In modify mode, based on the passed attributes:
     //   1.1. if they are empty, the original attributes are filled directly.
@@ -225,11 +225,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!alterPipeRequest.isReplaceAllExtractorAttributes) { // modify mode
       if (alterPipeRequest.getExtractorAttributes().isEmpty()) {
         alterPipeRequest.setExtractorAttributes(
-            copiedPipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute());
+            copiedPipeStaticMetaFromCoordinator.getSourceParameters().getAttribute());
       } else {
         alterPipeRequest.setExtractorAttributes(
             copiedPipeStaticMetaFromCoordinator
-                .getExtractorParameters()
+                .getSourceParameters()
                 .addOrReplaceEquivalentAttributes(
                     new PipeParameters(alterPipeRequest.getExtractorAttributes()))
                 .getAttribute());
@@ -253,11 +253,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
       if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
         alterPipeRequest.setConnectorAttributes(
-            copiedPipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
+            copiedPipeStaticMetaFromCoordinator.getSinkParameters().getAttribute());
       } else {
         alterPipeRequest.setConnectorAttributes(
             copiedPipeStaticMetaFromCoordinator
-                .getConnectorParameters()
+                .getSinkParameters()
                 .addOrReplaceEquivalentAttributes(
                     new PipeParameters(alterPipeRequest.getConnectorAttributes()))
                 .getAttribute());
@@ -396,7 +396,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void validatePipePluginUsageByPipeInternal(String pluginName) {
     Iterable<PipeMeta> pipeMetas = getPipeMetaList();
     for (PipeMeta pipeMeta : pipeMetas) {
-      PipeParameters extractorParameters = pipeMeta.getStaticMeta().getExtractorParameters();
+      PipeParameters extractorParameters = pipeMeta.getStaticMeta().getSourceParameters();
       final String extractorPluginName =
           extractorParameters.getStringOrDefault(
               Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
@@ -420,7 +420,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         throw new PipeException(exceptionMessage);
       }
 
-      PipeParameters connectorParameters = pipeMeta.getStaticMeta().getConnectorParameters();
+      PipeParameters connectorParameters = pipeMeta.getStaticMeta().getSinkParameters();
       final String connectorPluginName =
           connectorParameters.getStringOrDefault(
               Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
