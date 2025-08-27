@@ -50,6 +50,7 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
 
   @Override
   public synchronized void addMemoryUsage(long memoryInBytes) {
+    // May temporarily exceed the max size
     if (memoryUsageInBytes.addAndGet(memoryInBytes) > totalMemorySizeInBytes) {
       LOGGER.debug("{} has exceed total memory size", this);
     }
