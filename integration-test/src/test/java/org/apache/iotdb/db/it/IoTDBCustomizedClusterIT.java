@@ -27,6 +27,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 
 import org.junit.Test;
@@ -41,6 +42,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -267,5 +269,23 @@ public class IoTDBCustomizedClusterIT {
     } finally {
       simpleEnv.cleanClusterEnvironment();
     }
+  }
+
+  @Test
+  public void testStartWithWrongConfig() throws InterruptedException {
+    SimpleEnv simpleEnv = new SimpleEnv();
+    simpleEnv
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensusV1");
+    try {
+      simpleEnv.initClusterEnvironment(1, 1);
+    } catch (AssertionError e) {
+      // ignore
+    }
+    simpleEnv.getDataNodeWrapper(0).getInstance().waitFor(20, TimeUnit.SECONDS);
+    assertEquals(
+        TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(),
+        simpleEnv.getDataNodeWrapper(0).getInstance().exitValue());
   }
 }
