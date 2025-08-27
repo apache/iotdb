@@ -104,12 +104,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    setProperty("encrypt_key_path", encryptKeyPath);
-    return this;
-  }
-
-  @Override
   public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
     setProperty("enable_grant_option", String.valueOf(enableGrantOption));
     return this;

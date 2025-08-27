@@ -127,7 +127,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
                   new PipeExternalSourceLoadBalancer(
                       pipeMeta
                           .getStaticMeta()
-                          .getExtractorParameters()
+                          .getSourceParameters()
                           .getStringOrDefault(
                               Arrays.asList(
                                   PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
@@ -136,7 +136,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
               final int parallelism =
                   pipeMeta
                       .getStaticMeta()
-                      .getExtractorParameters()
+                      .getSourceParameters()
                       .getIntOrDefault(
                           Arrays.asList(
                               EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),

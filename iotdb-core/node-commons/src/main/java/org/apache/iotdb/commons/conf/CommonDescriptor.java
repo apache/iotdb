@@ -90,6 +90,8 @@ public class CommonDescriptor {
             "iotdb_server_encrypt_decrypt_provider_parameter",
             config.getEncryptDecryptProviderParameter()));
 
+    config.setUserEncryptTokenHint(System.getenv("user_encrypt_token_hint"));
+
     config.setEnableGrantOption(
         Boolean.parseBoolean(
             properties.getProperty("enable_grant_option", String.valueOf("true"))));

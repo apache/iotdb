@@ -276,7 +276,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       final PipeExternalSourceLoadBalancer loadBalancer =
           new PipeExternalSourceLoadBalancer(
               pipeStaticMeta
-                  .getExtractorParameters()
+                  .getSourceParameters()
                   .getStringOrDefault(
                       Arrays.asList(
                           PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
@@ -284,7 +284,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                       PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
       final int parallelism =
           pipeStaticMeta
-              .getExtractorParameters()
+              .getSourceParameters()
               .getIntOrDefault(
                   Arrays.asList(
                       EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),
