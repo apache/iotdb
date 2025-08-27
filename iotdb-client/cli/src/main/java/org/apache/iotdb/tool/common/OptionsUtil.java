@@ -130,13 +130,7 @@ public class OptionsUtil extends Constants {
     Options options = createImportCommonOptions();
 
     Option opDatabase =
-        Option.builder(DB_ARGS)
-            .longOpt(DB_NAME)
-            .argName(DB_ARGS)
-            .hasArg()
-            .required()
-            .desc(DB_DESC)
-            .build();
+        Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
     options.addOption(opDatabase);
 
     return options;
