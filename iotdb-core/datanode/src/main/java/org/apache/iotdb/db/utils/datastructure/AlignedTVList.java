@@ -528,8 +528,16 @@ public abstract class AlignedTVList extends TVList {
     return columnBitMaps.get(arrayIndex).isMarked(elementIndex);
   }
 
+  public List<List<Object>> getValues() {
+    return values;
+  }
+
   public List<TSDataType> getTsDataTypes() {
     return dataTypes;
+  }
+
+  public List<int[]> getIndices() {
+    return indices;
   }
 
   @Override
@@ -983,7 +991,9 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public long calculateRamSize() {
-    return timestamps.size() * alignedTvListArrayMemCost();
+    //    return timestamps.size() * alignedTvListArrayMemCost();
+    // FIXME:(Haonan)
+    return 0;
   }
 
   /**
@@ -1030,11 +1040,13 @@ public abstract class AlignedTVList extends TVList {
     for (int column = 0; column < dataTypes.size(); column++) {
       TSDataType type = dataTypes.get(column);
       if (type != null) {
-        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
         if (bitMaps != null && bitMaps.get(column) != null) {
           size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
         }
       }
+    }
+    for (TSDataType type : insertingTypes) {
+      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
     }
     // size is 0 when all types are null
     if (size == 0) {
@@ -1045,7 +1057,7 @@ public abstract class AlignedTVList extends TVList {
     // index array mem size
     size += (indices != null) ? PrimitiveArrayManager.ARRAY_SIZE * 4L : 0;
     // array headers mem size
-    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + dataTypes.size());
+    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + insertingTypes.size());
     // Object references size in ArrayList
     size += (long) NUM_BYTES_OBJECT_REF * (2 + dataTypes.size());
     return size;

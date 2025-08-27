@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -55,6 +56,8 @@ import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
@@ -859,5 +862,63 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           Math.max(avgPointSizeOfLargestColumn, alignedTVList.getAvgPointSizeOfLargestColumn());
     }
     return avgPointSizeOfLargestColumn;
+  }
+
+  public long getTvListArrayMemCostIncrement1(
+      List<String> insertingMeasurements, List<TSDataType> insertingTypes) {
+    long size = 0;
+    List<BitMap> bitMaps = list.getBitMap();
+    // value & bitmap array mem size
+    for (int column = 0; column < dataTypes.size(); column++) {
+      TSDataType type = dataTypes.get(column);
+      if (type != null) {
+        if (bitMaps != null && bitMaps.get(column) != null) {
+          size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
+        }
+      }
+    }
+    int newMeasurementCount = 0;
+    for (int i = 0; i < insertingMeasurements.size(); i++) {
+      String measurementName = insertingMeasurements.get(i);
+      TSDataType type = insertingTypes.get(i);
+      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+      if (!measurementIndexMap.containsKey(measurementName)) {
+        newMeasurementCount++;
+      }
+    }
+    // size is 0 when all types are null
+    if (size == 0) {
+      return size;
+    }
+    // time array mem size
+    size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    // index array mem size
+    size += (list.getIndices() != null) ? PrimitiveArrayManager.ARRAY_SIZE * 4L : 0;
+    // array headers mem size
+    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + insertingTypes.size());
+    // Object references size in ArrayList
+    size += (long) NUM_BYTES_OBJECT_REF * (2 + dataTypes.size() + newMeasurementCount);
+    return size;
+  }
+
+  public long getTvListArrayMemCostIncrement(
+      List<String> insertingMeasurements, List<TSDataType> insertingTypes) {
+    long memCostIncrement = 0;
+    for (int i = 0; i < insertingMeasurements.size(); i++) {
+      String measurementName = insertingMeasurements.get(i);
+      TSDataType dataType = insertingTypes.get(i);
+      Integer columIndex = measurementIndexMap.get(measurementName);
+      if (columIndex == null) {
+        memCostIncrement +=
+            (long) PrimitiveArrayManager.ARRAY_SIZE * (long) dataType.getDataTypeSize();
+      } else {
+        List<Object> columnArries = list.getValues().get(columIndex);
+        if (columnArries.get(columnArries.size() - 1) == null) {
+          memCostIncrement +=
+              (long) PrimitiveArrayManager.ARRAY_SIZE * (long) dataType.getDataTypeSize();
+        }
+      }
+    }
+    return memCostIncrement;
   }
 }

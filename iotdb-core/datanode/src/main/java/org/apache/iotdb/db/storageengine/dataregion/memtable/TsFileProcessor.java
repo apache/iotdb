@@ -792,9 +792,9 @@ public class TsFileProcessor {
         }
       }
       // this insertion will result in a new array
-      if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-        memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
-      }
+      //      if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
+      //        memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
+      //      }
     }
 
     for (int i = 0; i < dataTypes.length; i++) {
@@ -874,8 +874,7 @@ public class TsFileProcessor {
                             > 0
                         ? 1
                         : 0);
-            memTableIncrement +=
-                currentArrayNum * AlignedTVList.emptyValueListArrayMemCost();
+            memTableIncrement += currentArrayNum * AlignedTVList.emptyValueListArrayMemCost();
           }
         }
         int addingPointNum = addingPointNumInfo.right;
@@ -885,11 +884,11 @@ public class TsFileProcessor {
             dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
           }
           dataTypesInTVList.addAll(addingPointNumInfo.left.values());
-          memTableIncrement +=
-              alignedMemChunk != null
-                  ? alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost()
-                  : AlignedTVList.alignedTvListArrayMemCost(
-                      dataTypesInTVList.toArray(new TSDataType[0]), null);
+          //          memTableIncrement +=
+          //              alignedMemChunk != null
+          //                  ? alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost()
+          //                  : AlignedTVList.alignedTvListArrayMemCost(
+          //                      dataTypesInTVList.toArray(new TSDataType[0]), null);
         }
         addingPointNumInfo.setRight(addingPointNum + 1);
       }
@@ -1066,6 +1065,7 @@ public class TsFileProcessor {
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
       int currentPointNum = alignedMemChunk.alignedListSize();
       int newPointNum = currentPointNum + incomingPointNum;
+      List<String> insertingMeasurements = new ArrayList<>();
       List<TSDataType> insertingTypes = new ArrayList<>();
       for (int i = 0; i < dataTypes.length; i++) {
         TSDataType dataType = dataTypes[i];
@@ -1077,6 +1077,7 @@ public class TsFileProcessor {
             || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
+        insertingMeasurements.add(measurement);
         insertingTypes.add(dataType);
 
         if (!alignedMemChunk.containsMeasurement(measurementIds[i])) {
@@ -1098,9 +1099,13 @@ public class TsFileProcessor {
 
       if (acquireArray != 0) {
         // memory of extending the TVList
-        memIncrements[0] += acquireArray * alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost(insertingTypes);
+        memIncrements[0] +=
+            acquireArray
+                * alignedMemChunk.getTvListArrayMemCostIncrement1(
+                    insertingMeasurements, insertingTypes);
       } else {
-
+        memIncrements[0] +=
+            alignedMemChunk.getTvListArrayMemCostIncrement(insertingMeasurements, insertingTypes);
       }
     }
 
