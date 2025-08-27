@@ -77,7 +77,7 @@ public class PipeTableResp implements DataSet {
           allPipeMeta.stream()
               .filter(pipeMeta -> pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
               .findFirst()
-              .map(pipeMeta -> pipeMeta.getStaticMeta().getConnectorParameters().toString())
+              .map(pipeMeta -> pipeMeta.getStaticMeta().getSinkParameters().toString())
               .orElse(null);
 
       return new PipeTableResp(
@@ -87,7 +87,7 @@ public class PipeTableResp implements DataSet {
                   pipeMeta ->
                       pipeMeta
                           .getStaticMeta()
-                          .getConnectorParameters()
+                          .getSinkParameters()
                           .toString()
                           .equals(sortedConnectorParametersString))
               .collect(Collectors.toList()));
@@ -177,10 +177,9 @@ public class PipeTableResp implements DataSet {
               staticMeta.getPipeName(),
               staticMeta.getCreationTime(),
               runtimeMeta.getStatus().get().name(),
-              SystemConstant.addSystemKeysIfNecessary(staticMeta.getExtractorParameters())
-                  .toString(),
+              SystemConstant.addSystemKeysIfNecessary(staticMeta.getSourceParameters()).toString(),
               staticMeta.getProcessorParameters().toString(),
-              staticMeta.getConnectorParameters().toString(),
+              staticMeta.getSinkParameters().toString(),
               exceptionMessageBuilder.toString());
       final PipeTemporaryMetaInCoordinator temporaryMeta =
           (PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta();
@@ -206,7 +205,7 @@ public class PipeTableResp implements DataSet {
                   .getRegisteredDataNodeCount()
               == 1
           && ConfigRegionListeningFilter.parseListeningPlanTypeSet(
-                  pipeMeta.getStaticMeta().getExtractorParameters())
+                  pipeMeta.getStaticMeta().getSourceParameters())
               .isEmpty();
     } catch (final IllegalPathException e) {
       return false;

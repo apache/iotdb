@@ -2104,7 +2104,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 .containsKey(PipeSourceConstant.SOURCE_KEY)
             || alterPipeStatement.isReplaceAllExtractorAttributes()) {
           checkIfSourcePluginChanged(
-              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+              pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
               new PipeParameters(alterPipeStatement.getExtractorAttributes()));
         }
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
@@ -2114,18 +2114,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               onlyContainsUser(alterPipeStatement.getExtractorAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
-              .getExtractorParameters()
+              .getSourceParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
           extractorAttributes =
-              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
+              pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
           if (onlyContainsUser) {
             checkSourceType(alterPipeStatement.getPipeName(), extractorAttributes);
           }
         }
       } else {
         extractorAttributes =
-            pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
+            pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
       }
 
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
@@ -2153,18 +2153,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               onlyContainsUser(alterPipeStatement.getConnectorAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
-              .getConnectorParameters()
+              .getSinkParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
           connectorAttributes =
-              pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
+              pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
           if (onlyContainsUser) {
             checkSinkType(alterPipeStatement.getPipeName(), connectorAttributes);
           }
         }
       } else {
         connectorAttributes =
-            pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
+            pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
       }
 
       PipeDataNodeAgent.plugin()

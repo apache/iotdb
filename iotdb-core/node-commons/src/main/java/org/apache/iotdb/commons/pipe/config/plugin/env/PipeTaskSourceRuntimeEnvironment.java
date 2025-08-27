@@ -21,12 +21,15 @@ package org.apache.iotdb.commons.pipe.config.plugin.env;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 
-public class PipeTaskExtractorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
+public class PipeTaskSourceRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
   private final PipeTaskMeta pipeTaskMeta;
 
-  public PipeTaskExtractorRuntimeEnvironment(
-      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
+  public PipeTaskSourceRuntimeEnvironment(
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final PipeTaskMeta pipeTaskMeta) {
     super(pipeName, creationTime, regionId);
     this.pipeTaskMeta = pipeTaskMeta;
   }

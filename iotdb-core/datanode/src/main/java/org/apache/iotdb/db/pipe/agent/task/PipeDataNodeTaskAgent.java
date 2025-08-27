@@ -171,7 +171,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final PipeTaskMeta pipeTaskMeta)
       throws IllegalPathException {
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
-      final PipeParameters sourceParameters = pipeStaticMeta.getExtractorParameters();
+      final PipeParameters sourceParameters = pipeStaticMeta.getSourceParameters();
       final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
       final boolean needConstructDataRegionTask =
           StorageEngine.getInstance().getAllDataRegionIds().contains(dataRegionId)
@@ -240,7 +240,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // Check each pipe
     for (final PipeMeta pipeMetaFromCoordinator : pipeMetaListFromCoordinator) {
       if (SchemaRegionListeningFilter.parseListeningPlanTypeSet(
-              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters())
+              pipeMetaFromCoordinator.getStaticMeta().getSourceParameters())
           .isEmpty()) {
         continue;
       }
@@ -359,14 +359,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       // subscribed pipe, so the subscription needs to be manually marked as completed.
       if (!hasPipeTasks && PipeStaticMeta.isSubscriptionPipe(pipeName)) {
         final String topicName =
-            pipeMeta
-                .getStaticMeta()
-                .getConnectorParameters()
-                .getString(PipeSinkConstant.SINK_TOPIC_KEY);
+            pipeMeta.getStaticMeta().getSinkParameters().getString(PipeSinkConstant.SINK_TOPIC_KEY);
         final String consumerGroupId =
             pipeMeta
                 .getStaticMeta()
-                .getConnectorParameters()
+                .getSinkParameters()
                 .getString(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY);
         SubscriptionAgent.broker().updateCompletedTopicNames(consumerGroupId, topicName);
       }
@@ -430,14 +427,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         final String sourceModeValue =
             pipeMeta
                 .getStaticMeta()
-                .getExtractorParameters()
+                .getSourceParameters()
                 .getStringOrDefault(
                     Arrays.asList(
                         PipeSourceConstant.EXTRACTOR_MODE_KEY, PipeSourceConstant.SOURCE_MODE_KEY),
                     PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
-                        pipeMeta.getStaticMeta().getExtractorParameters())
+                        pipeMeta.getStaticMeta().getSourceParameters())
                     .getLeft()
                 && (sourceModeValue.equalsIgnoreCase(PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE)
                     || sourceModeValue.equalsIgnoreCase(
@@ -512,9 +509,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
-                        pipeMeta.getStaticMeta().getExtractorParameters())
+                        pipeMeta.getStaticMeta().getSourceParameters())
                     .getLeft()
-                && isSnapshotMode(pipeMeta.getStaticMeta().getExtractorParameters());
+                && isSnapshotMode(pipeMeta.getStaticMeta().getSourceParameters());
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =

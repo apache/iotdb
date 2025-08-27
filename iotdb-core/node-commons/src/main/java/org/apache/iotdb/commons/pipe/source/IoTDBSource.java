@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.source;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -149,8 +149,8 @@ public abstract class IoTDBSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskExtractorRuntimeEnvironment environment =
-        ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment());
+    final PipeTaskSourceRuntimeEnvironment environment =
+        ((PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment());
     regionId = environment.getRegionId();
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();

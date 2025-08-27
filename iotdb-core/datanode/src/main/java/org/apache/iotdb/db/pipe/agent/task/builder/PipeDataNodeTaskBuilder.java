@@ -85,9 +85,9 @@ public class PipeDataNodeTaskBuilder {
 
     // Analyzes the PipeParameters to identify potential conflicts.
     final PipeParameters extractorParameters =
-        blendUserAndSystemParameters(pipeStaticMeta.getExtractorParameters());
+        blendUserAndSystemParameters(pipeStaticMeta.getSourceParameters());
     final PipeParameters connectorParameters =
-        blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters());
+        blendUserAndSystemParameters(pipeStaticMeta.getSinkParameters());
     checkConflict(extractorParameters, connectorParameters);
     injectParameters(extractorParameters, connectorParameters);
 
@@ -135,7 +135,7 @@ public class PipeDataNodeTaskBuilder {
             PROCESSOR_EXECUTOR,
             pipeTaskMeta,
             pipeStaticMeta
-                .getConnectorParameters()
+                .getSinkParameters()
                 .getStringOrDefault(
                     Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
                     CONNECTOR_FORMAT_HYBRID_VALUE)

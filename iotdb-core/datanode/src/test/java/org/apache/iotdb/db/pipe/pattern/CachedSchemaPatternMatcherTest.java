@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -103,7 +103,7 @@ public class CachedSchemaPatternMatcherTest {
                 put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, "root");
               }
             }),
-        new PipeTaskRuntimeConfiguration(new PipeTaskExtractorRuntimeEnvironment("1", 1, 1, null)));
+        new PipeTaskRuntimeConfiguration(new PipeTaskSourceRuntimeEnvironment("1", 1, 1, null)));
     extractors.add(dataRegionExtractor);
 
     final int deviceExtractorNum = 10;
@@ -118,8 +118,7 @@ public class CachedSchemaPatternMatcherTest {
                   put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, "root.db" + finalI1);
                 }
               }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment("1", 1, 1, null)));
+          new PipeTaskRuntimeConfiguration(new PipeTaskSourceRuntimeEnvironment("1", 1, 1, null)));
       extractors.add(deviceExtractor);
       for (int j = 0; j < seriesExtractorNum; j++) {
         final PipeRealtimeDataRegionSource seriesExtractor = new PipeRealtimeDataRegionFakeSource();
@@ -135,7 +134,7 @@ public class CachedSchemaPatternMatcherTest {
                   }
                 }),
             new PipeTaskRuntimeConfiguration(
-                new PipeTaskExtractorRuntimeEnvironment("1", 1, 1, null)));
+                new PipeTaskSourceRuntimeEnvironment("1", 1, 1, null)));
         extractors.add(seriesExtractor);
       }
     }

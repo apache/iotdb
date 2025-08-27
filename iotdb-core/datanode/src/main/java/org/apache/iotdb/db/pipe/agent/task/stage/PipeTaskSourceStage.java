@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -51,8 +51,8 @@ public class PipeTaskSourceStage extends PipeTaskStage {
     pipeExtractor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
                 || PipeRuntimeMeta.isSourceExternal(regionId)
-            ? PipeDataNodeAgent.plugin().dataRegion().reflectExtractor(extractorParameters)
-            : PipeDataNodeAgent.plugin().schemaRegion().reflectExtractor(extractorParameters);
+            ? PipeDataNodeAgent.plugin().dataRegion().reflectSource(extractorParameters)
+            : PipeDataNodeAgent.plugin().schemaRegion().reflectSource(extractorParameters);
 
     // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
@@ -63,8 +63,7 @@ public class PipeTaskSourceStage extends PipeTaskStage {
       // 2. Customize extractor
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
-                  pipeName, creationTime, regionId, pipeTaskMeta));
+              new PipeTaskSourceRuntimeEnvironment(pipeName, creationTime, regionId, pipeTaskMeta));
       pipeExtractor.customize(extractorParameters, runtimeConfiguration);
     } catch (Exception e) {
       try {

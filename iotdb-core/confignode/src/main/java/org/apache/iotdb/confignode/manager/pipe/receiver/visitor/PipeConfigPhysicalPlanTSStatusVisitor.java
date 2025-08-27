@@ -566,6 +566,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   private TSStatus visitCommonTablePlan(final ConfigPhysicalPlan plan, final TSStatus context) {
     if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
+        || context.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
         || context.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
         || context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
         || context.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()) {

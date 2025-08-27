@@ -102,7 +102,7 @@ public class SubscriptionSinkSubtaskManager {
               : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
       final PipeConnector pipeConnector =
-          PipeDataNodeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters);
+          PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeConnectorParameters);
       // 1. Construct, validate and customize PipeConnector, and then handshake (create connection)
       // with the target
       try {
