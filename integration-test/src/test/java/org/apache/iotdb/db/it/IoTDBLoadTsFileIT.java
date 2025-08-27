@@ -286,7 +286,7 @@ public class IoTDBLoadTsFileIT {
               SchemaConfig.MEASUREMENT_16,
               SchemaConfig.MEASUREMENT_17));
       for (int i = 0; i < 1000; i++) {
-        generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL - 10, true);
+        generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL - 10, false);
       }
       for (int i = 0; i < 1000; i++) {
         generator.generateData(SchemaConfig.DEVICE_1, 1, PARTITION_INTERVAL - 10, true);
@@ -305,10 +305,10 @@ public class IoTDBLoadTsFileIT {
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
       for (int i = 0; i < 1000; i++) {
-        generator.generateData(SchemaConfig.DEVICE_2, 1, PARTITION_INTERVAL - 10, true);
+        generator.generateData(SchemaConfig.DEVICE_2, 1, PARTITION_INTERVAL - 10, false);
       }
       for (int i = 0; i < 1000; i++) {
-        generator.generateData(SchemaConfig.DEVICE_3, 1, PARTITION_INTERVAL - 10, true);
+        generator.generateData(SchemaConfig.DEVICE_3, 1, PARTITION_INTERVAL - 10, false);
       }
       for (int i = 0; i < 1000; i++) {
         generator.generateData(SchemaConfig.DEVICE_4, 1, PARTITION_INTERVAL - 10, true);
