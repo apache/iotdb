@@ -24,16 +24,34 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
 public class SchemaUtils {
+
+  private static final Set<Pair<TSDataType, TSDataType>> SAME_TYPE_PAIRS;
+
+  static {
+    SAME_TYPE_PAIRS = new HashSet<>();
+
+    // INT相关的配对
+    addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.DATE, TSDataType.INT32);
+
+    // LONG相关的配对
+    addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.TIMESTAMP, TSDataType.INT64);
+
+    // TEXT相关的配对
+    addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.STRING, TSDataType.BLOB, TSDataType.TEXT);
+  }
 
   private SchemaUtils() {}
 
@@ -255,5 +273,22 @@ public class SchemaUtils {
         throw new IllegalArgumentException(
             String.format("Invalid Aggregation function: %s", aggregationType));
     }
+  }
+
+  private static void addSymmetricPairs(
+      Set<Pair<TSDataType, TSDataType>> set, TSDataType... dataTypes) {
+    for (int i = 0; i < dataTypes.length; i++) {
+      for (int j = i + 1; j < dataTypes.length; j++) {
+        set.add(Pair.of(dataTypes[i], dataTypes[j]));
+        set.add(Pair.of(dataTypes[j], dataTypes[i]));
+      }
+    }
+  }
+
+  public static boolean isUsingSameColumn(TSDataType originalDataType, TSDataType dataType) {
+    if (originalDataType == dataType) {
+      return true;
+    }
+    return SAME_TYPE_PAIRS.contains(Pair.of(originalDataType, dataType));
   }
 }
