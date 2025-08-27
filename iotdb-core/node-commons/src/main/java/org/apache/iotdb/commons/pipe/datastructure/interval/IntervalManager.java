@@ -19,33 +19,38 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.interval;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import java.util.TreeSet;
 
+@NotThreadSafe
 public class IntervalManager<T extends Interval<T>> {
   private final TreeSet<T> intervals = new TreeSet<>();
 
   // insert into new interval and merge
   public void addInterval(final T newInterval) {
     // Left closest
-    final T left = intervals.floor(newInterval);
+    T left = intervals.floor(newInterval);
 
     // Right closest
-    final T right = intervals.ceiling(newInterval);
+    T right = intervals.ceiling(newInterval);
 
     // Merge left ([0,1] + [2,3] → [0,3])
-    if (left != null && left.end >= newInterval.start - 1) {
+    while (left != null && left.end >= newInterval.start - 1) {
       newInterval.start = Math.min(left.start, newInterval.start);
       newInterval.end = Math.max(left.end, newInterval.end);
       newInterval.onMerged(left);
       intervals.remove(left);
+      left = intervals.floor(newInterval);
     }
 
     // Merge right ([2,3] + [3,4] → [2,4])
-    if (right != null && newInterval.end >= right.start - 1) {
+    while (right != null && newInterval.end >= right.start - 1) {
       newInterval.start = Math.min(newInterval.start, right.start);
       newInterval.end = Math.max(newInterval.end, right.end);
       newInterval.onMerged(right);
       intervals.remove(right);
+      right = intervals.ceiling(newInterval);
     }
 
     intervals.add(newInterval);
