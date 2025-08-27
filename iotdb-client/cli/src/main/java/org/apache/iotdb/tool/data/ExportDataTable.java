@@ -58,6 +58,8 @@ public class ExportDataTable extends AbstractExportData {
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static ITableSession tableSession;
   private static List<String> tables = new ArrayList<>();
+  private static long processedRows;
+  private static long lastPrintTime;
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException {
@@ -67,6 +69,7 @@ public class ExportDataTable extends AbstractExportData {
             .username(username)
             .password(password)
             .database(database)
+            .thriftMaxFrameSize(rpcMaxFrameSize)
             .build();
     SessionDataSet sessionDataSet = tableSession.executeQueryStatement("show databases", timeout);
     List<String> databases = new ArrayList<>();
@@ -153,40 +156,50 @@ public class ExportDataTable extends AbstractExportData {
 
   private void exportToSqlFile(SessionDataSet sessionDataSet, String table, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
+    processedRows = 0;
+    lastPrintTime = 0;
     StringBuilder sqlBuilder;
     List<String> headers = sessionDataSet.getColumnNames();
     String prevSql = "insert into " + table + "(" + StringUtils.join(headers, ",") + ") values(";
-    final List<String> columnTypes = sessionDataSet.getColumnTypes();
-    boolean hasNext = sessionDataSet.hasNext();
+    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+    List<String> columnTypeList = iterator.getColumnTypeList();
+    int totalColumns = columnTypeList.size();
     int fileIndex = 0;
-    while (hasNext) {
+    boolean fromOuterLoop = false;
+    while (iterator.next()) {
       final String finalFilePath = filePath + "_" + fileIndex + ".sql";
       int countLine = 0;
+      fromOuterLoop = true;
       try (FileWriter writer = new FileWriter(finalFilePath)) {
-        while (countLine++ < linesPerFile && hasNext) {
-          RowRecord rowRecord = sessionDataSet.next();
+        while (countLine++ < linesPerFile && (fromOuterLoop || iterator.next())) {
+          fromOuterLoop = false;
           sqlBuilder = new StringBuilder();
-          List<Field> fields = rowRecord.getFields();
           sqlBuilder.append(prevSql);
-          for (int i = 0; i < fields.size(); i++) {
-            if (i > 0) {
+          for (int curColumnIndex = 0; curColumnIndex < totalColumns; curColumnIndex++) {
+            if (curColumnIndex > 0) {
               sqlBuilder.append(",");
             }
-            final TSDataType type = getType(columnTypes.get(i));
-            if (TSDataType.TEXT.equals(type) || TSDataType.STRING.equals(type)) {
-              sqlBuilder.append("\'").append(fields.get(i).getObjectValue(type)).append("\'");
+            String columnType = columnTypeList.get(curColumnIndex);
+            String columnValue = iterator.getString(curColumnIndex + 1);
+            if (columnType.equals("TEXT") || columnType.equals("STRING")) {
+              sqlBuilder.append("'").append(columnValue).append("'");
             } else {
-              sqlBuilder.append(fields.get(i).getObjectValue(type));
+              sqlBuilder.append(columnValue);
             }
           }
           sqlBuilder.append(");\n");
           writer.write(sqlBuilder.toString());
-          hasNext = sessionDataSet.hasNext();
+          processedRows += 1;
+          if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+            ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
+            lastPrintTime = System.currentTimeMillis();
+          }
         }
         writer.flush();
         fileIndex++;
       }
     }
+    ioTPrinter.print("\n");
   }
 
   private Boolean exportToTsFile(SessionDataSet sessionDataSet, String filePath, String table)
@@ -194,6 +207,8 @@ public class ExportDataTable extends AbstractExportData {
           IoTDBConnectionException,
           StatementExecutionException,
           WriteProcessException {
+    processedRows = 0;
+    lastPrintTime = 0;
     List<String> columnNamesRaw = sessionDataSet.getColumnNames();
     List<TSDataType> columnTypesRaw =
         sessionDataSet.getColumnTypes().stream().map(t -> getType(t)).collect(Collectors.toList());
@@ -233,44 +248,54 @@ public class ExportDataTable extends AbstractExportData {
 
   private void exportToCsvFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
+    processedRows = 0;
+    lastPrintTime = 0;
     List<String> headers = sessionDataSet.getColumnNames();
     int fileIndex = 0;
-    boolean hasNext = sessionDataSet.hasNext();
-    while (hasNext) {
+    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+    List<String> columnTypeList = iterator.getColumnTypeList();
+    int totalColumns = columnTypeList.size();
+    boolean fromOuterloop = false;
+    while (iterator.next()) {
       final String finalFilePath = filePath + "_" + fileIndex + ".csv";
       final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
-      csvPrinterWrapper.printRecord(headers);
-      int i = 0;
-      while (i++ < linesPerFile) {
-        RowRecord rowRecord = sessionDataSet.next();
-        rowRecord
-            .getFields()
-            .forEach(
-                field -> {
-                  String fieldStringValue = field.getStringValue();
-                  if (!"null".equals(field.getStringValue())) {
-                    if ((field.getDataType() == TSDataType.TEXT
-                        || field.getDataType() == TSDataType.STRING)) {
-                      fieldStringValue = "\"" + fieldStringValue + "\"";
-                    } else if (field.getDataType() == TSDataType.TIMESTAMP) {
-                      fieldStringValue = timeTrans(field.getLongV());
-                    }
-                    csvPrinterWrapper.print(fieldStringValue);
-                  } else {
-                    csvPrinterWrapper.print("");
-                  }
-                });
-        csvPrinterWrapper.println();
-        // 检查下一行是否存在
-        hasNext = sessionDataSet.hasNext();
-        if (!hasNext) {
-          break;
+      try {
+        csvPrinterWrapper.printRecord(headers);
+        fromOuterloop = true;
+        int countLine = 0;
+        while (countLine++ < linesPerFile && (fromOuterloop || iterator.next())) {
+          fromOuterloop = false;
+          for (int curColumnIndex = 0; curColumnIndex < totalColumns; curColumnIndex++) {
+            String curType = columnTypeList.get(curColumnIndex);
+            if (curType.equalsIgnoreCase("TIMESTAMP")) {
+              csvPrinterWrapper.print(timeTrans(iterator.getLong(curColumnIndex + 1)));
+            } else {
+              String columnValue = iterator.getString(curColumnIndex + 1);
+              if (StringUtils.isEmpty(columnValue)) {
+                csvPrinterWrapper.print("");
+              } else {
+                if (curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING")) {
+                  csvPrinterWrapper.print("\"" + columnValue + "\"");
+                } else {
+                  csvPrinterWrapper.print(columnValue);
+                }
+              }
+            }
+          }
+          csvPrinterWrapper.println();
+          processedRows += 1;
+          if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+            ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
+            lastPrintTime = System.currentTimeMillis();
+          }
         }
+        fileIndex++;
+        csvPrinterWrapper.flush();
+      } finally {
+        csvPrinterWrapper.close();
       }
-      fileIndex++;
-      csvPrinterWrapper.flush();
-      csvPrinterWrapper.close();
     }
+    ioTPrinter.print("\n");
   }
 
   private static void writeWithTablets(
@@ -305,13 +330,24 @@ public class ExportDataTable extends AbstractExportData {
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         writeToTsFile(tsFileWriter, tablet);
+        processedRows += tablet.getRowSize();
         tablet.initBitMaps();
         tablet.reset();
+      }
+      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
+        lastPrintTime = System.currentTimeMillis();
       }
     }
     if (tablet.getRowSize() != 0) {
       writeToTsFile(tsFileWriter, tablet);
+      processedRows += tablet.getRowSize();
+      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
+        lastPrintTime = System.currentTimeMillis();
+      }
     }
+    ioTPrinter.print("\n");
   }
 
   private static void writeToTsFile(ITsFileWriter tsFileWriter, Tablet tablet)
