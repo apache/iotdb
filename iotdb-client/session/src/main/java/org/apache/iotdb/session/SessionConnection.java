@@ -531,7 +531,7 @@ public class SessionConnection {
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSLastDataQueryReq tsLastDataQueryReq =
         new TSLastDataQueryReq(sessionId, paths, time, statementId);
-    tsLastDataQueryReq.setFetchSize(60000);
+    tsLastDataQueryReq.setFetchSize(session.fetchSize);
     tsLastDataQueryReq.setEnableRedirectQuery(enableRedirect);
     tsLastDataQueryReq.setTimeout(timeOut);
 
