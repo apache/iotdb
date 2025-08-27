@@ -114,6 +114,8 @@ public class SessionPool implements ISessionPool {
 
   private String trustStore;
 
+  private final String endpointSelectionStrategyName;
+
   private String trustStorePwd;
   private ZoneId zoneId;
   // this field only take effect in write request, nothing to do with any other type requests,
@@ -224,7 +226,8 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public SessionPool(List<String> nodeUrls, String user, String password, int maxSize) {
@@ -241,7 +244,8 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public SessionPool(
@@ -265,7 +269,8 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public SessionPool(
@@ -287,7 +292,8 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public SessionPool(
@@ -312,7 +318,8 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public SessionPool(
@@ -335,7 +342,8 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public SessionPool(
@@ -354,7 +362,8 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public SessionPool(
@@ -372,7 +381,8 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   @SuppressWarnings("squid:S107")
@@ -390,7 +400,8 @@ public class SessionPool implements ISessionPool {
       int connectionTimeoutInMs,
       Version version,
       int thriftDefaultBufferSize,
-      int thriftMaxFrameSize) {
+      int thriftMaxFrameSize,
+      String endpointSelectionStrategyName) {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
@@ -412,6 +423,7 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = String.format("%s:%s", host, port);
+    this.endpointSelectionStrategyName = endpointSelectionStrategyName;
     initThreadPool();
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
@@ -433,7 +445,8 @@ public class SessionPool implements ISessionPool {
       int thriftMaxFrameSize,
       boolean useSSL,
       String trustStore,
-      String trustStorePwd) {
+      String trustStorePwd,
+      String endpointSelectionStrategyName) {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
@@ -458,6 +471,7 @@ public class SessionPool implements ISessionPool {
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
+    this.endpointSelectionStrategyName = endpointSelectionStrategyName;
     initThreadPool();
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
@@ -476,7 +490,8 @@ public class SessionPool implements ISessionPool {
       int connectionTimeoutInMs,
       Version version,
       int thriftDefaultBufferSize,
-      int thriftMaxFrameSize) {
+      int thriftMaxFrameSize,
+      String endpointSelectionStrategyName) {
     this.maxSize = maxSize;
     this.host = null;
     this.port = -1;
@@ -501,6 +516,7 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = nodeUrls.toString();
+    this.endpointSelectionStrategyName = endpointSelectionStrategyName;
     initThreadPool();
     initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
   }
@@ -533,6 +549,7 @@ public class SessionPool implements ISessionPool {
     this.sqlDialect = builder.sqlDialect;
     this.database = builder.database;
     this.queryTimeoutInMs = builder.timeOut;
+    this.endpointSelectionStrategyName = builder.endpointSelectionStrategyName;
 
     if (enableAutoFetch) {
       initThreadPool();
@@ -592,6 +609,7 @@ public class SessionPool implements ISessionPool {
               .timeOut(queryTimeoutInMs)
               .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
               .enableThriftRpcCompression(enableThriftCompression)
+              .endpointSelectionStrategyName(endpointSelectionStrategyName)
               .build();
     } else {
       // Construct redirect-able Session
@@ -617,6 +635,7 @@ public class SessionPool implements ISessionPool {
               .timeOut(queryTimeoutInMs)
               .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
               .enableThriftRpcCompression(enableThriftCompression)
+              .endpointSelectionStrategyName(endpointSelectionStrategyName)
               .build();
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
@@ -3594,6 +3613,11 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
+  public String getEndpointSelectStrategyName() {
+    return endpointSelectionStrategyName;
+  }
+
+  @Override
   public void setQueryTimeout(long timeoutInMs) {
     this.queryTimeoutInMs = timeoutInMs;
     for (ISession session : queue) {
@@ -3728,6 +3752,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder queryTimeoutInMs(long queryTimeoutInMs) {
       this.timeOut = queryTimeoutInMs;
+      return this;
+    }
+
+    public Builder endpointSelectionStrategyName(String endpointSelectionStrategyName) {
+      this.endpointSelectionStrategyName = endpointSelectionStrategyName;
       return this;
     }
 

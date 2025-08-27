@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.isession;
 
+import org.apache.iotdb.isession.endpointselector.EndpointSelectionStrategy;
+import org.apache.iotdb.isession.endpointselector.RandomSelectionStrategy;
+import org.apache.iotdb.isession.endpointselector.SequentialSelectionStrategy;
 import org.apache.iotdb.isession.util.Version;
 
 public class SessionConfig {
@@ -57,4 +60,26 @@ public class SessionConfig {
   public static final String SQL_DIALECT = "tree";
 
   private SessionConfig() {}
+
+  // Endpoint selection strategy constants
+  // public static final String ENDPOINT_SELECTION_STRATEGY = "retry_strategy";
+  public static final String ENDPOINT_SELECTION_STRATEGY_RANDOM = "random";
+  public static final String ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL = "sequential";
+  public static final String DEFAULT_ENDPOINT_SELECTION_STRATEGY =
+      ENDPOINT_SELECTION_STRATEGY_RANDOM;
+
+  /**
+   * Creates an endpoint selection strategy based on the given strategy name.
+   *
+   * @param strategyName name of the strategy ("random" or "sequential")
+   * @return configured strategy instance
+   * @throws IllegalArgumentException if strategyName is null or empty
+   */
+  public static EndpointSelectionStrategy createSelectionStrategy(String strategyName) {
+    if (ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL.equalsIgnoreCase(strategyName)) {
+      return new SequentialSelectionStrategy();
+    }
+    // Default to random strategy
+    return new RandomSelectionStrategy();
+  }
 }
