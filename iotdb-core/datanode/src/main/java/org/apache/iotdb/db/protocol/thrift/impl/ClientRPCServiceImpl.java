@@ -176,6 +176,7 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -838,13 +839,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
 
       for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> result : resultMap.entrySet()) {
+        final String deviceWithPrefix = result.getKey() + TsFileConstant.PATH_SEPARATOR;
         for (final Map.Entry<String, TimeValuePair> measurementLastEntry :
             result.getValue().entrySet()) {
           final TimeValuePair tvPair = measurementLastEntry.getValue();
           LastQueryUtil.appendLastValue(
               builder,
               tvPair.getTimestamp(),
-              measurementLastEntry.getValue().getLeft(),
+              new Binary(
+                  deviceWithPrefix + measurementLastEntry.getKey(), TSFileConfig.STRING_CHARSET),
               tvPair.getValue().getStringValue(),
               tvPair.getValue().getDataType().name());
         }
