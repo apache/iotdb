@@ -1565,7 +1565,7 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean isSeq() {
-      return false;
+      return isSeq;
     }
 
     public void setInited() {
