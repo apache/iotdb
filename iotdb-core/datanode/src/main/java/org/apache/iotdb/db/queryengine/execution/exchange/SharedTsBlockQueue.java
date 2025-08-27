@@ -74,7 +74,7 @@ public class SharedTsBlockQueue {
 
   private ListenableFuture<Void> blockedOnMemory;
 
-  private boolean closed = false;
+  private volatile boolean closed = false;
   private boolean alreadyRegistered = false;
 
   private LocalSourceHandle sourceHandle;

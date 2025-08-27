@@ -24,11 +24,10 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpochManager;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpochManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 public class PipeRealtimeEventFactory {
 
@@ -37,22 +36,13 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final TsFileResource resource, final boolean isLoaded) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(resource, isLoaded, false), resource);
+        new PipeTsFileInsertionEvent(resource, isLoaded), resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final WALEntryHandler walEntryHandler,
-      final InsertNode insertNode,
-      final TsFileResource resource) {
+      final InsertNode insertNode, final TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
-        new PipeInsertNodeTabletInsertionEvent(
-            walEntryHandler,
-            insertNode.getDevicePath(),
-            insertNode.getProgressIndex(),
-            insertNode.isAligned(),
-            insertNode.isGeneratedByPipe()),
-        insertNode,
-        resource);
+        new PipeInsertNodeTabletInsertionEvent(insertNode), insertNode, resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(

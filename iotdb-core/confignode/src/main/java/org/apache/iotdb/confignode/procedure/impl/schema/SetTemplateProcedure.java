@@ -165,9 +165,7 @@ public class SetTemplateProcedure
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(SetTemplateState.PRE_SET);
     } else {
-      setFailure(
-          new ProcedureException(
-              new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode())));
+      setFailure(new ProcedureException(new IoTDBException(resp.getStatus())));
     }
   }
 
@@ -190,7 +188,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -364,7 +362,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -466,7 +464,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -525,7 +523,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

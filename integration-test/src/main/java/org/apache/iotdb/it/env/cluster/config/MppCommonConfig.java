@@ -364,6 +364,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    setProperty("data_partition_allocation_strategy", dataPartitionAllocationStrategy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     setProperty("series_partition_executor_class", seriesPartitionExecutorClass);
     return this;
@@ -426,6 +432,18 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
     setProperty("schema_region_per_data_node", String.valueOf(schemaRegionPerDataNode));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    setProperty("pipe_memory_management_enabled", String.valueOf(pipeMemoryManagementEnabled));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
     return this;
   }
 
@@ -503,8 +521,37 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    setProperty(
+        "subscription_prefetch_ts_file_batch_max_delay_in_ms",
+        String.valueOf(subscriptionPrefetchTsFileBatchMaxDelayInMs));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    setProperty(
+        "subscription_prefetch_ts_file_batch_max_size_in_bytes",
+        String.valueOf(subscriptionPrefetchTsFileBatchMaxSizeInBytes));
+    return this;
+  }
+
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
+    return this;
+  }
+
+  @Override
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    setProperty("datanode_memory_proportion", datanodeMemoryProportion);
     return this;
   }
 

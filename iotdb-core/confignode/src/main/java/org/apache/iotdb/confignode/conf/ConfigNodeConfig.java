@@ -82,6 +82,8 @@ public class ConfigNodeConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
+  private String dataPartitionAllocationStrategy = "INHERIT";
+
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
@@ -121,7 +123,7 @@ public class ConfigNodeConfig {
       RegionBalancer.RegionGroupAllocatePolicy.GCR;
 
   /** Max concurrent client number. */
-  private int rpcMaxConcurrentClientNum = 65535;
+  private int rpcMaxConcurrentClientNum = 3000;
 
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
@@ -419,6 +421,14 @@ public class ConfigNodeConfig {
 
   public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public String getDataPartitionAllocationStrategy() {
+    return dataPartitionAllocationStrategy;
+  }
+
+  public void setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    this.dataPartitionAllocationStrategy = dataPartitionAllocationStrategy;
   }
 
   public int getCnRpcMaxConcurrentClientNum() {

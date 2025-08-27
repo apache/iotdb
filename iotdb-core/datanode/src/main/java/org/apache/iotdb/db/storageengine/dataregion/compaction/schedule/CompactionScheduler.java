@@ -301,10 +301,7 @@ public class CompactionScheduler {
               tsFileManager,
               taskList.get(i).getSeqFiles(),
               taskList.get(i).getUnseqFiles(),
-              IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getCrossCompactionPerformer()
-                  .createInstance(),
+              context.getCrossCompactionPerformer(),
               memoryCost.get(i),
               tsFileManager.getNextCompactionTaskId());
       task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask);

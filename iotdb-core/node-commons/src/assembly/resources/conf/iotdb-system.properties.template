@@ -457,7 +457,7 @@ cn_rpc_thrift_compression_enable=false
 # The maximum number of concurrent clients that can be connected to the configNode.
 # effectiveMode: restart
 # Datatype: int
-cn_rpc_max_concurrent_client_num=65535
+cn_rpc_max_concurrent_client_num=3000
 
 # Thrift socket and connection timeout between raft nodes, in milliseconds.
 # effectiveMode: restart
@@ -507,7 +507,7 @@ dn_rpc_min_concurrent_client_num=1
 # The maximum number of concurrent clients that can be connected to the dataNode.
 # effectiveMode: restart
 # Datatype: int
-dn_rpc_max_concurrent_client_num=65535
+dn_rpc_max_concurrent_client_num=1000
 
 # thrift max frame size, 512MB by default
 # effectiveMode: restart
@@ -968,6 +968,36 @@ default_double_encoding=GORILLA
 # Datatype: TSEncoding
 default_text_encoding=PLAIN
 
+# BOOLEAN compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+boolean_compressor=LZ4
+
+# INT32/DATE compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+int32_compressor=LZ4
+
+# INT64/TIMESTAMP compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+int64_compressor=LZ4
+
+# FLOAT compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+float_compressor=LZ4
+
+# DOUBLE compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+double_compressor=LZ4
+
+# TEXT/BINARY/BLOB compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+text_compressor=LZ4
+
 ####################
 ### Query Configurations
 ####################
@@ -1061,9 +1091,18 @@ mode_map_size_threshold=10000
 batch_size=100000
 
 # The memory for external sort in sort operator, when the data size is smaller than sort_buffer_size_in_bytes, the sort operator will use in-memory sort.
-# effectiveMode: restart
+# if sort_buffer_size_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
+# if sort_buffer_size_in_bytes > 0, the specified value will be used.
+# effectiveMode: hot_reload
 # Datatype: long
-sort_buffer_size_in_bytes=1048576
+sort_buffer_size_in_bytes=0
+
+# The maximum mod entries size that each FragmentInstance can cache.
+# if mods_cache_size_limit_per_fi_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
+# if mods_cache_size_limit_per_fi_in_bytes > 0, the specified value will be used.
+# effectiveMode: hot_reload
+# Datatype: long
+mods_cache_size_limit_per_fi_in_bytes=0
 
 # The threshold of operator count in the result set of EXPLAIN ANALYZE, if the number of operator in the result set is larger than this threshold, operator will be merged.
 # effectiveMode: hot_reload

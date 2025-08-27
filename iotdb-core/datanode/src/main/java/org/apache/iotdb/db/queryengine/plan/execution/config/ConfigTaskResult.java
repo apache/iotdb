@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
 public class ConfigTaskResult {
+  private TSStatus status;
   private TSStatusCode statusCode;
   private TsBlock resultSet;
   private DatasetHeader resultSetHeader;
@@ -38,6 +40,15 @@ public class ConfigTaskResult {
     this.statusCode = statusCode;
     this.resultSet = resultSet;
     this.resultSetHeader = resultSetHeader;
+  }
+
+  public ConfigTaskResult(final TSStatus status) {
+    this.status = status;
+    this.statusCode = TSStatusCode.representOf(status.getCode());
+  }
+
+  public TSStatus getStatus() {
+    return status;
   }
 
   public TSStatusCode getStatusCode() {

@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 
 import java.util.Map;
 
@@ -88,7 +88,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     device2Measurements = null;
   }
 
-  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionExtractor extractor) {
+  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionSource extractor) {
     final TsFileEpoch.State state = tsFileEpoch.getState(extractor);
     return state.equals(TsFileEpoch.State.EMPTY) || state.equals(TsFileEpoch.State.USING_TABLET);
   }

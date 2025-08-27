@@ -23,7 +23,7 @@ public class Interval {
   private long start;
   private long end;
 
-  public Interval(long start, long end) {
+  public Interval(final long start, final long end) {
     this.start = start;
     this.end = end;
     if (end < start) {

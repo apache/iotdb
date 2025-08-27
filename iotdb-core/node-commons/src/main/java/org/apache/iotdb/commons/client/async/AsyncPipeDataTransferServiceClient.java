@@ -127,7 +127,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     }
   }
 
-  private void close() {
+  public void close() {
     ___transport.close();
     ___currentMethod = null;
   }

@@ -24,6 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionCon
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -40,6 +41,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /***
@@ -90,6 +92,16 @@ public class IoTDBMiddleMatchPatternPullConsumeTsfileIT extends AbstractSubscrip
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
     assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
+  }
+
+  // TODO: remove it later
+  @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
   }
 
   @Override
@@ -149,11 +161,7 @@ public class IoTDBMiddleMatchPatternPullConsumeTsfileIT extends AbstractSubscrip
     devices.add(device);
     devices.add(device2);
     devices.add(database2 + ".d_2");
-
-    List<Integer> rowCounts = consume_tsfile(consumer, devices);
-    assertEquals(rowCounts.get(0), 10);
-    assertEquals(rowCounts.get(1), 1);
-    assertEquals(rowCounts.get(2), 1);
+    consume_tsfile_await(consumer, devices, Arrays.asList(10, 1, 1));
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "Show subscriptions after cancellation");
@@ -163,14 +171,6 @@ public class IoTDBMiddleMatchPatternPullConsumeTsfileIT extends AbstractSubscrip
     insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained after canceling and re-subscribing. Full
     // synchronization.
-    rowCounts = consume_tsfile(consumer, devices);
-
-    assertEquals(
-        rowCounts.get(0),
-        15,
-        "Unsubscribe and resubscribe, progress is not retained. Full synchronization.");
-    assertEquals(
-        rowCounts.get(1), 1, "Cancel subscription and subscribe again," + database + ".d_1");
-    assertEquals(rowCounts.get(2), 1, "Unsubscribe and resubscribe," + database2 + ".d_2");
+    consume_tsfile_await(consumer, devices, Arrays.asList(15, 1, 1));
   }
 }
