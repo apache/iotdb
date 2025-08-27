@@ -113,11 +113,6 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         .put(consensusGroupId, pipeTaskMeta);
   }
 
-  public void stopAllPipesWithCriticalException() {
-    super.stopAllPipesWithCriticalException(
-        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId());
-  }
-
   @Override
   protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
       final PipeMeta pipeMetaFromCoordinator) {
