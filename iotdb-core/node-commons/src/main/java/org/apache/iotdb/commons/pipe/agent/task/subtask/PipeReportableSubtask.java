@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class PipeReportableSubtask extends PipeSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReportableSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected PipeReportableSubtask(final String taskID, final long creationTime) {
     super(taskID, creationTime);

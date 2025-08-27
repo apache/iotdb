@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 
@@ -28,8 +29,7 @@ import org.slf4j.LoggerFactory;
 /** the thread for watching the timeout of {@link DriverTask}. */
 public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(DriverTaskTimeoutSentinelThread.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private static final long SLEEP_BOUND = 5 * 1000L;
 

@@ -91,7 +91,7 @@ import java.util.stream.StreamSupport;
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 

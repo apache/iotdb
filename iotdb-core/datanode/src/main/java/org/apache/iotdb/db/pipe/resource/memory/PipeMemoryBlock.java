@@ -33,7 +33,7 @@ import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryBlock implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryBlock.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipeMemoryManager pipeMemoryManager = PipeDataNodeResourceManager.memory();
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.control;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -34,7 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /** QueryFileManager records the paths of files that every read uses for QueryResourceManager. */
 public class QueryFileManager {
 
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   /**
    * QueryId -> TsFileResource -> TsFileResource. Inner Map's key and value are actually the same
@@ -134,24 +136,24 @@ public class QueryFileManager {
   }
 
   public void writeQueryFileInfo() {
-    DEBUG_LOGGER.info("[Query Sealed File Info]\n");
+    QUERY_LOGGER.info("[Query Sealed File Info]\n");
     for (Map.Entry<Long, Map<TsFileResource, TsFileResource>> entry :
         sealedFilePathsMap.entrySet()) {
       long queryId = entry.getKey();
       Set<TsFileResource> tsFileResources = entry.getValue().keySet();
-      DEBUG_LOGGER.info("\t[queryId: {}]\n", queryId);
+      QUERY_LOGGER.info("\t[queryId: {}]\n", queryId);
       for (TsFileResource tsFileResource : tsFileResources) {
-        DEBUG_LOGGER.info("\t\t{}\n", tsFileResource.getTsFile().getAbsolutePath());
+        QUERY_LOGGER.info("\t\t{}\n", tsFileResource.getTsFile().getAbsolutePath());
       }
     }
-    DEBUG_LOGGER.info("[Query Unsealed File Info]\n");
+    QUERY_LOGGER.info("[Query Unsealed File Info]\n");
     for (Map.Entry<Long, Map<TsFileResource, TsFileResource>> entry :
         unsealedFilePathsMap.entrySet()) {
       long queryId = entry.getKey();
       Set<TsFileResource> tsFileResources = entry.getValue().keySet();
-      DEBUG_LOGGER.info("\t[queryId: {}]\n", queryId);
+      QUERY_LOGGER.info("\t[queryId: {}]\n", queryId);
       for (TsFileResource tsFileResource : tsFileResources) {
-        DEBUG_LOGGER.info("\t\t{}\n", tsFileResource.getTsFile().getAbsolutePath());
+        QUERY_LOGGER.info("\t\t{}\n", tsFileResource.getTsFile().getAbsolutePath());
       }
     }
   }

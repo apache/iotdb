@@ -39,8 +39,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
  */
 public class SubscriptionPrefetchingQueueStates {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionPrefetchingQueueStates.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final double EPSILON = 1e-6;
 

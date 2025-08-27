@@ -34,7 +34,7 @@ import java.util.function.Consumer;
 
 public abstract class BlockingPendingQueue<E extends Event> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BlockingPendingQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final long MAX_BLOCKING_TIME_MS =
       PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();

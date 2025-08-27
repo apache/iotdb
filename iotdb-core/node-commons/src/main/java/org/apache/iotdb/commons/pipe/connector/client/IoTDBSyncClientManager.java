@@ -47,7 +47,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 public abstract class IoTDBSyncClientManager extends IoTDBClientManager implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncClientManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 

@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 
 public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeTaskAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   protected boolean isShutdown() {

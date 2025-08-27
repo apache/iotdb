@@ -45,7 +45,7 @@ import java.util.function.Supplier;
  */
 public abstract class EnrichedEvent implements Event {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EnrichedEvent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final AtomicInteger referenceCount;
   // This variable is used to indicate whether the event's reference count has ever been decreased

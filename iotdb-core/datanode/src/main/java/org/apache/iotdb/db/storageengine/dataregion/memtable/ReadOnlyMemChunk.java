@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -62,7 +63,7 @@ public class ReadOnlyMemChunk {
 
   private TSDataType dataType;
 
-  private static final Logger logger = LoggerFactory.getLogger(ReadOnlyMemChunk.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   protected IChunkMetadata cachedMetaData;
 

@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadMetricsCollector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
   private final ActiveLoadDirScanner activeLoadDirScanner;

@@ -34,7 +34,7 @@ class PipeLogStatus {
   private final AtomicLong currentRounds = new AtomicLong(0);
 
   PipeLogStatus(final Class<?> logClass, final int maxAverageScale, final int maxLogInterval) {
-    logger = LoggerFactory.getLogger(logClass);
+    logger = LoggerFactory.getLogger("PipeLog");
 
     this.maxAverageScale = maxAverageScale;
     this.maxLogInterval = maxLogInterval;

@@ -65,8 +65,7 @@ import java.util.stream.Collectors;
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable, AutoCloseable {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PipeInsertNodeTabletInsertionEvent.class)
           + RamUsageEstimator.shallowSizeOfInstance(WALEntryHandler.class)

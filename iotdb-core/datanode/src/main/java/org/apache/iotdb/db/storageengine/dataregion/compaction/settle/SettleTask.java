@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.service.SettleService;
@@ -34,7 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SettleTask extends WrappedRunnable {
-  private static final Logger logger = LoggerFactory.getLogger(SettleTask.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final TsFileResource resourceToBeSettled;
 
   public SettleTask(TsFileResource resourceToBeSettled) {

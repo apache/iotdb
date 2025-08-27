@@ -49,7 +49,7 @@ import java.util.TreeMap;
 
 public class PipeConnectorSubtaskManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";

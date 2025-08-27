@@ -45,8 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * variables from the {@link PipeTemporaryMeta}.
  */
 public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeTemporaryMetaInCoordinatorMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;

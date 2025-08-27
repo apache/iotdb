@@ -31,8 +31,7 @@ import org.slf4j.LoggerFactory;
 
 public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskLifeCycle {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionConnectorSubtaskLifeCycle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   public SubscriptionConnectorSubtaskLifeCycle(
       final PipeConnectorSubtaskExecutor executor, // SubscriptionSubtaskExecutor

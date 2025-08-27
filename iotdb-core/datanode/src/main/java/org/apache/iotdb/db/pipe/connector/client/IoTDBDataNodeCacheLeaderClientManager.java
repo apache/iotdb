@@ -39,7 +39,7 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
 
   class LeaderCacheManager {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LeaderCacheManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
     private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
     private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);

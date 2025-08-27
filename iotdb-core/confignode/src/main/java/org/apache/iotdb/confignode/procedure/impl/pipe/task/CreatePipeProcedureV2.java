@@ -65,7 +65,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeProcedureV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private TCreatePipeReq createPipeRequest;
 

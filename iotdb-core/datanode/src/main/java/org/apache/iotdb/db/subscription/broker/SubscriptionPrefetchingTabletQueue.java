@@ -41,8 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionPrefetchingTabletQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   public SubscriptionPrefetchingTabletQueue(
       final String brokerId,

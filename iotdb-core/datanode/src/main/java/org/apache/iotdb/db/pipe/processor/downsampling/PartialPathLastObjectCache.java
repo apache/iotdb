@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PartialPathLastObjectCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   // Used to adjust the memory usage of the cache

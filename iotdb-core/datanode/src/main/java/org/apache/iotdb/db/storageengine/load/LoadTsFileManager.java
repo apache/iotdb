@@ -83,7 +83,7 @@ import java.util.stream.Stream;
  */
 public class LoadTsFileManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 

@@ -52,7 +52,7 @@ import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
 public class IoTDBAirGapReceiver extends WrappedRunnable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapReceiver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final Socket socket;
   private final long receiverId;

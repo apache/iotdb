@@ -49,7 +49,7 @@ import static org.apache.iotdb.db.protocol.client.ConfigNodeInfo.CONFIG_REGION_I
 
 public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final String pipeName;
   private final PipeTaskMeta pipeTaskMeta;

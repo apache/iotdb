@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 
 public class PipeInclusionOptions {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionOptions.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final Set<PartialPath> OPTIONS = new HashSet<>();
   private static final Map<String, Set<String>> ALIAS_OPTIONS_MAP = new HashMap<>();

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
@@ -59,7 +60,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DRI
 
 public abstract class Driver implements IDriver {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(Driver.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   protected static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
   protected static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();

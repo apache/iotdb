@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProcedure {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(AlterConsumerGroupProcedure.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   protected ConsumerGroupMeta existingConsumerGroupMeta;
   protected ConsumerGroupMeta updatedConsumerGroupMeta;

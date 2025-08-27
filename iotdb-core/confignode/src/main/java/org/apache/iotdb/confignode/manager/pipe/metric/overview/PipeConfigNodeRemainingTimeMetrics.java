@@ -38,8 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConfigNodeRemainingTimeMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;

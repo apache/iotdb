@@ -71,7 +71,7 @@ import java.util.Objects;
 
 public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionSyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
 

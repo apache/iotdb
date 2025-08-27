@@ -83,7 +83,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConsta
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskInfo.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private static final String SNAPSHOT_FILE_NAME = "pipe_task_info.bin";
 
   private final PipeMetaKeeper pipeMetaKeeper;

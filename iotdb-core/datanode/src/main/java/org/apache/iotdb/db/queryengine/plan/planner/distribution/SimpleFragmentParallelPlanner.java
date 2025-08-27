@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.QueryExecutor;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -61,7 +62,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * into only one FragmentInstance.
  */
 public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
-  private static final Logger logger = LoggerFactory.getLogger(SimpleFragmentParallelPlanner.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private final SubPlan subPlan;
   private final Analysis analysis;

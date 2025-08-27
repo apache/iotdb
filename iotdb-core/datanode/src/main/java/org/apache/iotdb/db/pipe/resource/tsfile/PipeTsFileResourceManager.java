@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 
 public class PipeTsFileResourceManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToPipeTsFileResourceMap =
       new ConcurrentHashMap<>();

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -31,8 +32,7 @@ import java.util.Map;
 
 public class ActiveLoadFailedMessageHandler {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ActiveLoadFailedMessageHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private static final Map<String, ExceptionMessageHandler> EXCEPTION_MESSAGE_HANDLER_MAP =
       Collections.unmodifiableMap(

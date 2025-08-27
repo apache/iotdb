@@ -50,7 +50,7 @@ import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitC
 
 public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionEvent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final long INVALID_TIMESTAMP = -1;
 

@@ -41,8 +41,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConsta
 import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
 
 public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ConsensusPipeDataNodeDispatcher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();

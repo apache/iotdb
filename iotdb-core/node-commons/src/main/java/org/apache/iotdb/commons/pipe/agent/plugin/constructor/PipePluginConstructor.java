@@ -36,7 +36,7 @@ import java.util.function.Supplier;
 
 public abstract class PipePluginConstructor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginConstructor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipePluginMetaKeeper pluginMetaKeeper;
 

@@ -37,8 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeConfigRegionExtractorMetrics implements IMetricSet {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConfigRegionExtractorMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private volatile AbstractMetricService metricService;
 

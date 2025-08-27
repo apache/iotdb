@@ -62,7 +62,7 @@ import java.util.stream.StreamSupport;
 
 public class SubscriptionInfo implements SnapshotProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionInfo.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final String SNAPSHOT_FILE_NAME = "subscription_info.bin";
 

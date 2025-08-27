@@ -38,7 +38,7 @@ import java.util.Objects;
 
 public class PipeAssignerMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAssignerMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private AbstractMetricService metricService;
 

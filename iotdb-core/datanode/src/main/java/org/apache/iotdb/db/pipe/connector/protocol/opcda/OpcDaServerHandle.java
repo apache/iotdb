@@ -63,7 +63,7 @@ import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OpcDaHeader.IID_
 
 public class OpcDaServerHandle implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpcDaServerHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final OpcDaHeader.IOPCServer opcServer;
   private final OpcDaHeader.IOPCItemMgt itemMgt;

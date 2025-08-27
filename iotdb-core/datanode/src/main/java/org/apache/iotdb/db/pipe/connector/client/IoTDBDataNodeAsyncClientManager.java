@@ -58,8 +58,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     implements IoTDBDataNodeCacheLeaderClientManager {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBDataNodeAsyncClientManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final Set<TEndPoint> endPointSet;
 

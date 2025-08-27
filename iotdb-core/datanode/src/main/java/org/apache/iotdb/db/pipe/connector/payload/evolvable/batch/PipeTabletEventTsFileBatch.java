@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
 
 public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventTsFileBatch.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
   private static final AtomicLong BATCH_ID_GENERATOR = new AtomicLong(0);

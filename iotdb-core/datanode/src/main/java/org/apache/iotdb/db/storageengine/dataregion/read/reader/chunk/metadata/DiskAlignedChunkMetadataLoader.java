@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -53,7 +54,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   // all sub sensors' modifications
   private final List<List<Modification>> pathModifications;
 
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
@@ -86,8 +88,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
                     || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
 
         if (context.isDebug()) {
-          DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
-          alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+          QUERY_LOGGER.info("After removed by filter Chunk meta data list is: ");
+          alignedChunkMetadataList.forEach(c -> QUERY_LOGGER.info(c.toString()));
         }
 
         SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
@@ -97,19 +99,19 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       final long t3 = System.nanoTime();
 
       if (context.isDebug()) {
-        DEBUG_LOGGER.info(
+        QUERY_LOGGER.info(
             "Modifications size is {} for file Path: {} ",
             pathModifications.size(),
             resource.getTsFilePath());
-        pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+        pathModifications.forEach(c -> QUERY_LOGGER.info(c.toString()));
       }
 
       // remove ChunkMetadata that have been deleted
       ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, pathModifications);
 
       if (context.isDebug()) {
-        DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
-        alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+        QUERY_LOGGER.info("After modification Chunk meta data list is: ");
+        alignedChunkMetadataList.forEach(c -> QUERY_LOGGER.info(c.toString()));
       }
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_MODIFICATION_ALIGNED_DISK, System.nanoTime() - t3);

@@ -85,7 +85,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionAsyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final String THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT =
       "Failed to borrow client from client pool when sending to receiver.";

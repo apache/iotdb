@@ -66,7 +66,7 @@ import java.util.stream.Collectors;
 
 /** This connector is used for PipeConsensus to transfer queued event. */
 public class PipeConsensusSyncConnector extends IoTDBConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusSyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private static final String PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT =
       "PipeConsensus: syncClient connection to %s:%s failed when %s, because: %s";
   private static final String TABLET_INSERTION_NODE_SCENARIO = "transfer insertionNode tablet";

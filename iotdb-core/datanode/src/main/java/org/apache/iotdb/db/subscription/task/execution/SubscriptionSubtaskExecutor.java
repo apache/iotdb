@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionSubtaskExecutor extends PipeConnectorSubtaskExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionSubtaskExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final AtomicLong submittedReceiverSubtasks = new AtomicLong(0);
 

@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 
 class PipeAgentLauncher {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAgentLauncher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 

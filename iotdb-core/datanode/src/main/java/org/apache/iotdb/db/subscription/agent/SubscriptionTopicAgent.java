@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 public class SubscriptionTopicAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final TopicMetaKeeper topicMetaKeeper;
 

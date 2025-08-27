@@ -38,7 +38,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class PipeWALResourceManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALResourceManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final Map<Long, PipeWALResource> memtableIdToPipeWALResourceMap;
 

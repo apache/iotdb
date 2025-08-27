@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 
 public abstract class SubscriptionPipeEventBatch {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPipeEventBatch.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final int regionId;
 

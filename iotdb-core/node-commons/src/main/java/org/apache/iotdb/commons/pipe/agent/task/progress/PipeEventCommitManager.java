@@ -33,7 +33,7 @@ import java.util.function.BiConsumer;
 
 public class PipeEventCommitManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private volatile PipeTaskAgent taskAgent;
   private final Map<CommitterKey, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();

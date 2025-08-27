@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class PipeTaskCoordinatorLock {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinatorLock.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final BlockingDeque<Long> deque = new LinkedBlockingDeque<>(1);
   private final AtomicLong idGenerator = new AtomicLong(0);

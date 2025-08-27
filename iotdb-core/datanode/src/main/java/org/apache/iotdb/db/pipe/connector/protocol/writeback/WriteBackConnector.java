@@ -57,7 +57,7 @@ import java.util.Objects;
 
 public class WriteBackConnector implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {

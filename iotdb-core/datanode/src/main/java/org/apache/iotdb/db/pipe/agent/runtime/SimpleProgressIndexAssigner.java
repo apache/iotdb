@@ -39,7 +39,7 @@ import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
 public class SimpleProgressIndexAssigner {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleProgressIndexAssigner.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 

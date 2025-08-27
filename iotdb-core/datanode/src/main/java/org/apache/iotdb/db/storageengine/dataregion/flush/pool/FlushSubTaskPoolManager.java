@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.flush.pool;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.rescon.memory.AbstractPoolManager;
 
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("squid:S6548")
 public class FlushSubTaskPoolManager extends AbstractPoolManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FlushSubTaskPoolManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private FlushSubTaskPoolManager() {
     this.pool = IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.FLUSH_SUB_TASK.getName());

@@ -57,7 +57,7 @@ import java.util.stream.IntStream;
 
 public class TabletInsertionDataContainer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionDataContainer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final LocalDate EMPTY_LOCALDATE = LocalDate.of(1000, 1, 1);
 

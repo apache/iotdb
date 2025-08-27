@@ -77,7 +77,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 // TODO: Optimize the network and disk io for TsFile onComplete
 // TODO: support Tablet Batch
 public class PipeConsensusAsyncConnector extends IoTDBConnector implements ConsensusPipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusAsyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private static final String ENQUEUE_EXCEPTION_MSG =
       "Timeout: PipeConsensusConnector offers an event into transferBuffer failed, because transferBuffer is full.";
   private static final String THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT =

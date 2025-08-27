@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskCoordinator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final ConfigManager configManager;
 

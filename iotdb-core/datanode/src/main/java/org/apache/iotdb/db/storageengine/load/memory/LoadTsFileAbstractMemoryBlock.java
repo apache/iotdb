@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load.memory;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class LoadTsFileAbstractMemoryBlock implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAbstractMemoryBlock.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   protected static final LoadTsFileMemoryManager MEMORY_MANAGER =
       LoadTsFileMemoryManager.getInstance();
 

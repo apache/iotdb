@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 
 public class PipeTaskExtractorStage extends PipeTaskStage {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskExtractorStage.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipeExtractor pipeExtractor;
 

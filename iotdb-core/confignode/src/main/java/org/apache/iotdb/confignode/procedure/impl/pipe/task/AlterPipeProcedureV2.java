@@ -54,7 +54,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AlterPipeProcedureV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private TAlterPipeReq alterPipeRequest;
 

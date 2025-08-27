@@ -92,7 +92,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 public class IoTDBLegacyPipeConnector implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 

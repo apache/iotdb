@@ -40,7 +40,7 @@ import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final ThreadLocal<SubscriptionReceiver> receiverThreadLocal = new ThreadLocal<>();
 

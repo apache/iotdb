@@ -38,8 +38,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConsensusTabletInsertNodeReq.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private transient InsertNode insertNode;
 
   private PipeConsensusTabletInsertNodeReq() {

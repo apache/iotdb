@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class TwoStageAggregateSender implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageAggregateSender.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 

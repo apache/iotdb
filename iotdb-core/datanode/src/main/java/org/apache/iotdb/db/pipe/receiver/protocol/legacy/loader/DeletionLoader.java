@@ -43,7 +43,7 @@ import java.util.Collections;
 /** This loader is used to load deletion plan. */
 public class DeletionLoader implements ILoader {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeletionLoader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final Deletion deletion;
 

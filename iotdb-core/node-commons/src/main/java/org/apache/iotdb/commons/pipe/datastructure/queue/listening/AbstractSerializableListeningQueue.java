@@ -47,8 +47,7 @@ import java.util.function.Supplier;
  */
 public abstract class AbstractSerializableListeningQueue<E> implements Closeable {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractSerializableListeningQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final QueueSerializerType serializerType;
   private final EnumMap<QueueSerializerType, Supplier<QueueSerializer<E>>> serializers =

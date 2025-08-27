@@ -34,8 +34,7 @@ import org.slf4j.LoggerFactory;
 
 public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegionExtractor {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRealtimeDataRegionTsFileExtractor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {

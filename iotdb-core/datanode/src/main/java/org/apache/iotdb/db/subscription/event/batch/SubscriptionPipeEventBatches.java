@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 
 public class SubscriptionPipeEventBatches {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPipeEventBatches.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   protected final SubscriptionPrefetchingQueue prefetchingQueue;
   protected final int maxDelayInMs;

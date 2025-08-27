@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -63,7 +64,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 public class TsFileSplitter {
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitter.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private final File tsFile;
   private final TsFileDataConsumer consumer;

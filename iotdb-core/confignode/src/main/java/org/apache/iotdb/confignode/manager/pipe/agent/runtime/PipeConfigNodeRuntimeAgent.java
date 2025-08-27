@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeConfigNodeRuntimeAgent implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeRuntimeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipeConfigRegionListener regionListener = new PipeConfigRegionListener();
 

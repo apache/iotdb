@@ -43,7 +43,7 @@ class SubscriptionLogStatus {
   private final Cache<Pair<String, String>, AtomicLong> lastReportTimestamps;
 
   public SubscriptionLogStatus(final Class<?> logClass) {
-    this.logger = LoggerFactory.getLogger(logClass);
+    this.logger = LoggerFactory.getLogger("SubscriptionLog");
     this.lastReportTimestamps =
         Caffeine.newBuilder()
             .expireAfterAccess(

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,7 +54,8 @@ import java.util.Set;
 
 @SuppressWarnings("squid:S6548")
 public class SettleRequestHandler {
-  private static final Logger logger = LoggerFactory.getLogger(SettleRequestHandler.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   private SettleRequestHandler() {}
 

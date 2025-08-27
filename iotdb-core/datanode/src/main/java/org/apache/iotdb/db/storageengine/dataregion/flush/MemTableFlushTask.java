@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -60,7 +61,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class MemTableFlushTask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER =
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();

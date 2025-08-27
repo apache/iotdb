@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -39,7 +40,7 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.S
 
 public class ShuffleSinkHandle implements ISinkHandle {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ShuffleSinkHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   /** Each ISinkChannel in the list matches one downstream ISourceHandle. */
   private final List<ISinkChannel> downStreamChannelList;

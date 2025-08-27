@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -45,7 +46,7 @@ import static java.util.Objects.requireNonNull;
 
 public class NodePathsConvertOperator implements ProcessOperator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(NodePathsConvertOperator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(NodePathsConvertOperator.class);

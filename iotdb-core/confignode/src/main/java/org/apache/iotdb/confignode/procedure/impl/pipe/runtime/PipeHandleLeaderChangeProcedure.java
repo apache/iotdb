@@ -45,8 +45,7 @@ import java.util.Objects;
 
 public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedureV2 {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeHandleLeaderChangeProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap =
       new HashMap<>();

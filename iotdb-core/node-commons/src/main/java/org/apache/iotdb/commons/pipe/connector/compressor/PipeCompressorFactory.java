@@ -36,7 +36,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 public class PipeCompressorFactory {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeCompressorFactory.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final Map<String, PipeCompressor> COMPRESSOR_NAME_TO_INSTANCE =
       new ConcurrentHashMap<>();

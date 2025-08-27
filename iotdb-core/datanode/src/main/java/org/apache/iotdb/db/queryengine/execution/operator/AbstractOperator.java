@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
@@ -26,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class AbstractOperator implements Operator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOperator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   protected OperatorContext operatorContext;
 
   protected long maxReturnSize =

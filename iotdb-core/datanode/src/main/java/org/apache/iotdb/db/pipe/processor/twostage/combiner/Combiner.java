@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Combiner {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Combiner.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final long MAX_COMBINER_LIVE_TIME_IN_MS =
       PipeConfig.getInstance().getTwoStageAggregateMaxCombinerLiveTimeInMs();

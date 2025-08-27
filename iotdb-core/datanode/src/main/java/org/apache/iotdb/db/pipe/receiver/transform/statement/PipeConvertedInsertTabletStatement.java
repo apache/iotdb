@@ -33,8 +33,7 @@ import java.util.Map;
 
 public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConvertedInsertTabletStatement.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   public PipeConvertedInsertTabletStatement(
       final InsertTabletStatement insertTabletStatement, boolean isCopyMeasurement) {

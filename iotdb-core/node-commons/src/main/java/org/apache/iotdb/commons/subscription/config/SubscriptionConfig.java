@@ -135,7 +135,7 @@ public class SubscriptionConfig {
 
   /////////////////////////////// Utils ///////////////////////////////
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   public void printAllConfigs() {
     LOGGER.info(

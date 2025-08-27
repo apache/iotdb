@@ -60,7 +60,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeTsFileInsertionEvent extends EnrichedEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final TsFileResource resource;
   private File tsFile;

@@ -46,7 +46,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
  * then push the newest value to the <b>local COM</b> server in another process.
  */
 public class OpcDaConnector implements PipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpcDaConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private static final Map<String, Pair<AtomicInteger, OpcDaServerHandle>>
       CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP = new ConcurrentHashMap<>();
   private String clsID;

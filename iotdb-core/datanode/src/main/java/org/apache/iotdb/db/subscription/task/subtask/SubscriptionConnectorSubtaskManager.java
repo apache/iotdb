@@ -52,8 +52,7 @@ import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlug
 
 public class SubscriptionConnectorSubtaskManager {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionConnectorSubtaskManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";

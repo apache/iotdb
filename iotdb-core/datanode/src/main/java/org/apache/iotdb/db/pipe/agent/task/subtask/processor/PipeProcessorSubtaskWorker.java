@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final int SLEEP_INTERVAL_ADJUSTMENT_ROUND_INTERVAL = 100;
   private int totalRoundInAdjustmentInterval = 0;

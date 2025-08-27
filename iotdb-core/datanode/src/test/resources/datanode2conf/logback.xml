@@ -147,8 +147,8 @@
             <level>INFO</level>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_DEBUG">
-        <file>${IOTDB_HOME}/logs/log_query_debug.log</file>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY">
+        <file>${IOTDB_HOME}/logs/log_QUERY.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${IOTDB_HOME}/logs/log-query-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
@@ -239,8 +239,8 @@
     <logger level="info" name="IoTDB_AUDIT_LOGGER">
         <appender-ref ref="AUDIT"/>
     </logger>
-    <logger level="info" name="QUERY_DEBUG">
-        <appender-ref ref="QUERY_DEBUG"/>
+    <logger level="info" name="QUERY">
+        <appender-ref ref="QUERY"/>
     </logger>
     <logger level="info" name="SLOW_SQL">
         <appender-ref ref="SLOW_SQL"/>

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.flush.pool;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.rescon.memory.AbstractPoolManager;
 
@@ -29,7 +30,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("squid:S6548")
 public class FlushTaskPoolManager extends AbstractPoolManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FlushTaskPoolManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private FlushTaskPoolManager() {
     int threadCnt = IoTDBDescriptor.getInstance().getConfig().getFlushThreadCount();

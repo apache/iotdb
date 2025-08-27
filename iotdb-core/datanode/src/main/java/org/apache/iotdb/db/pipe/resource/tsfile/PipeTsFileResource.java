@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeTsFileResource implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   public static final long TSFILE_MIN_TIME_TO_LIVE_IN_MS = 1000L * 20;
   public static final float MEMORY_SUFFICIENT_THRESHOLD = 0.7f;

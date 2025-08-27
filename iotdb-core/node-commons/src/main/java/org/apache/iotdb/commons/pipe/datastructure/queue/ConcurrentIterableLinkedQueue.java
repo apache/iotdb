@@ -34,7 +34,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ConcurrentIterableLinkedQueue<E> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConcurrentIterableLinkedQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static class LinkedListNode<E> {
 

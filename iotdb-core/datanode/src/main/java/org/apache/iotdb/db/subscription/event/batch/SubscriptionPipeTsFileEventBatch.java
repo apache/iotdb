@@ -38,8 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionPipeTsFileEventBatch.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final PipeTabletEventTsFileBatch batch;
 

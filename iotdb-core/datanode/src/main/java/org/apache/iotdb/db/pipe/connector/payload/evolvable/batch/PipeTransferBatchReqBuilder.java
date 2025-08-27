@@ -59,7 +59,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 public class PipeTransferBatchReqBuilder implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferBatchReqBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final boolean useLeaderCache;
 

@@ -79,7 +79,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
  */
 public class OpcUaConnector implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final Map<String, Pair<AtomicInteger, OpcUaNameSpace>>
       SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP = new ConcurrentHashMap<>();

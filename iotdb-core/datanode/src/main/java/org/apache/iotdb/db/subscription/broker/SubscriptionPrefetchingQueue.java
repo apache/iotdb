@@ -59,7 +59,7 @@ import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitC
 
 public abstract class SubscriptionPrefetchingQueue {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPrefetchingQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final String brokerId; // consumer group id
   private final String topicName;

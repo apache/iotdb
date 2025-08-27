@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 
 public abstract class PipePluginAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final PipePluginMetaKeeper pipePluginMetaKeeper;
   private final PipeExtractorConstructor pipeExtractorConstructor;

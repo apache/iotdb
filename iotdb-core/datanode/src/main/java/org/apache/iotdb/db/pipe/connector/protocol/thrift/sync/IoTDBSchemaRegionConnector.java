@@ -46,7 +46,7 @@ import java.util.Objects;
 
 public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {

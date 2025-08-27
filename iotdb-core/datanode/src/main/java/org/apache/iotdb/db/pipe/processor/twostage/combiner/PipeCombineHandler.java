@@ -53,7 +53,7 @@ import java.util.function.Function;
 
 public class PipeCombineHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeCombineHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final String pipeName;
   private final long creationTime;
