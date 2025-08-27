@@ -650,10 +650,12 @@ public class InsertNodeMemoryEstimator {
       return 0L;
     }
 
-    return RamUsageEstimator.shallowSizeOf(binaries)
-        + Arrays.stream(binaries)
-            .mapToLong(InsertNodeMemoryEstimator::sizeOfBinary)
-            .reduce(0L, Long::sum);
+    long size = 0L;
+    for (Binary binary : binaries) {
+      size += InsertNodeMemoryEstimator.sizeOfBinary(binary);
+    }
+
+    return size + RamUsageEstimator.shallowSizeOf(binaries);
   }
 
   public static long sizeOfValues(
