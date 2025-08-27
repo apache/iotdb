@@ -61,6 +61,7 @@ import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.TimeValuePair;
 
 import javax.ws.rs.core.Response;
@@ -169,12 +170,13 @@ public class RestApiServiceImpl extends RestApiService {
       List<Object> valueList = new ArrayList<>();
       List<Object> dataTypeList = new ArrayList<>();
       for (Map.Entry<PartialPath, Map<String, TimeValuePair>> entry : resultMap.entrySet()) {
+        final String deviceWithPrefix = entry.getKey() + TsFileConstant.PATH_SEPARATOR;
         for (Map.Entry<String, TimeValuePair> measurementEntry : entry.getValue().entrySet()) {
           final TimeValuePair tvPair = measurementEntry.getValue();
           valueList.add(tvPair.getValue().getStringValue());
           dataTypeList.add(tvPair.getValue().getDataType().name());
           targetDataSet.addTimestampsItem(tvPair.getTimestamp());
-          timeseries.add(measurementEntry.getValue().getLeft().toString());
+          timeseries.add(deviceWithPrefix + measurementEntry.getKey());
         }
       }
       if (!timeseries.isEmpty()) {
