@@ -315,6 +315,11 @@ public class ColumnHeaderConstant {
 
   public static final String CURRENT_SQL_DIALECT = "CurrentSqlDialect";
 
+  public static final String SHOW_CONFIGURATIONS_NAME = "name";
+  public static final String SHOW_CONFIGURATIONS_VALUE = "value";
+  public static final String SHOW_CONFIGURATIONS_DEFAULT_VALUE = "default_value";
+  public static final String SHOW_CONFIGURATIONS_DESCRIPTION = "description";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -704,4 +709,17 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS =
       ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.TIMESTAMP));
+
+  public static final List<ColumnHeader> SHOW_CONFIGURATIONS_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(SHOW_CONFIGURATIONS_NAME, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_VALUE, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_DEFAULT_VALUE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> SHOW_CONFIGURATIONS_COLUMN_HEADERS_WITH_DESCRIPTION =
+      ImmutableList.of(
+          new ColumnHeader(SHOW_CONFIGURATIONS_NAME, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_VALUE, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_DEFAULT_VALUE, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_DESCRIPTION, TSDataType.TEXT));
 }

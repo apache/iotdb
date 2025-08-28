@@ -30,6 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
@@ -220,6 +221,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentTimestampTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
@@ -280,6 +282,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -1265,6 +1268,39 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showAppliedConfigurations(
+      ShowConfigurationStatement showConfigurationStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    int nodeId = showConfigurationStatement.getNodeId();
+    try {
+      boolean onLocal =
+          nodeId == -1 || IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == nodeId;
+      Map<String, String> lastAppliedProperties;
+      if (onLocal) {
+        lastAppliedProperties = ConfigurationFileUtils.getLastAppliedProperties();
+      } else {
+        try (ConfigNodeClient client =
+            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          TShowConfigurationResp resp = client.showConfiguration(nodeId);
+          if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            future.setException(new IoTDBException(resp.getStatus()));
+            return future;
+          }
+          lastAppliedProperties = client.showAppliedConfigurations(nodeId).getData();
+        }
+      }
+      ShowConfigurationTask.buildTsBlock(
+          lastAppliedProperties,
+          showConfigurationStatement.isShowAllConfigurations(),
+          showConfigurationStatement.withDescription(),
+          future);
+    } catch (Exception e) {
+      future.setException(e);
     }
     return future;
   }

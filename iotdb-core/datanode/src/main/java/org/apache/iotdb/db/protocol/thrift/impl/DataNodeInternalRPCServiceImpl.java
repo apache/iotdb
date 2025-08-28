@@ -35,6 +35,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
@@ -2397,6 +2398,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       URL propsUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
       resp.setContent(ConfigurationFileUtils.readConfigFileContent(propsUrl));
+    } catch (Exception e) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+    }
+    return resp;
+  }
+
+  @Override
+  public TShowAppliedConfigurationsResp showAppliedConfigurations() throws TException {
+    TShowAppliedConfigurationsResp resp = new TShowAppliedConfigurationsResp();
+    resp.setStatus(RpcUtils.SUCCESS_STATUS);
+    try {
+      resp.setData(ConfigurationFileUtils.getLastAppliedProperties());
+
     } catch (Exception e) {
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
     }

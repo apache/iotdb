@@ -135,6 +135,9 @@ public class SyncDataNodeClientPool {
         (req, client) -> client.resetPeerList((TResetPeerListReq) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.SHOW_CONFIGURATION, (req, client) -> client.showConfiguration());
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.SHOW_APPLIED_CONFIGURATIONS,
+        (req, client) -> client.showAppliedConfigurations());
     actionMap = actionMapBuilder.build();
   }
 

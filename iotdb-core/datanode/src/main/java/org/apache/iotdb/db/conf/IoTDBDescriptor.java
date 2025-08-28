@@ -182,7 +182,7 @@ public class IoTDBDescriptor {
    * @return url object if location exit, otherwise null.
    */
   public static URL getPropsUrl(String configFileName) {
-    String urlString = commonDescriptor.getConfDir();
+    String urlString = "/Users/shuww/IdeaProjects/iotdb2/iotdb-core/datanode/src/test/resources";
     if (urlString == null) {
       // If urlString wasn't provided, try to find a default config in the root of the classpath.
       URL uri = IoTDBConfig.class.getResource("/" + configFileName);
@@ -1961,6 +1961,7 @@ public class IoTDBDescriptor {
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
       throws QueryProcessException {
+    ConfigurationFileUtils.updateLastAppliedProperties(properties);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);

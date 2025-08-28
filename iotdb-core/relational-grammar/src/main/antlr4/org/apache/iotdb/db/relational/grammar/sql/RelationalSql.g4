@@ -140,6 +140,7 @@ statement
     | killQueryStatement
     | loadConfigurationStatement
     | setConfigurationStatement
+    | showConfigurationStatement
     | showCurrentSqlDialectStatement
     | setSqlDialectStatement
     | showCurrentUserStatement
@@ -674,6 +675,10 @@ showCurrentDatabaseStatement
 
 showCurrentTimestampStatement
     : SHOW CURRENT_TIMESTAMP
+    ;
+
+showConfigurationStatement
+    : SHOW (ALL)? CONFIGURATION (ON nodeId=INTEGER_VALUE)? (WITH DESC)?
     ;
 
 

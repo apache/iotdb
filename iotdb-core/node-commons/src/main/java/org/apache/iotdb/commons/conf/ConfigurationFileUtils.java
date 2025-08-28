@@ -40,14 +40,13 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class ConfigurationFileUtils {
 
@@ -75,7 +74,12 @@ public class ConfigurationFileUtils {
           .add("# specific language governing permissions and limitations")
           .add("# under the License.")
           .toString();
-  private static Map<String, String> configuration2DefaultValue;
+  private static final String EFFECTIVE_MODE = "effectiveMode:";
+  private static final String DATATYPE = "Datatype:";
+  private static final String EFFECTIVE_MODE_HOT_RELOAD = "hot_reload";
+  private static final String EFFECTIVE_MODE_RESTART = "restart";
+  private static final String EFFECTIVE_MODE_FIRST_START = "first_start";
+  private static Map<String, DefaultConfigurationItem> configuration2DefaultValue;
 
   // This is a temporary implementations
   private static final Set<String> ignoreConfigKeys =
@@ -106,6 +110,20 @@ public class ConfigurationFileUtils {
               "iotdb_server_encrypt_decrypt_provider",
               "iotdb_server_encrypt_decrypt_provider_parameter",
               "pipe_lib_dir"));
+
+  private static final Map<String, String> lastAppliedProperties = new HashMap<>();
+
+  public static void updateLastAppliedProperties(TrimProperties properties) {
+    for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+      String key = entry.getKey().toString();
+      String value = entry.getValue() == null ? null : entry.getValue().toString();
+      lastAppliedProperties.put(key, value);
+    }
+  }
+
+  public static Map<String, String> getLastAppliedProperties() {
+    return lastAppliedProperties;
+  }
 
   public static void checkAndMayUpdate(
       URL systemUrl, URL configNodeUrl, URL dataNodeUrl, URL commonUrl)
@@ -163,30 +181,9 @@ public class ConfigurationFileUtils {
     if (configuration2DefaultValue != null) {
       return;
     }
-    configuration2DefaultValue = new HashMap<>();
-    try (InputStream inputStream =
-            ConfigurationFileUtils.class
-                .getClassLoader()
-                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
-        InputStreamReader isr = new InputStreamReader(inputStream);
-        BufferedReader reader = new BufferedReader(isr)) {
-      String line;
-      Pattern pattern = Pattern.compile("^[^#].*?=.*$");
-      while ((line = reader.readLine()) != null) {
-        Matcher matcher = pattern.matcher(line);
-        if (matcher.find()) {
-          String[] parts = line.split("=");
-          if (parts.length == 2) {
-            configuration2DefaultValue.put(parts[0].trim(), parts[1].trim());
-          } else if (parts.length == 1) {
-            configuration2DefaultValue.put(parts[0].trim(), null);
-          } else {
-            logger.error("Failed to parse configuration template: {}", line);
-          }
-        }
-      }
+    try {
+      configuration2DefaultValue = getConfigurationItemsFromTemplate(false);
     } catch (IOException e) {
-      configuration2DefaultValue = null;
       logger.warn("Failed to read configuration template", e);
       throw e;
     }
@@ -197,10 +194,12 @@ public class ConfigurationFileUtils {
   public static String getConfigurationDefaultValue(String parameterName) throws IOException {
     parameterName = parameterName.trim();
     if (configuration2DefaultValue != null) {
-      return configuration2DefaultValue.get(parameterName);
+      return configuration2DefaultValue.get(parameterName).value;
     } else {
       loadConfigurationDefaultValueFromTemplate();
-      return configuration2DefaultValue.getOrDefault(parameterName, null);
+      DefaultConfigurationItem defaultConfigurationItem =
+          configuration2DefaultValue.get(parameterName);
+      return defaultConfigurationItem == null ? null : defaultConfigurationItem.value;
     }
   }
 
@@ -360,5 +359,83 @@ public class ConfigurationFileUtils {
   public interface LoadHotModifiedPropsFunc {
     void loadHotModifiedProperties(TrimProperties properties)
         throws IOException, InterruptedException;
+  }
+
+  public static Map<String, DefaultConfigurationItem> getConfigurationItemsFromTemplate(
+      boolean withDesc) throws IOException {
+    if (configuration2DefaultValue != null && !withDesc) {
+      return configuration2DefaultValue;
+    }
+    Map<String, DefaultConfigurationItem> items = new LinkedHashMap<>();
+    try (InputStream inputStream =
+            ConfigurationFileUtils.class
+                .getClassLoader()
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
+        InputStreamReader isr = new InputStreamReader(inputStream);
+        BufferedReader reader = new BufferedReader(isr)) {
+      String effectiveMode = null;
+      String dataType = null;
+      StringBuilder description = new StringBuilder();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        line = line.trim();
+        if (line.isEmpty()) {
+          description = new StringBuilder();
+          dataType = null;
+          effectiveMode = null;
+          continue;
+        }
+        if (line.startsWith("#")) {
+          String comment = line.substring(1).trim();
+          if (description.length() > 0) {
+            if (comment.startsWith(EFFECTIVE_MODE)) {
+              effectiveMode = comment.substring(EFFECTIVE_MODE.length()).trim();
+              continue;
+            } else if (comment.startsWith(DATATYPE)) {
+              dataType = comment.substring(DATATYPE.length()).trim();
+              continue;
+            } else {
+              description.append(" ");
+            }
+          }
+          if (withDesc) {
+            description.append(comment);
+          }
+        } else {
+          int equalsIndex = line.indexOf('=');
+          String key = line.substring(0, equalsIndex).trim();
+          String value = line.substring(equalsIndex + 1).trim();
+          items.put(
+              key,
+              new DefaultConfigurationItem(
+                  key,
+                  value,
+                  withDesc ? description.toString().trim() : null,
+                  effectiveMode,
+                  dataType));
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to read configuration template", e);
+      throw e;
+    }
+    return items;
+  }
+
+  public static class DefaultConfigurationItem {
+    public String name;
+    public String value;
+    public String description;
+    public String effectiveMode;
+    public String dataType;
+
+    public DefaultConfigurationItem(
+        String name, String value, String description, String effectiveMode, String dataType) {
+      this.name = name;
+      this.value = value;
+      this.description = description;
+      this.effectiveMode = effectiveMode;
+      this.dataType = dataType;
+    }
   }
 }

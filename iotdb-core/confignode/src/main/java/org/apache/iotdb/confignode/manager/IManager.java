@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -597,6 +598,9 @@ public interface IManager {
 
   /** Show content of configuration file on specified node */
   TShowConfigurationResp showConfiguration(int nodeId);
+
+  /** Show configuration on specified node by TsBlock */
+  TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId);
 
   /** Set system status on all DataNodes. */
   TSStatus setSystemStatus(String status);

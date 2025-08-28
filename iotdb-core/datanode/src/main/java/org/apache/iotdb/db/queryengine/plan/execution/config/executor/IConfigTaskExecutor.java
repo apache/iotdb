@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogical
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -156,6 +157,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> clearCache(boolean onCluster, Set<CacheClearOptions> options);
 
   SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq tSetConfigurationReq);
+
+  SettableFuture<ConfigTaskResult> showAppliedConfigurations(
+      ShowConfigurationStatement showConfigurationStatement);
 
   SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster);
 

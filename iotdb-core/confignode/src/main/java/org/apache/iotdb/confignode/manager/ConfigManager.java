@@ -37,6 +37,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -1787,6 +1788,23 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? nodeManager.showConfiguration(nodeId)
         : new TShowConfigurationResp(status, "");
+  }
+
+  public TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId) {
+    if (ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId() == nodeId) {
+      TShowAppliedConfigurationsResp resp = new TShowAppliedConfigurationsResp();
+      resp.setStatus(RpcUtils.SUCCESS_STATUS);
+      try {
+        resp.setData(ConfigurationFileUtils.getLastAppliedProperties());
+      } catch (Exception e) {
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+      }
+      return resp;
+    }
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? nodeManager.showAppliedConfigurations(nodeId)
+        : new TShowAppliedConfigurationsResp(status, null);
   }
 
   @Override
