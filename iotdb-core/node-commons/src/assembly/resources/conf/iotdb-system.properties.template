@@ -448,11 +448,6 @@ enable_thrift_ssl=false
 # Datatype: boolean
 enable_https=false
 
-# Whether enable SSL for cluster internal connections
-# effectiveMode: restart
-# Datatype: boolean
-enable_internal_ssl=false
-
 # SSL key store path
 # linux e.g. /home/iotdb/server.keystore (absolute path) or server.keystore (relative path)
 # windows e.g. C:\\iotdb\\server.keystore (absolute path) or server.keystore (relative path)
