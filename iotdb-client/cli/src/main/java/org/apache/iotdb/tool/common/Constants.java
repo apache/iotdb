@@ -390,5 +390,6 @@ public class Constants {
   public static final int BATCH_POINT_SIZE = 10000;
 
   public static final String IMPORT_INIT_MEET_ERROR_MSG = "Meet error when init import because ";
-  public static final String REQUIRED_ARGS_ERROR_MSG = "Invalid args: Required values for option '%s' not provided";
+  public static final String REQUIRED_ARGS_ERROR_MSG =
+      "Invalid args: Required values for option '%s' not provided";
 }
