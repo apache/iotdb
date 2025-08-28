@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
@@ -114,19 +113,19 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
 
   @Override
   public PlanNode clone() {
-    return new PipeEnrichedDeleteDataNode((DeleteDataNode) deleteDataNode.clone());
+    return new PipeEnrichedDeleteDataNode((AbstractDeleteDataNode) deleteDataNode.clone());
   }
 
   @Override
   public PlanNode createSubNode(final int subNodeId, final int startIndex, final int endIndex) {
     return new PipeEnrichedDeleteDataNode(
-        (DeleteDataNode) deleteDataNode.createSubNode(subNodeId, startIndex, endIndex));
+        (AbstractDeleteDataNode) deleteDataNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
   public PlanNode cloneWithChildren(final List<PlanNode> children) {
     return new PipeEnrichedDeleteDataNode(
-        (DeleteDataNode) deleteDataNode.cloneWithChildren(children));
+        (AbstractDeleteDataNode) deleteDataNode.cloneWithChildren(children));
   }
 
   @Override
@@ -157,7 +156,8 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   public static PipeEnrichedDeleteDataNode deserialize(final ByteBuffer buffer) {
-    return new PipeEnrichedDeleteDataNode((DeleteDataNode) PlanNodeType.deserialize(buffer));
+    return new PipeEnrichedDeleteDataNode(
+        (AbstractDeleteDataNode) PlanNodeType.deserialize(buffer));
   }
 
   @Override
@@ -183,7 +183,7 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
             plan ->
                 plan instanceof PipeEnrichedDeleteDataNode
                     ? plan
-                    : new PipeEnrichedDeleteDataNode((DeleteDataNode) plan))
+                    : new PipeEnrichedDeleteDataNode((AbstractDeleteDataNode) plan))
         .collect(Collectors.toList());
   }
 
@@ -206,6 +206,6 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
                     (SearchNode) ((PipeEnrichedDeleteDataNode) searchNode).getDeleteDataNode())
             .collect(Collectors.toList());
     return new PipeEnrichedDeleteDataNode(
-        (DeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes));
+        (AbstractDeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes));
   }
 }

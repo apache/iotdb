@@ -961,7 +961,7 @@ public class PartitionManager {
     }
 
     if (result.isEmpty()) {
-      throw new NoAvailableRegionGroupException(type);
+      throw new NoAvailableRegionGroupException(type, Collections.singletonList(database));
     }
 
     final Map<TConsensusGroupId, RegionGroupStatus> regionGroupStatusMap =

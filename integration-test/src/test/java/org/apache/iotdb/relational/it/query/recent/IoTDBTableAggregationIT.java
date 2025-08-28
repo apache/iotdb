@@ -4310,6 +4310,42 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void approxPercentileTest() {
+    tableResultSetEqualTest(
+        "select approx_percentile(time, 0.5),approx_percentile(s1,0.5),approx_percentile(s2,0.5),approx_percentile(s3,0.5),approx_percentile(s4,0.5) from table1",
+        buildHeaders(5),
+        new String[] {"2024-09-24T06:15:40.000Z,40,46000,40.0,46.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,province,approx_percentile(s1,0.5),approx_percentile(s2,0.5) from table1 group by 1,2 order by 2,1",
+        new String[] {"time", "province", "_col2", "_col3"},
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,30,0,",
+          "2024-09-24T06:15:31.000Z,beijing,0,31000,",
+          "2024-09-24T06:15:35.000Z,beijing,0,35000,",
+          "2024-09-24T06:15:36.000Z,beijing,36,0,",
+          "2024-09-24T06:15:40.000Z,beijing,40,40000,",
+          "2024-09-24T06:15:41.000Z,beijing,41,0,",
+          "2024-09-24T06:15:46.000Z,beijing,0,46000,",
+          "2024-09-24T06:15:50.000Z,beijing,0,50000,",
+          "2024-09-24T06:15:51.000Z,beijing,0,0,",
+          "2024-09-24T06:15:55.000Z,beijing,55,0,",
+          "2024-09-24T06:15:30.000Z,shanghai,30,0,",
+          "2024-09-24T06:15:31.000Z,shanghai,0,31000,",
+          "2024-09-24T06:15:35.000Z,shanghai,0,35000,",
+          "2024-09-24T06:15:36.000Z,shanghai,36,0,",
+          "2024-09-24T06:15:40.000Z,shanghai,40,40000,",
+          "2024-09-24T06:15:41.000Z,shanghai,41,0,",
+          "2024-09-24T06:15:46.000Z,shanghai,0,46000,",
+          "2024-09-24T06:15:50.000Z,shanghai,0,50000,",
+          "2024-09-24T06:15:51.000Z,shanghai,0,0,",
+          "2024-09-24T06:15:55.000Z,shanghai,55,0,",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "select avg() from table1",
@@ -4370,6 +4406,22 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select approx_most_frequent() from table1",
         "701: Aggregation functions [approx_most_frequent] should only have three arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile() from table1",
+        "701: Aggregation functions [approx_percentile] should only have two or three arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s1,1.1) from table1",
+        "701: percentage should be in [0,1], got 1.1",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s1,'test') from table1",
+        "701: The second argument of 'approx_percentile' function percentage must be a double literal",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s5,0.5) from table1",
+        "701: Aggregation functions [approx_percentile] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
         DATABASE_NAME);
   }
 

@@ -454,3 +454,47 @@ const std::vector<char>& BitMap::getByteArray() const {
 size_t BitMap::getSize() const {
     return this->size;
 }
+
+const std::string UrlUtils::PORT_SEPARATOR = ":";
+const std::string UrlUtils::ABB_COLON = "[";
+
+TEndPoint UrlUtils::parseTEndPointIpv4AndIpv6Url(const std::string& endPointUrl) {
+    TEndPoint endPoint;
+
+    // Return default TEndPoint if input is empty
+    if (endPointUrl.empty()) {
+        return endPoint;
+    }
+
+    size_t portSeparatorPos = endPointUrl.find_last_of(PORT_SEPARATOR);
+
+    // If no port separator found, treat entire string as IP
+    if (portSeparatorPos == std::string::npos) {
+        endPoint.__set_ip(endPointUrl);
+        return endPoint;
+    }
+
+    // Extract port part
+    std::string portStr = endPointUrl.substr(portSeparatorPos + 1);
+
+    // Extract IP part
+    std::string ip = endPointUrl.substr(0, portSeparatorPos);
+
+    // Handle IPv6 addresses with brackets
+    if (ip.find(ABB_COLON) != std::string::npos) {
+        // Remove surrounding square brackets for IPv6
+        if (ip.size() >= 2 && ip.front() == '[' && ip.back() == ']') {
+            ip = ip.substr(1, ip.size() - 2);
+        }
+    }
+
+    try {
+        int port = std::stoi(portStr);
+        endPoint.__set_ip(ip);
+        endPoint.__set_port(port);
+    } catch (const std::exception& e) {
+        endPoint.__set_ip(endPointUrl);
+    }
+
+    return endPoint;
+}
