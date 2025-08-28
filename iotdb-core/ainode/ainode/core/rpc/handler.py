@@ -34,6 +34,8 @@ from ainode.thrift.ainode.ttypes import (
     TShowModelsReq,
     TShowModelsResp,
     TTrainingReq,
+    TInstallModelReq,
+    TUninstallModelReq,
 )
 from ainode.thrift.common.ttypes import TSStatus
 
@@ -74,3 +76,9 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
 
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
         pass
+
+    def installModel(self, req: TInstallModelReq) -> TSStatus:
+        return self._inference_manager.install_model(req)
+
+    def uninstallModel(self, req: TUninstallModelReq) -> TSStatus:
+        return self._inference_manager.uninstall_model(req)

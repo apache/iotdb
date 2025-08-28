@@ -71,6 +71,7 @@ class PoolController:
                     pass
 
     def _first_pool_init(self, model_id: str):
+        # TODO: Check if necessary
         if model_id == "sundial":
             config = SundialConfig()
         elif model_id == "timer_xl":
@@ -128,11 +129,71 @@ class PoolController:
                     f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_id}] Pool started running for model {model_id}"
                 )
 
-    def add_request(self, model_id: str, req: InferenceRequest):
-        # lazy initialization for first request
-        model_id = req.model_id
+    def shrink_pools(self, model_id, count):
+        """
+        Shrink the pools for the given model_id by count.
+        """
+        pool_ids = self.get_pool_ids(model_id)
+        current_count = len(pool_ids)
+
+        if current_count < count:
+            logger.error(
+                f"[Inference][Device-{self.DEFAULT_DEVICE}] "
+                f"Cannot shrink {count} pools for model {model_id}, only {current_count} pools available."
+            )
+
+        # 1. Find pools with zero load and set them to STOP
+        zero_load_pools = [pid for pid in pool_ids if self.get_load(model_id, pid) == 0]
+        stop_count = min(len(zero_load_pools), current_count - target_count)
+        pools_to_stop = zero_load_pools[:stop_count]
+
+        for pid in pools_to_stop:
+            self.set_pool_state(model_id, pid, "STOP")  # 停止接收新请求
+
+        remaining_to_close = target_count - (current_count - len(pools_to_stop))
+        if remaining_to_close <= 0:
+            # 第二步：关闭已经 STOP 且 load 为 0 的池子
+            for pid in pools_to_stop:
+                if self.get_load(model_id, pid) == 0:
+                    self.unregister_pool(model_id, pid)
+            return
+
+        # --- 第二步：如果还不够，随机选一些池子设为 STOP ---
+        import random
+        candidates = [pid for pid in pool_ids if pid not in pools_to_stop]
+        random.shuffle(candidates)
+        additional_stop = candidates[:remaining_to_close]
+
+        for pid in additional_stop:
+            self.set_pool_state(model_id, pid, "STOP")
+
+        # --- 轮询这些 STOP 池，等 load 为 0 再关闭 ---
+        final_stop_pools = pools_to_stop + additional_stop
+        while final_stop_pools:
+            for pid in final_stop_pools[:]:  # 遍历副本
+                if self.get_load(model_id, pid) == 0:
+                    self.unregister_pool(model_id, pid)
+                    final_stop_pools.remove(pid)
+
+    def install_model(self, model_id: str, device: str, existing_model_id: str):
         if not self.has_request_pools(model_id):
             self.first_req_init(model_id)
+        else:
+            logger.info(f"Model {model_id} is already installed.")
+
+    def uninstall_model(self, model_id: str, device):
+        pass
+
+    def add_request(self, req: InferenceRequest):
+        model_id = req.model_id
+        if not self.has_request_pools(model_id):
+            logger.error(
+                f"[Inference][Device-{self.DEFAULT_DEVICE}] "
+                f"No pools found for model {model_id}. "
+            )
+            return
+            # TODO: Implement adaptive scaling based on requests.(e.g. lazy initialization)
+            # self.first_req_init(model_id)
         self._request_pool_map[model_id].dispatch_request(req)
 
     def remove_request(self, model_id: str, pool_id: int):
@@ -181,6 +242,9 @@ class PoolController:
             self._request_pool_map[model_id] = PoolGroup(model_id)
         self._request_pool_map[model_id].add_pool(pool_id, request_pool, request_queue)
 
+    def get_load(self, model_id, pool_id) -> int:
+        return self._request_pool_map[model_id].get_load(pool_id)
+    
     def shutdown(self):
         for pool_group in self._request_pool_map.values():
             for pool_id in pool_group.get_pool_ids():

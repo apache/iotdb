@@ -111,6 +111,17 @@ struct TShowModelsResp {
   5: optional map<string, string> stateMap
 }
 
+struct TInstallModelReq {
+  1: required string modelId
+  2: required string existingModelId
+  3: required string device
+}
+
+struct TUninstallModelReq {
+  1: required string modelId
+  2: required string device
+}
+
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
@@ -125,6 +136,10 @@ service IAINodeRPCService {
   TAIHeartbeatResp getAIHeartbeat(TAIHeartbeatReq req)
 
   common.TSStatus createTrainingTask(TTrainingReq req)
+
+  common.TSStatus installModel(TInstallModelReq req)
+
+  common.TSStatus uninstallModel(TUninstallModelReq req)
 
   // -------------- For Data Node --------------
 

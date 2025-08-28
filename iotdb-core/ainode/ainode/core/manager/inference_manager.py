@@ -21,6 +21,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict
 
+from ainode.thrift.common.ttypes import TSStatus
 import pandas as pd
 import torch
 import torch.multiprocessing as mp
@@ -62,6 +63,8 @@ from ainode.thrift.ainode.ttypes import (
     TForecastResp,
     TInferenceReq,
     TInferenceResp,
+    TInstallModelReq,
+    TUninstallModelReq,
 )
 
 logger = Logger()
@@ -201,7 +204,7 @@ class InferenceManager:
         with self._result_wrapper_lock:
             self._result_wrapper_map[req_id] = infer_proxy
         # dispatch request to the pool
-        self._pool_controller.add_request(req.model_id, req)
+        self._pool_controller.add_request(req)
         outputs = infer_proxy.wait_for_completion()
         with self._result_wrapper_lock:
             del self._result_wrapper_map[req_id]
@@ -320,6 +323,30 @@ class InferenceManager:
             single_output=False,
         )
 
+    def install_model(self, req: TInstallModelReq) -> TSStatus:
+        logger.info(f"Installing model {req.modelId} ...")
+        # TODO: validate req.device
+        device = req.device or str(self.DEFAULT_DEVICE)
+        model_id = req.modelId
+        exisiting_model_id = req.existingModelId
+        try:
+            self.model_storage.delete_model(req.modelId)
+            return get_status(TSStatusCode.SUCCESS_STATUS)
+        except Exception as e:
+            logger.warning(e)
+            return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
+    
+    def uninstall_model(self, req: TUninstallModelReq) -> TSStatus:
+        logger.info(f"Uninstalling model {req.modelId} ...")
+        device = req.device or str(self.DEFAULT_DEVICE)
+        model_id = req.modelId
+        try:
+            self.model_storage.delete_model(req.modelId)
+            return get_status(TSStatusCode.SUCCESS_STATUS)
+        except Exception as e:
+            logger.warning(e)
+            return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
+        
     def shutdown(self):
         self._stop_event.set()
         self._pool_controller.shutdown()
