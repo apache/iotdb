@@ -621,7 +621,7 @@ public class IoTDBWindowTVFIT {
           "2,0.6797687270429319,1970-01-01T00:00:00.052Z,2.0,0,",
         };
     tableResultSetEqualByDataTypeTest(
-        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,3.0,2.0,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, is_Pattern_From_Origin => false)",
+        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,3.0,2.0,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_On_Pattern => false)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -652,7 +652,7 @@ public class IoTDBWindowTVFIT {
           "1,0.6797687270429319,1970-01-01T00:00:00.052Z,2.0,0,",
         };
     tableResultSetEqualByDataTypeTest(
-        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,3.0,2.0,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 1.0, width => 1000.0, height => 500.0, is_Pattern_From_Origin => false)",
+        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,3.0,2.0,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 1.0, width => 1000.0, height => 500.0, smooth_On_Pattern => false)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -679,7 +679,7 @@ public class IoTDBWindowTVFIT {
           "1,0.6465473220616865,1970-01-01T00:00:00.021Z,1.0,0,",
         };
     tableResultSetEqualByDataTypeTest(
-        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,3.0,2.0,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 10.0, width => 10.0, height => 500.0, is_Pattern_From_Origin => false)",
+        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,3.0,2.0,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 10.0, width => 10.0, height => 500.0, smooth_On_Pattern => false)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -697,7 +697,7 @@ public class IoTDBWindowTVFIT {
           "0,4.637180787192477,1970-01-01T00:00:00.008Z,1.0,0,",
         };
     tableResultSetEqualByDataTypeTest(
-        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,3.0,2.0,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 2.0, is_Pattern_From_Origin => false)",
+        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,3.0,2.0,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 2.0, smooth_On_Pattern => false)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -750,7 +750,7 @@ public class IoTDBWindowTVFIT {
           "3,0.6797687270429319,1970-01-01T00:00:00.052Z,2.0,0,",
         };
     tableResultSetEqualByDataTypeTest(
-        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,{2.0,3.0,2.0}+,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 100.0, width => 1000.0, height => 500.0, is_Pattern_From_Origin => false)",
+        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,{2.0,3.0,2.0}+,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 100.0, width => 1000.0, height => 500.0, smooth_On_Pattern => false)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -797,7 +797,7 @@ public class IoTDBWindowTVFIT {
           "3,0.0,1970-01-01T00:00:00.052Z,2.0,0,",
         };
     tableResultSetEqualByDataTypeTest(
-        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,1.0,{1.0,2.0,3.0,2.0}*,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 100.0, width => 1000.0, height => 500.0, is_Pattern_From_Origin => false)",
+        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,1.0,{1.0,2.0,3.0,2.0}*,1.0,1.0,1.0,1.0,1.0', smooth => 0.5, threshold => 100.0, width => 1000.0, height => 500.0, smooth_On_Pattern => false)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -827,7 +827,7 @@ public class IoTDBWindowTVFIT {
           "3,1.7704361692956723,1970-01-01T00:00:00.046Z,2.0,0,",
         };
     tableResultSetEqualByDataTypeTest(
-        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1,2.0,1.0', smooth => 0.5, threshold => 100.0, width => 1000.0, height => 500.0, is_Pattern_From_Origin => true)",
+        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1,2.0,1.0', smooth => 0.5, threshold => 100.0, width => 1000.0, height => 500.0, smooth_On_Pattern => true)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -855,7 +855,7 @@ public class IoTDBWindowTVFIT {
           "2,0.09999999999999994,1970-01-01T00:00:00.052Z,2.0,0,",
         };
     tableResultSetEqualByDataTypeTest(
-        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,1.2,1.0', smooth => 0.5, threshold => 1.0, width => 1000.0, height => 500.0, is_Pattern_From_Origin => true)",
+        "select * from pattern_match(data => t1, time_col => 'time', data_col => 'value', pattern => '1.0,1.2,1.0', smooth => 0.5, threshold => 1.0, width => 1000.0, height => 500.0, smooth_On_Pattern => true)",
         expectedHeader,
         retArray,
         DATABASE_NAME);

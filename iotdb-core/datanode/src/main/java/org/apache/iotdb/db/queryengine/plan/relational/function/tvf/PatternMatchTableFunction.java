@@ -59,7 +59,7 @@ public class PatternMatchTableFunction implements TableFunction {
   private static final String THRESHOLD_PARAM = "THRESHOLD";
   private static final String WIDTH_PARAM = "WIDTH";
   private static final String HEIGHT_PARAM = "HEIGHT";
-  private static final String PATTERN_SOURCE_PARAM = "IS_PATTERN_FROM_ORIGIN";
+  private static final String SMOOTH_ON_PATTERN = "SMOOTH_ON_PATTERN";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -85,7 +85,7 @@ public class PatternMatchTableFunction implements TableFunction {
             .defaultValue(Double.MAX_VALUE)
             .build(),
         ScalarParameterSpecification.builder()
-            .name(PATTERN_SOURCE_PARAM)
+            .name(SMOOTH_ON_PATTERN)
             .type(Type.BOOLEAN)
             .defaultValue(false)
             .build());
@@ -122,8 +122,7 @@ public class PatternMatchTableFunction implements TableFunction {
             .addProperty(WIDTH_PARAM, ((ScalarArgument) arguments.get(WIDTH_PARAM)).getValue())
             .addProperty(HEIGHT_PARAM, ((ScalarArgument) arguments.get(HEIGHT_PARAM)).getValue())
             .addProperty(
-                PATTERN_SOURCE_PARAM,
-                ((ScalarArgument) arguments.get(PATTERN_SOURCE_PARAM)).getValue())
+                SMOOTH_ON_PATTERN, ((ScalarArgument) arguments.get(SMOOTH_ON_PATTERN)).getValue())
             .build();
 
     return TableFunctionAnalysis.builder()
@@ -155,7 +154,7 @@ public class PatternMatchTableFunction implements TableFunction {
     Double heightLimit =
         (Double) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(HEIGHT_PARAM);
     boolean isPatternFromOrigin =
-        (Boolean) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(PATTERN_SOURCE_PARAM);
+        (Boolean) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(SMOOTH_ON_PATTERN);
 
     QetchAlgorithm qetchAlgorithm = new QetchAlgorithm();
     qetchAlgorithm.setThreshold(threshold);
