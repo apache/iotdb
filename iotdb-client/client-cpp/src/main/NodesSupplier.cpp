@@ -122,7 +122,9 @@ boost::optional<TEndPoint> NodesSupplier::getQueryEndPoint() {
 
 NodesSupplier::~NodesSupplier() {
     stopBackgroundRefresh();
-    client_->close();
+    if (client_ != nullptr) {
+        client_->close();
+    }
 }
 
 void NodesSupplier::deduplicateEndpoints() {

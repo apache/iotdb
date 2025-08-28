@@ -63,6 +63,19 @@ TEST_CASE("Create timeseries success", "[createTimeseries]") {
     session->deleteTimeseries("root.test.d1.s1");
 }
 
+TEST_CASE("Login Test - Authentication failed with error code 801", "[Authentication]") {
+    CaseReporter cr("Login Test");
+
+    try {
+        Session session("127.0.0.1", 6667, "root", "wrong-password");
+        session.open(false);
+        FAIL("Expected authentication exception"); // Test fails if no exception
+    } catch (const std::exception& e) {
+        // Verify exception contains error code 801
+        REQUIRE(std::string(e.what()).find("801") != std::string::npos);
+    }
+}
+
 TEST_CASE("Test Session constructor with nodeUrls", "[SessionInitAndOperate]") {
     CaseReporter cr("SessionInitWithNodeUrls");
 

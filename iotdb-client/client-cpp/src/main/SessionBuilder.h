@@ -83,7 +83,7 @@ public:
         sqlDialect = "tree";
         Session* newSession = new Session(this);
         newSession->open(false);
-        return new Session(this);
+        return newSession;
     }
 };
 

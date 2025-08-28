@@ -791,9 +791,11 @@ void Session::initDefaultSessionConnection() {
 
             connected = true;
             break;
+        } catch (const IoTDBException& e) {
+            log_debug(e.what());
+            throw;
         } catch (const std::exception& e) {
-            std::cout << "Failed to connect to " << endpoint.ip << ":"
-                      << endpoint.port << " , error=" << e.what() << std::endl;
+            log_warn(e.what());
         }
     }
 
