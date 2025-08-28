@@ -33,9 +33,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,7 +56,7 @@ public class PipeTaskMeta {
    * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
    * sharing the same connector, and nothing.
    */
-  private final Set<PipeRuntimeException> exceptionMessages =
+  private final Set<PipeRuntimeException> lastException =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   public PipeTaskMeta(/* @NotNull */ final ProgressIndex progressIndex, final int leaderNodeId) {
@@ -80,29 +81,30 @@ public class PipeTaskMeta {
     this.leaderNodeId.set(leaderNodeId);
   }
 
-  public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {
-    return new ArrayList<>(exceptionMessages);
+  public synchronized Optional<PipeRuntimeException> getLastException() {
+    final Iterator<PipeRuntimeException> iterator = lastException.iterator();
+    return iterator.hasNext() ? Optional.of(iterator.next()) : Optional.empty();
   }
 
-  public synchronized String getExceptionMessagesString() {
-    return exceptionMessages.toString();
+  public synchronized String getExceptionMessage() {
+    return lastException.toString();
   }
 
-  public synchronized void trackExceptionMessage(final PipeRuntimeException exceptionMessage) {
+  public synchronized void trackException(final PipeRuntimeException exceptionMessage) {
     // Only keep the newest exception message to avoid excess rpc payload and
     // show pipe response
     // Here we still keep the map form to allow compatibility with legacy versions
-    exceptionMessages.clear();
-    exceptionMessages.add(exceptionMessage);
+    lastException.clear();
+    lastException.add(exceptionMessage);
   }
 
   public synchronized boolean containsExceptionMessage(
       final PipeRuntimeException exceptionMessage) {
-    return exceptionMessages.contains(exceptionMessage);
+    return lastException.contains(exceptionMessage);
   }
 
   public synchronized boolean hasExceptionMessages() {
-    return !exceptionMessages.isEmpty();
+    return !lastException.isEmpty();
   }
 
   public synchronized void serialize(final OutputStream outputStream) throws IOException {
@@ -110,8 +112,8 @@ public class PipeTaskMeta {
 
     ReadWriteIOUtils.write(leaderNodeId.get(), outputStream);
 
-    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
+    ReadWriteIOUtils.write(lastException.size(), outputStream);
+    for (final PipeRuntimeException pipeRuntimeException : lastException) {
       pipeRuntimeException.serialize(outputStream);
     }
   }
@@ -127,7 +129,7 @@ public class PipeTaskMeta {
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(version, byteBuffer);
-      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
+      pipeTaskMeta.lastException.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
@@ -143,7 +145,7 @@ public class PipeTaskMeta {
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(version, inputStream);
-      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
+      pipeTaskMeta.lastException.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
@@ -159,12 +161,12 @@ public class PipeTaskMeta {
     final PipeTaskMeta that = (PipeTaskMeta) obj;
     return progressIndex.get().equals(that.progressIndex.get())
         && leaderNodeId.get() == that.leaderNodeId.get()
-        && exceptionMessages.equals(that.exceptionMessages);
+        && lastException.equals(that.lastException);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex.get(), leaderNodeId.get(), exceptionMessages);
+    return Objects.hash(progressIndex.get(), leaderNodeId.get(), lastException);
   }
 
   @Override
@@ -175,7 +177,7 @@ public class PipeTaskMeta {
         + "', leaderNodeId="
         + leaderNodeId.get()
         + ", exceptionMessages='"
-        + exceptionMessages
+        + lastException
         + "'}";
   }
 }

@@ -41,12 +41,34 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ShowPipeTask implements IConfigTask {
 
   private final ShowPipesStatement showPipesStatement;
+
+  private static final Map<String, String> exception2ActionMap = new HashMap<>();
+
+  // Will be persistently enriched
+  static {
+    exception2ActionMap.put(
+        "TimeoutException: Waited",
+        "Please manually increase the proportion of pipe memory in iotdb-system.properties by 'datanode_memory_proportion'.");
+    exception2ActionMap.put(
+        "Authentication failed",
+        "Please check whether the source's or sink's password is right. If not, you may alter the original pipe by modifying source/sink 'password'='<new_password>' to resolve it.");
+    exception2ActionMap.put(
+        "Temporarily out of memory",
+        "The receiver's memory is not enough to execute the insert command, please manually increase the proportion of pipe memory for the receiver in iotdb-system.properties by 'datanode_memory_proportion'.");
+    exception2ActionMap.put(
+        "failed to allocate memory from query engine",
+        "The receiver's memory is not enough to execute the insert command, please manually increase the proportion of pipe memory for the receiver in iotdb-system.properties by 'datanode_memory_proportion'.");
+    exception2ActionMap.put("Connection", "Please check the connection to the receivers.");
+  }
 
   public ShowPipeTask(final ShowPipesStatement showPipesStatement) {
     this.showPipesStatement = showPipesStatement;
@@ -95,9 +117,16 @@ public class ShowPipeTask implements IConfigTask {
       builder
           .getColumnBuilder(5)
           .writeBinary(new Binary(tPipeInfo.getPipeConnector(), TSFileConfig.STRING_CHARSET));
+
+      final String exceptionMessage = tPipeInfo.getExceptionMessage();
       builder
           .getColumnBuilder(6)
           .writeBinary(new Binary(tPipeInfo.getExceptionMessage(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(7)
+          .writeBinary(
+              new Binary(
+                  suggestedActionParser(exceptionMessage).toString(), TSFileConfig.STRING_CHARSET));
 
       // Optional, default 0/0.0
       long remainingEventCount = tPipeInfo.getRemainingEventCount();
@@ -112,7 +141,7 @@ public class ShowPipeTask implements IConfigTask {
       }
 
       builder
-          .getColumnBuilder(7)
+          .getColumnBuilder(8)
           .writeBinary(
               new Binary(
                   tPipeInfo.isSetRemainingEventCount()
@@ -120,7 +149,7 @@ public class ShowPipeTask implements IConfigTask {
                       : "Unknown",
                   TSFileConfig.STRING_CHARSET));
       builder
-          .getColumnBuilder(8)
+          .getColumnBuilder(9)
           .writeBinary(
               new Binary(
                   tPipeInfo.isSetEstimatedRemainingTime()
@@ -131,5 +160,12 @@ public class ShowPipeTask implements IConfigTask {
     }
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+  }
+
+  public static Set<String> suggestedActionParser(final String exception) {
+    return exception2ActionMap.entrySet().stream()
+        .filter(entry -> exception.contains(entry.getKey()))
+        .map(Map.Entry::getValue)
+        .collect(Collectors.toSet());
   }
 }

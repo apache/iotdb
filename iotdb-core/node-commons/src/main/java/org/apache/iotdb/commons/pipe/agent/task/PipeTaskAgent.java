@@ -22,8 +22,6 @@ package org.apache.iotdb.commons.pipe.agent.task;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
@@ -982,8 +980,7 @@ public abstract class PipeTaskAgent {
   }
 
   private void stopAllPipesWithCriticalExceptionInternal(final int currentNodeId) {
-    // 1. track exception in all pipe tasks that share the same connector that have critical
-    // exceptions.
+    // 1. track exception in all pipe tasks that share the same sink that have critical exceptions.
     final Map<PipeParameters, PipeRuntimeSinkCriticalException>
         reusedConnectorParameters2ExceptionMap = new HashMap<>();
 
@@ -993,24 +990,25 @@ public abstract class PipeTaskAgent {
             pipeMeta -> {
               final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
               final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+              final AtomicLong lastTimeStamp = new AtomicLong(Long.MIN_VALUE);
 
-              runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
-                  .values()
+              runtimeMeta.getConsensusGroupId2TaskMetaMap().values().stream()
+                  .filter(pipeTaskMeta -> pipeTaskMeta.getLeaderNodeId() == currentNodeId)
                   .forEach(
-                      pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderNodeId() != currentNodeId) {
-                          return;
-                        }
-
-                        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-                          if (e instanceof PipeRuntimeSinkCriticalException) {
-                            reusedConnectorParameters2ExceptionMap.putIfAbsent(
-                                staticMeta.getSinkParameters(),
-                                (PipeRuntimeSinkCriticalException) e);
-                          }
-                        }
-                      });
+                      pipeTaskMeta ->
+                          pipeTaskMeta
+                              .getLastException()
+                              .filter(
+                                  e ->
+                                      e instanceof PipeRuntimeSinkCriticalException
+                                          && e.getTimeStamp() > lastTimeStamp.get())
+                              .ifPresent(
+                                  e -> {
+                                    lastTimeStamp.set(e.getTimeStamp());
+                                    reusedConnectorParameters2ExceptionMap.put(
+                                        staticMeta.getSinkParameters(),
+                                        (PipeRuntimeSinkCriticalException) e);
+                                  }));
             });
     pipeMetaKeeper
         .getPipeMetaList()
@@ -1033,10 +1031,10 @@ public abstract class PipeTaskAgent {
                           final PipeRuntimeSinkCriticalException exception =
                               reusedConnectorParameters2ExceptionMap.get(
                                   staticMeta.getSinkParameters());
-                          pipeTaskMeta.trackExceptionMessage(exception);
+                          pipeTaskMeta.trackException(exception);
                           LOGGER.warn(
                               "Pipe {} (creation time = {}) will be stopped because of critical exception "
-                                  + "(occurred time {}) in connector {}.",
+                                  + "(occurred time {}) in sink {}.",
                               staticMeta.getPipeName(),
                               staticMeta.getCreationTime(),
                               exception.getTimeStamp(),
@@ -1058,20 +1056,21 @@ public abstract class PipeTaskAgent {
                     .getConsensusGroupId2TaskMetaMap()
                     .values()
                     .forEach(
-                        pipeTaskMeta -> {
-                          for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-                            if (e instanceof PipeRuntimeCriticalException) {
-                              stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
-                              LOGGER.warn(
-                                  "Pipe {} (creation time = {}) was stopped because of critical exception "
-                                      + "(occurred time {}).",
-                                  staticMeta.getPipeName(),
-                                  staticMeta.getCreationTime(),
-                                  e.getTimeStamp());
-                              return;
-                            }
-                          }
-                        });
+                        pipeTaskMeta ->
+                            pipeTaskMeta
+                                .getLastException()
+                                .filter(e -> e instanceof PipeRuntimeSinkCriticalException)
+                                .ifPresent(
+                                    e -> {
+                                      stopPipe(
+                                          staticMeta.getPipeName(), staticMeta.getCreationTime());
+                                      LOGGER.warn(
+                                          "Pipe {} (creation time = {}) was stopped because of critical exception "
+                                              + "(occurred time {}).",
+                                          staticMeta.getPipeName(),
+                                          staticMeta.getCreationTime(),
+                                          e.getTimeStamp());
+                                    }));
               }
             });
   }

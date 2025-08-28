@@ -226,65 +226,70 @@ public class PipeHeartbeatParser {
 
         // Update runtime exception
         final PipeTaskMeta pipeTaskMetaFromCoordinator = runtimeMetaFromCoordinator.getValue();
-        for (final PipeRuntimeException exception : runtimeMetaFromAgent.getExceptionMessages()) {
+        runtimeMetaFromAgent
+            .getLastException()
+            .ifPresent(
+                exception -> {
+                  // Do not judge the exception's clear time to avoid the restart process
+                  // being ended after the failure of some pipe
 
-          // Do not judge the exception's clear time to avoid the restart process
-          // being ended after the failure of some pipe
+                  pipeTaskMetaFromCoordinator.trackException(exception);
 
-          pipeTaskMetaFromCoordinator.trackExceptionMessage(exception);
+                  if (exception instanceof PipeRuntimeCriticalException) {
+                    final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+                    if (!pipeMetaFromCoordinator
+                        .getRuntimeMeta()
+                        .getStatus()
+                        .get()
+                        .equals(PipeStatus.STOPPED)) {
+                      PipeRuntimeMeta runtimeMeta = pipeMetaFromCoordinator.getRuntimeMeta();
+                      runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                      runtimeMeta.setIsStoppedByRuntimeException(true);
 
-          if (exception instanceof PipeRuntimeCriticalException) {
-            final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
-            if (!pipeMetaFromCoordinator
-                .getRuntimeMeta()
-                .getStatus()
-                .get()
-                .equals(PipeStatus.STOPPED)) {
-              PipeRuntimeMeta runtimeMeta = pipeMetaFromCoordinator.getRuntimeMeta();
-              runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-              runtimeMeta.setIsStoppedByRuntimeException(true);
+                      needWriteConsensusOnConfigNodes.set(true);
+                      needPushPipeMetaToDataNodes.set(false);
 
-              needWriteConsensusOnConfigNodes.set(true);
-              needPushPipeMetaToDataNodes.set(false);
+                      LOGGER.warn(
+                          "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.",
+                          exception,
+                          pipeName);
+                    }
 
-              LOGGER.warn(
-                  "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.",
-                  exception,
-                  pipeName);
-            }
+                    if (exception instanceof PipeRuntimeSinkCriticalException) {
+                      ((PipeTableResp) pipeTaskInfo.get().showPipes())
+                          .filter(true, pipeName).getAllPipeMeta().stream()
+                              .filter(
+                                  pipeMeta ->
+                                      !pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
+                              .map(PipeMeta::getRuntimeMeta)
+                              .filter(
+                                  runtimeMeta ->
+                                      !runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED))
+                              .forEach(
+                                  runtimeMeta -> {
+                                    // Record the connector exception for each pipe affected
+                                    Map<Integer, PipeRuntimeException> exceptionMap =
+                                        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
+                                    if (!exceptionMap.containsKey(nodeId)
+                                        || exceptionMap.get(nodeId).getTimeStamp()
+                                            < exception.getTimeStamp()) {
+                                      exceptionMap.put(nodeId, exception);
+                                    }
+                                    runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                                    runtimeMeta.setIsStoppedByRuntimeException(true);
 
-            if (exception instanceof PipeRuntimeSinkCriticalException) {
-              ((PipeTableResp) pipeTaskInfo.get().showPipes())
-                  .filter(true, pipeName).getAllPipeMeta().stream()
-                      .filter(pipeMeta -> !pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
-                      .map(PipeMeta::getRuntimeMeta)
-                      .filter(
-                          runtimeMeta -> !runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED))
-                      .forEach(
-                          runtimeMeta -> {
-                            // Record the connector exception for each pipe affected
-                            Map<Integer, PipeRuntimeException> exceptionMap =
-                                runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-                            if (!exceptionMap.containsKey(nodeId)
-                                || exceptionMap.get(nodeId).getTimeStamp()
-                                    < exception.getTimeStamp()) {
-                              exceptionMap.put(nodeId, exception);
-                            }
-                            runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                            runtimeMeta.setIsStoppedByRuntimeException(true);
+                                    needWriteConsensusOnConfigNodes.set(true);
+                                    needPushPipeMetaToDataNodes.set(false);
 
-                            needWriteConsensusOnConfigNodes.set(true);
-                            needPushPipeMetaToDataNodes.set(false);
-
-                            LOGGER.warn(
-                                String.format(
-                                    "Detect PipeRuntimeConnectorCriticalException %s "
-                                        + "from agent, stop pipe %s.",
-                                    exception, pipeName));
-                          });
-            }
-          }
-        }
+                                    LOGGER.warn(
+                                        String.format(
+                                            "Detect PipeRuntimeConnectorCriticalException %s "
+                                                + "from agent, stop pipe %s.",
+                                            exception, pipeName));
+                                  });
+                    }
+                  }
+                });
       }
     }
   }

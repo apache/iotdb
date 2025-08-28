@@ -536,6 +536,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_SINK, TSDataType.TEXT),
           new ColumnHeader(LAST_EXCEPTION, TSDataType.TEXT),
+          new ColumnHeader(SUGGESTED_ACTION, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
           new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
 
