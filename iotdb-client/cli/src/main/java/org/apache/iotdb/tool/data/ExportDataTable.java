@@ -270,10 +270,10 @@ public class ExportDataTable extends AbstractExportData {
             if (curType.equalsIgnoreCase("TIMESTAMP")) {
               csvPrinterWrapper.print(timeTrans(iterator.getLong(curColumnIndex + 1)));
             } else {
-              String columnValue = iterator.getString(curColumnIndex + 1);
-              if (StringUtils.isEmpty(columnValue)) {
+              if (iterator.isNull(curColumnIndex + 1)) {
                 csvPrinterWrapper.print("");
               } else {
+                String columnValue = iterator.getString(curColumnIndex + 1);
                 if (curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING")) {
                   csvPrinterWrapper.print("\"" + columnValue + "\"");
                 } else {
