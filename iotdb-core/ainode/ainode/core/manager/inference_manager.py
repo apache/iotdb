@@ -195,7 +195,7 @@ class InferenceManager:
                     infer_req.get_final_output()
                 )
                 self._pool_controller.remove_request(
-                    infer_req.model_id, infer_req.assigned_pool_id
+                    infer_req.model_id, infer_req.assigned_device_id, infer_req.assigned_pool_id
                 )
 
     def process_request(self, req):
@@ -330,7 +330,7 @@ class InferenceManager:
         model_id = req.modelId
         exisiting_model_id = req.existingModelId
         try:
-            self.model_storage.delete_model(req.modelId)
+            self._pool_controller.install_model(model_id, device, exisiting_model_id)
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
             logger.warning(e)
@@ -341,7 +341,7 @@ class InferenceManager:
         device = req.device or str(self.DEFAULT_DEVICE)
         model_id = req.modelId
         try:
-            self.model_storage.delete_model(req.modelId)
+            self._pool_controller.uninstall_model(model_id, device)
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
             logger.warning(e)

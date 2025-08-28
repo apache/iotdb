@@ -17,6 +17,7 @@
 #
 from typing import Dict, Tuple
 
+from ainode.core.inference.inference_request import InferenceRequest
 import torch
 import torch.multiprocessing as mp
 
@@ -48,6 +49,7 @@ class PoolGroup:
         self._loads: Dict[int, AtomicInt] = {}
         self.model_id = model_id
         self.request_dispatcher = BasicDispatcher(self.pool_states)
+        self.device = 
 
     def get_pool_group(self) -> Dict[int, Tuple[InferenceRequestPool, mp.Queue]]:
         return self.pool_group
@@ -66,7 +68,7 @@ class PoolGroup:
     def get_pool_ids(self) -> list[int]:
         return list(self.pool_group.keys())
 
-    def dispatch_request(self, req):
+    def dispatch_request(self, req: InferenceRequest):
         pool_idx = self.request_dispatcher.dispatch_request(req, self.get_pool_ids())
         req.assigned_pool_id = pool_idx
         self._loads[pool_idx].incr()

@@ -16,6 +16,7 @@
 # under the License.
 #
 
+import queue
 import threading
 from typing import Dict, Optional
 
@@ -46,15 +47,19 @@ class PoolController:
     # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def __init__(self, result_queue: mp.Queue):
-        # structure: {model_id: PoolGroup}
-        self._request_pool_map: Dict[str, PoolGroup] = {}
+        # structure: {model_id: {device_id: PoolGroup}}
+        self._request_pool_map: Dict[str, Dict[int, PoolGroup]] = {}
         self._result_queue = result_queue
         self._pool_scheduler = BasicPoolScheduler(self._request_pool_map)
+        self._stop_event = threading.Event()
+        self._task_queue = queue.Queue()
+        self._worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
+        self._worker_thread.start()
 
     @synchronized(threading.Lock())
-    def first_req_init(self, model_id: str):
-        if not self.has_request_pools(model_id):
-            actions = self._pool_scheduler.schedule(model_id)
+    def first_req_init(self, model_id: str, device: torch.device):
+        if not self.has_request_pools(model_id, device.index):
+            actions = self._pool_scheduler.schedule(model_id, device)
             for action in actions:
                 if action.action == ScaleActionType.SCALE_UP:
                     # initialize the first pool
@@ -71,7 +76,10 @@ class PoolController:
                     pass
 
     def _first_pool_init(self, model_id: str):
-        # TODO: Check if necessary
+        """
+        Initialize the first pool for the given model_id.
+        Ensure the pool is ready before returning.
+        """
         if model_id == "sundial":
             config = SundialConfig()
         elif model_id == "timer_xl":
@@ -81,6 +89,7 @@ class PoolController:
         first_pool = InferenceRequestPool(
             pool_id=0,
             model_id=model_id,
+            device=device,
             config=config,
             request_queue=first_queue,
             result_queue=self._result_queue,
@@ -129,7 +138,7 @@ class PoolController:
                     f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_id}] Pool started running for model {model_id}"
                 )
 
-    def shrink_pools(self, model_id, count):
+    def _shrink_pools(self, model_id, count):
         """
         Shrink the pools for the given model_id by count.
         """
@@ -175,14 +184,51 @@ class PoolController:
                     self.unregister_pool(model_id, pid)
                     final_stop_pools.remove(pid)
 
-    def install_model(self, model_id: str, device: str, existing_model_id: str):
-        if not self.has_request_pools(model_id):
-            self.first_req_init(model_id)
-        else:
-            logger.info(f"Model {model_id} is already installed.")
+    def _worker_loop(self):
+        while not self._stop_event.is_set():
+            task_fn, args, kwargs = self._task_queue.get()
+            try:
+                task_fn(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Error executing task: {e}")
+            finally:
+                self._task_queue.task_done()
 
-    def uninstall_model(self, model_id: str, device):
-        pass
+    def _install_model_task(self, model_id, device_str, existing_model_id):
+        device = torch.device(device_str)
+        device_id = device.index
+        if not self.has_request_pools(model_id, device_id):
+            actions = self._pool_scheduler.schedule(model_id, device) # up or down
+            for action in actions:
+                if action.action == ScaleActionType.SCALE_UP:
+                    # initialize the first pool
+                    self._first_pool_init(action.model_id)
+                    # start a background thread to expand pools
+                    expand_thread = threading.Thread(
+                        target=self._expand_pools,
+                        args=(action.model_id, 1, action.amount - 1),
+                        daemon=True,
+                    )
+                    expand_thread.start()
+                elif action.action == ScaleActionType.SCALE_DOWN:
+                    # TODO: implement scale down logic
+                    pass
+        else:
+            logger.info(f"[Inference][Device-{device}] Model {model_id} is already installed.")
+
+    def _uninstall_model_task(self, model_id, device_str):
+        device = torch.device(device_str)
+        device_id = device.index
+        if self.has_request_pools(model_id, device_id):
+            pass
+        else:
+            logger.error(f"[Inference][Device-{device}] No pools found for model {model_id}.")
+
+    def install_model(self, model_id, device_str, existing_model_id=None):
+        self._task_queue.put((self._install_model_task, (model_id, device_str, existing_model_id), {}))
+
+    def uninstall_model(self, model_id, device_str):
+        self._task_queue.put((self._uninstall_model_task, (model_id, device_str), {}))
 
     def add_request(self, req: InferenceRequest):
         model_id = req.model_id
@@ -194,10 +240,12 @@ class PoolController:
             return
             # TODO: Implement adaptive scaling based on requests.(e.g. lazy initialization)
             # self.first_req_init(model_id)
-        self._request_pool_map[model_id].dispatch_request(req)
+        # TODO: select a pool based on device_id
+        device_id = 0
+        self._request_pool_map[model_id][device_id].dispatch_request(req)
 
-    def remove_request(self, model_id: str, pool_id: int):
-        pool_group = self._request_pool_map.get(model_id)
+    def remove_request(self, model_id: str, device_id: int, pool_id: int):
+        pool_group = self._request_pool_map.get(model_id).get(device_id)
         pool_group.remove_request(pool_id)
 
     def get_state(self, model_id, pool_id) -> PoolState:
@@ -208,7 +256,7 @@ class PoolController:
 
     def register_pool(self, model_id, pool_id, request_pool, request_queue):
         self.set_request_pool_map(model_id, pool_id, request_pool, request_queue)
-        pool_group = self._request_pool_map.get(model_id)
+        pool_group : PoolGroup = self._request_pool_map.get(model_id)
         pool_group.set_state(pool_id, PoolState.INITIALIZING)
         logger.info(
             f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_id}] Pool initializing for model {model_id}"
@@ -222,8 +270,15 @@ class PoolController:
     def get_pool_ids(self, model_id) -> list[int]:
         return self._request_pool_map[model_id].get_pool_ids()
 
-    def has_request_pools(self, model_id) -> bool:
-        return model_id in self._request_pool_map
+    def has_request_pools(self, model_id, device_id: Optional[int]) -> bool:
+        """
+        Check if there are request pools for the given model_id and device_id (optional).
+        """
+        if model_id not in self._request_pool_map:
+            return False
+        if device_id is not None:
+            return device_id in self._request_pool_map[model_id]
+        return True
 
     def get_request_pool_map(self) -> Dict[str, PoolGroup]:
         return self._request_pool_map
@@ -246,6 +301,7 @@ class PoolController:
         return self._request_pool_map[model_id].get_load(pool_id)
     
     def shutdown(self):
+        self._stop_event.set()
         for pool_group in self._request_pool_map.values():
             for pool_id in pool_group.get_pool_ids():
                 request_pool = pool_group.get_request_pool(pool_id)

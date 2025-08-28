@@ -43,17 +43,17 @@ class BasicPoolScheduler(AbstractPoolScheduler):
     DEFAULT_DEVICE = torch.device("cpu")
     # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def __init__(self, request_pool_map: Dict[str, PoolGroup]):
+    def __init__(self, request_pool_map: Dict[str, Dict[int, PoolGroup]]):
         super().__init__(request_pool_map)
 
-    def schedule(self, model_id: str) -> List[ScaleAction]:
+    def schedule(self, model_id: str, device: torch.device) -> List[ScaleAction]:
         """
-        Schedule a scaling action for the given model_id.
+        Schedule a scaling action for the given model_id and device.
         """
         if model_id not in self._request_pool_map:
-            pool_num = estimate_pool_size(self.DEFAULT_DEVICE, model_id)
+            pool_num = estimate_pool_size(device, model_id)
             if pool_num <= 0:
                 raise InferenceModelInternalError(
-                    f"Not enough memory to run model {model_id}."
+                    f"Not enough memory to run model {model_id} on {device}."
                 )
             return [ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id)]
