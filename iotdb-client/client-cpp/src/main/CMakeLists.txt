@@ -42,8 +42,8 @@ ELSE()
 ENDIF()
 
 IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
-    add_compile_options(-fsanitize=address -fno-omit-frame-pointer -static-libasan)
-    add_link_options(-fsanitize=address -static-libasan)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
 ENDIF()
 
 # Add the generated source files to the sources for the library.

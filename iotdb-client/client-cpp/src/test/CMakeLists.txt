@@ -48,8 +48,8 @@ ELSE()
 ENDIF()
 
 IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
-    add_compile_options(-fsanitize=address -fno-omit-frame-pointer -static-libasan)
-    add_link_options(-fsanitize=address -static-libasan)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
 ENDIF()
 
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
