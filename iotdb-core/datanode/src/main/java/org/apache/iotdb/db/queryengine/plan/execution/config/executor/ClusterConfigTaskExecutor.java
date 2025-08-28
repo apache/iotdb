@@ -2022,7 +2022,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for historical data
                 .setPipeName(createPipeStatement.getPipeName() + "_history")
-                .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+                // NOTE: set if not exists always to true to handle partial failure
+                .setIfNotExistsCondition(true)
                 // Use extractor parameters for historical data
                 .setExtractorAttributes(
                     extractorPipeParameters
