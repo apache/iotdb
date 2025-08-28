@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
-import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRPCRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -170,7 +170,7 @@ public abstract class IoTDBSink implements PipeConnector {
   private static final Map<Pair<String, Long>, PipeEndPointRateLimiter>
       PIPE_END_POINT_RATE_LIMITER_MAP = new ConcurrentHashMap<>();
   private double endPointRateLimitBytesPerSecond = -1;
-  private static final GlobalRateLimiter GLOBAL_RATE_LIMITER = new GlobalRateLimiter();
+  private static final GlobalRPCRateLimiter GLOBAL_RATE_LIMITER = new GlobalRPCRateLimiter();
 
   protected boolean isTabletBatchModeEnabled = true;
 

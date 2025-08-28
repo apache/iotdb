@@ -83,9 +83,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    cnConfig.setProperty("encrypt_key_path", encryptKeyPath);
-    dnConfig.setProperty("encrypt_key_path", encryptKeyPath);
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    cnConfig.setEnableGrantOption(enableGrantOption);
+    dnConfig.setEnableGrantOption(enableGrantOption);
     return this;
   }
 
@@ -386,6 +386,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    cnConfig.setDataPartitionAllocationStrategy(dataPartitionAllocationStrategy);
     return this;
   }
 

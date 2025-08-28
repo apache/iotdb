@@ -23,9 +23,9 @@ public class Interval<T extends Interval<T>> implements Comparable<Interval<?>> 
   public long start;
   public long end;
 
-  public Interval(final long s, final long e) {
-    start = s;
-    end = e;
+  public Interval(final long start, final long end) {
+    this.start = start;
+    this.end = end;
   }
 
   public void onMerged(final T another) {

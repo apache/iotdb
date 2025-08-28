@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
@@ -77,7 +77,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
 
   public MQTTPublishHandler(
       final PayloadFormatter payloadFormat,
-      final PipeTaskExtractorRuntimeEnvironment environment,
+      final PipeTaskSourceRuntimeEnvironment environment,
       final UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue) {
     this.payloadFormat = payloadFormat;
     useTableInsert = PayloadFormatter.TABLE_TYPE.equals(this.payloadFormat.getType());

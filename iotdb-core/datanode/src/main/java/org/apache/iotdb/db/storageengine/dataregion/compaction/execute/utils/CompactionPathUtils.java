@@ -24,31 +24,34 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 public class CompactionPathUtils {
 
   private CompactionPathUtils() {}
 
-  public static PartialPath getPath(IDeviceID device, String measurement)
+  public static MeasurementPath getPath(final IDeviceID device, final String measurement)
       throws IllegalPathException {
+    return getPath(device).concatAsMeasurementPath(measurement);
+  }
+
+  public static PartialPath getPath(final IDeviceID device) throws IllegalPathException {
     if (device.isTableModel()) {
-      String[] tableNameSegments =
+      final String[] tableNameSegments =
           DataNodeDevicePathCache.getInstance().getPartialPath(device.getTableName()).getNodes();
-      String[] nodes = new String[device.segmentNum() + tableNameSegments.length];
+      final String[] nodes = new String[device.segmentNum() + tableNameSegments.length - 1];
       System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
       for (int i = 0; i < device.segmentNum() - 1; i++) {
         nodes[i + tableNameSegments.length] =
             device.segment(i + 1) == null ? null : device.segment(i + 1).toString();
       }
-      nodes[device.segmentNum() + tableNameSegments.length - 1] = measurement;
-      MeasurementPath path = new MeasurementPath(nodes);
-      path.setDevice(device);
-      return path;
+      return new PartialPath(nodes);
     } else {
-      return DataNodeDevicePathCache.getInstance()
-          .getPartialPath(device.toString())
-          .concatAsMeasurementPath(measurement);
+      final String deviceId = device.toString();
+      return deviceId.contains(TsFileConstant.BACK_QUOTE_STRING)
+          ? DataNodeDevicePathCache.getInstance().getPartialPath(deviceId)
+          : new PartialPath(deviceId.split(TsFileConstant.PATH_SEPARATER_NO_REGEX));
     }
   }
 }

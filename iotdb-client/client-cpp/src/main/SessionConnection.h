@@ -37,8 +37,9 @@ public:
                       const std::string& zoneId,
                       std::shared_ptr<INodesSupplier> nodeSupplier,
                       int fetchSize = 10000,
-                      int maxRetries = 60,
+                      int maxRetries = 3,
                       int64_t retryInterval = 500,
+                      int64_t connectionTimeoutMs = 3 * 1000,
                       std::string dialect = "tree",
                       std::string db = "");
 

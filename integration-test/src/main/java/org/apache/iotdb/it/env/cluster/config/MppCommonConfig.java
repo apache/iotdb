@@ -104,8 +104,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    setProperty("encrypt_key_path", encryptKeyPath);
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    setProperty("enable_grant_option", String.valueOf(enableGrantOption));
     return this;
   }
 
@@ -384,6 +384,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    setProperty("data_partition_allocation_strategy", dataPartitionAllocationStrategy);
     return this;
   }
 

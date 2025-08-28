@@ -297,7 +297,7 @@ public class ExportDataTree extends AbstractExportData {
           fromOuterloop = false;
           csvPrinterWrapper.print(timeTrans(iterator.getLong(1)));
           for (int curColumnIndex = 1; curColumnIndex < totalColumns; curColumnIndex++) {
-            if (iterator.isNull(curColumnIndex)) {
+            if (iterator.isNull(curColumnIndex + 1)) {
               csvPrinterWrapper.print("");
             } else {
               String columnValue = iterator.getString(curColumnIndex + 1);
