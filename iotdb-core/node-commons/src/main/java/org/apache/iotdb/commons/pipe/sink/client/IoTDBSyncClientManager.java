@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
@@ -206,8 +207,9 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       return true;
     } catch (Exception e) {
       endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());
-      LOGGER.warn(
-          "Failed to initialize client with target server ip: {}, port: {}, because {}",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Failed to initialize client with target server ip: %s, port: %s, because %s\n%s",
           endPoint.getIp(),
           endPoint.getPort(),
           e.getMessage(),

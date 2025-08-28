@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -362,15 +363,17 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   protected void onErrorInternal(final Exception exception) {
     try {
       if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
-        LOGGER.warn(
-            "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+        PipeLogger.log(
+            LOGGER::warn,
+            "Failed to transfer TsFileInsertionEvent %s (committer key %s, commit id %s).\n%s",
             tsFile,
             events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
             events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
             exception);
       } else {
-        LOGGER.warn(
-            "Failed to transfer TsFileInsertionEvent {} (batched TableInsertionEvents)",
+        PipeLogger.log(
+            LOGGER::warn,
+            "Failed to transfer TsFileInsertionEvent %s (batched TableInsertionEvents).\n%s",
             tsFile,
             exception);
       }

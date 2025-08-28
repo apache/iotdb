@@ -299,7 +299,12 @@ public class PipeMemoryManager {
             sizeInBytes));
   }
 
-  public synchronized void forceResize(PipeMemoryBlock block, long targetSize) {
+  public void forceResize(final PipeMemoryBlock block, final long targetSize) {
+    resize(block, targetSize, true);
+  }
+
+  public synchronized void resize(
+      final PipeMemoryBlock block, final long targetSize, final boolean force) {
     if (block == null || block.isReleased()) {
       LOGGER.warn("forceResize: cannot resize a null or released memory block");
       return;
@@ -360,15 +365,17 @@ public class PipeMemoryManager {
       }
     }
 
-    throw new PipeRuntimeOutOfMemoryCriticalException(
-        String.format(
-            "forceResize: failed to allocate memory after %d retries, "
-                + "total memory size %d bytes, used memory size %d bytes, "
-                + "requested memory size %d bytes",
-            memoryAllocateMaxRetries,
-            getTotalNonFloatingMemorySizeInBytes(),
-            memoryBlock.getUsedMemoryInBytes(),
-            sizeInBytes));
+    if (force) {
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          String.format(
+              "forceResize: failed to allocate memory after %d retries, "
+                  + "total memory size %d bytes, used memory size %d bytes, "
+                  + "requested memory size %d bytes",
+              memoryAllocateMaxRetries,
+              getTotalNonFloatingMemorySizeInBytes(),
+              memoryBlock.getUsedMemoryInBytes(),
+              sizeInBytes));
+    }
   }
 
   /**
