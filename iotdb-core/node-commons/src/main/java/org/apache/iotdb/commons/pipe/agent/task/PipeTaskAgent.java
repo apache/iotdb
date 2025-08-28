@@ -396,8 +396,7 @@ public abstract class PipeTaskAgent {
               String.format(
                   "Failed to handle pipe meta changes for %s, because %s",
                   pipeName, e.getMessage());
-          PipeLogger.log(
-              LOGGER::warn, "Failed to handle pipe meta changes for %s\n%s", pipeName, e);
+          PipeLogger.log(LOGGER::warn, e, "Failed to handle pipe meta changes for %s", pipeName);
           exceptionMessages.add(
               new TPushPipeMetaRespExceptionMessage(
                   pipeName, errorMessage, System.currentTimeMillis()));
@@ -427,7 +426,7 @@ public abstract class PipeTaskAgent {
         final String errorMessage =
             String.format(
                 "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
-        PipeLogger.log(LOGGER::warn, "Failed to handle pipe meta changes for %s\n%s", pipeName, e);
+        PipeLogger.log(LOGGER::warn, e, "Failed to handle pipe meta changes for %s", pipeName);
         exceptionMessages.add(
             new TPushPipeMetaRespExceptionMessage(
                 pipeName, errorMessage, System.currentTimeMillis()));

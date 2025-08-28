@@ -209,11 +209,11 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());
       PipeLogger.log(
           LOGGER::warn,
-          "Failed to initialize client with target server ip: %s, port: %s, because %s\n%s",
+          e,
+          "Failed to initialize client with target server ip: %s, port: %s, because %s",
           endPoint.getIp(),
           endPoint.getPort(),
-          e.getMessage(),
-          e);
+          e.getMessage());
       return false;
     }
   }

@@ -371,17 +371,17 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
         PipeLogger.log(
             LOGGER::warn,
-            "Failed to transfer TsFileInsertionEvent %s (committer key %s, commit id %s).\n%s",
+            exception,
+            "Failed to transfer TsFileInsertionEvent %s (committer key %s, commit id %s).",
             tsFile,
             events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-            events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
-            exception);
+            events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()));
       } else {
         PipeLogger.log(
             LOGGER::warn,
-            "Failed to transfer TsFileInsertionEvent %s (batched TableInsertionEvents).\n%s",
-            tsFile,
-            exception);
+            exception,
+            "Failed to transfer TsFileInsertionEvent %s (batched TableInsertionEvents).",
+            tsFile);
       }
     } catch (final Exception e) {
       LOGGER.warn("Failed to log error when failed to transfer file.", e);

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.resource.log;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.function.Consumer;
 
 public class PipeLogger {
@@ -29,6 +31,16 @@ public class PipeLogger {
   public static void log(
       final Consumer<String> loggerFunction, final String rawMessage, final Object... formatter) {
     logger.log(loggerFunction, rawMessage, formatter);
+  }
+
+  public static void log(
+      final Consumer<String> loggerFunction,
+      final Throwable throwable,
+      final String rawMessage,
+      final Object... formatter) {
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    throwable.printStackTrace(new PrintStream(out));
+    logger.log(loggerFunction, rawMessage + "\n" + out, formatter);
   }
 
   public static void setLogger(final PipePeriodicalLogger logger) {

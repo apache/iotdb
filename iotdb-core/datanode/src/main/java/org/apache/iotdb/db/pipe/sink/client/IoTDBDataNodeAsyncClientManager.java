@@ -230,7 +230,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               PipeLogger.log(
                   LOGGER::warn,
-                  "Handshake error with receiver %s:%s, code: %s, message: %s.\n%s",
+                  "Handshake error with receiver %s:%s, code: %s, message: %s.",
                   targetNodeUrl.getIp(),
                   targetNodeUrl.getPort(),
                   response.getStatus().getCode(),
@@ -258,10 +258,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           public void onError(final Exception e) {
             PipeLogger.log(
                 LOGGER::warn,
-                "Handshake error with receiver %s:%s.\n%s",
+                e,
+                "Handshake error with receiver %s:%s.",
                 targetNodeUrl.getIp(),
-                targetNodeUrl.getPort(),
-                e);
+                targetNodeUrl.getPort());
             exception.set(e);
 
             isHandshakeFinished.set(true);

@@ -92,11 +92,11 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
     try {
       PipeLogger.log(
           LOGGER::warn,
-          "Failed to transfer TabletInsertionEvent %s (committer key=%s, commit id=%s).\n%s",
+          exception,
+          "Failed to transfer TabletInsertionEvent %s (committer key=%s, commit id=%s).",
           event.coreReportMessage(),
           event.getCommitterKey(),
-          event.getCommitId(),
-          exception);
+          event.getCommitId());
     } finally {
       connector.addFailureEventToRetryQueue(event);
     }
