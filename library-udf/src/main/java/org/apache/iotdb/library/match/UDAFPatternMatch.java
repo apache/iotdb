@@ -73,7 +73,7 @@ public class UDAFPatternMatch implements UDAF {
 
     int count = columns[0].getPositionCount();
     for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) { // TODO 这里的标记的意思是这个地方有数字？
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!columns[1].isNull(i)) {
@@ -102,9 +102,6 @@ public class UDAFPatternMatch implements UDAF {
     PatternState matchState = (PatternState) state;
     PatternExecutor executor = new PatternExecutor();
 
-    // 对序列数据进行处理，TODO 源码当中对数据进行缩放是希望将数据展示在面板上，这里没有展示要求，而且这个缩放会对后续的相似度计算造成影响，
-    // TODO 同时在源码当中，对数据会进行多层次迭代的指数平滑处理，每次迭代的结果都单独作为一个序列参与后续的匹配，因为增加一个序列，后续匹配的时间就增加一倍，所以暂时不考虑这个平滑处理。
-    // TODO 如果后续对于噪点的处理有更高的要求，可以考虑这个平滑处理
     List<Point> sourcePointsExtract =
         executor.scalePoint(matchState.getTimeBuffer(), matchState.getValueBuffer());
     List<Point> queryPointsExtract = executor.extractPoints(timePattern, valuePattern);

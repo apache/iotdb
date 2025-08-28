@@ -33,7 +33,7 @@ public class PatternMatchConfig {
   // 0.01 for tests, 0.1 for 1NN
   public static final double DIVIDE_SECTION_MIN_HEIGHT_QUERY = 0.01;
 
-  public static final int MAX_REGEX_IT = 25; // 正则表达式匹配的最大迭代次数 TODO 真的有正则表达式？没实现的参数也搬过来？
+  public static final int MAX_REGEX_IT = 25;
 
   // query compatibility
   /**
