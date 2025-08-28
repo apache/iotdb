@@ -198,6 +198,11 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   }
 
   @Override
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    // Do nothing
+  }
+
+  @Override
   protected byte[] getTransferSingleFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(

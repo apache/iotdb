@@ -40,6 +40,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -51,6 +52,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -233,6 +235,18 @@ public class TestUtils {
         "+00:00");
   }
 
+  public static void tableResultSetEqualByDataTypeTest(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    tableResultSetEqualByDataTypeTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database,
+        "+00:00");
+  }
+
   public static void tableResultSetEqualTest(
       String sql,
       String timeZone,
@@ -287,6 +301,57 @@ public class TestUtils {
               builder.append(resultSet.getString(i)).append(",");
             }
             assertEquals(expectedRetArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(expectedRetArray.length, cnt);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void tableResultSetEqualByDataTypeTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database,
+      String timeZone) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", timeZone);
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            for (int i = 1; i <= expectedHeader.length; i++) {
+              if (resultSetMetaData.getColumnType(i) == Types.BOOLEAN) {
+                assertEquals(
+                    Boolean.valueOf(expectedRetArray[cnt].split(",")[i - 1]),
+                    resultSet.getBoolean(i));
+              } else if (resultSetMetaData.getColumnType(i) == Types.INTEGER) {
+                assertEquals(
+                    Optional.of(Integer.valueOf(expectedRetArray[cnt].split(",")[i - 1])),
+                    Optional.of(resultSet.getInt(i)));
+              } else if (resultSetMetaData.getColumnType(i) == Types.DOUBLE) {
+                assertEquals(
+                    Double.valueOf(expectedRetArray[cnt].split(",")[i - 1]),
+                    resultSet.getDouble(i),
+                    DELTA);
+              } else if (resultSetMetaData.getColumnType(i) == Types.VARCHAR) {
+                assertEquals(expectedRetArray[cnt].split(",")[i - 1], resultSet.getString(i));
+              }
+            }
             cnt++;
           }
           assertEquals(expectedRetArray.length, cnt);

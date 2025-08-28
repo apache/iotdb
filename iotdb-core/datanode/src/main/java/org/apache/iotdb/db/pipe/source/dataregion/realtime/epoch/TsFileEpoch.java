@@ -23,6 +23,7 @@ import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionSourceMetrics;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -49,9 +50,30 @@ public class TsFileEpoch {
 
   public void migrateState(
       final PipeRealtimeDataRegionSource extractor, final TsFileEpochStateMigrator visitor) {
-    dataRegionExtractor2State
-        .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
-        .getAndUpdate(visitor::migrate);
+    AtomicReference<State> stateRef = dataRegionExtractor2State.get(extractor);
+
+    if (stateRef == null) {
+      dataRegionExtractor2State.putIfAbsent(
+          extractor, stateRef = new AtomicReference<>(State.EMPTY));
+      extractor.increaseExtractEpochSize();
+      setExtractorsRecentProcessedTsFileEpochState();
+    }
+
+    State migratedState = visitor.migrate(stateRef.get());
+    if (!Objects.equals(stateRef.get(), migratedState)) {
+      stateRef.set(migratedState);
+      setExtractorsRecentProcessedTsFileEpochState();
+    }
+  }
+
+  public void clearState(final PipeRealtimeDataRegionSource extractor) {
+    if (dataRegionExtractor2State.containsKey(extractor)) {
+      extractor.decreaseExtractEpochSize();
+    }
+    if (extractor.extractEpochSizeIsEmpty()) {
+      PipeDataRegionSourceMetrics.getInstance()
+          .setRecentProcessedTsFileEpochState(extractor.getTaskID(), State.EMPTY);
+    }
   }
 
   public void setExtractorsRecentProcessedTsFileEpochState() {

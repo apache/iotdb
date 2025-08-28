@@ -96,7 +96,7 @@ public class PipeExternalSourceLoadBalancer {
       // evenly distributed across running DataNodes.
       // 2. If no DataNodes are available, a PipeException is thrown.
       if (pipeStaticMeta
-          .getExtractorParameters()
+          .getSourceParameters()
           .getBooleanOrDefault(
               Arrays.asList(
                   PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY,

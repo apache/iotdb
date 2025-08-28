@@ -83,13 +83,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    cnConfig.setProperty("encrypt_key_path", encryptKeyPath);
-    dnConfig.setProperty("encrypt_key_path", encryptKeyPath);
-    return this;
-  }
-
-  @Override
   public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
     cnConfig.setEnableGrantOption(enableGrantOption);
     dnConfig.setEnableGrantOption(enableGrantOption);
