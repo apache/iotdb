@@ -47,6 +47,11 @@ ELSE()
     SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/libthrift.a")
 ENDIF()
 
+IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+ENDIF()
+
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
 ADD_EXECUTABLE(${TARGET_NAME_RELATIONAL} main_Relational.cpp cpp/sessionRelationalIT.cpp)
 
