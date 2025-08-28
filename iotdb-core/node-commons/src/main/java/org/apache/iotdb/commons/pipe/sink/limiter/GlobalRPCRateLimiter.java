@@ -17,21 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.config.plugin.env;
+package org.apache.iotdb.commons.pipe.sink.limiter;
 
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
-public class PipeTaskExtractorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
+/** This is a global rate limiter for all connectors. */
+public class GlobalRPCRateLimiter extends GlobalRateLimiter {
 
-  private final PipeTaskMeta pipeTaskMeta;
+  private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
-  public PipeTaskExtractorRuntimeEnvironment(
-      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
-    super(pipeName, creationTime, regionId);
-    this.pipeTaskMeta = pipeTaskMeta;
-  }
-
-  public PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
+  @Override
+  protected double getThroughputBytesPerSecond() {
+    return CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
   }
 }

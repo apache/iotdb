@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -153,7 +152,7 @@ public class FragmentInstanceExecution {
       // We don't need to output the region having ExplainAnalyzeOperator only.
       return false;
     }
-    statistics.setDataRegion(((DataRegion) context.getDataRegion()).getDataRegionId());
+    statistics.setDataRegion(context.getDataRegion().getDataRegionId());
     statistics.setIp(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
     statistics.setStartTimeInMS(context.getStartTime());
     statistics.setEndTimeInMS(
@@ -163,6 +162,7 @@ public class FragmentInstanceExecution {
     statistics.setReadyQueuedTime(context.getReadyQueueTime());
 
     statistics.setInitDataQuerySourceCost(context.getInitQueryDataSourceCost());
+    statistics.setInitDataQuerySourceRetryCount(context.getInitQueryDataSourceRetryCount());
 
     statistics.setSeqClosednNum(context.getClosedSeqFileNum());
     statistics.setSeqUnclosedNum(context.getUnclosedSeqFileNum());

@@ -33,12 +33,12 @@ public class PipeCommitInterval extends Interval<PipeCommitInterval> {
   private final PipeTaskMeta pipeTaskMeta;
 
   public PipeCommitInterval(
-      final long s,
-      final long e,
+      final long start,
+      final long end,
       final ProgressIndex currentIndex,
       final List<Runnable> onCommittedHooks,
       final PipeTaskMeta pipeTaskMeta) {
-    super(s, e);
+    super(start, end);
     this.pipeTaskMeta = pipeTaskMeta;
     this.currentIndex = currentIndex;
     this.onCommittedHooks = onCommittedHooks;

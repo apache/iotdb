@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -520,6 +521,38 @@ public class IoTDBInsertQueryIT {
       }
     } finally {
       session.executeNonQueryStatement(String.format(dropTableTemplate, 1));
+      session.close();
+    }
+  }
+
+  @Test
+  public void testDeviceTagLast() {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("use test");
+      session.executeNonQueryStatement(
+          "create table source(s1 boolean field, device_id string tag)");
+      session.executeNonQueryStatement(
+          "insert into source(time, device_id, s1) values(1, 'd1', false)");
+      session.executeNonQueryStatement(
+          "create table target(device_id string tag, s1 boolean field)");
+
+      session.executeNonQueryStatement(
+          "INSERT INTO target(time, device_id, s1) SELECT time, device_id, s1 FROM source");
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT time, device_id, s1 FROM target")) {
+        assertEquals(3, dataSet.getColumnNames().size());
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        int count = 0;
+        while (iterator.next()) {
+          count++;
+          assertEquals(1, iterator.getInt(1));
+          assertEquals("d1", iterator.getString(2));
+          assertFalse(iterator.getBoolean(3));
+        }
+        assertEquals(1, count);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 

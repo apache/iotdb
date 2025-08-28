@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -63,6 +63,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -120,6 +121,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
   private boolean sloppyPattern; // true to disable pattern filter after extraction
+
+  private AtomicLong extractEpochSize = new AtomicLong();
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
@@ -201,8 +204,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskExtractorRuntimeEnvironment environment =
-        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeTaskSourceRuntimeEnvironment environment =
+        (PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters);
@@ -645,5 +648,17 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public String getTaskID() {
     return taskID;
+  }
+
+  public void increaseExtractEpochSize() {
+    extractEpochSize.incrementAndGet();
+  }
+
+  public void decreaseExtractEpochSize() {
+    extractEpochSize.decrementAndGet();
+  }
+
+  public boolean extractEpochSizeIsEmpty() {
+    return extractEpochSize.get() == 0;
   }
 }

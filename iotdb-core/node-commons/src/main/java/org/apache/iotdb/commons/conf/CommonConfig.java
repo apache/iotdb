@@ -69,6 +69,8 @@ public class CommonConfig {
 
   private String adminPassword = "root";
 
+  private Boolean enableGrantOption = true;
+
   private String oldUserFolder =
       IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
@@ -253,7 +255,7 @@ public class CommonConfig {
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 128;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 72 * KB;
-  private long pipeExtractorMatcherCacheSize = 1024;
+  private long pipeSourceMatcherCacheSize = 1024;
 
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
@@ -273,6 +275,7 @@ public class CommonConfig {
   private int pipeAsyncConnectorMaxTsFileClientNumber =
       Math.max(16, Runtime.getRuntime().availableProcessors());
 
+  private double pipeSendTsFileRateLimitBytesPerSecond = 32 * MB;
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
 
@@ -413,6 +416,8 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
+  private String userEncryptTokenHint = "not set yet";
+
   private boolean enforceStrongPassword = false;
   private long passwordExpirationDays = -1;
   // an old password cannot be reused within the given interval if >= 0.
@@ -459,6 +464,16 @@ public class CommonConfig {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 
+  public void setUserEncryptTokenHint(String userEncryptTokenHint) {
+    if (userEncryptTokenHint != null && !userEncryptTokenHint.isEmpty()) {
+      this.userEncryptTokenHint = userEncryptTokenHint;
+    }
+  }
+
+  public String getUserEncryptTokenHint() {
+    return userEncryptTokenHint;
+  }
+
   public String getOpenIdProviderUrl() {
     return openIdProviderUrl;
   }
@@ -493,6 +508,14 @@ public class CommonConfig {
 
   public String getOldUserFolder() {
     return oldUserFolder;
+  }
+
+  public void setEnableGrantOption(Boolean enableGrantOption) {
+    this.enableGrantOption = enableGrantOption;
+  }
+
+  public Boolean getEnableGrantOption() {
+    return enableGrantOption;
   }
 
   public String getOldRoleFolder() {
@@ -978,16 +1001,16 @@ public class CommonConfig {
         pipeExtractorAssignerDisruptorRingBufferEntrySize);
   }
 
-  public long getPipeExtractorMatcherCacheSize() {
-    return pipeExtractorMatcherCacheSize;
+  public long getPipeSourceMatcherCacheSize() {
+    return pipeSourceMatcherCacheSize;
   }
 
-  public void setPipeExtractorMatcherCacheSize(long pipeExtractorMatcherCacheSize) {
-    if (this.pipeExtractorMatcherCacheSize == pipeExtractorMatcherCacheSize) {
+  public void setPipeSourceMatcherCacheSize(long pipeSourceMatcherCacheSize) {
+    if (this.pipeSourceMatcherCacheSize == pipeSourceMatcherCacheSize) {
       return;
     }
-    this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
-    logger.info("pipeExtractorMatcherCacheSize is set to {}.", pipeExtractorMatcherCacheSize);
+    this.pipeSourceMatcherCacheSize = pipeSourceMatcherCacheSize;
+    logger.info("pipeSourceMatcherCacheSize is set to {}.", pipeSourceMatcherCacheSize);
   }
 
   public int getPipeConnectorHandshakeTimeoutMs() {
@@ -1896,6 +1919,21 @@ public class CommonConfig {
     logger.info(
         "pipeCheckSyncAllClientLiveTimeIntervalMs is set to {}",
         pipeCheckSyncAllClientLiveTimeIntervalMs);
+  }
+
+  public double getPipeSendTsFileRateLimitBytesPerSecond() {
+    return pipeSendTsFileRateLimitBytesPerSecond;
+  }
+
+  public void setPipeSendTsFileRateLimitBytesPerSecond(
+      double pipeSendTsFileRateLimitBytesPerSecond) {
+    if (this.pipeSendTsFileRateLimitBytesPerSecond == pipeSendTsFileRateLimitBytesPerSecond) {
+      return;
+    }
+    this.pipeSendTsFileRateLimitBytesPerSecond = pipeSendTsFileRateLimitBytesPerSecond;
+    logger.info(
+        "pipeSendTsFileRateLimitBytesPerSecond is set to {}",
+        pipeSendTsFileRateLimitBytesPerSecond);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {
