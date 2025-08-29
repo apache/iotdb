@@ -30,7 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
-import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
@@ -1277,6 +1277,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       ShowConfigurationStatement showConfigurationStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     int nodeId = showConfigurationStatement.getNodeId();
+    boolean showAllConfigurations = showConfigurationStatement.isShowAllConfigurations();
     try {
       boolean onLocal =
           nodeId == -1 || IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == nodeId;
@@ -1286,20 +1287,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         try (ConfigNodeClient client =
             CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-          TShowConfigurationResp resp = client.showConfiguration(nodeId);
+          TShowAppliedConfigurationsResp resp = client.showAppliedConfigurations(nodeId);
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             future.setException(new IoTDBException(resp.getStatus()));
             return future;
           }
-          appliedProperties = client.showAppliedConfigurations(nodeId).getData();
-          if (appliedProperties == null) {
-            appliedProperties = Collections.emptyMap();
-          }
+          appliedProperties = resp.getData();
         }
       }
       ShowConfigurationTask.buildTsBlock(
           appliedProperties,
-          showConfigurationStatement.isShowAllConfigurations(),
+          showAllConfigurations,
           showConfigurationStatement.withDescription(),
           future);
     } catch (Exception e) {

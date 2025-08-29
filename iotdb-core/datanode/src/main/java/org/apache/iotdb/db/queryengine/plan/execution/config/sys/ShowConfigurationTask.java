@@ -66,23 +66,25 @@ public class ShowConfigurationTask implements IConfigTask {
     TsBlockBuilder builder =
         new TsBlockBuilder(
             columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList()));
-    for (ConfigurationFileUtils.DefaultConfigurationItem item :
-        ConfigurationFileUtils.getConfigurationItemsFromTemplate(withDescription).values()) {
-      String name = item.name;
-      String value = lastAppliedProperties.get(name);
-      if (!showAllConfigurations && value == null) {
-        continue;
+    if (lastAppliedProperties != null) {
+      for (ConfigurationFileUtils.DefaultConfigurationItem item :
+          ConfigurationFileUtils.getConfigurationItemsFromTemplate(withDescription).values()) {
+        String name = item.name;
+        String value = lastAppliedProperties.get(name);
+        if (!showAllConfigurations && value == null) {
+          continue;
+        }
+        builder.getTimeColumnBuilder().writeLong(0L);
+        String defaultValue = item.value;
+        String description = item.description;
+        addValueToTsBlockBuilder(builder, 0, name);
+        addValueToTsBlockBuilder(builder, 1, value);
+        addValueToTsBlockBuilder(builder, 2, defaultValue);
+        if (withDescription) {
+          addValueToTsBlockBuilder(builder, 3, description);
+        }
+        builder.declarePosition();
       }
-      builder.getTimeColumnBuilder().writeLong(0L);
-      String defaultValue = item.value;
-      String description = item.description;
-      addValueToTsBlockBuilder(builder, 0, name);
-      addValueToTsBlockBuilder(builder, 1, value);
-      addValueToTsBlockBuilder(builder, 2, defaultValue);
-      if (withDescription) {
-        addValueToTsBlockBuilder(builder, 3, description);
-      }
-      builder.declarePosition();
     }
     future.set(
         new ConfigTaskResult(

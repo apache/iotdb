@@ -2406,8 +2406,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TShowAppliedConfigurationsResp showAppliedConfigurations() throws TException {
-    TShowAppliedConfigurationsResp resp = new TShowAppliedConfigurationsResp();
-    resp.setStatus(RpcUtils.SUCCESS_STATUS);
+    TShowAppliedConfigurationsResp resp =
+        new TShowAppliedConfigurationsResp(RpcUtils.SUCCESS_STATUS);
     try {
       resp.setData(ConfigurationFileUtils.getAppliedProperties());
     } catch (Exception e) {

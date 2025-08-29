@@ -1141,7 +1141,7 @@ public class NodeManager {
 
     // other config node
     TShowAppliedConfigurationsResp resp =
-        new TShowAppliedConfigurationsResp(RpcUtils.SUCCESS_STATUS, null);
+        new TShowAppliedConfigurationsResp(RpcUtils.SUCCESS_STATUS);
     for (TConfigNodeLocation registeredConfigNode : getRegisteredConfigNodes()) {
       if (registeredConfigNode.getConfigNodeId() != nodeId) {
         continue;

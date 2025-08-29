@@ -1809,7 +1809,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? nodeManager.showAppliedConfigurations(nodeId)
-        : new TShowAppliedConfigurationsResp(status, null);
+        : new TShowAppliedConfigurationsResp(status);
   }
 
   @Override

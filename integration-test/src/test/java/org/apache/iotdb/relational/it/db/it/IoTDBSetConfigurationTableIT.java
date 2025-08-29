@@ -176,6 +176,6 @@ public class IoTDBSetConfigurationTableIT {
     } catch (Exception e) {
       return false;
     }
-    return true;
+    return expectedKeyValues.isEmpty();
   }
 }
