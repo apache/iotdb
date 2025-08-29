@@ -19,13 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -83,42 +79,17 @@ public class ShowDatabaseSecurityLabelStatement extends AuthorityInformationStat
     return QueryType.READ;
   }
 
-  public TSStatus checkPermissionBeforeProcess(final String userName) {
-
-    // Database security label operations require MANAGE_DATABASE permission
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-
-    boolean hasPermission =
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE);
-
-    if (!hasPermission) {
-
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
-          PrivilegeType.MANAGE_DATABASE);
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
   /**
-   * Build TSBlock from security label map with integrated RBAC and LBAC filtering
+   * Build TSBlock from security label map Remove redundant filtering logic, rely on ConfigNode-side
+   * permission filtering
    *
    * @param securityLabelMap Map of database names to security labels
    * @param future Future to set the result
    */
   public void buildTSBlockFromSecurityLabel(
-      Map<String, String> securityLabelMap,
-      SettableFuture<ConfigTaskResult> future,
-      String userName) {
+      Map<String, String> securityLabelMap, SettableFuture<ConfigTaskResult> future) {
     try {
-      // Apply unified RBAC+LBAC filtering using AuthorityChecker
-      Map<String, String> filteredMap =
-          LbacPermissionChecker.filterDatabaseMapByPermissions(
-              securityLabelMap, userName, PrivilegeType.READ_SCHEMA);
-
+      // Use data returned from ConfigNode directly, no client-side filtering needed
       List<TSDataType> outputDataTypes =
           ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
               .map(ColumnHeader::getColumnType)
@@ -127,7 +98,7 @@ public class ShowDatabaseSecurityLabelStatement extends AuthorityInformationStat
       TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
       for (Map.Entry<String, String> entry :
-          filteredMap.entrySet().stream()
+          securityLabelMap.entrySet().stream()
               .sorted(Map.Entry.comparingByKey())
               .collect(Collectors.toList())) {
 

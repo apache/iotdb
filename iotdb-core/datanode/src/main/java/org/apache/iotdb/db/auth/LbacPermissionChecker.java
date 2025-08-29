@@ -37,11 +37,6 @@ import java.util.Map;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUPER_USER;
 import static org.apache.iotdb.db.auth.AuthorityChecker.checkFullPathOrPatternPermission;
 
-/**
- * Core LBAC (Label-Based Access Control) permission checker. This class integrates operation
- * classification, label policy evaluation, and database label fetching to provide comprehensive
- * LBAC enforcement.
- */
 public class LbacPermissionChecker {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LbacPermissionChecker.class);
@@ -178,13 +173,6 @@ public class LbacPermissionChecker {
       boolean hasWritePolicy = writePolicy != null && !writePolicy.trim().isEmpty();
       boolean hasAnyPolicy = hasReadPolicy || hasWritePolicy;
 
-      LOGGER.warn("=== LBAC DEBUG INFO ===");
-      LOGGER.warn("User: {}", userName);
-      LOGGER.warn("Read policy: '{}' (hasReadPolicy: {})", readPolicy, hasReadPolicy);
-      LOGGER.warn("Write policy: '{}' (hasWritePolicy: {})", writePolicy, hasWritePolicy);
-      LOGGER.warn("Has any policy: {}", hasAnyPolicy);
-      LOGGER.warn("Operation type: {}", operationType);
-      LOGGER.warn("Database paths: {}", dbPaths);
       // For each database path, apply security default policy
       for (String dbPath : dbPaths) {
         // Get security label for this database
@@ -303,44 +291,33 @@ public class LbacPermissionChecker {
       String userName, String databasePath, LbacOperationClassifier.OperationType operationType) {
 
     try {
-      LOGGER.info("=== CHECKING DATABASE LBAC PERMISSION WITH COMPLETE LOGIC ===");
-      LOGGER.info("User: {}, Database: {}, Operation: {}", userName, databasePath, operationType);
 
       // Check if LBAC is enabled
       if (!isLbacEnabled()) {
-        LOGGER.info(
-            "LBAC disabled, allowing access for user {} to database {}", userName, databasePath);
+
         return true;
       }
 
       // Super user has access to everything
       if (SUPER_USER.equals(userName)) {
-        LOGGER.info("Super user {} accessing database {}", userName, databasePath);
         return true;
       }
 
       // Get user object
       User user = getUserByName(userName);
       if (user == null) {
-        LOGGER.warn("User {} not found for LBAC check", userName);
         return false;
       }
 
       // Extract clean database path
       String cleanDatabasePath = LbacPermissionChecker.extractDatabasePathFromPath(databasePath);
       if (cleanDatabasePath == null) {
-        LOGGER.warn("Cannot extract valid database path from input: {}", databasePath);
         return false;
       }
 
       // Get database security label
       SecurityLabel databaseLabel = DatabaseLabelFetcher.getSecurityLabelForPath(cleanDatabasePath);
       boolean databaseHasLabels = (databaseLabel != null && !databaseLabel.getLabels().isEmpty());
-
-      LOGGER.info("Database {} has labels: {}", cleanDatabasePath, databaseHasLabels);
-      if (databaseHasLabels) {
-        LOGGER.info("Database labels: {}", databaseLabel.getLabels());
-      }
 
       // Get user's read and write policies
       String readPolicy = getUserLabelPolicy(user, LbacOperationClassifier.OperationType.READ);
@@ -350,27 +327,20 @@ public class LbacPermissionChecker {
       boolean hasWritePolicy = (writePolicy != null && !writePolicy.trim().isEmpty());
       boolean hasAnyPolicy = hasReadPolicy || hasWritePolicy;
 
-      LOGGER.info("User has read policy: {} ({})", hasReadPolicy, readPolicy);
-      LOGGER.info("User has write policy: {} ({})", hasWritePolicy, writePolicy);
-      LOGGER.info("User has any policy: {}", hasAnyPolicy);
-
       // Rule 1 & 2: No read/write policies (both read and write policies are empty)
       if (!hasAnyPolicy) {
-        LOGGER.info(
-            "User has no read and write policies, allowing access regardless of database labels");
+
         return true;
       }
 
       // Rule 3: Has any policy + No labels
       if (hasAnyPolicy && !databaseHasLabels) {
-        LOGGER.info("User has any policies but database has no labels, checking by operation type");
         return handleNoLabelsCaseForDatabase(operationType, hasReadPolicy, hasWritePolicy);
       }
 
       // Rule 4: Has any policy + Has labels
       if (hasAnyPolicy && databaseHasLabels) {
-        LOGGER.info(
-            "User has any policies and database has labels, checking by operation type and evaluating policy");
+
         return handleHasLabelsCaseForDatabase(
             user,
             cleanDatabasePath,
@@ -381,12 +351,9 @@ public class LbacPermissionChecker {
       }
 
       // Default case: allow access
-      LOGGER.info("Default case: allowing access");
       return true;
 
     } catch (Exception e) {
-      LOGGER.error(
-          "Error checking database LBAC permission for {}: {}", databasePath, e.getMessage(), e);
       return false; // Deny access on error
     }
   }
@@ -398,7 +365,7 @@ public class LbacPermissionChecker {
    * @param userName Username
    * @return User object or null if not found
    */
-  private static User getUserByName(String userName) {
+  public static User getUserByName(String userName) {
     try {
       // Try to get user from authority fetcher cache
       IAuthorityFetcher authorityFetcher = AuthorityChecker.getAuthorityFetcher();
@@ -531,8 +498,6 @@ public class LbacPermissionChecker {
     }
 
     if (Path.contains("*") || Path.contains("**")) {
-      LOGGER.debug(
-          "Device path contains wildcards, cannot extract specific database path: {}", Path);
       return null;
     }
 
@@ -540,14 +505,10 @@ public class LbacPermissionChecker {
     String[] parts = Path.split("\\.");
     if (parts.length >= 2) {
       String databasePath = parts[0] + "." + parts[1];
-      LOGGER.debug("Extracted database path: {} from  path: {}", databasePath, Path);
       return databasePath;
     } else if (parts.length == 1) {
-      LOGGER.debug("Single part path, treating as database: {}", Path);
       return parts[0];
     }
-
-    LOGGER.debug("Could not extract database path from device path: {}", Path);
     return null;
   }
 
@@ -562,14 +523,12 @@ public class LbacPermissionChecker {
       // Extract database path from device path
       String databasePath = extractDatabasePathFromPath(Path);
       if (databasePath == null) {
-        LOGGER.debug("Could not extract database path from device path: {}", Path);
         return null;
       }
 
       // Get security label from database
       return DatabaseLabelFetcher.getSecurityLabelForPath(databasePath);
     } catch (Exception e) {
-      LOGGER.warn("Error getting database security label for path {}: {}", Path, e.getMessage());
       return null;
     }
   }
@@ -588,16 +547,13 @@ public class LbacPermissionChecker {
       boolean policyMatches = LabelPolicyEvaluator.evaluate(userLabelPolicy, databaseLabel);
 
       if (policyMatches) {
-        LOGGER.debug("Label policy matches for database security label: {}", devicePath);
         return LbacCheckResult.allow();
       } else {
-        LOGGER.debug("Label policy does not match for database security label: {}", devicePath);
         return LbacCheckResult.deny(
             String.format(
                 "Label policy does not match for database security label: %s", devicePath));
       }
     } catch (Exception e) {
-      LOGGER.error("Error evaluating policy for database security label: {}", devicePath, e);
       return LbacCheckResult.deny("Error evaluating label policy: " + e.getMessage());
     }
   }
@@ -610,42 +566,32 @@ public class LbacPermissionChecker {
    * @param operationType Operation type (READ/WRITE)
    * @return Label policy expression or null if no policy exists
    */
-  private static String getUserLabelPolicy(
+  public static String getUserLabelPolicy(
       User user, LbacOperationClassifier.OperationType operationType) {
-
-    LOGGER.debug(
-        "Getting label policy for user: {} and operation: {}", user.getName(), operationType);
 
     // Use independent read and write policy fields
     if (operationType == LbacOperationClassifier.OperationType.READ) {
       // Use read policy for READ operations
       String readPolicyExpression = user.getReadLabelPolicyExpression();
       if (readPolicyExpression != null && !readPolicyExpression.trim().isEmpty()) {
-        LOGGER.debug("User {} has READ label policy: '{}'", user.getName(), readPolicyExpression);
         return readPolicyExpression;
       } else {
-        LOGGER.debug("User {} has no READ label policy", user.getName());
         return null;
       }
     } else if (operationType == LbacOperationClassifier.OperationType.WRITE) {
       // Use write policy for WRITE operations
       String writePolicyExpression = user.getWriteLabelPolicyExpression();
       if (writePolicyExpression != null && !writePolicyExpression.trim().isEmpty()) {
-        LOGGER.debug("User {} has WRITE label policy: '{}'", user.getName(), writePolicyExpression);
         return writePolicyExpression;
       } else {
-        LOGGER.debug("User {} has no WRITE label policy", user.getName());
         return null;
       }
     } else if (operationType == LbacOperationClassifier.OperationType.BOTH) {
       // For BOTH operations, we need to check both read and write policies
       // This is handled by the calling method, so we return null here
-      LOGGER.debug("User {} BOTH operation - policy evaluation handled by caller", user.getName());
       return null;
     }
 
-    LOGGER.debug(
-        "User {} has no label policy for operation type: {}", user.getName(), operationType);
     return null;
   }
 
@@ -659,7 +605,6 @@ public class LbacPermissionChecker {
       // Get LBAC configuration from IoTDB descriptor
       return org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance().getConfig().isEnableLbac();
     } catch (Exception e) {
-      LOGGER.warn("Failed to get LBAC configuration, defaulting to enabled", e);
     }
     return false;
   }
@@ -686,83 +631,5 @@ public class LbacPermissionChecker {
     }
   }
 
-  /**
-   * Unified RBAC+LBAC filtering for databases with proper operation type conversion. This method
-   * provides a unified interface for filtering database maps based on both RBAC and LBAC
-   * permissions, automatically handling the LBAC enable/disable switch.
-   *
-   * @param originalMap Original database map
-   * @param userName User name
-   * @param privilegeType RBAC privilege type (will be converted to LBAC operation type)
-   * @return Filtered map containing only databases the user can access
-   */
-  public static <T> Map<String, T> filterDatabaseMapByPermissions(
-      Map<String, T> originalMap, String userName, PrivilegeType privilegeType) {
 
-    if (originalMap == null || originalMap.isEmpty()) {
-      return Collections.emptyMap();
-    }
-
-    // Super user sees all
-    if (SUPER_USER.equals(userName)) {
-      return originalMap;
-    }
-
-    Map<String, T> filteredMap = new HashMap<>();
-    int totalCount = originalMap.size();
-    int rbacAllowedCount = 0;
-    int lbacAllowedCount = 0;
-
-    for (Map.Entry<String, T> entry : originalMap.entrySet()) {
-      String database = entry.getKey();
-
-      try {
-        // Step 1: RBAC check using checkFullPathOrPatternPermission method
-        boolean rbacAllowed =
-            checkFullPathOrPatternPermission(userName, new PartialPath(database), privilegeType);
-
-        if (rbacAllowed) {
-          rbacAllowedCount++;
-
-          // Step 2: LBAC check (only if enabled)
-          if (LbacPermissionChecker.isLbacEnabled()) {
-            // Convert PrivilegeType to LBAC operation type
-            LbacOperationClassifier.OperationType lbacOpType =
-                convertPrivilegeTypeToLbacOperation(privilegeType);
-
-            if (lbacOpType != null) {
-              boolean lbacAllowed =
-                  LbacPermissionChecker.checkLbacPermissionForDatabase(
-                      userName, database, lbacOpType);
-              if (lbacAllowed) {
-                filteredMap.put(database, entry.getValue());
-                lbacAllowedCount++;
-              } else {
-                LOGGER.warn("Database {} denied by LBAC for user {}", database, userName);
-              }
-            } else {
-              LOGGER.warn("Cannot convert privilege type {} to LBAC operation type", privilegeType);
-            }
-            // If lbacOpType is null (non-database operation), don't add to filtered map
-          } else {
-            // LBAC disabled, only RBAC check needed
-            filteredMap.put(database, entry.getValue());
-          }
-        } else {
-          LOGGER.warn("Database {} denied by RBAC for user {}", database, userName);
-        }
-      } catch (Exception e) {
-        LOGGER.warn("Permission check failed for database {}: {}", database, e.getMessage());
-      }
-    }
-
-    LOGGER.info(
-        "Database filtering complete - Total: {}, RBAC allowed: {}, LBAC allowed: {}, Final: {}",
-        totalCount,
-        rbacAllowedCount,
-        lbacAllowedCount,
-        filteredMap.size());
-
-    return filteredMap;
-  }
 }

@@ -22,19 +22,28 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -53,6 +62,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +90,17 @@ public class AuthorityChecker {
   private static final String NO_GRANT_OPT_PERMISSION_PROMOTION =
       "No permissions for this operation, please add grant option to privilege ";
 
+  private static final String ROOT_PATH_PATTERN = "root.**";
+
+  private static final int LBAC_DENIAL_OFFSET = -1;
+
+  private static final String LBAC_POLICY_VIOLATION_PREFIX =
+      "LBAC policy violation, please check label policies on [";
+
+  private static final String INVALID_STATEMENT_MESSAGE = "Invalid statement";
+
+  private static final String INVALID_USERNAME_MESSAGE = "Invalid username";
+
   private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
       MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
 
@@ -88,6 +109,74 @@ public class AuthorityChecker {
 
   private AuthorityChecker() {
     // empty constructor
+  }
+
+  private static boolean isSuperUser(String userName) {
+    return userName != null && SUPER_USER.equals(userName);
+  }
+
+  private static boolean isValidPath(PartialPath path) {
+    return path != null && path.getFullPath() != null;
+  }
+
+  private static boolean isValidPermissionParams(String userName, PrivilegeType permission) {
+    return userName != null && userName.trim().length() > 0 && permission != null;
+  }
+
+  private static PathPatternTree createAllPathsTree() {
+    PathPatternTree allPathsTree = new PathPatternTree();
+    try {
+      allPathsTree.appendPathPattern(new PartialPath(ROOT_PATH_PATTERN));
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    return allPathsTree;
+  }
+
+  private static LbacOperationClassifier.OperationType determineOperationType(
+      PrivilegeType permission) {
+    if (permission == null) {
+      return LbacOperationClassifier.OperationType.BOTH;
+    }
+
+    String permissionName = permission.name();
+    if (permissionName.contains("READ")) {
+      return LbacOperationClassifier.OperationType.READ;
+    } else if (permissionName.contains("WRITE")) {
+      return LbacPermissionChecker.convertPrivilegeTypeToLbacOperation(permission);
+    } else {
+      return LbacOperationClassifier.OperationType.BOTH;
+    }
+  }
+
+  private static TSStatus handleAuthException(String operation, String userName, Exception e) {
+    return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+        .setMessage(operation + " failed: " + e.getMessage());
+  }
+
+  private static List<String> getAllDatabasePaths() {
+    try {
+
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+        TGetDatabaseReq req =
+            new TGetDatabaseReq(
+                    Arrays.asList("root", "**"), SchemaConstant.ALL_MATCH_SCOPE.serialize())
+                .setIsTableModel(false);
+
+        TShowDatabaseResp resp = configNodeClient.showDatabase(req);
+
+        if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return new ArrayList<>(resp.getDatabaseInfoMap().keySet());
+        } else {
+
+          return new ArrayList<>();
+        }
+      }
+    } catch (Exception e) {
+      return new ArrayList<>();
+    }
   }
 
   // ==================== Core Authority Check Methods ====================
@@ -128,17 +217,26 @@ public class AuthorityChecker {
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
     try {
-      return checkAuthority(statement, session.getUsername());
+      return statement.checkPermissionBeforeProcess(session.getUsername());
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
   }
 
   public static TSStatus checkAuthority(Statement statement, String userName) {
+    if (statement == null) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(INVALID_STATEMENT_MESSAGE);
+    }
+
+    if (userName == null || userName.trim().isEmpty()) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(INVALID_USERNAME_MESSAGE);
+    }
+
     // First check RBAC permissions
     TSStatus rbacStatus = RbacChecker.checkAuthority(statement, userName);
     if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.debug("RBAC check failed for user {}: {}", userName, rbacStatus.getMessage());
       return rbacStatus;
     }
 
@@ -146,11 +244,9 @@ public class AuthorityChecker {
     if (LbacPermissionChecker.isLbacEnabled()) {
       TSStatus lbacStatus = LbacChecker.checkAuthority(statement, userName);
       if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.debug("LBAC check failed for user {}: {}", userName, lbacStatus.getMessage());
         return lbacStatus;
       }
     }
-
     return SUCCEED;
   }
 
@@ -231,22 +327,60 @@ public class AuthorityChecker {
       return SUCCEED;
     }
 
-    StringBuilder prompt = new StringBuilder(NO_PERMISSION_PROMOTION);
-    prompt.append(neededPrivilege);
-    prompt.append(" on [");
-    prompt.append(pathList.get(noPermissionIndexList.get(0)));
-    for (int i = 1; i < noPermissionIndexList.size(); i++) {
-      prompt.append(", ");
-      prompt.append(pathList.get(noPermissionIndexList.get(i)));
+    if (pathList == null) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage("Invalid path list");
     }
-    prompt.append("]");
-    return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
+
+    // Check if this is LBAC permission denial (negative indices)
+    boolean isLbacDenial = noPermissionIndexList.stream().anyMatch(index -> index < 0);
+
+    if (isLbacDenial) {
+      // Handle LBAC permission denial
+      StringBuilder prompt = new StringBuilder(LBAC_POLICY_VIOLATION_PREFIX);
+      // Convert negative indices back to positive for path lookup
+      int firstIndex = Math.abs(noPermissionIndexList.get(0) + 1);
+      if (firstIndex < pathList.size()) {
+        prompt.append(pathList.get(firstIndex));
+        for (int i = 1; i < noPermissionIndexList.size(); i++) {
+          prompt.append(", ");
+          int index = Math.abs(noPermissionIndexList.get(i) + 1);
+          if (index < pathList.size()) {
+            prompt.append(pathList.get(index));
+          }
+        }
+      }
+      prompt.append("]");
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
+    } else {
+      // Handle RBAC permission denial (original logic)
+      StringBuilder prompt = new StringBuilder(NO_PERMISSION_PROMOTION);
+      prompt.append(neededPrivilege);
+      prompt.append(" on [");
+      int firstIndex = noPermissionIndexList.get(0);
+      if (firstIndex < pathList.size()) {
+        prompt.append(pathList.get(firstIndex));
+        for (int i = 1; i < noPermissionIndexList.size(); i++) {
+          prompt.append(", ");
+          int index = noPermissionIndexList.get(i);
+          if (index < pathList.size()) {
+            prompt.append(pathList.get(index));
+          }
+        }
+      }
+      prompt.append("]");
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
+    }
   }
 
   // ==================== Path Permission Check Methods ====================
 
   public static boolean checkFullPathOrPatternPermission(
       String userName, PartialPath fullPath, PrivilegeType permission) {
+    if (!isValidPermissionParams(userName, permission) || !isValidPath(fullPath)) {
+      return false;
+    }
+
     // Check RBAC permissions first
     boolean rbacResult =
         RbacChecker.checkFullPathOrPatternPermission(userName, fullPath, permission);
@@ -264,6 +398,10 @@ public class AuthorityChecker {
 
   public static List<Integer> checkFullPathOrPatternListPermission(
       String userName, List<? extends PartialPath> pathPatterns, PrivilegeType permission) {
+    if (!isValidPermissionParams(userName, permission) || pathPatterns == null) {
+      return new ArrayList<>();
+    }
+
     // Check RBAC permissions first
     List<Integer> rbacResult =
         RbacChecker.checkFullPathOrPatternListPermission(userName, pathPatterns, permission);
@@ -273,7 +411,16 @@ public class AuthorityChecker {
 
     // Check LBAC permissions if enabled
     if (LbacPermissionChecker.isLbacEnabled()) {
-      return LbacChecker.checkFullPathOrPatternListPermission(userName, pathPatterns, permission);
+      List<Integer> lbacResult =
+          LbacChecker.checkFullPathOrPatternListPermission(userName, pathPatterns, permission);
+      if (!lbacResult.isEmpty()) {
+        // Mark LBAC denied paths with negative indices to distinguish from RBAC
+        List<Integer> lbacDeniedPaths = new ArrayList<>();
+        for (Integer index : lbacResult) {
+          lbacDeniedPaths.add(index + LBAC_DENIAL_OFFSET); // 使用常量
+        }
+        return lbacDeniedPaths;
+      }
     }
 
     return new ArrayList<>();
@@ -287,16 +434,14 @@ public class AuthorityChecker {
     // Get LBAC authorized path tree if enabled
     if (LbacPermissionChecker.isLbacEnabled()) {
       PathPatternTree lbacTree = LbacChecker.getAuthorizedPathTree(userName, permission);
-      // For now, return RBAC tree only, LBAC intersection needs to be implemented
-      // TODO: Implement proper intersection of RBAC and LBAC trees
-      return rbacTree;
+      // Intersect RBAC and LBAC trees to get the final authorized path tree
+      return PathPatternTreeUtils.intersectWithFullPathPrefixTree(rbacTree, lbacTree);
     }
 
     return rbacTree;
   }
 
-  // ==================== System Permission Check Methods (RBAC Only)
-  // ====================
+  // ==================== System Permission Check Methods (RBAC Only) ==================== //
 
   public static boolean checkSystemPermission(String userName, PrivilegeType permission) {
     // System permissions only check RBAC
@@ -319,6 +464,10 @@ public class AuthorityChecker {
 
   public static boolean checkDBPermission(
       String userName, String database, PrivilegeType permission) {
+    if (!isValidPermissionParams(userName, permission) || database == null) {
+      return false;
+    }
+
     // Check RBAC permissions first
     boolean rbacResult = RbacChecker.checkDBPermission(userName, database, permission);
     if (!rbacResult) {
@@ -343,6 +492,10 @@ public class AuthorityChecker {
 
   public static boolean checkTablePermission(
       String userName, String database, String table, PrivilegeType permission) {
+    if (!isValidPermissionParams(userName, permission) || database == null || table == null) {
+      return false;
+    }
+
     // Check RBAC permissions first
     boolean rbacResult = RbacChecker.checkTablePermission(userName, database, table, permission);
     if (!rbacResult) {
@@ -395,8 +548,7 @@ public class AuthorityChecker {
     return true;
   }
 
-  // ==================== Path Permission Grant Option Methods (RBAC Only)
-  // ====================
+  // ==================== Path Permission Grant Option Methods (RBAC Only) ==================== //
 
   public static boolean checkPathPermissionGrantOption(
       String userName, PrivilegeType privilegeType, List<PartialPath> nodeNameList) {
@@ -646,22 +798,15 @@ public class AuthorityChecker {
     public static TSStatus checkAuthority(Statement statement, String userName) {
       try {
         // Check if LBAC is enabled
-        if (!LbacPermissionChecker.isLbacEnabled()) {
-          LOGGER.debug("LBAC is disabled, skipping LBAC check for user: {}", userName);
-          return SUCCEED;
-        }
+        if (!LbacPermissionChecker.isLbacEnabled()) {}
 
         // Check if it's super user
-        if (SUPER_USER.equals(userName)) {
-          LOGGER.debug("Super user {} bypassing LBAC check", userName);
+        if (isSuperUser(userName)) {
           return SUCCEED;
         }
 
         // Check if it's a database-related operation
         if (!LbacOperationClassifier.isLbacRelevantOperation(statement)) {
-          LOGGER.debug(
-              "Statement {} is not LBAC relevant, skipping LBAC check",
-              statement.getClass().getSimpleName());
           return SUCCEED;
         }
 
@@ -669,9 +814,7 @@ public class AuthorityChecker {
         return LbacPermissionChecker.checkLbacPermissionForStatement(statement, userName);
 
       } catch (Exception e) {
-        LOGGER.error("Error during LBAC check for user {}: {}", userName, e.getMessage(), e);
-        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage("LBAC check failed: " + e.getMessage());
+        return handleAuthException("LBAC check", userName, e);
       }
     }
 
@@ -685,8 +828,14 @@ public class AuthorityChecker {
         }
 
         // Check if it's super user
-        if (SUPER_USER.equals(userName)) {
+        if (isSuperUser(userName)) {
           return true;
+        }
+
+        // 添加路径验证
+        if (!isValidPath(fullPath)) {
+          LOGGER.warn("Invalid path for LBAC check: {}", fullPath);
+          return false;
         }
 
         // Extract database path from device path
@@ -697,19 +846,13 @@ public class AuthorityChecker {
         }
 
         // Determine operation type
-        LbacOperationClassifier.OperationType operationType =
-            permission.name().contains("READ")
-                ? LbacOperationClassifier.OperationType.READ
-                : permission.name().contains("WRITE")
-                    ? LbacOperationClassifier.OperationType.WRITE
-                    : LbacOperationClassifier.OperationType.BOTH;
+        LbacOperationClassifier.OperationType operationType = determineOperationType(permission);
 
         // Check LBAC permission at database level
         return LbacPermissionChecker.checkLbacPermissionForDatabase(
             userName, databasePath, operationType);
 
       } catch (Exception e) {
-        LOGGER.error("Error during LBAC path permission check: {}", e.getMessage(), e);
         return false; // Deny access on error
       }
     }
@@ -726,21 +869,21 @@ public class AuthorityChecker {
         }
 
         // Check if it's super user
-        if (SUPER_USER.equals(userName)) {
+        if (isSuperUser(userName)) {
           return noPermissionIndexList; // Empty list means all allowed
         }
 
         // Determine operation type
-        LbacOperationClassifier.OperationType operationType =
-            permission.name().contains("READ")
-                ? LbacOperationClassifier.OperationType.READ
-                : permission.name().contains("WRITE")
-                    ? LbacOperationClassifier.OperationType.WRITE
-                    : LbacOperationClassifier.OperationType.BOTH;
+        LbacOperationClassifier.OperationType operationType = determineOperationType(permission);
 
         // Check LBAC permission for each path at database level
         for (int i = 0; i < pathPatterns.size(); i++) {
           PartialPath path = pathPatterns.get(i);
+          if (!isValidPath(path)) {
+            noPermissionIndexList.add(i);
+            continue;
+          }
+
           String databasePath =
               LbacPermissionChecker.extractDatabasePathFromPath(path.getFullPath());
 
@@ -755,7 +898,6 @@ public class AuthorityChecker {
         }
 
       } catch (Exception e) {
-        LOGGER.error("Error during LBAC path list permission check: {}", e.getMessage(), e);
         // On error, add all paths to no permission list
         for (int i = 0; i < pathPatterns.size(); i++) {
           noPermissionIndexList.add(i);
@@ -772,38 +914,74 @@ public class AuthorityChecker {
         // Check if LBAC is enabled
         if (!LbacPermissionChecker.isLbacEnabled()) {
           // If LBAC is disabled, return tree containing all paths
-          PathPatternTree allPathsTree = new PathPatternTree();
-          allPathsTree.appendPathPattern(new PartialPath("root.**"));
-          return allPathsTree;
+          return createAllPathsTree();
         }
 
         // Check if it's super user
-        if (SUPER_USER.equals(userName)) {
+        if (isSuperUser(userName)) {
           // Super user returns tree containing all paths
-          PathPatternTree allPathsTree = new PathPatternTree();
-          allPathsTree.appendPathPattern(new PartialPath("root.**"));
-          return allPathsTree;
+          return createAllPathsTree();
+        }
+
+        // Get user object for LBAC policy check
+        User user = LbacPermissionChecker.getUserByName(userName);
+        if (user == null) {
+          // User not found, return empty tree
+          return new PathPatternTree();
         }
 
         // Determine operation type
-        LbacOperationClassifier.OperationType operationType =
-            permission.name().contains("READ")
-                ? LbacOperationClassifier.OperationType.READ
-                : permission.name().contains("WRITE")
-                    ? LbacOperationClassifier.OperationType.WRITE
-                    : LbacOperationClassifier.OperationType.BOTH;
+        LbacOperationClassifier.OperationType operationType = determineOperationType(permission);
 
-        // Get list of databases user has permission to access
-        // This needs to be implemented based on actual LBAC implementation
-        // For now, return tree containing all paths, actual implementation needs to
-        // filter based on user policies
-        PathPatternTree authorizedTree = new PathPatternTree();
-        authorizedTree.appendPathPattern(new PartialPath("root.**"));
+        // Get user's policies for the operation type
+        String readPolicy = null;
+        String writePolicy = null;
 
-        return authorizedTree;
+        if (operationType == LbacOperationClassifier.OperationType.READ
+            || operationType == LbacOperationClassifier.OperationType.BOTH) {
+          readPolicy =
+              LbacPermissionChecker.getUserLabelPolicy(
+                  user, LbacOperationClassifier.OperationType.READ);
+        }
+
+        if (operationType == LbacOperationClassifier.OperationType.WRITE
+            || operationType == LbacOperationClassifier.OperationType.BOTH) {
+          writePolicy =
+              LbacPermissionChecker.getUserLabelPolicy(
+                  user, LbacOperationClassifier.OperationType.WRITE);
+        }
+
+        boolean hasReadPolicy = (readPolicy != null && !readPolicy.trim().isEmpty());
+        boolean hasWritePolicy = (writePolicy != null && !writePolicy.trim().isEmpty());
+        boolean hasAnyPolicy = hasReadPolicy || hasWritePolicy;
+
+        // If user has no policies, allow access to all databases
+        if (!hasAnyPolicy) {
+          return createAllPathsTree();
+        }
+
+        PathPatternTree lbacTree = new PathPatternTree();
+        List<String> allDatabases = getAllDatabasePaths();
+
+        for (String dbPath : allDatabases) {
+          boolean hasLbacPermission =
+              LbacPermissionChecker.checkLbacPermissionForDatabase(userName, dbPath, operationType);
+
+          if (hasLbacPermission) {
+            String devicePath = dbPath + ".**";
+            try {
+              lbacTree.appendPathPattern(new PartialPath(devicePath));
+            } catch (IllegalPathException e) {
+            }
+          } else {
+          }
+        }
+
+        lbacTree.constructTree();
+        return lbacTree;
 
       } catch (Exception e) {
-        LOGGER.error("Error getting LBAC authorized path tree: {}", e.getMessage(), e);
+
         throw new AuthException(
             TSStatusCode.INTERNAL_SERVER_ERROR,
             "Failed to get LBAC authorized path tree: " + e.getMessage());
@@ -820,24 +998,18 @@ public class AuthorityChecker {
         }
 
         // Check if it's super user
-        if (SUPER_USER.equals(userName)) {
+        if (isSuperUser(userName)) {
           return true;
         }
 
         // Determine operation type
-        LbacOperationClassifier.OperationType operationType =
-            permission.name().contains("READ")
-                ? LbacOperationClassifier.OperationType.READ
-                : permission.name().contains("WRITE")
-                    ? LbacPermissionChecker.convertPrivilegeTypeToLbacOperation(permission)
-                    : LbacOperationClassifier.OperationType.BOTH;
+        LbacOperationClassifier.OperationType operationType = determineOperationType(permission);
 
         // Check LBAC permission at database level
         return LbacPermissionChecker.checkLbacPermissionForDatabase(
             userName, database, operationType);
 
       } catch (Exception e) {
-        LOGGER.error("Error during LBAC database permission check: {}", e.getMessage(), e);
         return false; // Deny access on error
       }
     }

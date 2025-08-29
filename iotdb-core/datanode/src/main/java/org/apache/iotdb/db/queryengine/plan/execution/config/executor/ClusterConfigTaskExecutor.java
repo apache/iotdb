@@ -34,7 +34,6 @@ import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -99,7 +98,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTable;
 import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTree;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -174,7 +172,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
-import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -420,7 +417,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setDatabase(
       final DatabaseSchemaStatement databaseSchemaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
     final String databaseName = databaseSchemaStatement.getDatabasePath().getFullPath();
     if (databaseName.length() > MAX_DATABASE_NAME_LENGTH
         || TsFileConstant.PATH_ROOT.equals(databaseName)) {
@@ -591,51 +587,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showDatabase(
       final ShowDatabaseStatement showDatabaseStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    final List<String> databasePathPattern =
+        Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final List<String> databasePathPattern =
-          java.util.Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
-
-      // Check if this is a table model query based on current SQL dialect
-      boolean isTableModel = false;
-      try {
-        IClientSession currentSession = SessionManager.getInstance().getCurrSession();
-        if (currentSession != null) {
-          isTableModel = currentSession.getSqlDialect() == IClientSession.SqlDialect.TABLE;
-        } else {
-          isTableModel = false;
-        }
-      } catch (Exception e) {
-        isTableModel = false;
-      }
-
-      org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq req =
-          new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq(
+      // Send request to some API server
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(
                   databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
-              .setIsTableModel(isTableModel);
-      org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp resp = client.showDatabase(req);
-
-      // Apply unified RBAC+LBAC filtering before building TSBlock
-      String currentUserName = null;
-      try {
-        IClientSession currentSession = SessionManager.getInstance().getCurrSession();
-        if (currentSession != null) {
-          currentUserName = currentSession.getUsername();
-        }
-      } catch (Exception e) {
-        LOGGER.warn("Failed to get current session username: {}", e.getMessage());
-      }
-
-      if (currentUserName != null) {
-        Map<String, TDatabaseInfo> filteredDatabaseMap =
-            LbacPermissionChecker.filterDatabaseMapByPermissions(
-                resp.getDatabaseInfoMap(), currentUserName, PrivilegeType.READ_SCHEMA);
-        showDatabaseStatement.buildTSBlock(filteredDatabaseMap, future);
-      } else {
-        showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
-      }
-    } catch (final Exception e) {
-      LOGGER.error("Failed to execute showDatabase: {}", e.getMessage(), e);
+              .setIsTableModel(false);
+      final TShowDatabaseResp resp = client.showDatabase(req);
+      // build TSBlock
+      showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -4842,47 +4807,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showDatabaseSecurityLabel(
       ShowDatabaseSecurityLabelStatement statement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (final ConfigNodeClient configNodeClient =
+    // Construct request using statement
+    final List<String> databasePathPattern = Arrays.asList(statement.getPathPattern().getNodes());
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-
-      // Extract database path from statement
-      String databasePath = null;
-      if (statement.getPathPattern() != null) {
-        databasePath = statement.getPathPattern().getFullPath();
-        // Handle special cases for tree model
-        if ("root".equals(databasePath) || "root.**".equals(databasePath)) {
-          databasePath = null; // null means show all databases
-        }
-      }
-
-      LOGGER.info(
-          "Show database security label - databasePath: {}, statement: {}",
-          databasePath,
-          statement);
-
-      // Use tree model API
+      // Send request to some API server
       final TGetDatabaseSecurityLabelReq req = new TGetDatabaseSecurityLabelReq();
-      req.setDatabasePath(databasePath);
-
-      final TGetDatabaseSecurityLabelResp resp = configNodeClient.getDatabaseSecurityLabel(req);
-
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
-        future.setException(
-            new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
-      } else {
-        // Use Statement's buildTSBlockFromSecurityLabel method
-        String userName = null;
-        try {
-          IClientSession currentSession = SessionManager.getInstance().getCurrSession();
-          if (currentSession != null) {
-            userName = currentSession.getUsername();
-          }
-        } catch (Exception e) {
-          LOGGER.warn("Failed to get current session username: {}", e.getMessage());
-        }
-        statement.buildTSBlockFromSecurityLabel(resp.getSecurityLabel(), future, userName);
-      }
-    } catch (final Exception e) {
+      req.setDatabasePath(statement.getPathPattern().getFullPath());
+      req.setScopePatternTree(statement.getAuthorityScope().serialize());
+      final TGetDatabaseSecurityLabelResp resp = client.getDatabaseSecurityLabel(req);
+      // build TSBlock
+      statement.buildTSBlockFromSecurityLabel(resp.getSecurityLabel(), future);
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;

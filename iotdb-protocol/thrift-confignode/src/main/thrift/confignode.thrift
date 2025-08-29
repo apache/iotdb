@@ -224,6 +224,7 @@ struct TAlterDatabaseSecurityLabelReq {
 
 struct TGetDatabaseSecurityLabelReq {
   1: optional string databasePath
+  2: optional binary scopePatternTree
 }
 
 struct TGetDatabaseSecurityLabelResp {
