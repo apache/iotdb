@@ -2097,10 +2097,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.columnAliases() != null) {
       List<Identifier> columns = visit(ctx.columnAliases().identifier(), Identifier.class);
       return new WithQuery(
-          getLocation(ctx), (Identifier) visit(ctx.name), (Query) visit(ctx.query()), columns);
+          getLocation(ctx),
+          (Identifier) visit(ctx.name),
+          (Query) visit(ctx.query()),
+          columns,
+          ctx.MATERIALIZED() != null);
     } else {
       return new WithQuery(
-          getLocation(ctx), (Identifier) visit(ctx.name), (Query) visit(ctx.query()));
+          getLocation(ctx),
+          (Identifier) visit(ctx.name),
+          (Query) visit(ctx.query()),
+          ctx.MATERIALIZED() != null);
     }
   }
 

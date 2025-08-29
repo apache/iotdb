@@ -121,6 +121,8 @@ public class Analysis implements IAnalysis {
 
   private String updateType;
 
+  private final Map<Query, CteDataStore> namedQueriesDataStore = new LinkedHashMap<>();
+
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
 
   // map expandable query to the node being the inner recursive reference
@@ -276,6 +278,18 @@ public class Analysis implements IAnalysis {
 
   public Query getNamedQuery(Table table) {
     return namedQueries.get(NodeRef.of(table));
+  }
+
+  public List<Query> getNamedQueries() {
+    return ImmutableList.copyOf(namedQueries.values());
+  }
+
+  public void addCteDataStore(Query query, CteDataStore dataStore) {
+    namedQueriesDataStore.put(query, dataStore);
+  }
+
+  public CteDataStore getCTEDataStore(Query query) {
+    return namedQueriesDataStore.get(query);
   }
 
   public boolean isAnalyzed(Expression expression) {
