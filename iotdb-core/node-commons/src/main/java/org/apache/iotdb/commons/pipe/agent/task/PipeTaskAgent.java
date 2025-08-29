@@ -172,6 +172,13 @@ public abstract class PipeTaskAgent {
 
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
+    // Never record any exceptions passed by the configNode
+    metaFromCoordinator
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .values()
+        .forEach(PipeTaskMeta::clearExceptionMessages);
+
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
 
     // Do nothing with the subscription pipe if disable subscription

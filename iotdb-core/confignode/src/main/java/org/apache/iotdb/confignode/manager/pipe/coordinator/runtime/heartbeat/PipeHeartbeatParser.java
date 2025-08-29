@@ -176,34 +176,34 @@ public class PipeHeartbeatParser {
           pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
       final Map<Integer, PipeTaskMeta> pipeTaskMetaMapFromAgent =
           pipeMetaFromAgent.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-      for (final Map.Entry<Integer, PipeTaskMeta> runtimeMetaFromCoordinator :
+      for (final Map.Entry<Integer, PipeTaskMeta> taskMetaFromCoordinator :
           pipeTaskMetaMapFromCoordinator.entrySet()) {
-        if (runtimeMetaFromCoordinator.getValue().getLeaderNodeId() != nodeId) {
+        if (taskMetaFromCoordinator.getValue().getLeaderNodeId() != nodeId) {
           continue;
         }
 
-        final PipeTaskMeta runtimeMetaFromAgent =
-            pipeTaskMetaMapFromAgent.get(runtimeMetaFromCoordinator.getKey());
-        if (runtimeMetaFromAgent == null) {
+        final PipeTaskMeta taskMetaFromAgent =
+            pipeTaskMetaMapFromAgent.get(taskMetaFromCoordinator.getKey());
+        if (taskMetaFromAgent == null) {
           LOGGER.debug(
               "No corresponding Pipe is running in the reported DataRegion. runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
-              runtimeMetaFromCoordinator);
+              taskMetaFromCoordinator);
           continue;
         }
 
         // Update progress index
-        if (!(runtimeMetaFromCoordinator
+        if (!(taskMetaFromCoordinator
                 .getValue()
                 .getProgressIndex()
-                .isAfter(runtimeMetaFromAgent.getProgressIndex())
-            || runtimeMetaFromCoordinator
+                .isAfter(taskMetaFromAgent.getProgressIndex())
+            || taskMetaFromCoordinator
                 .getValue()
                 .getProgressIndex()
-                .equals(runtimeMetaFromAgent.getProgressIndex()))) {
+                .equals(taskMetaFromAgent.getProgressIndex()))) {
           final ProgressIndex updatedProgressIndex =
-              runtimeMetaFromCoordinator
+              taskMetaFromCoordinator
                   .getValue()
-                  .updateProgressIndex(runtimeMetaFromAgent.getProgressIndex());
+                  .updateProgressIndex(taskMetaFromAgent.getProgressIndex());
           PipeConfigNodeResourceManager.log()
               .schedule(
                   PipeHeartbeatParser.class,
@@ -216,17 +216,17 @@ public class PipeHeartbeatParser {
                           "Updated progress index for (pipe name: {}, consensus group id: {}) ... "
                               + "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}",
                           pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
-                          runtimeMetaFromCoordinator.getKey(),
-                          runtimeMetaFromCoordinator.getValue().getProgressIndex(),
-                          runtimeMetaFromAgent.getProgressIndex(),
+                          taskMetaFromCoordinator.getKey(),
+                          taskMetaFromCoordinator.getValue().getProgressIndex(),
+                          taskMetaFromAgent.getProgressIndex(),
                           updatedProgressIndex));
 
           needWriteConsensusOnConfigNodes.set(true);
         }
 
         // Update runtime exception
-        final PipeTaskMeta pipeTaskMetaFromCoordinator = runtimeMetaFromCoordinator.getValue();
-        runtimeMetaFromAgent
+        final PipeTaskMeta pipeTaskMetaFromCoordinator = taskMetaFromCoordinator.getValue();
+        taskMetaFromAgent
             .getLastException()
             .ifPresent(
                 exception -> {
@@ -267,8 +267,8 @@ public class PipeHeartbeatParser {
                                       !runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED))
                               .forEach(
                                   runtimeMeta -> {
-                                    // Record the connector exception for each pipe affected
-                                    Map<Integer, PipeRuntimeException> exceptionMap =
+                                    // Record the sink exception for each pipe affected
+                                    final Map<Integer, PipeRuntimeException> exceptionMap =
                                         runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
                                     if (!exceptionMap.containsKey(nodeId)
                                         || exceptionMap.get(nodeId).getTimeStamp()

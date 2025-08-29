@@ -107,6 +107,10 @@ public class PipeTaskMeta {
     return !lastException.isEmpty();
   }
 
+  public synchronized void clearExceptionMessages() {
+    lastException.clear();
+  }
+
   public synchronized void serialize(final OutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
 
