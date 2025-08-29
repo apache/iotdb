@@ -1292,6 +1292,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             return future;
           }
           appliedProperties = client.showAppliedConfigurations(nodeId).getData();
+          if (appliedProperties == null) {
+            appliedProperties = Collections.emptyMap();
+          }
         }
       }
       ShowConfigurationTask.buildTsBlock(

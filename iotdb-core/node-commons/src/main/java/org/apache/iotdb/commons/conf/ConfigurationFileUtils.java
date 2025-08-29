@@ -73,7 +73,6 @@ public class ConfigurationFileUtils {
           .add("# under the License.")
           .toString();
   private static final String EFFECTIVE_MODE_PREFIX = "effectiveMode:";
-  private static final String EFFECTIVE_NODE_TYPE_PREFIX = "effectiveNodeType:";
   private static final String DATATYPE_PREFIX = "Datatype:";
   private static Map<String, DefaultConfigurationItem> configuration2DefaultValue;
 
@@ -169,14 +168,12 @@ public class ConfigurationFileUtils {
   // modification.
   public static String getConfigurationDefaultValue(String parameterName) throws IOException {
     parameterName = parameterName.trim();
-    if (configuration2DefaultValue != null) {
-      return configuration2DefaultValue.get(parameterName).value;
-    } else {
+    if (configuration2DefaultValue == null) {
       loadConfigurationDefaultValueFromTemplate();
-      DefaultConfigurationItem defaultConfigurationItem =
-          configuration2DefaultValue.get(parameterName);
-      return defaultConfigurationItem == null ? null : defaultConfigurationItem.value;
     }
+    DefaultConfigurationItem defaultConfigurationItem =
+        configuration2DefaultValue.get(parameterName);
+    return defaultConfigurationItem == null ? "" : defaultConfigurationItem.value;
   }
 
   public static void releaseDefault() {

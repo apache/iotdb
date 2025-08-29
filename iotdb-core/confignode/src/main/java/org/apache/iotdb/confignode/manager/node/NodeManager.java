@@ -1126,8 +1126,6 @@ public class NodeManager {
   }
 
   public TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId) {
-    TShowAppliedConfigurationsResp resp = new TShowAppliedConfigurationsResp();
-
     // data node
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -1142,18 +1140,18 @@ public class NodeManager {
     }
 
     // other config node
+    TShowAppliedConfigurationsResp resp =
+        new TShowAppliedConfigurationsResp(RpcUtils.SUCCESS_STATUS, null);
     for (TConfigNodeLocation registeredConfigNode : getRegisteredConfigNodes()) {
       if (registeredConfigNode.getConfigNodeId() != nodeId) {
         continue;
       }
-      resp =
-          (TShowAppliedConfigurationsResp)
-              SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNodeWithRetry(
-                      registeredConfigNode.getInternalEndPoint(),
-                      nodeId,
-                      CnToCnNodeRequestType.SHOW_APPLIED_CONFIGURATIONS);
-      return resp;
+      return (TShowAppliedConfigurationsResp)
+          SyncConfigNodeClientPool.getInstance()
+              .sendSyncRequestToConfigNodeWithRetry(
+                  registeredConfigNode.getInternalEndPoint(),
+                  nodeId,
+                  CnToCnNodeRequestType.SHOW_APPLIED_CONFIGURATIONS);
     }
     return resp;
   }
