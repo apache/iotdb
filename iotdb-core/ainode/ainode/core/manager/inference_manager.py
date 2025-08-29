@@ -21,7 +21,6 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict
 
-from ainode.thrift.common.ttypes import TSStatus
 import pandas as pd
 import torch
 import torch.multiprocessing as mp
@@ -49,9 +48,7 @@ from ainode.core.inference.strategy.timerxl_inference_pipeline import (
 from ainode.core.inference.utils import generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
-from ainode.core.manager.utils import (
-    measure_model_memory,
-)
+from ainode.core.manager.utils import measure_model_memory
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from ainode.core.model.timerxl.configuration_timer import TimerConfig
@@ -66,6 +63,7 @@ from ainode.thrift.ainode.ttypes import (
     TInstallModelReq,
     TUninstallModelReq,
 )
+from ainode.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 
@@ -195,7 +193,9 @@ class InferenceManager:
                     infer_req.get_final_output()
                 )
                 self._pool_controller.remove_request(
-                    infer_req.model_id, infer_req.assigned_device_id, infer_req.assigned_pool_id
+                    infer_req.model_id,
+                    infer_req.assigned_device_id,
+                    infer_req.assigned_pool_id,
                 )
 
     def process_request(self, req):
@@ -335,9 +335,10 @@ class InferenceManager:
         except Exception as e:
             logger.warning(e)
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
-    
+
     def uninstall_model(self, req: TUninstallModelReq) -> TSStatus:
         logger.info(f"Uninstalling model {req.modelId} ...")
+        # TODO: validate req.device
         device = req.device or str(self.DEFAULT_DEVICE)
         model_id = req.modelId
         try:
@@ -346,7 +347,7 @@ class InferenceManager:
         except Exception as e:
             logger.warning(e)
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
-        
+
     def shutdown(self):
         self._stop_event.set()
         self._pool_controller.shutdown()

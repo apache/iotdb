@@ -29,12 +29,12 @@ from ainode.thrift.ainode.ttypes import (
     TForecastReq,
     TInferenceReq,
     TInferenceResp,
+    TInstallModelReq,
     TRegisterModelReq,
     TRegisterModelResp,
     TShowModelsReq,
     TShowModelsResp,
     TTrainingReq,
-    TInstallModelReq,
     TUninstallModelReq,
 )
 from ainode.thrift.common.ttypes import TSStatus

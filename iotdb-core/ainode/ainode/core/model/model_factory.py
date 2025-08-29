@@ -22,10 +22,7 @@ from urllib.parse import urljoin
 
 import yaml
 
-from ainode.core.constant import (
-    MODEL_CONFIG_FILE_IN_YAML,
-    MODEL_WEIGHTS_FILE_IN_PT,
-)
+from ainode.core.constant import MODEL_CONFIG_FILE_IN_YAML, MODEL_WEIGHTS_FILE_IN_PT
 from ainode.core.exception import BadConfigValueError, InvalidUriError
 from ainode.core.log import Logger
 from ainode.core.model.model_enums import ModelFileType

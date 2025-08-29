@@ -182,7 +182,7 @@ class InferenceRequestPool(mp.Process):
         else:
             self.device = torch.device("cpu")
         self.logger = Logger(
-            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device) # TODO: check
+            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
         )
         self._request_scheduler.device = self.device
         self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)

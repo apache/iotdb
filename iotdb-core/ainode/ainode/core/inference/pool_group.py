@@ -17,14 +17,12 @@
 #
 from typing import Dict, Tuple
 
-from ainode.core.inference.inference_request import InferenceRequest
 import torch
 import torch.multiprocessing as mp
 
-from ainode.core.exception import (
-    InferenceModelInternalError,
-)
+from ainode.core.exception import InferenceModelInternalError
 from ainode.core.inference.dispatcher.basic_dispatcher import BasicDispatcher
+from ainode.core.inference.inference_request import InferenceRequest
 from ainode.core.inference.inference_request_pool import InferenceRequestPool, PoolState
 from ainode.core.log import Logger
 from ainode.core.util.atmoic_int import AtomicInt
@@ -40,7 +38,7 @@ class PoolGroup:
     DEFAULT_DEVICE = torch.device("cpu")
     # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def __init__(self, model_id):
+    def __init__(self, model_id, device: torch.device):
         # structure: {pool_id: (InferenceRequestPool, mp.Queue)}
         self.pool_group: Dict[int, Tuple[InferenceRequestPool, mp.Queue]] = {}
         # structure: {pool_id: PoolState}
@@ -49,7 +47,7 @@ class PoolGroup:
         self._loads: Dict[int, AtomicInt] = {}
         self.model_id = model_id
         self.request_dispatcher = BasicDispatcher(self.pool_states)
-        self.device = 
+        self.device = device
 
     def get_pool_group(self) -> Dict[int, Tuple[InferenceRequestPool, mp.Queue]]:
         return self.pool_group
@@ -75,7 +73,7 @@ class PoolGroup:
         req_q = self.pool_group[pool_idx][1]
         req_q.put(req)
         logger.debug(
-            f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_idx}][ID-{req.req_id}] Request is queued for inference"
+            f"[Inference][Device-{self.device}][Pool-{pool_idx}][ID-{req.req_id}] Request is queued for inference"
         )
 
     def remove_request(self, pool_id: int):
@@ -111,3 +109,15 @@ class PoolGroup:
                 f"Pool ID {pool_id} not found for model {self.model_id}"
             )
         return self._loads[pool_id].get()
+
+    def shutdown(self):
+        for pool_id in self.get_pool_ids():
+            request_pool = self.get_request_pool(pool_id)
+            request_queue = self.get_request_queue(pool_id)
+            request_pool.stop()
+            while not request_queue.empty():
+                request_queue.get_nowait()
+            request_queue.close()
+        for pool_id in self.get_pool_ids():
+            request_pool = self.get_request_pool(pool_id)
+            request_pool.join(timeout=10)

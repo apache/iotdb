@@ -61,7 +61,7 @@ class InferenceRequest:
         self.cur_step_idx = 0  # Current write position in the output step index
         self.assigned_pool_id = -1  # The pool handling this request
         self.assigned_device_id = -1  # The device handling this request
-        
+
         # Preallocate output buffer [batch_size, max_new_tokens]
         self.output_tensor = torch.zeros(
             self.batch_size, max_new_tokens, device="cpu"
