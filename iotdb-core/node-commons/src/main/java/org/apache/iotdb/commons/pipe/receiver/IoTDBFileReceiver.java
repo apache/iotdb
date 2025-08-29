@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
@@ -108,7 +109,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                       + "connector's timestamp precision %s. Validation fails.",
                   CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
                   req.getTimestampPrecision()));
-      LOGGER.warn("Handshake failed, response status = {}.", status);
+      PipeLogger.log(LOGGER::warn, "Handshake failed, response status = %s.", status);
       return new TPipeTransferResp(status);
     }
 

@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -393,7 +394,7 @@ public abstract class PipeTaskAgent {
               String.format(
                   "Failed to handle pipe meta changes for %s, because %s",
                   pipeName, e.getMessage());
-          LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
+          PipeLogger.log(LOGGER::warn, e, "Failed to handle pipe meta changes for %s", pipeName);
           exceptionMessages.add(
               new TPushPipeMetaRespExceptionMessage(
                   pipeName, errorMessage, System.currentTimeMillis()));
@@ -423,7 +424,7 @@ public abstract class PipeTaskAgent {
         final String errorMessage =
             String.format(
                 "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
-        LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
+        PipeLogger.log(LOGGER::warn, e, "Failed to handle pipe meta changes for %s", pipeName);
         exceptionMessages.add(
             new TPushPipeMetaRespExceptionMessage(
                 pipeName, errorMessage, System.currentTimeMillis()));
@@ -1027,9 +1028,10 @@ public abstract class PipeTaskAgent {
                               reusedConnectorParameters2ExceptionMap.get(
                                   staticMeta.getConnectorParameters());
                           pipeTaskMeta.trackExceptionMessage(exception);
-                          LOGGER.warn(
-                              "Pipe {} (creation time = {}) will be stopped because of critical exception "
-                                  + "(occurred time {}) in connector {}.",
+                          PipeLogger.log(
+                              LOGGER::warn,
+                              "Pipe %s (creation time = %s) will be stopped because of critical exception "
+                                  + "(occurred time %s) in connector %s.",
                               staticMeta.getPipeName(),
                               staticMeta.getCreationTime(),
                               exception.getTimeStamp(),
@@ -1055,9 +1057,10 @@ public abstract class PipeTaskAgent {
                           for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
                             if (e instanceof PipeRuntimeCriticalException) {
                               stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
-                              LOGGER.warn(
-                                  "Pipe {} (creation time = {}) was stopped because of critical exception "
-                                      + "(occurred time {}).",
+                              PipeLogger.log(
+                                  LOGGER::warn,
+                                  "Pipe %s (creation time = %s) was stopped because of critical exception "
+                                      + "(occurred time %s).",
                                   staticMeta.getPipeName(),
                                   staticMeta.getCreationTime(),
                                   e.getTimeStamp());

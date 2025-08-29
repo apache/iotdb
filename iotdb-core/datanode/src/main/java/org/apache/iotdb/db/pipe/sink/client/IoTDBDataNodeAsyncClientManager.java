@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -227,8 +228,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             resp.set(response);
 
             if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              LOGGER.warn(
-                  "Handshake error with receiver {}:{}, code: {}, message: {}.",
+              PipeLogger.log(
+                  LOGGER::warn,
+                  "Handshake error with receiver %s:%s, code: %s, message: %s.",
                   targetNodeUrl.getIp(),
                   targetNodeUrl.getPort(),
                   response.getStatus().getCode(),
@@ -254,11 +256,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
           @Override
           public void onError(final Exception e) {
-            LOGGER.warn(
-                "Handshake error with receiver {}:{}.",
+            PipeLogger.log(
+                LOGGER::warn,
+                e,
+                "Handshake error with receiver %s:%s.",
                 targetNodeUrl.getIp(),
-                targetNodeUrl.getPort(),
-                e);
+                targetNodeUrl.getPort());
             exception.set(e);
 
             isHandshakeFinished.set(true);
@@ -296,8 +299,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       // Retry to handshake by PipeTransferHandshakeV1Req.
       if (resp.get() != null
           && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
-        LOGGER.warn(
-            "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} "
+        PipeLogger.log(
+            LOGGER::warn,
+            "Handshake error by PipeTransferHandshakeV2Req with receiver %s:%s "
                 + "retry to handshake by PipeTransferHandshakeV1Req.",
             targetNodeUrl.getIp(),
             targetNodeUrl.getPort());
