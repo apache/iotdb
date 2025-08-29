@@ -94,7 +94,7 @@ public class PipeDataNodePluginAgentTest {
         IoTDBDataRegionSource.class,
         agent
             .dataRegion()
-            .reflectExtractor(
+            .reflectSource(
                 new PipeParameters(
                     new HashMap<String, String>() {
                       {
@@ -122,7 +122,7 @@ public class PipeDataNodePluginAgentTest {
         IoTDBDataRegionAsyncSink.class,
         agent
             .dataRegion()
-            .reflectConnector(
+            .reflectSink(
                 new PipeParameters(
                     new HashMap<String, String>() {
                       {

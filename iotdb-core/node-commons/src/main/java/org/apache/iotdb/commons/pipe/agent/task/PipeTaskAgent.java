@@ -480,9 +480,9 @@ public abstract class PipeTaskAgent {
 
     calculateMemoryUsage(
         pipeMetaFromCoordinator.getStaticMeta(),
-        pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
         pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
-        pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
+        pipeMetaFromCoordinator.getStaticMeta().getSinkParameters());
 
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (existedPipeMeta != null) {
@@ -1012,7 +1012,7 @@ public abstract class PipeTaskAgent {
                         for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
                           if (e instanceof PipeRuntimeSinkCriticalException) {
                             reusedConnectorParameters2ExceptionMap.putIfAbsent(
-                                staticMeta.getConnectorParameters(),
+                                staticMeta.getSinkParameters(),
                                 (PipeRuntimeSinkCriticalException) e);
                           }
                         }
@@ -1032,13 +1032,13 @@ public abstract class PipeTaskAgent {
                       pipeTaskMeta -> {
                         if (pipeTaskMeta.getLeaderNodeId() == currentNodeId
                             && reusedConnectorParameters2ExceptionMap.containsKey(
-                                staticMeta.getConnectorParameters())
+                                staticMeta.getSinkParameters())
                             && !pipeTaskMeta.containsExceptionMessage(
                                 reusedConnectorParameters2ExceptionMap.get(
-                                    staticMeta.getConnectorParameters()))) {
+                                    staticMeta.getSinkParameters()))) {
                           final PipeRuntimeSinkCriticalException exception =
                               reusedConnectorParameters2ExceptionMap.get(
-                                  staticMeta.getConnectorParameters());
+                                  staticMeta.getSinkParameters());
                           pipeTaskMeta.trackExceptionMessage(exception);
                           LOGGER.warn(
                               "Pipe {} (creation time = {}) will be stopped because of critical exception "
@@ -1046,7 +1046,7 @@ public abstract class PipeTaskAgent {
                               staticMeta.getPipeName(),
                               staticMeta.getCreationTime(),
                               exception.getTimeStamp(),
-                              staticMeta.getConnectorParameters());
+                              staticMeta.getSinkParameters());
                         }
                       });
             });

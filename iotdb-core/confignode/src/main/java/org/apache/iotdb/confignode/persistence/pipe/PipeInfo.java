@@ -88,7 +88,7 @@ public class PipeInfo implements SnapshotProcessor {
             () -> {
               try {
                 PipeConfigNodeAgent.runtime()
-                    .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
+                    .increaseListenerReference(plan.getPipeStaticMeta().getSourceParameters());
                 return null;
               } catch (final Exception e) {
                 throw new PipeException("Failed to increase listener reference", e);
@@ -138,7 +138,7 @@ public class PipeInfo implements SnapshotProcessor {
             meta -> {
               try {
                 PipeConfigNodeAgent.runtime()
-                    .decreaseListenerReference(meta.getStaticMeta().getExtractorParameters());
+                    .decreaseListenerReference(meta.getStaticMeta().getSourceParameters());
               } catch (final Exception e) {
                 throw new PipeException("Failed to decrease listener reference", e);
               }
@@ -171,12 +171,12 @@ public class PipeInfo implements SnapshotProcessor {
                   pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
       if (message == null) {
         PipeConfigNodeAgent.runtime()
-            .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
+            .increaseListenerReference(plan.getPipeStaticMeta().getSourceParameters());
         pipeMetaBeforeAlter.ifPresent(
             meta -> {
               try {
                 PipeConfigNodeAgent.runtime()
-                    .decreaseListenerReference(meta.getStaticMeta().getExtractorParameters());
+                    .decreaseListenerReference(meta.getStaticMeta().getSourceParameters());
               } catch (final Exception e) {
                 throw new PipeException("Failed to decrease listener reference", e);
               }
@@ -273,7 +273,7 @@ public class PipeInfo implements SnapshotProcessor {
 
       for (final PipeMeta pipeMeta : pipeTaskInfo.getPipeMetaList()) {
         PipeConfigNodeAgent.runtime()
-            .increaseListenerReference(pipeMeta.getStaticMeta().getExtractorParameters());
+            .increaseListenerReference(pipeMeta.getStaticMeta().getSourceParameters());
       }
     } catch (final Exception ex) {
       LOGGER.error("Failed to load pipe task info from snapshot", ex);

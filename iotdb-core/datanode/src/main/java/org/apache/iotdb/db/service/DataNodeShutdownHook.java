@@ -43,6 +43,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,6 +156,9 @@ public class DataNodeShutdownHook extends Thread {
     PipeDataNodeAgent.task().persistAllProgressIndex();
     // Shutdown all consensus pipe's receiver
     PipeDataNodeAgent.receiver().pipeConsensus().closeReceiverExecutor();
+
+    // set encryption key to 16-byte zero.
+    TSFileDescriptor.getInstance().getConfig().setEncryptKey(new byte[16]);
 
     // Actually stop all services started by the DataNode.
     // If we don't call this, services like the RestService are not stopped and I can't re-start

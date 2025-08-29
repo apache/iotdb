@@ -40,7 +40,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractSinkSubtask.class);
 
   // For output (transfer events to the target system in connector)
-  protected PipeConnector outputPipeConnector;
+  protected PipeConnector outputPipeSink;
 
   // For thread pool to execute callbacks
   protected ExecutorService subtaskCallbackListeningExecutor;
@@ -54,9 +54,9 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   protected volatile Event lastExceptionEvent;
 
   protected PipeAbstractSinkSubtask(
-      final String taskID, final long creationTime, final PipeConnector outputPipeConnector) {
+      final String taskID, final long creationTime, final PipeConnector outputPipeSink) {
     super(taskID, creationTime);
-    this.outputPipeConnector = outputPipeConnector;
+    this.outputPipeSink = outputPipeSink;
   }
 
   @Override
@@ -149,23 +149,23 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   private boolean onPipeConnectionException(final Throwable throwable) {
     LOGGER.warn(
         "PipeConnectionException occurred, {} retries to handshake with the target system.",
-        outputPipeConnector.getClass().getName(),
+        outputPipeSink.getClass().getName(),
         throwable);
 
     int retry = 0;
     while (retry < MAX_RETRY_TIMES) {
       try {
-        outputPipeConnector.handshake();
+        outputPipeSink.handshake();
         LOGGER.info(
             "{} handshakes with the target system successfully.",
-            outputPipeConnector.getClass().getName());
+            outputPipeSink.getClass().getName());
         break;
       } catch (final Exception e) {
         retry++;
         LOGGER.warn(
             "{} failed to handshake with the target system for {} times, "
                 + "will retry at most {} times.",
-            outputPipeConnector.getClass().getName(),
+            outputPipeSink.getClass().getName(),
             retry,
             MAX_RETRY_TIMES,
             e);
@@ -193,7 +193,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
               + "stopping current subtask {} (creation time: {}, simple class: {}). "
               + "Status shown when query the pipe will be 'STOPPED'. "
               + "Please restart the task by executing 'START PIPE' manually if needed.",
-          outputPipeConnector.getClass().getName(),
+          outputPipeSink.getClass().getName(),
           MAX_RETRY_TIMES,
           taskID,
           creationTime,

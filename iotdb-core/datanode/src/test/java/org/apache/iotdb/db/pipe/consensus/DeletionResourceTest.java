@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
@@ -265,7 +265,7 @@ public class DeletionResourceTest {
             });
     final PipeTaskRuntimeConfiguration configuration =
         new PipeTaskRuntimeConfiguration(
-            new PipeTaskExtractorRuntimeEnvironment(
+            new PipeTaskSourceRuntimeEnvironment(
                 "1", 1, Integer.parseInt(FAKE_DATA_REGION_IDS[4]), null));
     extractor.customize(parameters, configuration);
     Assert.assertTrue(extractor.shouldExtractDeletion());
