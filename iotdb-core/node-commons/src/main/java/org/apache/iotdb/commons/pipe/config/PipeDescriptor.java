@@ -437,6 +437,16 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_load_conversion_enabled",
                 String.valueOf(config.isPipeReceiverLoadConversionEnabled()))));
+    config.setPipePeriodicalLogMinIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_periodical_log_min_interval_seconds",
+                String.valueOf(config.getPipePeriodicalLogMinIntervalSeconds()))));
+    config.setPipeLoggerCacheMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_logger_cache_max_size_in_bytes",
+                String.valueOf(config.getPipeLoggerCacheMaxSizeInBytes()))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(

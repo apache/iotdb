@@ -92,7 +92,7 @@ public class PipeHeartbeatScheduler {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
-    LOGGER.info("Collecting pipe heartbeat {} from data nodes", request.heartbeatId);
+    LOGGER.debug("Collecting pipe heartbeat {} from data nodes", request.heartbeatId);
 
     final DataNodeAsyncRequestContext<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
