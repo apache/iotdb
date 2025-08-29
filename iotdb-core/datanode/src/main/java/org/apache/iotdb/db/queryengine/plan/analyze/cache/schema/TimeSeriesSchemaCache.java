@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
@@ -245,6 +246,10 @@ public class TimeSeriesSchemaCache {
     }
 
     return DataNodeLastCacheManager.getLastCache(entry);
+  }
+
+  public boolean getLastCache(final Map<PartialPath, Map<String, TimeValuePair>> inputMap) {
+    return dualKeyCache.batchGet(inputMap, DataNodeLastCacheManager::getLastCache);
   }
 
   /** get SchemaCacheEntry and update last cache */

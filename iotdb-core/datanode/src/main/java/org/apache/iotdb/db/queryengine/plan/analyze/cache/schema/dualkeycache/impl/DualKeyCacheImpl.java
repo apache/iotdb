@@ -80,6 +80,25 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
+  public <R> boolean batchGet(
+      final Map<FK, Map<SK, R>> inputMap, final Function<V, R> mappingFunction) {
+    for (final Map.Entry<FK, Map<SK, R>> fkMapEntry : inputMap.entrySet()) {
+      final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(fkMapEntry.getKey());
+      if (cacheEntryGroup == null) {
+        return false;
+      }
+      for (final Map.Entry<SK, R> skrEntry : fkMapEntry.getValue().entrySet()) {
+        final T cacheEntry = cacheEntryGroup.getCacheEntry(skrEntry.getKey());
+        if (cacheEntry == null) {
+          return false;
+        }
+        skrEntry.setValue(mappingFunction.apply(cacheEntry.getValue()));
+      }
+    }
+    return true;
+  }
+
+  @Override
   public void compute(IDualKeyCacheComputation<FK, SK, V> computation) {
     FK firstKey = computation.getFirstKey();
     ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
@@ -393,7 +412,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private static class SegmentedConcurrentHashMap<K, V> {
 
     private static final int SLOT_NUM = 31;
-
     private final Map<K, V>[] maps = new ConcurrentHashMap[SLOT_NUM];
 
     V get(K key) {

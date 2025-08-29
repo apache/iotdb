@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * This interfaces defines the behaviour of a dual key cache. A dual key cache supports manage cache
@@ -38,6 +40,8 @@ public interface IDualKeyCache<FK, SK, V> {
 
   /** Get the cache value with given first key and second key. */
   V get(FK firstKey, SK secondKey);
+
+  <R> boolean batchGet(final Map<FK, Map<SK, R>> inputMap, final Function<V, R> mappingFunction);
 
   /**
    * Traverse target cache values via given first key and second keys provided in computation and

@@ -36,7 +36,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   private final String storageGroup;
 
   private final IMeasurementSchema iMeasurementSchema;
-
   private final Map<String, String> tagMap;
   private final boolean isAligned;
 

@@ -75,6 +75,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -1072,6 +1073,31 @@ public class MTreeBelowSGMemoryImpl {
     } else {
       return reader;
     }
+  }
+
+  public int fillLastQueryMap(
+      final PartialPath prefixPath, final Map<PartialPath, Map<String, TimeValuePair>> mapToFill)
+      throws MetadataException {
+    final int[] sensorNum = {0};
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, prefixPath, store, true, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            final Map<String, TimeValuePair> measurementMap = new HashMap<>();
+            for (final IMemMNode child : node.getChildren().values()) {
+              if (child instanceof IMeasurementMNode) {
+                measurementMap.put(child.getName(), null);
+              }
+            }
+            mapToFill.put(node.getPartialPath(), measurementMap);
+            sensorNum[0] += measurementMap.size();
+          }
+        }) {
+      updater.update();
+    }
+    return sensorNum[0];
   }
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(

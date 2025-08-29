@@ -46,6 +46,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogica
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.File;
@@ -310,6 +311,10 @@ public interface ISchemaRegion {
   void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException;
 
   long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException;
+
+  int fillLastQueryMap(
+      final PartialPath pattern, final Map<PartialPath, Map<String, TimeValuePair>> mapToFill)
       throws MetadataException;
 
   // endregion
