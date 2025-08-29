@@ -37,6 +37,7 @@ public class Query extends Statement {
   private final Optional<OrderBy> orderBy;
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
+  private boolean materialized = false;
 
   public Query(
       Optional<With> with,
@@ -97,6 +98,14 @@ public class Query extends Statement {
 
   public Optional<Node> getLimit() {
     return limit;
+  }
+
+  public boolean isMaterialized() {
+    return materialized;
+  }
+
+  public void setMaterialized(boolean materialized) {
+    this.materialized = materialized;
   }
 
   @Override
