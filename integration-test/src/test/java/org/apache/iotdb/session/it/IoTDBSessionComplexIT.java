@@ -561,12 +561,28 @@ public class IoTDBSessionComplexIT {
       session.createDatabase("root.sg3");
 
       try {
+        insertTablet(session, "root.sg1.d1");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                && e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      }
+
+      try {
+        insertRecordsOfOneDevice(session, "root.sg1.d1");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                && e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      }
+
+      try {
         insertRecords(session, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage() != null
-                && (e.getMessage().contains("Path [root.sg1.d2.s1] does not exist")
-                    || e.getMessage().contains("Path [root.sg1.d1.s1] does not exist")));
+                    && e.getMessage().contains("Path [root.sg1.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
       }
 
       try {
@@ -574,8 +590,8 @@ public class IoTDBSessionComplexIT {
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage() != null
-                && (e.getMessage().contains("Path [root.sg2.d2.s1] does not exist")
-                    || e.getMessage().contains("Path [root.sg2.d1.s1] does not exist")));
+                    && e.getMessage().contains("Path [root.sg2.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.sg2.d1.s1] does not exist"));
       }
 
       try {
@@ -583,7 +599,7 @@ public class IoTDBSessionComplexIT {
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage() != null
-                && (e.getMessage().contains("Path [root.sg3.d1.s1] does not exist")));
+                && e.getMessage().contains("Path [root.sg3.d1.s1] does not exist"));
       }
 
     } catch (Exception e) {
