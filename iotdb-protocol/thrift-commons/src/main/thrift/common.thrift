@@ -309,7 +309,7 @@ struct TShowConfigurationResp {
 
 struct TShowAppliedConfigurationsResp {
   1: required TSStatus status
-  2: required map<string, string> data
+  2: optional map<string, string> data
 }
 
 // for AINode
