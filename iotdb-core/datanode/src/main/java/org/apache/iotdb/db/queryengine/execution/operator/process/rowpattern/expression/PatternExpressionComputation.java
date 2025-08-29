@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.mat
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
@@ -161,7 +162,7 @@ public class PatternExpressionComputation {
       return partition.getFloat(channel, position);
     } else if (type instanceof DoubleType) {
       return partition.getDouble(channel, position);
-    } else if (type instanceof StringType) {
+    } else if (type instanceof StringType || type instanceof BinaryType) {
       return partition.getBinary(channel, position);
     } else {
       throw new SemanticException("Unsupported type: " + type.getClass().getSimpleName());
