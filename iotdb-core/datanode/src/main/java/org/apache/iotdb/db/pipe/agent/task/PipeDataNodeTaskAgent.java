@@ -587,6 +587,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
+  public boolean isFullSync(final PipeParameters parameters) {
+    if (isSnapshotMode(parameters)) {
+      return false;
+    }
+
+    final boolean isHistoryEnable =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+    final boolean isRealtimeEnable =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
+            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
+
+    return isHistoryEnable && isRealtimeEnable;
+  }
+
   private boolean isSnapshotMode(final PipeParameters parameters) {
     final boolean isSnapshotMode;
     if (parameters.hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {

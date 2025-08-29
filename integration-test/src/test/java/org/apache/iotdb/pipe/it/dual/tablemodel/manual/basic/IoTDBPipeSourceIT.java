@@ -74,7 +74,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         .setEnableCrossSpaceCompaction(false)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     receiverEnv
         .getConfig()
@@ -84,7 +85,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
