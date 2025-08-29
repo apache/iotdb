@@ -51,7 +51,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
         Schedule a scaling action for the given model_id.
         """
         if model_id not in self._request_pool_map:
-            pool_num = estimate_pool_size(self.DEFAULT_DEVICE, model_id)
+            pool_num = 2
             if pool_num <= 0:
                 raise InferenceModelInternalError(
                     f"Not enough memory to run model {model_id}."

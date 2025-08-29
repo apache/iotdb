@@ -242,9 +242,7 @@ class InferenceManager:
                     predict_length,
                 )
 
-            if model_id in self.ACCELERATE_MODEL_ID and "cuda" in str(
-                self.DEFAULT_DEVICE
-            ):
+            if model_id in self.ACCELERATE_MODEL_ID:
                 # TODO: Logic in this branch shall handle all LTSM inferences
                 # TODO: TSBlock -> Tensor codes should be unified
                 data = full_data[1][0]
