@@ -45,8 +45,6 @@ public class PipeResourceMetrics implements IMetricSet {
   private static final String PIPE_FLOATING_MEMORY = "PipeFloatingMemory";
   private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
-  private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override

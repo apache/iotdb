@@ -78,20 +78,6 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE);
   }
 
-  private boolean enableSendTsFileLimit;
-
-  @Override
-  public void customize(
-      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
-      throws Exception {
-    super.customize(parameters, configuration);
-
-    enableSendTsFileLimit =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(SINK_ENABLE_SEND_TSFILE_LIMIT, CONNECTOR_ENABLE_SEND_TSFILE_LIMIT),
-            CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE);
-  }
-
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
