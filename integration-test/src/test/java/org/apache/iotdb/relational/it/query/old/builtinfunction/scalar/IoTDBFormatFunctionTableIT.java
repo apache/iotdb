@@ -145,6 +145,7 @@ public class IoTDBFormatFunctionTableIT {
 
   @Test
   public void testTimestampFormat() {
+    DateTimeUtils.initTimestampPrecision();
     tableResultSetEqualTest(
         "SELECT FORMAT('%1$tF %1$tT', s1) FROM timestamp_table",
         new String[] {"_col0"},

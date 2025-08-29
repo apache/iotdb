@@ -63,10 +63,10 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
     if (response.getStatuses().stream()
-        .anyMatch(status -> RetryUtils.needRetryForConsensus(status.getCode()))) {
+        .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode()))) {
       List<String> retryStatusMessages =
           response.getStatuses().stream()
-              .filter(status -> RetryUtils.needRetryForConsensus(status.getCode()))
+              .filter(status -> RetryUtils.needRetryForWrite(status.getCode()))
               .map(TSStatus::getMessage)
               .collect(Collectors.toList());
 

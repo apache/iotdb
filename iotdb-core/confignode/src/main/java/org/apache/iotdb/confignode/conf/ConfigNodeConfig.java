@@ -82,6 +82,8 @@ public class ConfigNodeConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
+  private String dataPartitionAllocationStrategy = "INHERIT";
+
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
@@ -294,6 +296,8 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
+  private int ratisTransferLeaderTimeoutMs = 30 * 1000; // 30s
+
   private long configNodeRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
@@ -419,6 +423,14 @@ public class ConfigNodeConfig {
 
   public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public String getDataPartitionAllocationStrategy() {
+    return dataPartitionAllocationStrategy;
+  }
+
+  public void setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    this.dataPartitionAllocationStrategy = dataPartitionAllocationStrategy;
   }
 
   public int getCnRpcMaxConcurrentClientNum() {
@@ -1104,6 +1116,14 @@ public class ConfigNodeConfig {
 
   public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public int getRatisTransferLeaderTimeoutMs() {
+    return ratisTransferLeaderTimeoutMs;
+  }
+
+  public void setRatisTransferLeaderTimeoutMs(int ratisTransferLeaderTimeoutMs) {
+    this.ratisTransferLeaderTimeoutMs = ratisTransferLeaderTimeoutMs;
   }
 
   public long getConfigNodeRatisLogMax() {

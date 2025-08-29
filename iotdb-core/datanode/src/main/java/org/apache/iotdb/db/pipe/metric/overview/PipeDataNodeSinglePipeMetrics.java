@@ -27,9 +27,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -41,7 +39,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
@@ -53,28 +50,11 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
       remainingEventAndTimeOperatorMap = new ConcurrentHashMap<>();
 
-  private static Histogram PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private static Histogram PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
-        metricService.getOrCreateHistogram(
-            Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "insert_node");
-    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
-        metricService.getOrCreateHistogram(
-            Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "tsfile");
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::createMetrics);
   }
 
@@ -155,17 +135,6 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
       LOGGER.warn(
           "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
     }
-    metricService.remove(
-        MetricType.HISTOGRAM,
-        Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        "insert_node");
-
-    metricService.remove(
-        MetricType.HISTOGRAM,
-        Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        "tsfile");
   }
 
   private void removeMetrics(final String pipeID) {
@@ -268,11 +237,6 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     operator.decreaseInsertNodeEventCount();
-
-    if (transferTime > 0) {
-      operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-      PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
-    }
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
@@ -307,10 +271,6 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
 
     operator.decreaseTsFileEventCount();
-    if (transferTime > 0) {
-      operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-      PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
-    }
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {

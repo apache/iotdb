@@ -89,6 +89,11 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
   }
 
   @Override
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    // Do nothing
+  }
+
+  @Override
   protected boolean mayNeedHandshakeWhenFail() {
     return true;
   }

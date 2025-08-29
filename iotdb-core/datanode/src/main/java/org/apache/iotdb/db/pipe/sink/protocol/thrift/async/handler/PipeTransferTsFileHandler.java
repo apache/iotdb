@@ -23,9 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
@@ -170,6 +173,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
+    PipeResourceMetrics.getInstance().recordDiskIO(readFileBufferSize);
+    if (connector.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
+    }
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {
@@ -362,17 +369,19 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   protected void onErrorInternal(final Exception exception) {
     try {
       if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
-        LOGGER.warn(
-            "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+        PipeLogger.log(
+            LOGGER::warn,
+            exception,
+            "Failed to transfer TsFileInsertionEvent %s (committer key %s, commit id %s).",
             tsFile,
             events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-            events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
-            exception);
+            events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()));
       } else {
-        LOGGER.warn(
-            "Failed to transfer TsFileInsertionEvent {} (batched TableInsertionEvents)",
-            tsFile,
-            exception);
+        PipeLogger.log(
+            LOGGER::warn,
+            exception,
+            "Failed to transfer TsFileInsertionEvent %s (batched TableInsertionEvents).",
+            tsFile);
       }
     } catch (final Exception e) {
       LOGGER.warn("Failed to log error when failed to transfer file.", e);

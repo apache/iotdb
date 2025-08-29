@@ -159,8 +159,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
   }
 
-  public long getPipeExtractorMatcherCacheSize() {
-    return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
+  public long getPipeSourceMatcherCacheSize() {
+    return COMMON_CONFIG.getPipeSourceMatcherCacheSize();
   }
 
   /////////////////////////////// Connector ///////////////////////////////
@@ -217,6 +217,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxTsFileClientNumber();
   }
 
+  public double getPipeSendTsFileRateLimitBytesPerSecond() {
+    return COMMON_CONFIG.getPipeSendTsFileRateLimitBytesPerSecond();
+  }
+
   public double getPipeAllConnectorsRateLimitBytesPerSecond() {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
@@ -233,8 +237,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
 
-  public int getPipeMaxAlignedSeriesNumInOneBatch() {
-    return COMMON_CONFIG.getPipeMaxAlignedSeriesNumInOneBatch();
+  public long getPipeMaxAlignedSeriesChunkSizeInOneBatch() {
+    return COMMON_CONFIG.getPipeMaxAlignedSeriesChunkSizeInOneBatch();
   }
 
   public long getPipeListeningQueueTransferSnapshotThreshold() {
@@ -341,6 +345,14 @@ public class PipeConfig {
 
   public boolean isPipeReceiverLoadConversionEnabled() {
     return COMMON_CONFIG.isPipeReceiverLoadConversionEnabled();
+  }
+
+  public long getPipePeriodicalLogMinIntervalSeconds() {
+    return COMMON_CONFIG.getPipePeriodicalLogMinIntervalSeconds();
+  }
+
+  public long getPipeLoggerCacheMaxSizeInBytes() {
+    return COMMON_CONFIG.getPipeLoggerCacheMaxSizeInBytes();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -474,7 +486,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes: {}",
         getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes());
-    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
+    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeSourceMatcherCacheSize());
 
     LOGGER.info("PipeConnectorHandshakeTimeoutMs: {}", getPipeConnectorHandshakeTimeoutMs());
     LOGGER.info("PipeConnectorTransferTimeoutMs: {}", getPipeConnectorTransferTimeoutMs());
@@ -488,7 +500,9 @@ public class PipeConfig {
         isPipeConnectorRPCThriftCompressionEnabled());
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
-    LOGGER.info("PipeMaxAlignedSeriesNumInOneBatch: {}", getPipeMaxAlignedSeriesNumInOneBatch());
+    LOGGER.info(
+        "PipeMaxAlignedSeriesChunkSizeInOneBatch: {}",
+        getPipeMaxAlignedSeriesChunkSizeInOneBatch());
     LOGGER.info(
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
@@ -538,6 +552,8 @@ public class PipeConfig {
         getPipeAsyncConnectorMaxTsFileClientNumber());
 
     LOGGER.info(
+        "PipeSendTsFileRateLimitBytesPerSecond: {}", getPipeSendTsFileRateLimitBytesPerSecond());
+    LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
         getPipeAllConnectorsRateLimitBytesPerSecond());
     LOGGER.info(
@@ -572,6 +588,9 @@ public class PipeConfig {
         "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
         getPipeReceiverReqDecompressedMaxLengthInBytes());
     LOGGER.info("PipeReceiverLoadConversionEnabled: {}", isPipeReceiverLoadConversionEnabled());
+    LOGGER.info(
+        "PipePeriodicalLogMinIntervalSeconds: {}", getPipePeriodicalLogMinIntervalSeconds());
+    LOGGER.info("PipeLoggerCacheMaxSizeInBytes: {}", getPipeLoggerCacheMaxSizeInBytes());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

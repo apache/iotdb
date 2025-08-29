@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
@@ -74,6 +75,7 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -123,43 +125,47 @@ public class InformationSchemaContentSupplierFactory {
 
   public static Iterator<TsBlock> getSupplier(
       final String tableName, final List<TSDataType> dataTypes, final String userName) {
-    switch (tableName) {
-      case InformationSchema.QUERIES:
-        return new QueriesSupplier(dataTypes, userName);
-      case InformationSchema.DATABASES:
-        return new DatabaseSupplier(dataTypes, userName);
-      case InformationSchema.TABLES:
-        return new TableSupplier(dataTypes, userName);
-      case InformationSchema.COLUMNS:
-        return new ColumnSupplier(dataTypes, userName);
-      case InformationSchema.REGIONS:
-        return new RegionSupplier(dataTypes, userName);
-      case InformationSchema.PIPES:
-        return new PipeSupplier(dataTypes, userName);
-      case InformationSchema.PIPE_PLUGINS:
-        return new PipePluginSupplier(dataTypes);
-      case InformationSchema.TOPICS:
-        return new TopicSupplier(dataTypes, userName);
-      case InformationSchema.SUBSCRIPTIONS:
-        return new SubscriptionSupplier(dataTypes, userName);
-      case InformationSchema.VIEWS:
-        return new ViewsSupplier(dataTypes, userName);
-      case InformationSchema.MODELS:
-        return new ModelsSupplier(dataTypes);
-      case InformationSchema.FUNCTIONS:
-        return new FunctionsSupplier(dataTypes);
-      case InformationSchema.CONFIGURATIONS:
-        return new ConfigurationsSupplier(dataTypes, userName);
-      case InformationSchema.KEYWORDS:
-        return new KeywordsSupplier(dataTypes);
-      case InformationSchema.NODES:
-        return new NodesSupplier(dataTypes, userName);
-      case InformationSchema.CONFIG_NODES:
-        return new ConfigNodesSupplier(dataTypes, userName);
-      case InformationSchema.DATA_NODES:
-        return new DataNodesSupplier(dataTypes, userName);
-      default:
-        throw new UnsupportedOperationException("Unknown table: " + tableName);
+    try {
+      switch (tableName) {
+        case InformationSchema.QUERIES:
+          return new QueriesSupplier(dataTypes, userName);
+        case InformationSchema.DATABASES:
+          return new DatabaseSupplier(dataTypes, userName);
+        case InformationSchema.TABLES:
+          return new TableSupplier(dataTypes, userName);
+        case InformationSchema.COLUMNS:
+          return new ColumnSupplier(dataTypes, userName);
+        case InformationSchema.REGIONS:
+          return new RegionSupplier(dataTypes, userName);
+        case InformationSchema.PIPES:
+          return new PipeSupplier(dataTypes, userName);
+        case InformationSchema.PIPE_PLUGINS:
+          return new PipePluginSupplier(dataTypes);
+        case InformationSchema.TOPICS:
+          return new TopicSupplier(dataTypes, userName);
+        case InformationSchema.SUBSCRIPTIONS:
+          return new SubscriptionSupplier(dataTypes, userName);
+        case InformationSchema.VIEWS:
+          return new ViewsSupplier(dataTypes, userName);
+        case InformationSchema.MODELS:
+          return new ModelsSupplier(dataTypes);
+        case InformationSchema.FUNCTIONS:
+          return new FunctionsSupplier(dataTypes);
+        case InformationSchema.CONFIGURATIONS:
+          return new ConfigurationsSupplier(dataTypes, userName);
+        case InformationSchema.KEYWORDS:
+          return new KeywordsSupplier(dataTypes);
+        case InformationSchema.NODES:
+          return new NodesSupplier(dataTypes, userName);
+        case InformationSchema.CONFIG_NODES:
+          return new ConfigNodesSupplier(dataTypes, userName);
+        case InformationSchema.DATA_NODES:
+          return new DataNodesSupplier(dataTypes, userName);
+        default:
+          throw new UnsupportedOperationException("Unknown table: " + tableName);
+      }
+    } catch (final Exception e) {
+      throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
 
@@ -214,12 +220,13 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class DatabaseSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
+    private final Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
     private TDatabaseInfo currentDatabase;
     private boolean hasShownInformationSchema;
     private final String userName;
 
-    private DatabaseSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private DatabaseSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       this.userName = userName;
       try (final ConfigNodeClient client =
@@ -233,8 +240,6 @@ public class InformationSchemaContentSupplierFactory {
                 .getDatabaseInfoMap()
                 .entrySet()
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -286,13 +291,14 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class TableSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, List<TTableInfo>>> dbIterator;
+    private final Iterator<Map.Entry<String, List<TTableInfo>>> dbIterator;
     private Iterator<TTableInfo> tableInfoIterator = null;
     private TTableInfo currentTable;
     private String dbName;
     private final String userName;
 
-    private TableSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private TableSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       this.userName = userName;
       try (final ConfigNodeClient client =
@@ -313,8 +319,6 @@ public class InformationSchemaContentSupplierFactory {
                     })
                 .collect(Collectors.toList()));
         dbIterator = databaseTableInfoMap.entrySet().iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -375,7 +379,7 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ColumnSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
+    private final Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
     private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
     private Iterator<TsTableColumnSchema> columnSchemaIterator;
     private String dbName;
@@ -383,7 +387,8 @@ public class InformationSchemaContentSupplierFactory {
     private Set<String> preDeletedColumns;
     private final String userName;
 
-    private ColumnSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private ColumnSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       this.userName = userName;
       try (final ConfigNodeClient client =
@@ -412,8 +417,6 @@ public class InformationSchemaContentSupplierFactory {
                         TsTable::getTableName,
                         table -> new Pair<>(table, Collections.emptySet()))));
         dbIterator = resultMap.entrySet().iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -474,9 +477,10 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class RegionSupplier extends TsBlockSupplier {
-    private Iterator<TRegionInfo> iterator;
+    private final Iterator<TRegionInfo> iterator;
 
-    private RegionSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private RegionSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
@@ -485,8 +489,6 @@ public class InformationSchemaContentSupplierFactory {
             client
                 .showRegion(new TShowRegionReq().setIsTableModel(true).setDatabases(null))
                 .getRegionInfoListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -534,17 +536,15 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class PipeSupplier extends TsBlockSupplier {
-    private Iterator<TShowPipeInfo> iterator;
+    private final Iterator<TShowPipeInfo> iterator;
 
-    private PipeSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private PipeSupplier(final List<TSDataType> dataTypes, final String userName) throws Exception {
       super(dataTypes);
       accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
             client.showPipe(new TShowPipeReq().setIsTableModel(true)).getPipeInfoListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -590,9 +590,9 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class PipePluginSupplier extends TsBlockSupplier {
-    private Iterator<PipePluginMeta> iterator;
+    private final Iterator<PipePluginMeta> iterator;
 
-    private PipePluginSupplier(final List<TSDataType> dataTypes) {
+    private PipePluginSupplier(final List<TSDataType> dataTypes) throws Exception {
       super(dataTypes);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -604,8 +604,6 @@ public class InformationSchemaContentSupplierFactory {
                         !BuiltinPipePlugin.SHOW_PIPE_PLUGINS_BLACKLIST.contains(
                             pipePluginMeta.getPluginName()))
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -631,9 +629,10 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class TopicSupplier extends TsBlockSupplier {
-    private Iterator<TShowTopicInfo> iterator;
+    private final Iterator<TShowTopicInfo> iterator;
 
-    private TopicSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private TopicSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
@@ -643,8 +642,6 @@ public class InformationSchemaContentSupplierFactory {
                 .showTopic(new TShowTopicReq().setIsTableModel(true))
                 .getTopicInfoList()
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -665,9 +662,10 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class SubscriptionSupplier extends TsBlockSupplier {
-    private Iterator<TShowSubscriptionInfo> iterator;
+    private final Iterator<TShowSubscriptionInfo> iterator;
 
-    private SubscriptionSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private SubscriptionSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
@@ -677,8 +675,6 @@ public class InformationSchemaContentSupplierFactory {
                 .showSubscription(new TShowSubscriptionReq().setIsTableModel(true))
                 .getSubscriptionInfoList()
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -701,13 +697,14 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ViewsSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
+    private final Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
     private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
     private String dbName;
     private TsTable currentTable;
     private final String userName;
 
-    private ViewsSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private ViewsSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       this.userName = userName;
       try (final ConfigNodeClient client =
@@ -729,8 +726,6 @@ public class InformationSchemaContentSupplierFactory {
                                                     tableEntry.getValue().getTableInfo()),
                                                 tableEntry.getValue().getPreDeletedColumns())))));
         dbIterator = resultMap.entrySet().iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -777,15 +772,13 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ModelsSupplier extends TsBlockSupplier {
-    private ModelIterator iterator;
+    private final ModelIterator iterator;
 
-    private ModelsSupplier(final List<TSDataType> dataTypes) {
+    private ModelsSupplier(final List<TSDataType> dataTypes) throws Exception {
       super(dataTypes);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator = new ModelIterator(client.showModel(new TShowModelReq()));
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -886,12 +879,12 @@ public class InformationSchemaContentSupplierFactory {
 
   private static class FunctionsSupplier extends TsBlockSupplier {
 
-    private Iterator<UDFInformation> udfIterator;
+    private final Iterator<UDFInformation> udfIterator;
     private Iterator<String> nameIterator;
     private Binary functionType;
-    private Binary functionState;
+    private final Binary functionState;
 
-    private FunctionsSupplier(final List<TSDataType> dataTypes) {
+    private FunctionsSupplier(final List<TSDataType> dataTypes) throws Exception {
       super(dataTypes);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -903,8 +896,6 @@ public class InformationSchemaContentSupplierFactory {
         nameIterator = TableBuiltinScalarFunction.getBuiltInScalarFunctionName().iterator();
         functionType = BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_SCALAR_FUNC);
         functionState = BINARY_MAP.get(FUNCTION_STATE_AVAILABLE);
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -948,9 +939,10 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ConfigurationsSupplier extends TsBlockSupplier {
-    private Iterator<Pair<Binary, Binary>> resultIterator;
+    private final Iterator<Pair<Binary, Binary>> resultIterator;
 
-    private ConfigurationsSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private ConfigurationsSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
@@ -1010,8 +1002,6 @@ public class InformationSchemaContentSupplierFactory {
                         BytesUtils.valueOf(ColumnHeaderConstant.TIMESTAMP_PRECISION),
                         BytesUtils.valueOf(parameters.getTimestampPrecision())))
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -1053,12 +1043,13 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class NodesSupplier extends TsBlockSupplier {
-    private TShowClusterResp showClusterResp;
-    private Iterator<TConfigNodeLocation> configNodeIterator;
-    private Iterator<TDataNodeLocation> dataNodeIterator;
-    private Iterator<TAINodeLocation> aiNodeIterator;
+    private final TShowClusterResp showClusterResp;
+    private final Iterator<TConfigNodeLocation> configNodeIterator;
+    private final Iterator<TDataNodeLocation> dataNodeIterator;
+    private final Iterator<TAINodeLocation> aiNodeIterator;
 
-    private NodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private NodesSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
@@ -1067,8 +1058,6 @@ public class InformationSchemaContentSupplierFactory {
         configNodeIterator = showClusterResp.getConfigNodeListIterator();
         dataNodeIterator = showClusterResp.getDataNodeListIterator();
         aiNodeIterator = showClusterResp.getAiNodeListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -1151,17 +1140,16 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ConfigNodesSupplier extends TsBlockSupplier {
-    private Iterator<TConfigNodeInfo4InformationSchema> configNodeIterator;
+    private final Iterator<TConfigNodeInfo4InformationSchema> configNodeIterator;
 
-    private ConfigNodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private ConfigNodesSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         configNodeIterator =
             client.showConfigNodes4InformationSchema().getConfigNodesInfoListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -1183,16 +1171,15 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class DataNodesSupplier extends TsBlockSupplier {
-    private Iterator<TDataNodeInfo4InformationSchema> dataNodeIterator;
+    private final Iterator<TDataNodeInfo4InformationSchema> dataNodeIterator;
 
-    private DataNodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private DataNodesSupplier(final List<TSDataType> dataTypes, final String userName)
+        throws Exception {
       super(dataTypes);
       accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         dataNodeIterator = client.showDataNodes4InformationSchema().getDataNodesInfoListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -1222,7 +1209,6 @@ public class InformationSchemaContentSupplierFactory {
 
     protected final TsBlockBuilder resultBuilder;
     protected final ColumnBuilder[] columnBuilders;
-    protected Exception lastException;
 
     private TsBlockSupplier(final List<TSDataType> dataTypes) {
       this.resultBuilder = new TsBlockBuilder(dataTypes);
@@ -1231,9 +1217,6 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public TsBlock next() {
-      if (Objects.nonNull(lastException)) {
-        throw new NoSuchElementException(lastException.getMessage());
-      }
       if (!hasNext()) {
         throw new NoSuchElementException();
       }

@@ -210,6 +210,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -1028,7 +1029,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     try {
       PartialPath db = new PartialPath(treeDBName);
       int dbLevel = db.getNodes().length;
-      if (dbLevel == 2) {
+      // For the path of 'root.**', we can only get the root level in this place
+      // In this case, we still need to support deviceId such as 'root.db'
+      // The relevant deviceId must be two level db, but we can't get it now
+      if (dbLevel == 1 || dbLevel == 2) {
         return new TwoLevelDBExtractor(treeDBName.length());
       } else if (dbLevel == 3) {
         return new ThreeLevelDBExtractor(treeDBName.length());
@@ -1207,6 +1211,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     TableScanOperator tableScanOperator = new TableScanOperator(parameter);
 
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
     addSource(
         tableScanOperator,
         context,
@@ -3021,6 +3026,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     } else {
       DefaultAggTableScanOperator aggTableScanOperator = new DefaultAggTableScanOperator(parameter);
 
+      context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
       addSource(
           aggTableScanOperator,
           context,
@@ -3691,7 +3697,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       List<TSDataType> inputColumnTypes = new ArrayList<>();
       List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
 
-      List<ColumnSchema> inputColumns = node.getColumns();
+      List<ColumnSchema> originColumns = node.getColumns();
+      List<Symbol> originInputColumnNames = node.getNeededInputColumnNames();
+      int size = originColumns.size();
+      List<ColumnSchema> inputColumns = new ArrayList<>(size);
+
+      List<Symbol> childOutputName = node.getChild().getOutputSymbols();
+      Map<Symbol, Integer> map = new HashMap<>(childOutputName.size());
+      for (int i = 0; i < size; i++) {
+        map.put(childOutputName.get(i), i);
+        inputColumns.add(null);
+      }
+      for (int i = 0; i < size; i++) {
+        int index = map.get(originInputColumnNames.get(i));
+        inputColumns.set(index, originColumns.get(i));
+      }
+
       for (int i = 0; i < inputColumns.size(); i++) {
         String columnName = inputColumns.get(i).getName();
         inputLocationMap.put(columnName, new InputLocation(0, i));
@@ -4054,5 +4075,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     // Create aggregator by accumulator
     return new WindowAggregator(
         accumulator, getTSDataType(typeProvider.getTableModelType(symbol)), argumentChannels);
+  }
+
+  @Override
+  public Operator visitUnion(UnionNode node, LocalExecutionPlanContext context) {
+    List<Operator> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(Collectors.toList());
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CollectOperator.class.getSimpleName());
+    return new CollectOperator(operatorContext, children);
   }
 }

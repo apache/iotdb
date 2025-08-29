@@ -980,32 +980,32 @@ default_text_encoding=PLAIN
 # BOOLEAN compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-boolean_compressor=lz4
+boolean_compressor=LZ4
 
 # INT32/DATE compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-int32_compressor=lz4
+int32_compressor=LZ4
 
 # INT64/TIMESTAMP compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-int64_compressor=lz4
+int64_compressor=LZ4
 
 # FLOAT compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-float_compressor=lz4
+float_compressor=LZ4
 
 # DOUBLE compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-double_compressor=lz4
+double_compressor=LZ4
 
 # TEXT/BINARY/BLOB compression when creating schema automatically is enabled
 # effectiveMode: hot_reload
 # Datatype: TSEncoding
-text_compressor=lz4
+text_compressor=LZ4
 
 ####################
 ### Query Configurations
@@ -1105,6 +1105,13 @@ batch_size=100000
 # effectiveMode: hot_reload
 # Datatype: long
 sort_buffer_size_in_bytes=0
+
+# The maximum mod entries size that each FragmentInstance can cache.
+# if mods_cache_size_limit_per_fi_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
+# if mods_cache_size_limit_per_fi_in_bytes > 0, the specified value will be used.
+# effectiveMode: hot_reload
+# Datatype: long
+mods_cache_size_limit_per_fi_in_bytes=0
 
 # The threshold of operator count in the result set of EXPLAIN ANALYZE, if the number of operator in the result set is larger than this threshold, operator will be merged.
 # effectiveMode: hot_reload
@@ -1939,6 +1946,10 @@ data_region_ratis_max_sleep_time_ms=10000
 ratis_first_election_timeout_min_ms=50
 ratis_first_election_timeout_max_ms=150
 
+# the timeout threshold for transferring leader in ratis
+# Datatype: int
+ratis_transfer_leader_timeout_ms=30000
+
 # preserve certain logs when take snapshot and purge
 # effectiveMode: restart
 # Datatype: int
@@ -2154,3 +2165,8 @@ write_request_remote_dispatch_max_retry_duration_in_ms=60000
 # effectiveMode: hot_reload
 # Datatype: boolean
 enable_retry_for_unknown_error=false
+
+# The switch to control if allow null value be included in the "quantity total" metric statistic.
+# effectiveMode: hot_reload
+# Datatype: Boolean
+include_null_value_in_write_throughput_metric=false

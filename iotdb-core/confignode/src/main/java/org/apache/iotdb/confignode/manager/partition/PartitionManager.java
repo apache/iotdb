@@ -522,7 +522,7 @@ public class PartitionManager {
       return getConsensusManager().write(plan);
     } catch (ConsensusException e) {
       // The allocation might fail due to consensus error
-      LOGGER.error("Write partition allocation result failed because: {}", status);
+      LOGGER.error("Write partition allocation result failed because: {}", e.getMessage());
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -961,7 +961,7 @@ public class PartitionManager {
     }
 
     if (result.isEmpty()) {
-      throw new NoAvailableRegionGroupException(type);
+      throw new NoAvailableRegionGroupException(type, Collections.singletonList(database));
     }
 
     final Map<TConsensusGroupId, RegionGroupStatus> regionGroupStatusMap =

@@ -17,21 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.config.plugin.env;
+package org.apache.iotdb.commons.enums;
 
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-
-public class PipeTaskExtractorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
-
-  private final PipeTaskMeta pipeTaskMeta;
-
-  public PipeTaskExtractorRuntimeEnvironment(
-      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
-    super(pipeName, creationTime, regionId);
-    this.pipeTaskMeta = pipeTaskMeta;
-  }
-
-  public PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
-  }
+public enum ReadConsistencyLevel {
+  STRONG,
+  WEAK
 }

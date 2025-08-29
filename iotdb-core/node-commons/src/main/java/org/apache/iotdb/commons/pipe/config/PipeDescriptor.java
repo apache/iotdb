@@ -322,13 +322,13 @@ public class PipeDescriptor {
                             config
                                 .getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes())))));
 
-    config.setPipeExtractorMatcherCacheSize(
+    config.setPipeSourceMatcherCacheSize(
         Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_extractor_matcher_cache_size"))
+            Optional.ofNullable(properties.getProperty("pipe_source_matcher_cache_size"))
                 .orElse(
                     properties.getProperty(
                         "pipe_extractor_matcher_cache_size",
-                        String.valueOf(config.getPipeExtractorMatcherCacheSize())))));
+                        String.valueOf(config.getPipeSourceMatcherCacheSize())))));
 
     config.setPipeConnectorHandshakeTimeoutMs(
         Long.parseLong(
@@ -437,6 +437,16 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_load_conversion_enabled",
                 String.valueOf(config.isPipeReceiverLoadConversionEnabled()))));
+    config.setPipePeriodicalLogMinIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_periodical_log_min_interval_seconds",
+                String.valueOf(config.getPipePeriodicalLogMinIntervalSeconds()))));
+    config.setPipeLoggerCacheMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_logger_cache_max_size_in_bytes",
+                String.valueOf(config.getPipeLoggerCacheMaxSizeInBytes()))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
@@ -473,11 +483,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
-    config.setPipeMaxAlignedSeriesNumInOneBatch(
-        Integer.parseInt(
+    config.setPipeMaxAlignedSeriesChunkSizeInOneBatch(
+        Long.parseLong(
             properties.getProperty(
-                "pipe_max_aligned_series_num_in_one_batch",
-                String.valueOf(config.getPipeMaxAlignedSeriesNumInOneBatch()))));
+                "pipe_max_aligned_series_chunk_size_in_one_batch",
+                String.valueOf(config.getPipeMaxAlignedSeriesChunkSizeInOneBatch()))));
 
     config.setPipeTransferTsFileSync(
         Boolean.parseBoolean(
@@ -576,6 +586,12 @@ public class PipeDescriptor {
             isHotModify);
     if (value != null) {
       config.setPipeAsyncConnectorMaxTsFileClientNumber(Integer.parseInt(value));
+    }
+
+    value =
+        parserPipeConfig(properties, "pipe_send_tsfile_rate_limit_bytes_per_second", isHotModify);
+    if (value != null) {
+      config.setPipeSendTsFileRateLimitBytesPerSecond(Double.parseDouble(value));
     }
 
     value = parserPipeConfig(properties, "pipe_all_sinks_rate_limit_bytes_per_second", isHotModify);

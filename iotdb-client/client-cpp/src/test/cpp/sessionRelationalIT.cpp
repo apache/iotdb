@@ -19,6 +19,7 @@
 
 #include "catch.hpp"
 #include "TableSession.h"
+#include "TableSessionBuilder.h"
 #include <math.h>
 
 using namespace std;
@@ -65,6 +66,29 @@ TEST_CASE("Create table success", "[createTable]") {
         }
     }
     REQUIRE(tableExist == true);
+}
+
+TEST_CASE("Test TableSession builder with nodeUrls", "[SessionBuilderInit]") {
+    CaseReporter cr("TableSessionInitWithNodeUrls");
+
+    std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
+    auto builder = std::unique_ptr<TableSessionBuilder>(new TableSessionBuilder());
+    std::shared_ptr<TableSession> session =
+        std::shared_ptr<TableSession>(
+            builder
+            ->username("root")
+            ->password("root")
+            ->nodeUrls(nodeUrls)
+            ->build()
+        );
+    session->open();
+
+    session->executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
+    session->executeNonQueryStatement("CREATE DATABASE db1");
+    session->executeNonQueryStatement("DROP DATABASE IF EXISTS db2");
+    session->executeNonQueryStatement("CREATE DATABASE db2");
+
+    session->close();
 }
 
 TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {

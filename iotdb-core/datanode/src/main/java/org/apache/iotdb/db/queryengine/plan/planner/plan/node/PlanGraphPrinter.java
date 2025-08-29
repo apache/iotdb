@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
@@ -82,6 +83,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
@@ -98,7 +100,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -836,7 +837,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (node.getMonthDuration() != 0) {
       boxValue.add(String.format("Interval: %smo", node.getMonthDuration()));
     } else {
-      boxValue.add(String.format("Interval: %s" + TIMESTAMP_PRECISION, node.getNonMonthDuration()));
+      boxValue.add(
+          String.format(
+              "Interval: %s" + CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+              node.getNonMonthDuration()));
     }
     boxValue.add(String.format("GapFillColumn: %s", node.getGapFillColumn()));
     if (!node.getGapFillGroupingKeys().isEmpty()) {
@@ -1092,6 +1096,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         regionReplicaSet == null || regionReplicaSet == DataPartition.NOT_ASSIGNED
             ? REGION_NOT_ASSIGNED
             : String.valueOf(regionReplicaSet.getRegionId().id));
+  }
+
+  @Override
+  public List<String> visitUnion(UnionNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Union-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
   }
 
   private List<String> render(PlanNode node, List<String> nodeBoxString, GraphContext context) {

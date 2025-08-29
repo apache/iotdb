@@ -182,6 +182,10 @@ public class ConfigNodeDescriptor {
         properties.getProperty(
             "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
+    conf.setDataPartitionAllocationStrategy(
+        properties.getProperty(
+            "data_partition_allocation_strategy", conf.getDataPartitionAllocationStrategy()));
+
     conf.setConfigNodeConsensusProtocolClass(
         properties.getProperty(
             "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
@@ -651,6 +655,12 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "ratis_first_election_timeout_max_ms",
                 String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))));
+
+    conf.setRatisTransferLeaderTimeoutMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "ratis_transfer_leader_timeout_ms",
+                String.valueOf(conf.getRatisTransferLeaderTimeoutMs()))));
 
     conf.setConfigNodeRatisLogMax(
         Long.parseLong(

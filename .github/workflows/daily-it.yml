@@ -29,7 +29,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: corretto
           java-version: ${{ matrix.java }}
       - name: IT/UT Test
         shell: bash
@@ -61,7 +61,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: corretto
           java-version: ${{ matrix.java }}
       - name: IT/UT Test
         shell: bash
@@ -71,7 +71,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 -DintegrationTest.dataRegionPerDataNode=1\
+          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 -DintegrationTest.dataRegionPerDataNode=1 \
           -pl integration-test \
           -am -PTableSimpleIT
       - name: Upload Artifact
