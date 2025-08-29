@@ -347,6 +347,7 @@ public class IoTDBArithmeticTableIT {
 
   @Test
   public void testDateOutOfRange() {
+    DateTimeUtils.initTimestampPrecision();
     tableAssertTestFail(
         String.format(
             "select date + %s from table2 where time = 1",

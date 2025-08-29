@@ -30,7 +30,7 @@ public class RetryUtils {
     T call() throws E;
   }
 
-  public static boolean needRetryForConsensus(int statusCode) {
+  public static boolean needRetryForWrite(int statusCode) {
     return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
         || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
         || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();

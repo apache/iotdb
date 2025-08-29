@@ -98,7 +98,7 @@ public class Constants {
   public static final String DB_ARGS = "db";
   public static final String DB_NAME = "database";
   public static final String DB_DESC =
-      "The database to be exported,only takes effect and required when sql_dialect is table .(optional)";
+      "The database to be exported,only takes effect when sql_dialect is table and required when file_type is csv and tsfile.(optional)";
 
   public static final String TABLE_ARGS = "table";
   public static final String TABLE_DESC =
@@ -388,4 +388,8 @@ public class Constants {
       "Lines per failed file,only takes effect and required when sql_dialect is table .(option)";
   public static final String IMPORT_COMPLETELY = "Import completely!";
   public static final int BATCH_POINT_SIZE = 10000;
+
+  public static final String IMPORT_INIT_MEET_ERROR_MSG = "Meet error when init import because ";
+  public static final String REQUIRED_ARGS_ERROR_MSG =
+      "Invalid args: Required values for option '%s' not provided";
 }

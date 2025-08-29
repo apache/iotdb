@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 
@@ -31,8 +32,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
-
-import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
 
@@ -62,7 +61,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
   private static LocalDateTime convertToLocalDateTime(long timestamp, ZoneId zoneId) {
     Instant instant;
 
-    switch (TIMESTAMP_PRECISION) {
+    switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ms":
         instant = Instant.ofEpochMilli(timestamp);
         break;
@@ -77,7 +76,9 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
                 TimeUnit.NANOSECONDS.toSeconds(timestamp), timestamp % 1_000_000_000);
         break;
       default:
-        throw new IllegalArgumentException("Unsupported precision: " + TIMESTAMP_PRECISION);
+        throw new IllegalArgumentException(
+            "Unsupported precision: "
+                + CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
 
     return LocalDateTime.ofInstant(instant, zoneId);
@@ -89,7 +90,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     // Get the nanoseconds section
     long nanoAdjustment = dateTime.getNano();
 
-    switch (TIMESTAMP_PRECISION) {
+    switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ms":
         return epochMilliSecond + nanoAdjustment / NANOSECONDS_IN_MILLISECOND;
       case "us":
@@ -98,12 +99,14 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
       case "ns":
         return TimeUnit.MILLISECONDS.toNanos(epochMilliSecond) + nanoAdjustment;
       default:
-        throw new IllegalArgumentException("Unknown precision: " + TIMESTAMP_PRECISION);
+        throw new IllegalArgumentException(
+            "Unknown precision: "
+                + CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
   }
 
   private static long getNanoTimeStamp(long timestamp) {
-    switch (TIMESTAMP_PRECISION) {
+    switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ms":
         return TimeUnit.MILLISECONDS.toNanos(timestamp);
       case "us":
@@ -111,7 +114,9 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
       case "ns":
         return timestamp;
       default:
-        throw new IllegalArgumentException("Unknown precision: " + TIMESTAMP_PRECISION);
+        throw new IllegalArgumentException(
+            "Unknown precision: "
+                + CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
   }
 

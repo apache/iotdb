@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.util.cacher.LeaderCacheUtils;
@@ -115,11 +116,12 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   @Override
   protected void onErrorInternal(final Exception exception) {
     try {
-      LOGGER.warn(
-          "Failed to transfer TabletInsertionEvent batch. Total failed events: {}, related pipe names: {}",
+      PipeLogger.log(
+          LOGGER::warn,
+          exception,
+          "Failed to transfer TabletInsertionEvent batch. Total failed events: %s, related pipe names: %s",
           events.size(),
-          events.stream().map(EnrichedEvent::getPipeName).collect(Collectors.toSet()),
-          exception);
+          events.stream().map(EnrichedEvent::getPipeName).collect(Collectors.toSet()));
     } finally {
       connector.addFailureEventsToRetryQueue(events);
     }
