@@ -74,6 +74,8 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
       // Ignore the event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileSource.class.getName(), false);
     }
+
+    event.getTsFileEpoch().clearState(this);
   }
 
   @Override
