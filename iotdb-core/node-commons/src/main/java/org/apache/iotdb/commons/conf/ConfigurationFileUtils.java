@@ -399,6 +399,9 @@ public class ConfigurationFileUtils {
               key,
               new DefaultConfigurationItem(
                   key, value, withDesc ? description.toString().trim() : null, effectiveMode));
+          description = new StringBuilder();
+          effectiveMode = null;
+          independentLines.clear();
         }
       }
     } catch (IOException e) {

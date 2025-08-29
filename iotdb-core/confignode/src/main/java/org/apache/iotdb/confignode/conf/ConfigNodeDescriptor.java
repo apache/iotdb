@@ -146,7 +146,7 @@ public class ConfigNodeDescriptor {
     }
   }
 
-  private void loadProperties(TrimProperties properties) throws BadNodeUrlException {
+  private void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
     ConfigurationFileUtils.updateAppliedProperties(properties, false);
     conf.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
 
