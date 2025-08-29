@@ -1640,8 +1640,13 @@ public abstract class AlignedTVList extends TVList {
           return;
         }
         if (scanOrder.isAscending()) {
+          // When traversing in ASC order, we only need to overwrite the previous non-null value
+          // with the non-null value encountered later
           Arrays.fill(selectedIndices, index);
         } else {
+          // When traversing in DESC order, we need to keep the non-null value encountered first,
+          // and only overwrite it if the previous value is null and current value is non-null. In
+          // order to identify the previous null, we use index -1 here to represent
           for (int i = 0; i < selectedIndices.length; i++) {
             selectedIndices[i] = isNullValue(index, i) ? -1 : index;
           }
@@ -1649,6 +1654,8 @@ public abstract class AlignedTVList extends TVList {
         findValidRow = true;
 
         // handle duplicated timestamp
+        // We can use the selectedIndices structure to handle the value coverage of ASC or DESC
+        // traversal
         while (index + 1 < rows
             && getTime(getScanOrderIndex(index + 1)) == getTime(getScanOrderIndex(index))) {
           index++;
@@ -1667,6 +1674,8 @@ public abstract class AlignedTVList extends TVList {
             }
           }
         }
+        // For DESC traversal, we previously set some -1. If these values are still -1 in the end,
+        // it means that each index is invalid. At this time, we can use any one at random.
         if (!scanOrder.isAscending()) {
           for (int i = 0; i < selectedIndices.length; i++) {
             if (selectedIndices[i] == -1) {
@@ -1839,6 +1848,9 @@ public abstract class AlignedTVList extends TVList {
           if (Objects.isNull(timeInvalidInfo)) {
             timeInvalidInfo = new BitMap(rows);
           }
+          // For this timeInvalidInfo, we mark all positions that are not the last one in the
+          // ASC traversal. It has the same behaviour for the DESC traversal, because our ultimate
+          // goal is to process all the data with the same timestamp before writing it into TsBlock.
           timeInvalidInfo.mark(index);
         }
         index = nextRowIndex - 1;
@@ -1877,10 +1889,17 @@ public abstract class AlignedTVList extends TVList {
                 lastValidPointIndexForTimeDupCheck.right =
                     getValueIndex(getScanOrderIndex(sortedRowIndex));
               } else if (lastValidPointIndexForTimeDupCheck.right == null) {
+                // For DESC traversal, we need to keep the first non-null value encountered
+                // We can use lastValidPointIndexForTimeDupCheck.right as a judgment method to see
+                // if it is null
                 lastValidPointIndexForTimeDupCheck.right =
                     getValueIndex(getScanOrderIndex(sortedRowIndex));
               }
             }
+            // timeInvalidInfo was constructed when traversing the time column before. It can be
+            // reused when traversing each value column to skip deleted rows or non-last rows with
+            // duplicated timestamps.
+            // Until the last duplicate timestamp is encountered, it will be skipped here.
             if (timeInvalidInfo.isMarked(sortedRowIndex)) {
               continue;
             }
@@ -1907,6 +1926,9 @@ public abstract class AlignedTVList extends TVList {
                   == lastValidPointIndexForTimeDupCheck.left)
               && Objects.nonNull(lastValidPointIndexForTimeDupCheck.right)) {
             originRowIndex = lastValidPointIndexForTimeDupCheck.right;
+            // For DESC traversal, the judgment of whether the previous point is null depends on
+            // lastValidPointIndexForTimeDupCheck.right, so we need to remember to clean it up
+            // after writing a point
             lastValidPointIndexForTimeDupCheck.right = null;
           } else {
             originRowIndex = getValueIndex(getScanOrderIndex(sortedRowIndex));
