@@ -66,19 +66,25 @@ public class ObjectTypeUtils {
     }
     File tmpFile = new File(file.get().getPath() + ".tmp");
     File bakFile = new File(file.get().getPath() + ".back");
-    logger.info("Remove object file {}", file.get().getAbsolutePath());
     for (int i = 0; i < 2; i++) {
       if (file.get().exists()) {
         FileMetrics.getInstance().decreaseObjectFileNum(1);
         FileMetrics.getInstance().decreaseObjectFileSize(file.get().length());
       }
       try {
-        Files.deleteIfExists(file.get().toPath());
-        Files.deleteIfExists(tmpFile.toPath());
-        Files.deleteIfExists(bakFile.toPath());
+        deleteObjectFile(file.get());
+        deleteObjectFile(tmpFile);
+        deleteObjectFile(bakFile);
       } catch (IOException e) {
         logger.error("Failed to remove object file {}", file.get().getAbsolutePath(), e);
       }
     }
+  }
+
+  private static void deleteObjectFile(File file) throws IOException {
+    if (file.exists()) {
+      logger.info("Remove object file {}, size is {}(byte)", file.getAbsolutePath(), file.length());
+    }
+    Files.deleteIfExists(file.toPath());
   }
 }
