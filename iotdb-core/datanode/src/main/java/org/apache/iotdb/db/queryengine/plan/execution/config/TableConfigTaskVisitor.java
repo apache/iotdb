@@ -918,7 +918,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowConfigurations(ShowConfiguration node, MPPQueryContext context) {
+  protected IConfigTask visitShowConfiguration(ShowConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowConfigurationTask((ShowConfigurationStatement) node.getInnerTreeStatement());

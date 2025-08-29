@@ -36,15 +36,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 
@@ -79,40 +77,10 @@ public class ConfigurationFileUtils {
   private static final String DATATYPE_PREFIX = "Datatype:";
   private static Map<String, DefaultConfigurationItem> configuration2DefaultValue;
 
-  // This is a temporary implementations
-  private static final Set<String> ignoreConfigKeys =
-      new HashSet<>(
-          Arrays.asList(
-              "cn_internal_address",
-              "cn_internal_port",
-              "cn_consensus_port",
-              "cn_seed_config_node",
-              "dn_internal_address",
-              "dn_internal_port",
-              "dn_mpp_data_exchange_port",
-              "dn_schema_region_consensus_port",
-              "dn_data_region_consensus_port",
-              "dn_seed_config_node",
-              "dn_session_timeout_threshold",
-              "config_node_consensus_protocol_class",
-              "schema_replication_factor",
-              "data_replication_factor",
-              "data_region_consensus_protocol_class",
-              "series_slot_num",
-              "series_partition_executor_class",
-              "time_partition_interval",
-              "schema_engine_mode",
-              "tag_attribute_flush_interval",
-              "tag_attribute_total_size",
-              "timestamp_precision",
-              "iotdb_server_encrypt_decrypt_provider",
-              "iotdb_server_encrypt_decrypt_provider_parameter",
-              "pipe_lib_dir"));
-
   private static final Map<String, String> lastAppliedProperties = new HashMap<>();
 
-  public static void updateLastAppliedProperties(
-      TrimProperties properties, boolean isHotReloading) throws IOException {
+  public static void updateAppliedProperties(TrimProperties properties, boolean isHotReloading)
+      throws IOException {
     loadConfigurationDefaultValueFromTemplate();
     for (Map.Entry<Object, Object> entry : properties.entrySet()) {
       String key = entry.getKey().toString();
@@ -129,7 +97,7 @@ public class ConfigurationFileUtils {
     }
   }
 
-  public static Map<String, String> getLastAppliedProperties() {
+  public static Map<String, String> getAppliedProperties() {
     return lastAppliedProperties;
   }
 
@@ -241,13 +209,15 @@ public class ConfigurationFileUtils {
     } catch (IOException e) {
       successLoadDefaultValueMap = false;
     }
+    if (!successLoadDefaultValueMap) {
+      return Collections.emptyList();
+    }
 
     List<String> ignoredConfigItems = new ArrayList<>();
     for (String key : configItems.keySet()) {
-      if (ignoreConfigKeys.contains(key)) {
-        ignoredConfigItems.add(key);
-      }
-      if (successLoadDefaultValueMap && !configuration2DefaultValue.containsKey(key)) {
+      DefaultConfigurationItem defaultConfigurationItem = configuration2DefaultValue.get(key);
+      if (defaultConfigurationItem == null
+          || defaultConfigurationItem.effectiveMode == EffectiveModeType.FIRST_START) {
         ignoredConfigItems.add(key);
       }
     }

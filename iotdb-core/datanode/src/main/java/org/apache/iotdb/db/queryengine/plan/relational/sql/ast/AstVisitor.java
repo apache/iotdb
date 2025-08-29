@@ -477,7 +477,7 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitShowConfigurations(ShowConfiguration node, C context) {
+  protected R visitShowConfiguration(ShowConfiguration node, C context) {
     return visitStatement(node, context);
   }
 

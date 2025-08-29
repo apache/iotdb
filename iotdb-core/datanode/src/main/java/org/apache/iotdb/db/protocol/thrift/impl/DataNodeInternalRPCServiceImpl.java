@@ -2409,8 +2409,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TShowAppliedConfigurationsResp resp = new TShowAppliedConfigurationsResp();
     resp.setStatus(RpcUtils.SUCCESS_STATUS);
     try {
-      resp.setData(ConfigurationFileUtils.getLastAppliedProperties());
-
+      resp.setData(ConfigurationFileUtils.getAppliedProperties());
     } catch (Exception e) {
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
     }

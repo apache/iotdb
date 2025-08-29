@@ -30,6 +30,6 @@ public class ShowConfiguration extends WrappedStatement {
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowConfigurations(this, context);
+    return visitor.visitShowConfiguration(this, context);
   }
 }

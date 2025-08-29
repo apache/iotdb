@@ -1280,9 +1280,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       boolean onLocal =
           nodeId == -1 || IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == nodeId;
-      Map<String, String> lastAppliedProperties;
+      Map<String, String> appliedProperties;
       if (onLocal) {
-        lastAppliedProperties = ConfigurationFileUtils.getLastAppliedProperties();
+        appliedProperties = ConfigurationFileUtils.getAppliedProperties();
       } else {
         try (ConfigNodeClient client =
             CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -1291,11 +1291,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             future.setException(new IoTDBException(resp.getStatus()));
             return future;
           }
-          lastAppliedProperties = client.showAppliedConfigurations(nodeId).getData();
+          appliedProperties = client.showAppliedConfigurations(nodeId).getData();
         }
       }
       ShowConfigurationTask.buildTsBlock(
-          lastAppliedProperties,
+          appliedProperties,
           showConfigurationStatement.isShowAllConfigurations(),
           showConfigurationStatement.withDescription(),
           future);
