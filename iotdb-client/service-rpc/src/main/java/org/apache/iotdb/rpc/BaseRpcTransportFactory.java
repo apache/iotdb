@@ -84,6 +84,23 @@ public class BaseRpcTransportFactory extends TTransportFactory {
     return inner.getTransport(transport);
   }
 
+  public TTransport getTransport(
+      String ip,
+      int port,
+      int timeout,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd)
+      throws TTransportException {
+    TSSLTransportFactory.TSSLTransportParameters params =
+        new TSSLTransportFactory.TSSLTransportParameters();
+    params.setTrustStore(trustStore, trustStorePwd);
+    params.setKeyStore(keyStore, keyStorePwd);
+    TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
+    return inner.getTransport(transport);
+  }
+
   public TTransport getTransport(String ip, int port, int timeout) throws TTransportException {
     return inner.getTransport(
         new TSocket(TConfigurationConst.defaultTConfiguration, ip, port, timeout));

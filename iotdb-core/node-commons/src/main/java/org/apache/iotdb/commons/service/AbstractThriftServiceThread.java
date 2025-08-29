@@ -98,6 +98,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
         "{}: close TThreadPoolServer and TServerSocket for {}",
         IoTDBConstant.GLOBAL_DB_NAME,
         serviceName);
+    logger.error("failed to start, because ", e.getCause());
     throw new RPCServiceException(
         String.format(
             "%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName),
@@ -153,7 +154,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
     }
   }
 
-  /** For sync ThriftServiceThread */
+  /** Synced ThriftServiceThread with ssl enabled */
   @SuppressWarnings("squid:S107")
   protected AbstractThriftServiceThread(
       TProcessor processor,
@@ -167,6 +168,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
       boolean compress,
       String keyStorePath,
       String keyStorePwd,
+      String trustStorePath,
+      String trustStorePwd,
       int clientTimeout,
       TTransportFactory transportFactory) {
     this.transportFactory = transportFactory;
@@ -177,6 +180,9 @@ public abstract class AbstractThriftServiceThread extends Thread {
       TSSLTransportFactory.TSSLTransportParameters params =
           new TSSLTransportFactory.TSSLTransportParameters();
       params.setKeyStore(keyStorePath, keyStorePwd);
+      if (trustStorePath != null && !trustStorePath.isEmpty()) {
+        params.setTrustStore(trustStorePath, trustStorePwd);
+      }
       params.requireClientAuth(false);
       InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
       serverTransport =

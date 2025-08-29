@@ -91,6 +91,10 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             user=username,
             password=password,
             zone_id=time_zone,
+            use_ssl=AINodeDescriptor()
+            .get_config()
+            .get_ain_cluster_ingress_ssl_enabled(),
+            ca_certs=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
         )
         self.session.open(False)
         self.use_rate = use_rate
@@ -269,6 +273,10 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
             username=username,
             password=password,
             time_zone=time_zone,
+            use_ssl=AINodeDescriptor()
+            .get_config()
+            .get_ain_cluster_ingress_ssl_enabled(),
+            ca_certs=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
         )
         self.session = TableSession(table_session_config)
         self.use_rate = use_rate

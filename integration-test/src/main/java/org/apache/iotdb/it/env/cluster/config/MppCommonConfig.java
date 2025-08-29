@@ -592,6 +592,36 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
+    setProperty("enable_internal_ssl", String.valueOf(enableInternalSSL));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePath(String keyStorePath) {
+    setProperty("key_store_path", keyStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePwd(String keyStorePwd) {
+    setProperty("key_store_pwd", keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePath(String trustStorePath) {
+    setProperty("trust_store_path", trustStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    setProperty("trust_store_pwd", trustStorePwd);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     setProperty("datanode_memory_proportion", datanodeMemoryProportion);
     return this;
