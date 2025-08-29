@@ -173,7 +173,7 @@ public class ConfigurationFileUtils {
     }
     DefaultConfigurationItem defaultConfigurationItem =
         configuration2DefaultValue.get(parameterName);
-    return defaultConfigurationItem == null ? "" : defaultConfigurationItem.value;
+    return defaultConfigurationItem == null ? null : defaultConfigurationItem.value;
   }
 
   public static void releaseDefault() {
