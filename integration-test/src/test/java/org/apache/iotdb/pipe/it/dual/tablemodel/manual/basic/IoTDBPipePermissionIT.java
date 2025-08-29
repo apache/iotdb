@@ -70,8 +70,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
-        .setPipeMetaSyncerInitialSyncDelayMinutes(5)
-        .setPipeMetaSyncerSyncIntervalMinutes(5)
+        .setPipeMetaSyncerInitialSyncDelayMinutes(1)
+        .setPipeMetaSyncerSyncIntervalMinutes(1)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
     receiverEnv
@@ -87,8 +87,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2)
         .setDnConnectionTimeoutMs(600000)
-        .setPipeMetaSyncerInitialSyncDelayMinutes(5)
-        .setPipeMetaSyncerSyncIntervalMinutes(5)
+        .setPipeMetaSyncerInitialSyncDelayMinutes(1)
+        .setPipeMetaSyncerSyncIntervalMinutes(1)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
