@@ -105,6 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowProcedures;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
@@ -433,6 +434,7 @@ public class Coordinator {
         || statement instanceof ShowDataNodes
         || statement instanceof ShowConfigNodes
         || statement instanceof ShowAINodes
+        || statement instanceof ShowProcedures
         || statement instanceof Flush
         || statement instanceof ClearCache
         || statement instanceof SetConfiguration
