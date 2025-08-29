@@ -38,6 +38,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -546,6 +547,54 @@ public class IoTDBSessionComplexIT {
 
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void insertNotAutoCreateSchemaTest() {
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_auto_create_schema'='false'");
+      session.createDatabase("root.sg1");
+      session.createDatabase("root.sg2");
+      session.createDatabase("root.sg3");
+
+      try {
+        insertTablet(session, "root.sg1.d1");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                && e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      }
+
+      try {
+        insertRecords(session, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                    && e.getMessage().contains("Path [root.sg1.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      }
+
+      try {
+        insertMultiTablets(session, Arrays.asList("root.sg2.d1", "root.sg2.d2"));
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                    && e.getMessage().contains("Path [root.sg2.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.sg2.d1.s1] does not exist"));
+      }
+
+      try {
+        insertRecordsOfOneDevice(session, "root.sg3.d1");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                && e.getMessage().contains("Path [root.sg3.d1.s1] does not exist"));
+      }
+
+    } catch (Exception e) {
       fail(e.getMessage());
     }
   }
