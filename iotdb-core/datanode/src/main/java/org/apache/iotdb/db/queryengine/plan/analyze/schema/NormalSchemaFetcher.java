@@ -36,8 +36,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -326,21 +324,16 @@ class NormalSchemaFetcher {
       return;
     }
 
-    List<Integer> indexOfDevicesCannotAutoCreateSchema = Collections.EMPTY_LIST;
+    List<Integer> copyOfIndexOfDevicesNeedAutoCreateSchema =
+        new ArrayList<>(indexOfDevicesNeedAutoCreateSchema);
     if (!config.isAutoCreateSchemaEnabled()) {
       // keep auto-creation for system series
-      indexOfDevicesCannotAutoCreateSchema = new ArrayList<>();
-      Iterator<Integer> iterator = indexOfDevicesNeedAutoCreateSchema.iterator();
-      while (iterator.hasNext()) {
-        Integer i = iterator.next();
-        if (!schemaComputationWithAutoCreationList
-            .get(i)
-            .getDevicePath()
-            .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
-          indexOfDevicesCannotAutoCreateSchema.add(i);
-          iterator.remove();
-        }
-      }
+      indexOfDevicesNeedAutoCreateSchema.removeIf(
+          i ->
+              !schemaComputationWithAutoCreationList
+                  .get(i)
+                  .getDevicePath()
+                  .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
     }
 
     // [Step 5] Auto Create and process the missing schema
@@ -380,14 +373,16 @@ class NormalSchemaFetcher {
           context);
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();
-      for (int i = 0; i < indexOfDevicesCannotAutoCreateSchema.size(); i++) {
+      for (int i = 0; i < copyOfIndexOfDevicesNeedAutoCreateSchema.size(); i++) {
         schemaComputationWithAutoCreation =
-            schemaComputationWithAutoCreationList.get(indexOfDevicesCannotAutoCreateSchema.get(i));
+            schemaComputationWithAutoCreationList.get(
+                copyOfIndexOfDevicesNeedAutoCreateSchema.get(i));
         indexOfMissingMeasurements =
             schemaTree.compute(
                 schemaComputationWithAutoCreation, indexOfMeasurementsNeedAutoCreate.get(i));
         if (!indexOfMissingMeasurements.isEmpty()) {
-          indexOfDevicesWithMissingMeasurements.add(indexOfDevicesCannotAutoCreateSchema.get(i));
+          indexOfDevicesWithMissingMeasurements.add(
+              copyOfIndexOfDevicesNeedAutoCreateSchema.get(i));
           indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
         }
       }
