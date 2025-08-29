@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -66,6 +67,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -289,6 +291,16 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           dispatchWriteOnce(shouldDispatch);
 
       // 3. decide if we need retry (we may decide the retry condition instance-wise, if needed)
+      Iterator<FailedFragmentInstanceWithStatus> iterator = failedInstances.iterator();
+      while (iterator.hasNext()) {
+        FailedFragmentInstanceWithStatus failedFragmentInstanceWithStatus = iterator.next();
+        if (!RetryUtils.needRetryForWrite(
+            failedFragmentInstanceWithStatus.getFailureStatus().getCode())) {
+          dispatchFailures.add(failedFragmentInstanceWithStatus.getFailureStatus());
+          iterator.remove();
+        }
+      }
+
       final boolean shouldRetry =
           !failedInstances.isEmpty() && maxRetryDurationInNs > 0 && replicaNum > 1;
       if (!shouldRetry) {

@@ -3967,6 +3967,7 @@ public class DataRegion implements IDataRegionForQuery {
                           DateTimeUtils.convertLongToDate(
                               CommonDateTimeUtils.currentTime() - ttl))));
           insertRowNode.setFailedMeasurementNumber(insertRowNode.getMeasurements().length);
+          insertRowNode.setMeasurements(null);
           continue;
         }
         // init map

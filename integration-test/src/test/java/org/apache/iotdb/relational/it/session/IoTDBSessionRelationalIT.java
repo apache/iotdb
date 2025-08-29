@@ -27,12 +27,14 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.TableSessionBuilder;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -1910,6 +1912,42 @@ public class IoTDBSessionRelationalIT {
     } finally {
       EnvFactory.getEnv().cleanClusterEnvironment();
       EnvFactory.getEnv().initClusterEnvironment();
+    }
+  }
+
+  @Test
+  public void testSqlInsertWithExpiredTTL()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SimpleEnv simpleEnv = new SimpleEnv();
+    simpleEnv.getConfig().getCommonConfig().setDataReplicationFactor(2);
+    simpleEnv
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensus");
+    simpleEnv.initClusterEnvironment(1, 3);
+
+    try (ITableSession session = simpleEnv.getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");
+      session.executeNonQueryStatement("USE test");
+
+      session.executeNonQueryStatement("CREATE TABLE test_sql_ttl (s1 INT32)");
+      session.executeNonQueryStatement("ALTER TABLE test_sql_ttl SET PROPERTIES TTL=1");
+
+      for (DataNodeWrapper dataNodeWrapper : simpleEnv.getDataNodeWrapperList()) {
+        TableSessionBuilder tableSessionBuilder = new TableSessionBuilder();
+        tableSessionBuilder.nodeUrls(
+            Collections.singletonList(dataNodeWrapper.getIpAndPortString()));
+        tableSessionBuilder.database("test");
+        try (ITableSession subSession = tableSessionBuilder.build()) {
+          subSession.executeNonQueryStatement("INSERT INTO test_sql_ttl (time, s1) VALUES (10, 1)");
+        } catch (StatementExecutionException e) {
+          if (!e.getMessage().contains("is less than ttl time bound")) {
+            throw e;
+          }
+        }
+      }
+    } finally {
+      simpleEnv.cleanClusterEnvironment();
     }
   }
 }
