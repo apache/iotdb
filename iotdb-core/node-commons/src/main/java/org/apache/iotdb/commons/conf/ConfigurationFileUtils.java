@@ -78,9 +78,13 @@ public class ConfigurationFileUtils {
 
   private static final Map<String, String> lastAppliedProperties = new HashMap<>();
 
-  public static void updateAppliedProperties(TrimProperties properties, boolean isHotReloading)
-      throws IOException {
-    loadConfigurationDefaultValueFromTemplate();
+  public static void updateAppliedProperties(TrimProperties properties, boolean isHotReloading) {
+    try {
+      loadConfigurationDefaultValueFromTemplate();
+    } catch (IOException e) {
+      logger.error("Failed to update applied properties", e);
+      return;
+    }
     for (Map.Entry<Object, Object> entry : properties.entrySet()) {
       String key = entry.getKey().toString();
       DefaultConfigurationItem defaultConfigurationItem = configuration2DefaultValue.get(key);
@@ -382,6 +386,10 @@ public class ConfigurationFileUtils {
           }
         } else {
           int equalsIndex = line.indexOf('=');
+          if (equalsIndex == -1) {
+            // Skip lines without '=' to avoid StringIndexOutOfBoundsException
+            continue;
+          }
           String key = line.substring(0, equalsIndex).trim();
           String value = line.substring(equalsIndex + 1).trim();
           for (String independentLine : independentLines) {
