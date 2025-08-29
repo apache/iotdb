@@ -3097,6 +3097,7 @@ public class StatementAnalyzer {
     private Scope createScopeForCommonTableExpression(
         Table table, Optional<Scope> scope, WithQuery withQuery) {
       Query query = withQuery.getQuery();
+      query.setMaterialized(withQuery.isMaterialized());
       analysis.registerNamedQuery(table, query);
 
       // re-alias the fields with the name assigned to the query in the WITH declaration
