@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -98,14 +99,15 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
   @Override
   protected void onErrorInternal(final Exception exception) {
     try {
-      LOGGER.warn(
-          "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",
+      PipeLogger.log(
+          LOGGER::warn,
+          exception,
+          "Failed to transfer TabletInsertionEvent %s (committer key=%s, commit id=%s).",
           event instanceof EnrichedEvent
               ? ((EnrichedEvent) event).coreReportMessage()
               : event.toString(),
           event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
-          event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitIds() : null,
-          exception);
+          event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitIds() : null);
     } finally {
       connector.addFailureEventToRetryQueue(event);
     }
