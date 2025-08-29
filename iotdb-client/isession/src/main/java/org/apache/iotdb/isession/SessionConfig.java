@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.isession;
 
-import org.apache.iotdb.isession.endpointselector.EndpointSelectionStrategy;
-import org.apache.iotdb.isession.endpointselector.RandomSelectionStrategy;
-import org.apache.iotdb.isession.endpointselector.SequentialSelectionStrategy;
 import org.apache.iotdb.isession.util.Version;
 
 import org.slf4j.Logger;
@@ -66,33 +63,8 @@ public class SessionConfig {
   private SessionConfig() {}
 
   // Endpoint selection strategy constants
-  // public static final String ENDPOINT_SELECTION_STRATEGY = "retry_strategy";
   public static final String ENDPOINT_SELECTION_STRATEGY_RANDOM = "random";
   public static final String ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL = "sequential";
   public static final String DEFAULT_ENDPOINT_SELECTION_STRATEGY =
       ENDPOINT_SELECTION_STRATEGY_RANDOM;
-
-  /**
-   * Creates an endpoint selection strategy based on the given strategy name.
-   *
-   * @param strategyName name of the strategy ("random" or "sequential")
-   * @return configured strategy instance
-   * @throws IllegalArgumentException if strategyName is null or empty
-   */
-  public static EndpointSelectionStrategy createSelectionStrategy(String strategyName) {
-    if (strategyName == null || strategyName.trim().isEmpty()) {
-      throw new IllegalArgumentException("Strategy name cannot be null or empty");
-    }
-
-    if (ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL.equalsIgnoreCase(strategyName)) {
-      return new SequentialSelectionStrategy();
-    } else if (ENDPOINT_SELECTION_STRATEGY_RANDOM.equalsIgnoreCase(strategyName)) {
-      return new RandomSelectionStrategy();
-    } else {
-      logger.warn(
-          "Unknown endpoint selection strategy: '{}'. Defaulting to random strategy.",
-          strategyName);
-      return new RandomSelectionStrategy();
-    }
-  }
 }

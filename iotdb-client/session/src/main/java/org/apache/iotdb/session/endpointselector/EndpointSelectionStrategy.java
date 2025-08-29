@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.isession.endpointselector;
+package org.apache.iotdb.session.endpointselector;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 

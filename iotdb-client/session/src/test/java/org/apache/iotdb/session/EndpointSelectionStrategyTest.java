@@ -20,8 +20,8 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.isession.endpointselector.RandomSelectionStrategy;
-import org.apache.iotdb.isession.endpointselector.SequentialSelectionStrategy;
+import org.apache.iotdb.session.endpointselector.RandomSelectionStrategy;
+import org.apache.iotdb.session.endpointselector.SequentialSelectionStrategy;
 
 import org.junit.Before;
 import org.junit.Test;

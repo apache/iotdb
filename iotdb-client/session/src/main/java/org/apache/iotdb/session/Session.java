@@ -25,7 +25,6 @@ import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.endpointselector.EndpointSelectionStrategy;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.BatchExecutionException;
@@ -57,6 +56,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.endpointselector.EndpointSelectionStrategy;
+import org.apache.iotdb.session.endpointselector.EndpointSelectionStrategyFactory;
 import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
@@ -386,7 +387,8 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
-    this.selectionStrategy = SessionConfig.createSelectionStrategy(endpointSelectStrategyName);
+    this.selectionStrategy =
+        EndpointSelectionStrategyFactory.createSelectionStrategy(endpointSelectStrategyName);
   }
 
   public Session(List<String> nodeUrls, String username, String password) {
@@ -460,7 +462,8 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
-    this.selectionStrategy = SessionConfig.createSelectionStrategy(endpointSelectStrategyName);
+    this.selectionStrategy =
+        EndpointSelectionStrategyFactory.createSelectionStrategy(endpointSelectStrategyName);
   }
 
   public Session(AbstractSessionBuilder builder) {
@@ -494,7 +497,8 @@ public class Session implements ISession {
     this.trustStorePwd = builder.trustStorePwd;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.selectionStrategy =
-        SessionConfig.createSelectionStrategy(builder.endpointSelectionStrategyName);
+        EndpointSelectionStrategyFactory.createSelectionStrategy(
+            builder.endpointSelectionStrategyName);
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
