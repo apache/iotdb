@@ -710,10 +710,10 @@ public abstract class TVList implements WALEntryValue {
       if (scanOrder.isAscending()) {
         // For ASC traversal, we first find a valid index and then handle duplicate timestamps.
         // example:
-        // index: 0 scanOrderIndex: 3 (time: 0 value: 0) (deleted)
-        // index: 1 scanOrderIndex: 2 (time: 1 value: 1)
-        // index: 2 scanOrderIndex: 1 (time: 1 value: 2)
-        // index: 3 scanOrderIndex: 0 (time: 2 value: 2) (deleted)
+        // index: 0 scanOrderIndex: 0 (time: 0 value: 0) (deleted)
+        // index: 1 scanOrderIndex: 1 (time: 1 value: 1)
+        // index: 2 scanOrderIndex: 2 (time: 1 value: 2)
+        // index: 3 scanOrderIndex: 3 (time: 2 value: 2) (deleted)
         // we will move to index 2 finally, and the index track is (0 -> 1 -> 2)
 
         // skip deleted rows
