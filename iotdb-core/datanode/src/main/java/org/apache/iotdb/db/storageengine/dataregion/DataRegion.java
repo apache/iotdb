@@ -2861,6 +2861,10 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
+      if (deletion instanceof TableDeletionEntry && sealedTsFile.getContainTableAmount() == 1) {
+        sealedTsFile.close();
+        sealedTsFile.remove();
+      }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
     }
 
