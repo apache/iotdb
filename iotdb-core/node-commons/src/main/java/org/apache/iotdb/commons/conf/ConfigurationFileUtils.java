@@ -358,6 +358,14 @@ public class ConfigurationFileUtils {
       String line;
       while ((line = reader.readLine()) != null) {
         line = line.trim();
+        // Clean up when encountering a blank line.
+        // For some parameters that are continuous, they share the same properties
+        // example:
+        // # min election timeout for leader election
+        // # effectiveMode: restart
+        // # Datatype: int
+        // config_node_ratis_rpc_leader_election_timeout_min_ms=2000
+        // schema_region_ratis_rpc_leader_election_timeout_min_ms=2000
         if (line.isEmpty()) {
           description = new StringBuilder();
           effectiveMode = null;
@@ -399,9 +407,6 @@ public class ConfigurationFileUtils {
               key,
               new DefaultConfigurationItem(
                   key, value, withDesc ? description.toString().trim() : null, effectiveMode));
-          description = new StringBuilder();
-          effectiveMode = null;
-          independentLines.clear();
         }
       }
     } catch (IOException e) {
