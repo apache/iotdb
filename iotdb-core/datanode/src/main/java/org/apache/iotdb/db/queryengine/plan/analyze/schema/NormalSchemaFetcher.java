@@ -324,6 +324,8 @@ class NormalSchemaFetcher {
       return;
     }
 
+    List<Integer> copyOfIndexOfDevicesNeedAutoCreateSchema =
+        new ArrayList<>(indexOfDevicesNeedAutoCreateSchema);
     if (!config.isAutoCreateSchemaEnabled()) {
       // keep auto-creation for system series
       indexOfDevicesNeedAutoCreateSchema.removeIf(
@@ -371,14 +373,20 @@ class NormalSchemaFetcher {
           context);
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();
-      for (int i = 0; i < indexOfDevicesNeedAutoCreateSchema.size(); i++) {
+      for (int i = 0; i < copyOfIndexOfDevicesNeedAutoCreateSchema.size(); i++) {
+        if (!indexOfDevicesNeedAutoCreateSchema.contains(
+            copyOfIndexOfDevicesNeedAutoCreateSchema.get(i))) {
+          continue;
+        }
         schemaComputationWithAutoCreation =
-            schemaComputationWithAutoCreationList.get(indexOfDevicesNeedAutoCreateSchema.get(i));
+            schemaComputationWithAutoCreationList.get(
+                copyOfIndexOfDevicesNeedAutoCreateSchema.get(i));
         indexOfMissingMeasurements =
             schemaTree.compute(
                 schemaComputationWithAutoCreation, indexOfMeasurementsNeedAutoCreate.get(i));
         if (!indexOfMissingMeasurements.isEmpty()) {
-          indexOfDevicesWithMissingMeasurements.add(indexOfDevicesNeedAutoCreateSchema.get(i));
+          indexOfDevicesWithMissingMeasurements.add(
+              copyOfIndexOfDevicesNeedAutoCreateSchema.get(i));
           indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
         }
       }
