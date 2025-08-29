@@ -1654,12 +1654,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.ShowConfigurationStatementContext ctx) {
     ShowConfigurationStatement showConfigurationStatement;
     boolean withDescription = ctx.DESC() != null;
-    if (ctx.ALL() != null) {
-      showConfigurationStatement = new ShowConfigurationStatement(true, -1, withDescription);
-    } else {
-      int nodeId = ctx.nodeId == null ? -1 : Integer.parseInt(ctx.nodeId.getText());
-      showConfigurationStatement = new ShowConfigurationStatement(false, nodeId, withDescription);
-    }
+    boolean showAllConfiguration = (ctx.ALL() != null);
+    int nodeId = ctx.nodeId == null ? -1 : Integer.parseInt(ctx.nodeId.getText());
+    showConfigurationStatement =
+        new ShowConfigurationStatement(showAllConfiguration, nodeId, withDescription);
     return new ShowConfiguration(showConfigurationStatement, null);
   }
 
