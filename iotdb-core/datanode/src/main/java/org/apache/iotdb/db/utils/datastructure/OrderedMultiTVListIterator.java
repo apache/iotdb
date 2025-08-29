@@ -19,22 +19,35 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
 import java.util.List;
 
 public class OrderedMultiTVListIterator extends MultiTVListIterator {
   public OrderedMultiTVListIterator(
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       TSDataType tsDataType,
       List<TVList> tvLists,
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
       int maxNumberOfPointsInPage) {
-    super(tsDataType, tvLists, deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
+    super(
+        scanOrder,
+        globalTimeFilter,
+        tsDataType,
+        tvLists,
+        deletionList,
+        floatPrecision,
+        encoding,
+        maxNumberOfPointsInPage);
   }
 
   @Override
