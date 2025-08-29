@@ -372,6 +372,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     return this;
   }
