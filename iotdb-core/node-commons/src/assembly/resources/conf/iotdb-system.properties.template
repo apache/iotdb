@@ -1288,6 +1288,7 @@ tier_ttl_in_ms=-1
 ####################
 ### Compaction Configurations
 ####################
+
 # sequence space compaction: only compact the sequence files
 # effectiveMode: hot_reload
 # Datatype: boolean
@@ -1598,6 +1599,7 @@ region_migration_speed_limit_bytes_per_second = 50331648
 ####################
 ### Blob Allocator Configuration
 ####################
+
 # Whether to enable binary allocator.
 # For scenarios where large binary streams cause severe GC, enabling this parameter significantly improves performance.
 # effectiveMode: hot_reload
@@ -1974,6 +1976,7 @@ data_region_ratis_periodic_snapshot_interval=86400
 ####################
 ### IoTConsensusV2 Configuration
 ####################
+
 # Default event buffer size for connector and receiver in iot consensus v2
 # effectiveMode: restart
 # DataType: int

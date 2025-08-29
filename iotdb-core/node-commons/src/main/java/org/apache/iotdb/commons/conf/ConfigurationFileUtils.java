@@ -351,6 +351,7 @@ public class ConfigurationFileUtils {
                 .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
         InputStreamReader isr = new InputStreamReader(inputStream);
         BufferedReader reader = new BufferedReader(isr)) {
+      List<String> independentLines = new ArrayList<>();
       EffectiveModeType effectiveMode = null;
       StringBuilder description = new StringBuilder();
       String line;
@@ -359,6 +360,7 @@ public class ConfigurationFileUtils {
         if (line.isEmpty()) {
           description = new StringBuilder();
           effectiveMode = null;
+          independentLines.clear();
           continue;
         }
         if (line.startsWith("#")) {
@@ -366,27 +368,28 @@ public class ConfigurationFileUtils {
           if (comment.isEmpty()) {
             continue;
           }
-          boolean needSeperateLine = false;
           if (comment.startsWith(EFFECTIVE_MODE_PREFIX)) {
             effectiveMode =
                 EffectiveModeType.getEffectiveMode(
                     comment.substring(EFFECTIVE_MODE_PREFIX.length()).trim());
-            needSeperateLine = true;
+            independentLines.add(comment);
+            continue;
           } else if (comment.startsWith(DATATYPE_PREFIX)) {
-            needSeperateLine = true;
+            independentLines.add(comment);
+            continue;
           } else {
             description.append(" ");
           }
           if (withDesc) {
             description.append(comment);
-            if (needSeperateLine) {
-              description.append(lineSeparator);
-            }
           }
         } else {
           int equalsIndex = line.indexOf('=');
           String key = line.substring(0, equalsIndex).trim();
           String value = line.substring(equalsIndex + 1).trim();
+          for (String independentLine : independentLines) {
+            description.append(lineSeparator).append(independentLine);
+          }
           items.put(
               key,
               new DefaultConfigurationItem(

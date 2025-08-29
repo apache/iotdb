@@ -1728,7 +1728,12 @@ public class ConfigManager implements IManager {
       } else {
         String msg =
             "Unable to find the configuration file. Some modifications are made only in memory.";
-        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
+        try {
+          ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
+          tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
+        } catch (Exception e) {
+          tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+        }
         LOGGER.warn(msg);
       }
       if (currentNodeId == req.getNodeId()) {
