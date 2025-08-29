@@ -70,6 +70,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMetaSyncerInitialSyncDelayMinutes(5)
+        .setPipeMetaSyncerSyncIntervalMinutes(5)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
     receiverEnv
@@ -85,6 +87,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMetaSyncerInitialSyncDelayMinutes(5)
+        .setPipeMetaSyncerSyncIntervalMinutes(5)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
@@ -184,8 +188,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "information_schema");
 
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null)) {
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        "test",
+        BaseEnv.TABLE_SQL_DIALECT,
+        senderEnv,
+        Arrays.asList("grant MANAGE_USER to user thulab", "grant INSERT on any to user thulab"),
+        null)) {
       return;
     }
 
