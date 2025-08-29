@@ -24,7 +24,11 @@ import org.apache.iotdb.isession.endpointselector.RandomSelectionStrategy;
 import org.apache.iotdb.isession.endpointselector.SequentialSelectionStrategy;
 import org.apache.iotdb.isession.util.Version;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class SessionConfig {
+  private static final Logger logger = LoggerFactory.getLogger(SessionConfig.class);
 
   public static final String DEFAULT_HOST = "localhost";
   public static final int DEFAULT_PORT = 6667;
@@ -76,10 +80,19 @@ public class SessionConfig {
    * @throws IllegalArgumentException if strategyName is null or empty
    */
   public static EndpointSelectionStrategy createSelectionStrategy(String strategyName) {
+    if (strategyName == null || strategyName.trim().isEmpty()) {
+      throw new IllegalArgumentException("Strategy name cannot be null or empty");
+    }
+
     if (ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL.equalsIgnoreCase(strategyName)) {
       return new SequentialSelectionStrategy();
+    } else if (ENDPOINT_SELECTION_STRATEGY_RANDOM.equalsIgnoreCase(strategyName)) {
+      return new RandomSelectionStrategy();
+    } else {
+      logger.warn(
+          "Unknown endpoint selection strategy: '{}'. Defaulting to random strategy.",
+          strategyName);
+      return new RandomSelectionStrategy();
     }
-    // Default to random strategy
-    return new RandomSelectionStrategy();
   }
 }
