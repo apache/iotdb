@@ -126,7 +126,7 @@ public class IoTDBSetConfigurationTableIT {
       Assert.assertTrue(
           checkConfigFileContains(
               dnId,
-              EnvFactory.getEnv().getDataNodeWrapperList().get(dnId),
+              EnvFactory.getEnv().getDataNodeWrapperList().get(i),
               "enable_seq_space_compaction=false",
               "enable_cross_space_compaction=false",
               "inner_compaction_candidate_file_num=1",
@@ -166,8 +166,8 @@ public class IoTDBSetConfigurationTableIT {
           tableSessionConnection.executeQueryStatement("show configuration on " + nodeId);
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String name = iterator.getString(0);
-        String value = iterator.isNull(1) ? null : iterator.getString(1);
+        String name = iterator.getString(1);
+        String value = iterator.isNull(2) ? null : iterator.getString(2);
         String expectedValue = expectedKeyValues.remove(name);
         if (expectedValue != null && !expectedValue.equals(value)) {
           return false;
