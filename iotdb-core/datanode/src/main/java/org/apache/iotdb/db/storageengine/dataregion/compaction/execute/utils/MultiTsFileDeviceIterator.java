@@ -22,16 +22,17 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
@@ -69,7 +70,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private List<TsFileResource> tsFileResourcesSortedByAsc;
   private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
-  private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
+  private final Map<
+          TsFileResource, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
   private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
@@ -119,7 +122,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
-          FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+          FileReaderManager.getInstance()
+              .get(tsFileResource.getTsFilePath(), tsFileResource.getTsFileID(), true);
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
@@ -432,10 +436,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               timeLowerBoundForCurrentDevice);
     }
 
-    List<Modification> modifications =
+    PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications =
         modificationCache.computeIfAbsent(
-            tsFileResource,
-            r -> new LinkedList<>(ModificationFile.getNormalMods(r).getModifications()));
+            tsFileResource, CompactionUtils::buildModEntryPatternTreeMap);
 
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
     AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
@@ -446,15 +449,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         modificationForCurDevice.add(Collections.emptyList());
         continue;
       }
-      List<Modification> modificationList = new ArrayList<>();
-      PartialPath path =
-          CompactionPathUtils.getPath(
-              currentDevice.getLeft(), valueChunkMetadata.getMeasurementUid());
-      for (Modification modification : modifications) {
-        if (modification.getPath().matchFullPath(path)) {
-          modificationList.add(modification);
-        }
-      }
+      List<Modification> modificationList =
+          CompactionUtils.getMatchedModifications(
+              modifications, device, valueChunkMetadata.getMeasurementUid());
       if (ttlDeletion != null) {
         modificationList.add(ttlDeletion);
       }
@@ -662,17 +659,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               chunkMetadataListMap.get(currentCompactingSeries);
           chunkMetadataListMap.remove(currentCompactingSeries);
 
-          List<Modification> modificationsInThisResource =
-              modificationCache.computeIfAbsent(
-                  resource,
-                  r -> new LinkedList<>(ModificationFile.getNormalMods(r).getModifications()));
-          LinkedList<Modification> modificationForCurrentSeries = new LinkedList<>();
+          PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>
+              modificationsInThisResource =
+                  modificationCache.computeIfAbsent(
+                      resource, CompactionUtils::buildModEntryPatternTreeMap);
           // collect the modifications for current series
-          for (Modification modification : modificationsInThisResource) {
-            if (modification.getPath().matchFullPath(path)) {
-              modificationForCurrentSeries.add(modification);
-            }
-          }
+          List<Modification> modificationForCurrentSeries =
+              CompactionUtils.getMatchedModifications(
+                  modificationsInThisResource, device, currentCompactingSeries);
           // add ttl deletion for current series
           if (ttlDeletion != null) {
             modificationForCurrentSeries.add(ttlDeletion);

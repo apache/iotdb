@@ -20,8 +20,8 @@
 package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -109,7 +109,7 @@ public class PipeReceiverStatusHandler {
       case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
         {
           LOGGER.info("Temporary unavailable exception: will retry forever. status: {}", status);
-          throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
+          throw new PipeRuntimeSinkCriticalException(exceptionMessage);
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
@@ -147,7 +147,7 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          throw new PipeRuntimeSinkRetryTimesConfigurableException(
               exceptionMessage,
               (int)
                   Math.max(
@@ -186,7 +186,7 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          throw new PipeRuntimeSinkRetryTimesConfigurableException(
               exceptionMessage,
               (int)
                   Math.max(
@@ -222,7 +222,7 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          throw new PipeRuntimeSinkRetryTimesConfigurableException(
               exceptionMessage,
               (int)
                   Math.max(

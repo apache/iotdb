@@ -156,7 +156,7 @@ public class TemplateTable {
               dataTypeList.get(i),
               encodingList == null ? getDefaultEncoding(dataTypeList.get(i)) : encodingList.get(i),
               compressionTypeList == null
-                  ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                  ? TSFileDescriptor.getInstance().getConfig().getCompressor(dataTypeList.get(i))
                   : compressionTypeList.get(i));
         } else {
           if (!measurementSchema.getType().equals(dataTypeList.get(i))

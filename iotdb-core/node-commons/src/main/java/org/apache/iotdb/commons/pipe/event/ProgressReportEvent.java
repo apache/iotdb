@@ -33,13 +33,8 @@ public class ProgressReportEvent extends EnrichedEvent {
   private ProgressIndex progressIndex;
 
   public ProgressReportEvent(
-      final String pipeName,
-      final long creationTime,
-      final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pipePattern,
-      final long startTime,
-      final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
+      final String pipeName, final long creationTime, final PipeTaskMeta pipeTaskMeta) {
+    super(pipeName, creationTime, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
@@ -70,8 +65,7 @@ public class ProgressReportEvent extends EnrichedEvent {
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    return new ProgressReportEvent(
-        pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+    return new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
   }
 
   @Override

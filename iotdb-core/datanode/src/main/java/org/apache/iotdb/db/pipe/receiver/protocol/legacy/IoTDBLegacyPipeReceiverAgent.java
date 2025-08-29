@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.payload.legacy.PipeData;
-import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
+import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
+import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -146,7 +146,8 @@ public class IoTDBLegacyPipeReceiverAgent {
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
                   false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
+          && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
         LOGGER.error(
             "Create Database error, statement: {}, result status : {}.", statement, result.status);
         return false;

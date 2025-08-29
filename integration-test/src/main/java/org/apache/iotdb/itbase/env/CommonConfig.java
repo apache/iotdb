@@ -116,6 +116,8 @@ public interface CommonConfig {
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
+  CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy);
+
   CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass);
 
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
@@ -137,6 +139,10 @@ public interface CommonConfig {
   CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
 
   CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
+
+  CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
+
+  CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
 
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 
@@ -171,4 +177,6 @@ public interface CommonConfig {
   default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     return this;
   }
+
+  CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
 }

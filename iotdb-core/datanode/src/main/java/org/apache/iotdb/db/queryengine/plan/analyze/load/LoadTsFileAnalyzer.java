@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -59,13 +59,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
@@ -73,6 +73,7 @@ import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -97,7 +98,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -107,8 +107,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
-import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
@@ -240,72 +238,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean doAsyncLoad(final Analysis analysis) {
-    long startTime = System.nanoTime();
+    final long startTime = System.nanoTime();
     try {
-      final String[] loadActiveListeningDirs =
-          IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
-      String targetFilePath = null;
-      for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
-          i < size;
-          i++) {
-        if (loadActiveListeningDirs[i] != null) {
-          targetFilePath = loadActiveListeningDirs[i];
-          break;
-        }
+      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(tsFiles, null, isDeleteAfterLoad)) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        analysis.setStatement(loadTsFileStatement);
+        return true;
       }
-      if (targetFilePath == null) {
-        LOGGER.warn("Load active listening dir is not set. Will try sync load instead.");
-        return false;
-      }
-
-      try {
-        loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to async load tsfiles {} to target dir {}. Will try sync load instead.",
-            tsFiles,
-            targetFilePath,
-            e);
-        return false;
-      }
-
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      analysis.setStatement(loadTsFileStatement);
-      return true;
+      LOGGER.info("Async Load has failed, and is now trying to load sync");
+      return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
     }
-  }
-
-  private void loadTsFilesAsyncToTargetDir(final File targetDir, final List<File> files)
-      throws IOException {
-    for (final File file : files) {
-      if (file == null) {
-        continue;
-      }
-
-      loadTsFileAsyncToTargetDir(targetDir, file);
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".resource"));
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".mods"));
-    }
-  }
-
-  private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
-      throws IOException {
-    if (!file.exists()) {
-      return;
-    }
-    RetryUtils.retryOnException(
-        () -> {
-          if (isDeleteAfterLoad) {
-            moveFileWithMD5Check(file, targetDir);
-          } else {
-            copyFileWithMD5Check(file, targetDir);
-          }
-          return null;
-        });
   }
 
   private boolean checkBeforeAnalyzeFileByFile(Analysis analysis) {
@@ -404,7 +350,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     final long startTime = System.nanoTime();
     try {
       final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-          new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+          new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
       final TSStatus status =
           loadTsFileDataTypeConverter
@@ -529,7 +475,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+        new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
     final TSStatus status =
         loadTsFileStatement.isConvertOnTypeMismatch()
             ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
@@ -581,10 +527,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public void autoCreateAndVerify(
         TsFileSequenceReader reader,
-        Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+        Map<IDeviceID, List<TimeseriesMetadata>> device2TimeSeriesMetadataList)
         throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
       for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
-          device2TimeseriesMetadataList.entrySet()) {
+          device2TimeSeriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
 
         try {
@@ -600,7 +546,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
         for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
           try {
-            if (schemaCache.isTimeseriesDeletedByMods(device, timeseriesMetadata)) {
+            if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
               continue;
             }
           } catch (IllegalPathException e) {
@@ -608,7 +554,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             // IllegalPathException.
             if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
               LOGGER.warn(
-                  "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                  "Failed to check if device {}, timeSeries {} is deleted by mods. Will see it as not deleted.",
                   device,
                   timeseriesMetadata.getMeasurementId(),
                   e);
@@ -819,7 +765,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
                   false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+          && result.status.code
+              != TSStatusCode.DATABASE_ALREADY_EXISTS
+                  .getStatusCode() // In tree model, if the user creates a conflict database
+          // concurrently, for instance, the
+          // database created by user is root.db.ss.a, the auto-creation failed database is root.db,
+          // we wait till "getOrCreatePartition" to judge if the time series (like root.db.ss.a.e /
+          // root.db.ss.a) conflicts with the created database. just do not throw exception here.
+          && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
         LOGGER.warn(
             "Create database error, statement: {}, result status is: {}", statement, result.status);
         throw new LoadFileException(
@@ -896,13 +849,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         // check device schema: is aligned or not
         final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
         final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-        if (isAlignedInTsFile != isAlignedInIoTDB) {
-          throw new LoadAnalyzeException(
-              String.format(
-                  "Device %s in TsFile is %s, but in IoTDB is %s.",
-                  device,
-                  isAlignedInTsFile ? "aligned" : "not aligned",
-                  isAlignedInIoTDB ? "aligned" : "not aligned"));
+        if (LOGGER.isInfoEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
+          LOGGER.info(
+              "Device {} in TsFile is {}, but in IoTDB is {}.",
+              device,
+              isAlignedInTsFile ? "aligned" : "not aligned",
+              isAlignedInIoTDB ? "aligned" : "not aligned");
         }
 
         // check timeseries schema
@@ -920,15 +872,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           }
 
           // check datatype
-          if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-            throw new LoadAnalyzeTypeMismatchException(
-                String.format(
-                    "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
-                    device,
-                    TsFileConstant.PATH_SEPARATOR,
-                    iotdbSchema.getMeasurementId(),
-                    tsFileSchema.getType(),
-                    iotdbSchema.getType()));
+          if (LOGGER.isInfoEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
+            LOGGER.info(
+                "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
+                device,
+                TsFileConstant.PATH_SEPARATOR,
+                iotdbSchema.getMeasurementId(),
+                tsFileSchema.getType(),
+                iotdbSchema.getType());
           }
 
           // check encoding
@@ -975,7 +926,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
     private Set<PartialPath> alreadySetDatabases;
 
-    private Collection<Modification> currentModifications;
+    private PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> currentModifications;
     private ITimeIndex currentTimeIndex;
 
     private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
@@ -993,7 +944,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.currentBatchDevice2TimeSeriesSchemas = new HashMap<>();
       this.tsFileDevice2IsAligned = new HashMap<>();
       this.alreadySetDatabases = new HashSet<>();
-      this.currentModifications = new ArrayList<>();
+      this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     }
 
     public Map<IDeviceID, Set<MeasurementSchema>> getDevice2TimeSeries() {
@@ -1052,10 +1003,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
       clearModificationsAndTimeIndex();
 
-      currentModifications = resource.getModFile().getModifications();
-      for (final Modification modification : currentModifications) {
-        currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
-      }
+      resource
+          .getModFile()
+          .getModifications()
+          .forEach(
+              modification -> currentModifications.append(modification.getPath(), modification));
+
+      currentModificationsMemoryUsageSizeInBytes = currentModifications.ramBytesUsed();
       block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
 
       if (resource.resourceFileExists()) {
@@ -1077,9 +1031,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           currentModifications, currentTimeIndex, device);
     }
 
-    public boolean isTimeseriesDeletedByMods(
+    public boolean isTimeSeriesDeletedByMods(
         IDeviceID device, TimeseriesMetadata timeseriesMetadata) throws IllegalPathException {
-      return ModificationUtils.isTimeseriesDeletedByMods(
+      return ModificationUtils.isTimeSeriesDeletedByMods(
           currentModifications,
           device,
           timeseriesMetadata.getMeasurementId(),
@@ -1117,7 +1071,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     public void clearModificationsAndTimeIndex() {
-      currentModifications.clear();
+      currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
       currentTimeIndex = null;
       block.reduceMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
       block.reduceMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);

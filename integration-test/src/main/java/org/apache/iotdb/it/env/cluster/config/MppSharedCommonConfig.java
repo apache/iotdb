@@ -362,6 +362,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    cnConfig.setDataPartitionAllocationStrategy(dataPartitionAllocationStrategy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     cnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
     dnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
@@ -435,6 +441,20 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
     dnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     cnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    dnConfig.setPipeMemoryManagementEnabled(pipeMemoryManagementEnabled);
+    cnConfig.setPipeMemoryManagementEnabled(pipeMemoryManagementEnabled);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    dnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
+    cnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
     return this;
   }
 
@@ -543,6 +563,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+    return this;
+  }
+
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    dnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
     return this;
   }
 }

@@ -32,17 +32,17 @@ import java.util.List;
 
 public class ExtendRegionStatement extends Statement implements IConfigStatement {
 
-  private final int regionId;
+  private final List<Integer> regionIds;
   private final int dataNodeId;
 
-  public ExtendRegionStatement(int regionId, int dataNodeId) {
+  public ExtendRegionStatement(List<Integer> regionIds, int dataNodeId) {
     super();
-    this.regionId = regionId;
+    this.regionIds = regionIds;
     this.dataNodeId = dataNodeId;
   }
 
-  public int getRegionId() {
-    return regionId;
+  public List<Integer> getRegionIds() {
+    return regionIds;
   }
 
   public int getDataNodeId() {

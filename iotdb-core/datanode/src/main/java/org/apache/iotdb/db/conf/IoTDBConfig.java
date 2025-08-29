@@ -314,6 +314,8 @@ public class IoTDBConfig {
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
+  private int pipeTaskThreadCount = 5;
+
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
@@ -450,7 +452,10 @@ public class IoTDBConfig {
   private volatile boolean enableAutoRepairCompaction = true;
 
   /** The buffer for sort operation */
-  private long sortBufferSize = 1024 * 1024L;
+  private long sortBufferSize = 32 * 1024 * 1024L;
+
+  /** Mods cache size limit per fi */
+  private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -584,9 +589,6 @@ public class IoTDBConfig {
    * are selected first.
    */
   private volatile double innerCompactionTaskSelectionDiskRedundancy = 0.05;
-
-  /** The size of global compaction estimation file info cahce. */
-  private int globalCompactionFileInfoCacheSize = 1000;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -1046,6 +1048,8 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
+  private int schemaThreadCount = 5;
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -1147,8 +1151,6 @@ public class IoTDBConfig {
 
   private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
-  private int loadTsFileTabletConversionThreadCount = 5;
-
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
@@ -1163,6 +1165,8 @@ public class IoTDBConfig {
   private long loadTabletConversionThresholdBytes = -1;
 
   private boolean loadActiveListeningEnable = true;
+
+  private long loadMeasurementIdCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
 
   private String[] loadActiveListeningDirs =
       new String[] {
@@ -3345,6 +3349,14 @@ public class IoTDBConfig {
     this.extPipeDir = extPipeDir;
   }
 
+  public int getPipeTaskThreadCount() {
+    return pipeTaskThreadCount;
+  }
+
+  public void setPipeTaskThreadCount(int pipeTaskThreadCount) {
+    this.pipeTaskThreadCount = pipeTaskThreadCount;
+  }
+
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
   }
@@ -3479,6 +3491,14 @@ public class IoTDBConfig {
 
   public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
+  }
+
+  public int getSchemaThreadCount() {
+    return schemaThreadCount;
+  }
+
+  public void setSchemaThreadCount(int schemaThreadCount) {
+    this.schemaThreadCount = schemaThreadCount;
   }
 
   public String getReadConsistencyLevel() {
@@ -3931,14 +3951,6 @@ public class IoTDBConfig {
     this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
   }
 
-  public int getGlobalCompactionFileInfoCacheSize() {
-    return globalCompactionFileInfoCacheSize;
-  }
-
-  public void setGlobalCompactionFileInfoCacheSize(int globalCompactionFileInfoCacheSize) {
-    this.globalCompactionFileInfoCacheSize = globalCompactionFileInfoCacheSize;
-  }
-
   public boolean isEnableAuditLog() {
     return enableAuditLog;
   }
@@ -4026,14 +4038,6 @@ public class IoTDBConfig {
         loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
-  public int getLoadTsFileTabletConversionThreadCount() {
-    return loadTsFileTabletConversionThreadCount;
-  }
-
-  public void setLoadTsFileTabletConversionThreadCount(int loadTsFileTabletConversionThreadCount) {
-    this.loadTsFileTabletConversionThreadCount = loadTsFileTabletConversionThreadCount;
-  }
-
   public long getLoadChunkMetadataMemorySizeInBytes() {
     return loadChunkMetadataMemorySizeInBytes;
   }
@@ -4116,7 +4120,11 @@ public class IoTDBConfig {
   }
 
   public String getLoadDiskSelectStrategyForIoTV2AndPipe() {
-    return loadDiskSelectStrategyForIoTV2AndPipe;
+    return LoadDiskSelectorType.INHERIT_LOAD
+            .getValue()
+            .equals(loadDiskSelectStrategyForIoTV2AndPipe)
+        ? getLoadDiskSelectStrategy()
+        : loadDiskSelectStrategyForIoTV2AndPipe;
   }
 
   public void setLoadDiskSelectStrategyForIoTV2AndPipe(
@@ -4179,6 +4187,14 @@ public class IoTDBConfig {
     this.loadActiveListeningEnable = loadActiveListeningEnable;
   }
 
+  public long getLoadMeasurementIdCacheSizeInBytes() {
+    return loadMeasurementIdCacheSizeInBytes;
+  }
+
+  public void setLoadMeasurementIdCacheSizeInBytes(long loadMeasurementIdCacheSizeInBytes) {
+    this.loadMeasurementIdCacheSizeInBytes = loadMeasurementIdCacheSizeInBytes;
+  }
+
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
     this.pipeReceiverFileDirs = pipeReceiverFileDirs;
   }
@@ -4230,6 +4246,14 @@ public class IoTDBConfig {
 
   public long getSortBufferSize() {
     return sortBufferSize;
+  }
+
+  public void setModsCacheSizeLimitPerFI(long modsCacheSizeLimitPerFI) {
+    this.modsCacheSizeLimitPerFI = modsCacheSizeLimitPerFI;
+  }
+
+  public long getModsCacheSizeLimitPerFI() {
+    return modsCacheSizeLimitPerFI;
   }
 
   public void setSortTmpDir(String sortTmpDir) {

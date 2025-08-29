@@ -37,7 +37,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
@@ -110,6 +110,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -187,6 +188,8 @@ public class TsFileProcessor {
   /** Total memtable size for mem control. */
   private long totalMemTableSize;
 
+  private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
+
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE =
       "{}: {} get flushQueryLock write lock released";
@@ -203,6 +206,8 @@ public class TsFileProcessor {
       QueryResourceMetricSet.getInstance();
 
   public static final int MEMTABLE_NOT_EXIST = -1;
+
+  private int walEntryNum = 0;
 
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
@@ -312,19 +317,17 @@ public class TsFileProcessor {
       // recordScheduleWalCost
       costsForMetrics[2] += System.nanoTime() - startTime;
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertRowNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowNode, tsFileResource);
 
     int pointInserted;
     if (insertRowNode.isAligned()) {
@@ -413,19 +416,17 @@ public class TsFileProcessor {
       // recordScheduleWalCost
       costsForMetrics[2] += System.nanoTime() - startTime;
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertRowsNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowsNode, tsFileResource);
 
     int pointInserted = 0;
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
@@ -531,19 +532,17 @@ public class TsFileProcessor {
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(System.nanoTime() - startTime);
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertTabletNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
 
     int pointInserted;
     try {
@@ -1065,6 +1064,7 @@ public class TsFileProcessor {
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(DeleteDataNode deleteDataNode) {
+    walEntryNum++;
     return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
   }
 
@@ -1146,15 +1146,9 @@ public class TsFileProcessor {
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      tsFileResource.setGeneratedByPipe(isTotallyGeneratedByPipe.get());
 
       try {
-        PipeInsertionDataNodeListener.getInstance()
-            .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(),
-                tsFileResource,
-                false,
-                tmpMemTable.isTotallyGeneratedByPipe());
-
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
@@ -1289,6 +1283,7 @@ public class TsFileProcessor {
         .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
     WritingMetrics.getInstance()
         .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), -1);
+    WritingMetrics.getInstance().recordWALEntryNumForOneTsFile(walEntryNum);
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
   }
@@ -1586,6 +1581,12 @@ public class TsFileProcessor {
       logger.debug("Start to end file {}", tsFileResource);
     }
     writer.endFile();
+
+    // Listen after "endFile" to avoid unnecessary waiting for tsFile close
+    // before resource serialization to avoid missing hardlink after restart
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false);
+
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
     if (logger.isDebugEnabled()) {
@@ -1632,10 +1633,10 @@ public class TsFileProcessor {
   }
 
   /** Close this tsfile */
-  public void close() throws TsFileProcessorException {
+  public void closeWithoutSettingResourceStatus() throws TsFileProcessorException {
     try {
       // When closing resource file, its corresponding mod file is also closed.
-      tsFileResource.close();
+      tsFileResource.closeWithoutSettingStatus();
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
@@ -1669,6 +1670,7 @@ public class TsFileProcessor {
                   deviceID,
                   measurement,
                   filePath,
+                  tsFileResource.getTsFileID(),
                   false,
                   valueChunkMetaData.getOffsetOfChunkHeader(),
                   valueChunkMetaData.getStatistics(),
@@ -1693,6 +1695,7 @@ public class TsFileProcessor {
                 deviceID,
                 measurement,
                 filePath,
+                tsFileResource.getTsFileID(),
                 false,
                 chunkMetadata.getOffsetOfChunkHeader(),
                 chunkMetadata.getStatistics()));
@@ -1817,7 +1820,7 @@ public class TsFileProcessor {
     return new ArrayList<>(alignedChunkMetadataForOneDevice);
   }
 
-  public void queryForSeriesRegionScan(
+  public void queryForSeriesRegionScanWithoutLock(
       List<PartialPath> pathList,
       QueryContext queryContext,
       List<IFileScanHandle> fileScanHandlesForQuery) {
@@ -1826,7 +1829,6 @@ public class TsFileProcessor {
       Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap = new HashMap<>();
       Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataListMap =
           new HashMap<>();
-      flushQueryLock.readLock().lock();
       try {
         for (PartialPath seriesPath : pathList) {
           Map<String, List<IChunkMetadata>> measurementToChunkMetaList = new HashMap<>();
@@ -1881,9 +1883,6 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
       }
       if (!deviceToMemChunkHandleMap.isEmpty() || !deviceToChunkMetadataListMap.isEmpty()) {
         fileScanHandlesForQuery.add(
@@ -1900,7 +1899,7 @@ public class TsFileProcessor {
    * Construct IFileScanHandle for data in memtable and the other ones in flushing memtables. Then
    * get the related ChunkMetadata of data on disk.
    */
-  public void queryForDeviceRegionScan(
+  public void queryForDeviceRegionScanWithoutLock(
       Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
       List<IFileScanHandle> fileScanHandlesForQuery) {
@@ -1909,7 +1908,6 @@ public class TsFileProcessor {
       Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap = new HashMap<>();
       Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataListMap =
           new HashMap<>();
-      flushQueryLock.readLock().lock();
       try {
         for (Map.Entry<IDeviceID, DeviceContext> entry : devicePathsToContext.entrySet()) {
           IDeviceID deviceID = entry.getKey();
@@ -1965,9 +1963,6 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
       }
 
       if (!deviceToMemChunkHandleMap.isEmpty() || !deviceToChunkMetadataListMap.isEmpty()) {
@@ -1988,18 +1983,40 @@ public class TsFileProcessor {
    *
    * @param seriesPaths selected paths
    */
+  public void queryWithoutLock(
+      List<PartialPath> seriesPaths,
+      QueryContext context,
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter)
+      throws IOException {
+    query(seriesPaths, context, tsfileResourcesForQuery, globalTimeFilter, false);
+  }
+
+  @TestOnly
   public void query(
       List<PartialPath> seriesPaths,
       QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery,
       Filter globalTimeFilter)
       throws IOException {
+    query(seriesPaths, context, tsfileResourcesForQuery, globalTimeFilter, true);
+  }
+
+  private void query(
+      List<PartialPath> seriesPaths,
+      QueryContext context,
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter,
+      boolean needLock)
+      throws IOException {
     long startTime = System.nanoTime();
     try {
       Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
       Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
-      flushQueryLock.readLock().lock();
+      if (needLock) {
+        flushQueryLock.readLock().lock();
+      }
       try {
         for (PartialPath seriesPath : seriesPaths) {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
@@ -2044,9 +2061,10 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
+        if (needLock) {
+          flushQueryLock.readLock().unlock();
+          logFlushQueryReadUnlocked();
+        }
       }
 
       if (!pathToReadOnlyMemChunkMap.isEmpty() || !pathToChunkMetadataListMap.isEmpty()) {
@@ -2154,6 +2172,22 @@ public class TsFileProcessor {
   @TestOnly
   public ConcurrentLinkedDeque<IMemTable> getFlushingMemTable() {
     return flushingMemTables;
+  }
+
+  public void writeLock() {
+    flushQueryLock.writeLock().lock();
+  }
+
+  public void writeUnlock() {
+    flushQueryLock.writeLock().unlock();
+  }
+
+  public boolean tryReadLock(long waitInMs) throws InterruptedException {
+    return flushQueryLock.readLock().tryLock(waitInMs, TimeUnit.MILLISECONDS);
+  }
+
+  public void readUnLock() {
+    flushQueryLock.readLock().unlock();
   }
 
   private void logFlushQueryWriteLocked() {

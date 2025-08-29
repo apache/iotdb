@@ -71,11 +71,23 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
     receiver2.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     // reduce tsfile batch memory usage
-    sender.getConfig().getCommonConfig().setSubscriptionPrefetchTsFileBatchMaxDelayInMs(500);
     sender
         .getConfig()
         .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setSubscriptionPrefetchTsFileBatchMaxDelayInMs(500)
         .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(32 * 1024);
+    receiver1
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+    receiver2
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
   }
 
   @Override

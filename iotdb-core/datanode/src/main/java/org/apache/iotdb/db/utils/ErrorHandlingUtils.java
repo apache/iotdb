@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
@@ -111,7 +112,8 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
             || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()) {
+            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
+            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
@@ -152,7 +154,9 @@ public class ErrorHandlingUtils {
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
-      return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
+      return Objects.nonNull(((IoTDBException) t).getStatus())
+          ? ((IoTDBException) t).getStatus()
+          : RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
     } else if (t instanceof TsFileRuntimeException) {
       return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, rootCause.getMessage());
     } else if (t instanceof SemanticException) {
@@ -162,7 +166,9 @@ public class ErrorHandlingUtils {
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     } else if (t instanceof IoTDBRuntimeException) {
-      return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
+      return Objects.nonNull(((IoTDBRuntimeException) t).getStatus())
+          ? ((IoTDBRuntimeException) t).getStatus()
+          : RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
     } else if (t instanceof ModelException) {
       return RpcUtils.getStatus(((ModelException) t).getStatusCode(), rootCause.getMessage());
     } else if (t instanceof MemoryNotEnoughException) {

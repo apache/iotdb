@@ -96,7 +96,7 @@ public class BloomFilterCacheTest {
         TsFileID tsFileID = new TsFileID(filePath);
         BloomFilter bloomFilter =
             bloomFilterCache.get(new BloomFilterCache.BloomFilterCacheKey(filePath, tsFileID));
-        TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+        TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, tsFileID, true);
         BloomFilter bloomFilter1 = reader.readBloomFilter();
         Assert.assertEquals(bloomFilter1, bloomFilter);
         reader.close();
@@ -115,7 +115,7 @@ public class BloomFilterCacheTest {
       BloomFilterCache.BloomFilterCacheKey key =
           new BloomFilterCache.BloomFilterCacheKey(path, tsFileID);
       BloomFilter bloomFilter = bloomFilterCache.get(key);
-      TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
+      TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, tsFileID, true);
       BloomFilter bloomFilter1 = reader.readBloomFilter();
       Assert.assertEquals(bloomFilter1, bloomFilter);
       bloomFilterCache.remove(key);
@@ -136,7 +136,7 @@ public class BloomFilterCacheTest {
         BloomFilterCache.BloomFilterCacheKey key =
             new BloomFilterCache.BloomFilterCacheKey(path, tsFileID);
         BloomFilter bloomFilter = bloomFilterCache.get(key);
-        TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
+        TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, tsFileID, true);
         BloomFilter bloomFilter1 = reader.readBloomFilter();
         Assert.assertEquals(bloomFilter1, bloomFilter);
         reader.close();

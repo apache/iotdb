@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -171,8 +172,7 @@ public class ClusterTemplateManager implements ITemplateManager {
               templatesList.add(template);
             });
       } else {
-        throw new RuntimeException(
-            new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
+        throw new IoTDBRuntimeException(resp.getStatus());
       }
     } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
@@ -193,7 +193,7 @@ public class ClusterTemplateManager implements ITemplateManager {
         template.deserialize(ByteBuffer.wrap(templateBytes));
         return template;
       } else {
-        throw new IoTDBException(resp.status.getMessage(), resp.status.getCode());
+        throw new IoTDBException(resp.status);
       }
     } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
@@ -233,7 +233,7 @@ public class ClusterTemplateManager implements ITemplateManager {
             name,
             path,
             tsStatus);
-        throw new IoTDBException(tsStatus.getMessage(), tsStatus.getCode());
+        throw new IoTDBException(tsStatus);
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -261,7 +261,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                   });
         }
       } else {
-        throw new IoTDBException(resp.status.getMessage(), resp.status.getCode());
+        throw new IoTDBException(resp.status);
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

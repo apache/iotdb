@@ -26,6 +26,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
@@ -247,8 +248,8 @@ public class PipeMemoryWeightUtil {
     return totalSizeInBytes;
   }
 
-  public static long calculateBatchDataRamBytesUsed(BatchData batchData) {
-    long totalSizeInBytes = 0;
+  public static int calculateBatchDataRamBytesUsed(BatchData batchData) {
+    int totalSizeInBytes = 0;
 
     // timestamp
     totalSizeInBytes += 8;
@@ -263,21 +264,25 @@ public class PipeMemoryWeightUtil {
             continue;
           }
           // consider variable references (plus 8) and memory alignment (round up to 8)
-          totalSizeInBytes += roundUpToMultiple(primitiveType.getSize() + 8L, 8);
+          totalSizeInBytes += roundUpToMultiple(primitiveType.getSize() + 8, 8);
         }
       } else {
         if (type.isBinary()) {
           final Binary binary = batchData.getBinary();
           // refer to org.apache.tsfile.utils.TsPrimitiveType.TsBinary.getSize
           totalSizeInBytes +=
-              roundUpToMultiple((binary == null ? 8 : binary.ramBytesUsed()) + 8L, 8);
+              roundUpToMultiple((binary == null ? 8 : binary.getLength() + 8) + 8, 8);
         } else {
-          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8L, 8);
+          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
         }
       }
     }
 
     return batchData.length() * totalSizeInBytes;
+  }
+
+  public static long calculateChunkRamBytesUsed(Chunk chunk) {
+    return chunk != null ? chunk.getRetainedSizeInBytes() : 0L;
   }
 
   /**
@@ -287,7 +292,7 @@ public class PipeMemoryWeightUtil {
    * @param n The specified multiple.
    * @return The nearest multiple of n greater than or equal to num.
    */
-  private static long roundUpToMultiple(long num, int n) {
+  private static int roundUpToMultiple(int num, int n) {
     if (n == 0) {
       throw new IllegalArgumentException("The multiple n must be greater than 0");
     }

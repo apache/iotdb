@@ -255,6 +255,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     return this;
   }
@@ -305,6 +310,16 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     return this;
   }
 
@@ -374,6 +389,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     return this;
   }
 }

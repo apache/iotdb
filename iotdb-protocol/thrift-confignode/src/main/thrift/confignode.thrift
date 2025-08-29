@@ -315,12 +315,12 @@ struct TReconstructRegionReq {
 }
 
 struct TExtendRegionReq {
-    1: required i32 regionId
+    1: required list<i32> regionId
     2: required i32 dataNodeId
 }
 
 struct TRemoveRegionReq {
-    1: required i32 regionId
+    1: required list<i32> regionId
     2: required i32 dataNodeId
 }
 
@@ -1771,5 +1771,8 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  /** Push heartbeat in shutdown */
+  common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
 }
 
