@@ -115,6 +115,7 @@ public class MemAlignedChunkLoaderTest {
         alignedTvListMap.keySet().stream().map(x -> (AlignedTVList) x).collect(Collectors.toList());
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(dataTypes, null, alignedTvLists, maxNumberOfPointsInPage);
+    timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
