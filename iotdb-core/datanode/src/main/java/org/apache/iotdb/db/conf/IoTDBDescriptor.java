@@ -255,6 +255,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
+    ConfigurationFileUtils.updateLastAppliedProperties(properties, false);
     conf.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
 
     conf.setRpcAddress(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
@@ -1960,8 +1961,8 @@ public class IoTDBDescriptor {
   }
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
-      throws QueryProcessException {
-    ConfigurationFileUtils.updateLastAppliedProperties(properties);
+      throws QueryProcessException, IOException {
+    ConfigurationFileUtils.updateLastAppliedProperties(properties, true);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);

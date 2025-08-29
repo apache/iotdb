@@ -53,7 +53,7 @@ public class ConfigurationFileUtils {
   private static final String lockFileSuffix = ".lock";
   private static final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
   private static final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
-  private static Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
   private static final String lineSeparator = "\n";
   private static final String license =
       new StringJoiner(lineSeparator)
@@ -74,11 +74,9 @@ public class ConfigurationFileUtils {
           .add("# specific language governing permissions and limitations")
           .add("# under the License.")
           .toString();
-  private static final String EFFECTIVE_MODE = "effectiveMode:";
-  private static final String DATATYPE = "Datatype:";
-  private static final String EFFECTIVE_MODE_HOT_RELOAD = "hot_reload";
-  private static final String EFFECTIVE_MODE_RESTART = "restart";
-  private static final String EFFECTIVE_MODE_FIRST_START = "first_start";
+  private static final String EFFECTIVE_MODE_PREFIX = "effectiveMode:";
+  private static final String EFFECTIVE_NODE_TYPE_PREFIX = "effectiveNodeType:";
+  private static final String DATATYPE_PREFIX = "Datatype:";
   private static Map<String, DefaultConfigurationItem> configuration2DefaultValue;
 
   // This is a temporary implementations
@@ -113,9 +111,19 @@ public class ConfigurationFileUtils {
 
   private static final Map<String, String> lastAppliedProperties = new HashMap<>();
 
-  public static void updateLastAppliedProperties(TrimProperties properties) {
+  public static void updateLastAppliedProperties(
+      TrimProperties properties, boolean isHotReloading) throws IOException {
+    loadConfigurationDefaultValueFromTemplate();
     for (Map.Entry<Object, Object> entry : properties.entrySet()) {
       String key = entry.getKey().toString();
+      DefaultConfigurationItem defaultConfigurationItem = configuration2DefaultValue.get(key);
+      if (defaultConfigurationItem == null) {
+        continue;
+      }
+      if (isHotReloading
+          && defaultConfigurationItem.effectiveMode != EffectiveModeType.HOT_RELOAD) {
+        continue;
+      }
       String value = entry.getValue() == null ? null : entry.getValue().toString();
       lastAppliedProperties.put(key, value);
     }
@@ -373,33 +381,37 @@ public class ConfigurationFileUtils {
                 .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
         InputStreamReader isr = new InputStreamReader(inputStream);
         BufferedReader reader = new BufferedReader(isr)) {
-      String effectiveMode = null;
-      String dataType = null;
+      EffectiveModeType effectiveMode = null;
       StringBuilder description = new StringBuilder();
       String line;
       while ((line = reader.readLine()) != null) {
         line = line.trim();
         if (line.isEmpty()) {
           description = new StringBuilder();
-          dataType = null;
           effectiveMode = null;
           continue;
         }
         if (line.startsWith("#")) {
           String comment = line.substring(1).trim();
-          if (description.length() > 0) {
-            if (comment.startsWith(EFFECTIVE_MODE)) {
-              effectiveMode = comment.substring(EFFECTIVE_MODE.length()).trim();
-              continue;
-            } else if (comment.startsWith(DATATYPE)) {
-              dataType = comment.substring(DATATYPE.length()).trim();
-              continue;
-            } else {
-              description.append(" ");
-            }
+          if (comment.isEmpty()) {
+            continue;
+          }
+          boolean needSeperateLine = false;
+          if (comment.startsWith(EFFECTIVE_MODE_PREFIX)) {
+            effectiveMode =
+                EffectiveModeType.getEffectiveMode(
+                    comment.substring(EFFECTIVE_MODE_PREFIX.length()).trim());
+            needSeperateLine = true;
+          } else if (comment.startsWith(DATATYPE_PREFIX)) {
+            needSeperateLine = true;
+          } else {
+            description.append(" ");
           }
           if (withDesc) {
             description.append(comment);
+            if (needSeperateLine) {
+              description.append(lineSeparator);
+            }
           }
         } else {
           int equalsIndex = line.indexOf('=');
@@ -408,11 +420,7 @@ public class ConfigurationFileUtils {
           items.put(
               key,
               new DefaultConfigurationItem(
-                  key,
-                  value,
-                  withDesc ? description.toString().trim() : null,
-                  effectiveMode,
-                  dataType));
+                  key, value, withDesc ? description.toString().trim() : null, effectiveMode));
         }
       }
     } catch (IOException e) {
@@ -426,16 +434,33 @@ public class ConfigurationFileUtils {
     public String name;
     public String value;
     public String description;
-    public String effectiveMode;
-    public String dataType;
+    public EffectiveModeType effectiveMode;
 
     public DefaultConfigurationItem(
-        String name, String value, String description, String effectiveMode, String dataType) {
+        String name, String value, String description, EffectiveModeType effectiveMode) {
       this.name = name;
       this.value = value;
       this.description = description;
-      this.effectiveMode = effectiveMode;
-      this.dataType = dataType;
+      this.effectiveMode = effectiveMode == null ? EffectiveModeType.UNKNOWN : effectiveMode;
+    }
+  }
+
+  public enum EffectiveModeType {
+    HOT_RELOAD,
+    FIRST_START,
+    RESTART,
+    UNKNOWN;
+
+    public static EffectiveModeType getEffectiveMode(String effectiveMode) {
+      if (HOT_RELOAD.name().equalsIgnoreCase(effectiveMode)) {
+        return HOT_RELOAD;
+      } else if (FIRST_START.name().equalsIgnoreCase(effectiveMode)) {
+        return FIRST_START;
+      } else if (RESTART.name().equalsIgnoreCase(effectiveMode)) {
+        return RESTART;
+      } else {
+        return UNKNOWN;
+      }
     }
   }
 }
