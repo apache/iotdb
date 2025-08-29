@@ -27,7 +27,7 @@ public class PipeConsensusSubtaskExecutor extends PipeSinkSubtaskExecutor {
   public PipeConsensusSubtaskExecutor() {
     super(
         // The number of data regions for a datanode is limited by offHeapMemory. At the same time,
-        // in order to ensure multi-cores performance, the number of data regions usually does not
+        // in order to ensure multicore performance, the number of data regions usually does not
         // exceed the number of cores. To prevent the thread from exploding, we take the min of
         // both.
         (int)
