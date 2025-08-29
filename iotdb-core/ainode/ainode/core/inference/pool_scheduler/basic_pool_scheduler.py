@@ -57,7 +57,9 @@ class BasicPoolScheduler(AbstractPoolScheduler):
                 raise InferenceModelInternalError(
                     f"Not enough memory to run model {model_id} on {device}."
                 )
-            return [ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id)]
+            return [
+                ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id, device.index)
+            ]
         return []
 
     def schedule_install(
@@ -89,7 +91,9 @@ class BasicPoolScheduler(AbstractPoolScheduler):
                 raise InferenceModelInternalError(
                     f"Not enough memory to run model {model_id} on {device}."
                 )
-            return [ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id)]
+            return [
+                ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id, device.index)
+            ]
 
         # case2: there are already some pools on the device
         pool_nums = estimate_shared_pool_size_by_total_mem(

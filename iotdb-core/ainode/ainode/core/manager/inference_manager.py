@@ -354,3 +354,41 @@ class InferenceManager:
         while not self._result_queue.empty():
             self._result_queue.get_nowait()
         self._result_queue.close()
+
+
+if __name__ == "__main__":
+    mp.set_start_method("spawn", force=True)
+    manager = InferenceManager()
+    manager.install_model(TInstallModelReq(modelId="timer_xl", device="cuda"))
+    manager.install_model(TInstallModelReq(modelId="sundial", device="cuda"))
+    # manager.uninstall_model(TUninstallModelReq(modelId="sundial", device="cuda"))
+
+    time.sleep(60)  # wait for model to be installed
+    data = torch.arange(0, 1440)
+    inputs = data.unsqueeze(0).float().to("cpu")
+    for model_id in ["timer_xl", "sundial"]:
+        if model_id == "sundial":
+            inference_pipeline = TimerSundialInferencePipeline(SundialConfig())
+        elif model_id == "timer_xl":
+            inference_pipeline = TimerXLInferencePipeline(TimerConfig())
+        else:
+            raise InferenceModelInternalError(f"Unsupported model_id: {model_id}")
+        predict_length = 96
+        infer_req = InferenceRequest(
+            req_id=generate_req_id(),
+            model_id=model_id,
+            inputs=inputs,
+            inference_pipeline=inference_pipeline,
+            max_new_tokens=predict_length,
+        )
+        outputs = manager.process_request(infer_req)
+        print(f"Model: {model_id}, Output shape: {outputs[0].shape}")
+
+    print("AINode inference manager is running. Press Ctrl+C to exit.")
+    import time
+
+    try:
+        while True:
+            time.sleep(10)
+    except KeyboardInterrupt:
+        print("Exiting...")

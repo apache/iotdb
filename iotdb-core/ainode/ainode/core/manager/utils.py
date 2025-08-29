@@ -111,7 +111,9 @@ def estimate_pool_size(device: torch.device, model_id: str) -> int:
 
 
 def estimate_shared_pool_size_by_total_mem(
-    device: torch.device, existing_model_ids: List[str], new_model_id: Optional[str]
+    device: torch.device,
+    existing_model_ids: List[str],
+    new_model_id: Optional[str] = None,
 ) -> Dict[str, int]:
     """
     Estimate pool counts for (existing_model_ids + new_model_id) by equally
@@ -121,10 +123,9 @@ def estimate_shared_pool_size_by_total_mem(
         mapping {model_id: pool_num}
     """
     # Extract unique model IDs
-    all_models = []
-    for mid in existing_model_ids + [new_model_id]:
-        if mid not in all_models:
-            all_models.append(mid)
+    all_models = existing_model_ids + (
+        [new_model_id] if new_model_id is not None else []
+    )
 
     # Seize memory usage for each model
     mem_usages: Dict[str, float] = {}

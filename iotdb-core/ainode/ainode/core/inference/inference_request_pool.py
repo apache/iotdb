@@ -203,7 +203,7 @@ class InferenceRequestPool(mp.Process):
         for thread in self._threads:
             thread.join()
         self.logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool exited cleanly."
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_id} exited cleanly."
         )
 
     def stop(self):

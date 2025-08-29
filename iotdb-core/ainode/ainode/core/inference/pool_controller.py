@@ -124,7 +124,7 @@ class PoolController:
         """
         device = torch.device(device_str)
         device_id = device.index
-        for idx in range(count):
+        for _ in range(count):
             queue = mp.Queue()
             pool_id = self.allocate_pool_id(model_id, device_id)
             if model_id == "sundial":
@@ -248,7 +248,7 @@ class PoolController:
             actions = self._pool_scheduler.schedule_uninstall(model_id, device)
             for action in actions:
                 if action.action == ScaleActionType.SCALE_DOWN:
-                    self._shrink_pools(action.model_id, action.amount)
+                    self._shrink_pools(action.model_id, device_str, action.amount)
                 elif action.action == ScaleActionType.SCALE_UP:
                     self._expand_pools(action.model_id, device_str, action.amount)
         else:
@@ -292,13 +292,15 @@ class PoolController:
         """
         Register a new request pool for the given model_id, device and pool_id.
         """
+        device = torch.device(device_str)
+        device_id = device.index
         self.set_request_pool_map(
             model_id, device_str, pool_id, request_pool, request_queue
         )
-        pool_group: PoolGroup = self.get_request_pools_group(model_id)
+        pool_group: PoolGroup = self.get_request_pools_group(model_id, device_id)  #
         pool_group.set_state(pool_id, PoolState.INITIALIZING)
         logger.info(
-            f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_id}] Pool initializing for model {model_id}"
+            f"[Inference][Device-{device}][Pool-{pool_id}] Pool initializing for model {model_id}"
         )
 
     def unregister_pool(self, model_id, device_id, pool_id):
@@ -308,6 +310,9 @@ class PoolController:
         pool_group = self.get_request_pools_group(model_id, device_id)
         if pool_group:
             pool_group.remove_pool(pool_id)
+            logger.info(
+                f"[Inference][Device-{pool_group.device}][Pool-{pool_id}] Unregistered pool for model {model_id}"
+            )
         # Clean up empty structures
         if pool_group and not pool_group.get_pool_ids():
             self._request_pool_map[model_id].pop(device_id, None)
@@ -362,7 +367,7 @@ class PoolController:
         if pool_group:
             return pool_group.get_pool_ids()
 
-    def has_request_pools(self, model_id, device_id: Optional[int]) -> bool:
+    def has_request_pools(self, model_id, device_id: Optional[int] = None) -> bool:
         """
         Check if there are request pools for the given model_id and device_id (optional).
         """
@@ -379,9 +384,6 @@ class PoolController:
         ):
             return self._request_pool_map[model_id][device_id]
         else:
-            logger.error(
-                f"[Inference][Device-{self.DEFAULT_DEVICE}] No pool group found for model {model_id} on device {device_id}."
-            )
             return None
 
     def get_request_pool(
@@ -415,6 +417,9 @@ class PoolController:
             self._request_pool_map[model_id][device_id] = PoolGroup(model_id, device)
         self._request_pool_map[model_id][device_id].add_pool(
             pool_id, request_pool, request_queue
+        )
+        logger.info(
+            f"[Inference][Device-{device}][Pool-{pool_id}] Registered pool for model {model_id}"
         )
 
     def get_load(self, model_id, device_id, pool_id) -> int:
