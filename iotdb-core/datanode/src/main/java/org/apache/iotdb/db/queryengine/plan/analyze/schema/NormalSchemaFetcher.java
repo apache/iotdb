@@ -326,10 +326,10 @@ class NormalSchemaFetcher {
       return;
     }
 
-    List<Integer> indexOfDevicesCanNotCreateSchema = Collections.EMPTY_LIST;
+    List<Integer> indexOfDevicesCannotAutoCreateSchema = Collections.EMPTY_LIST;
     if (!config.isAutoCreateSchemaEnabled()) {
       // keep auto-creation for system series
-      indexOfDevicesCanNotCreateSchema = new ArrayList<>();
+      indexOfDevicesCannotAutoCreateSchema = new ArrayList<>();
       Iterator<Integer> iterator = indexOfDevicesNeedAutoCreateSchema.iterator();
       while (iterator.hasNext()) {
         Integer i = iterator.next();
@@ -337,7 +337,7 @@ class NormalSchemaFetcher {
             .get(i)
             .getDevicePath()
             .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
-          indexOfDevicesCanNotCreateSchema.add(i);
+          indexOfDevicesCannotAutoCreateSchema.add(i);
           iterator.remove();
         }
       }
@@ -380,14 +380,14 @@ class NormalSchemaFetcher {
           context);
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();
-      for (int i = 0; i < indexOfDevicesCanNotCreateSchema.size(); i++) {
+      for (int i = 0; i < indexOfDevicesCannotAutoCreateSchema.size(); i++) {
         schemaComputationWithAutoCreation =
-            schemaComputationWithAutoCreationList.get(indexOfDevicesCanNotCreateSchema.get(i));
+            schemaComputationWithAutoCreationList.get(indexOfDevicesCannotAutoCreateSchema.get(i));
         indexOfMissingMeasurements =
             schemaTree.compute(
                 schemaComputationWithAutoCreation, indexOfMeasurementsNeedAutoCreate.get(i));
         if (!indexOfMissingMeasurements.isEmpty()) {
-          indexOfDevicesWithMissingMeasurements.add(indexOfDevicesCanNotCreateSchema.get(i));
+          indexOfDevicesWithMissingMeasurements.add(indexOfDevicesCannotAutoCreateSchema.get(i));
           indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
         }
       }
