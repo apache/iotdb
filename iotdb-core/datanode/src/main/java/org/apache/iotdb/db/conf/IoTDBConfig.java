@@ -439,6 +439,9 @@ public class IoTDBConfig {
    */
   private int tvListSortThreshold = 0;
 
+  /** Enable streaming query mem chunk */
+  private boolean streamingQueryMemChunk = true;
+
   /** Enable inner space compaction for sequence files */
   private volatile boolean enableSeqSpaceCompaction = true;
 
@@ -2317,6 +2320,14 @@ public class IoTDBConfig {
 
   public void setTVListSortThreshold(int tvListSortThreshold) {
     this.tvListSortThreshold = tvListSortThreshold;
+  }
+
+  public boolean isStreamingQueryMemChunk() {
+    return streamingQueryMemChunk;
+  }
+
+  public void setStreamingQueryMemChunk(boolean streamingQueryMemChunk) {
+    this.streamingQueryMemChunk = streamingQueryMemChunk;
   }
 
   public boolean isRpcThriftCompressionEnable() {
