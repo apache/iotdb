@@ -21,11 +21,7 @@ package org.apache.iotdb.isession;
 
 import org.apache.iotdb.isession.util.Version;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class SessionConfig {
-  private static final Logger logger = LoggerFactory.getLogger(SessionConfig.class);
 
   public static final String DEFAULT_HOST = "localhost";
   public static final int DEFAULT_PORT = 6667;
