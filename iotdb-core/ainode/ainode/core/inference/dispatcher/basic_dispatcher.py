@@ -16,9 +16,7 @@
 # under the License.
 #
 
-from ainode.core.exception import (
-    InferenceModelInternalError,
-)
+from ainode.core.exception import InferenceModelInternalError
 from ainode.core.inference.dispatcher.abstract_dispatcher import AbstractDispatcher
 from ainode.core.inference.inference_request import InferenceRequest
 from ainode.core.inference.inference_request_pool import PoolState

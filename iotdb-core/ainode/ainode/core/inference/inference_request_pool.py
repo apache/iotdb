@@ -56,6 +56,7 @@ class InferenceRequestPool(mp.Process):
         self,
         pool_id: int,
         model_id: str,
+        device: str,
         config: PretrainedConfig,
         request_queue: mp.Queue,
         result_queue: mp.Queue,
@@ -69,7 +70,7 @@ class InferenceRequestPool(mp.Process):
         self.pool_kwargs = pool_kwargs
         self.model = None
         self._model_manager = None
-        self.device = None
+        self.device = device
         self.ready_event = ready_event
 
         self._threads = []
@@ -176,7 +177,10 @@ class InferenceRequestPool(mp.Process):
 
     def run(self):
         self._model_manager = ModelManager()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if "cuda" in self.device and torch.cuda.is_available():
+            self.device = torch.device(self.device)
+        else:
+            self.device = torch.device("cpu")
         self.logger = Logger(
             INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
         )
@@ -199,7 +203,7 @@ class InferenceRequestPool(mp.Process):
         for thread in self._threads:
             thread.join()
         self.logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool exited cleanly."
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_id} exited cleanly."
         )
 
     def stop(self):

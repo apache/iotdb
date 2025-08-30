@@ -48,9 +48,7 @@ from ainode.core.inference.strategy.timerxl_inference_pipeline import (
 from ainode.core.inference.utils import generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
-from ainode.core.manager.utils import (
-    measure_model_memory,
-)
+from ainode.core.manager.utils import measure_model_memory
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from ainode.core.model.timerxl.configuration_timer import TimerConfig
@@ -62,7 +60,10 @@ from ainode.thrift.ainode.ttypes import (
     TForecastResp,
     TInferenceReq,
     TInferenceResp,
+    TInstallModelReq,
+    TUninstallModelReq,
 )
+from ainode.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 
@@ -191,6 +192,11 @@ class InferenceManager:
                 self._result_wrapper_map[infer_req.req_id].set_result(
                     infer_req.get_final_output()
                 )
+                self._pool_controller.remove_request(
+                    infer_req.model_id,
+                    infer_req.assigned_device_id,
+                    infer_req.assigned_pool_id,
+                )
 
     def process_request(self, req):
         req_id = req.req_id
@@ -198,7 +204,7 @@ class InferenceManager:
         with self._result_wrapper_lock:
             self._result_wrapper_map[req_id] = infer_proxy
         # dispatch request to the pool
-        self._pool_controller.add_request(req.model_id, req)
+        self._pool_controller.add_request(req)
         outputs = infer_proxy.wait_for_completion()
         with self._result_wrapper_lock:
             del self._result_wrapper_map[req_id]
@@ -317,9 +323,72 @@ class InferenceManager:
             single_output=False,
         )
 
+    def install_model(self, req: TInstallModelReq) -> TSStatus:
+        logger.info(f"Installing model {req.modelId} ...")
+        # TODO: validate req.device
+        device = req.device or str(self.DEFAULT_DEVICE)
+        model_id = req.modelId
+        exisiting_model_id = req.existingModelId
+        try:
+            self._pool_controller.install_model(model_id, device, exisiting_model_id)
+            return get_status(TSStatusCode.SUCCESS_STATUS)
+        except Exception as e:
+            logger.warning(e)
+            return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
+
+    def uninstall_model(self, req: TUninstallModelReq) -> TSStatus:
+        logger.info(f"Uninstalling model {req.modelId} ...")
+        # TODO: validate req.device
+        device = req.device or str(self.DEFAULT_DEVICE)
+        model_id = req.modelId
+        try:
+            self._pool_controller.uninstall_model(model_id, device)
+            return get_status(TSStatusCode.SUCCESS_STATUS)
+        except Exception as e:
+            logger.warning(e)
+            return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
+
     def shutdown(self):
         self._stop_event.set()
         self._pool_controller.shutdown()
         while not self._result_queue.empty():
             self._result_queue.get_nowait()
         self._result_queue.close()
+
+
+if __name__ == "__main__":
+    mp.set_start_method("spawn", force=True)
+    manager = InferenceManager()
+    manager.install_model(TInstallModelReq(modelId="timer_xl", device="cuda"))
+    manager.install_model(TInstallModelReq(modelId="sundial", device="cuda"))
+    # manager.uninstall_model(TUninstallModelReq(modelId="sundial", device="cuda"))
+
+    time.sleep(60)  # wait for model to be installed
+    data = torch.arange(0, 1440)
+    inputs = data.unsqueeze(0).float().to("cpu")
+    for model_id in ["timer_xl", "sundial"]:
+        if model_id == "sundial":
+            inference_pipeline = TimerSundialInferencePipeline(SundialConfig())
+        elif model_id == "timer_xl":
+            inference_pipeline = TimerXLInferencePipeline(TimerConfig())
+        else:
+            raise InferenceModelInternalError(f"Unsupported model_id: {model_id}")
+        predict_length = 96
+        infer_req = InferenceRequest(
+            req_id=generate_req_id(),
+            model_id=model_id,
+            inputs=inputs,
+            inference_pipeline=inference_pipeline,
+            max_new_tokens=predict_length,
+        )
+        outputs = manager.process_request(infer_req)
+        print(f"Model: {model_id}, Output shape: {outputs[0].shape}")
+
+    print("AINode inference manager is running. Press Ctrl+C to exit.")
+    import time
+
+    try:
+        while True:
+            time.sleep(10)
+    except KeyboardInterrupt:
+        print("Exiting...")

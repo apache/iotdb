@@ -27,10 +27,7 @@ from ainode.core.constant import TSStatusCode
 from ainode.core.exception import MissingConfigError
 from ainode.core.log import Logger
 from ainode.core.rpc.client import ClientManager
-from ainode.thrift.common.ttypes import (
-    TAINodeLocation,
-    TEndPoint,
-)
+from ainode.thrift.common.ttypes import TAINodeLocation, TEndPoint
 
 logger = Logger()
 
