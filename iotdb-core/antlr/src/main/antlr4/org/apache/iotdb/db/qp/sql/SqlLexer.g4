@@ -758,6 +758,14 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
+    ;
+
 SESSION
     : S E S S I O N
     ;

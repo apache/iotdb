@@ -167,6 +167,13 @@ statement
     | dropModelStatement
     | showModelsStatement
 
+    // Service Statement
+    | createServiceStatement
+    | dropServiceStatement
+    | showServicesStatement
+    | startServiceStatement
+    | stopServiceStatement
+
     // View, Trigger, CQ, Quota are not supported yet
     ;
 
@@ -810,6 +817,27 @@ showModelsStatement
     | SHOW MODELS modelId=identifier
     ;
 
+// ------------------------------------------- Service Statement ---------------------------------------------------------
+createServiceStatement
+    : CREATE SERVICE serviceName=identifier AS className=identifierOrString uriClause?
+    ;
+
+ dropServiceStatement
+    : DROP SERVICE serviceName=identifier
+    ;
+
+showServicesStatement
+    : SHOW ((SERVICE serviceName=identifier) | SERVICES)
+    ;
+
+startServiceStatement
+    : START SERVICE serviceName=identifier
+    ;
+
+stopServiceStatement
+    : STOP SERVICE serviceName=identifier
+    ;
+
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
@@ -1369,7 +1397,7 @@ nonReserved
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
     | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
-    | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
+    | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS | SERVICE | SERVICES
     | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
@@ -1699,6 +1727,8 @@ SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
+SERVICE: 'SERVICE';
+SERVICES: 'SERVICES';
 SUBSCRIPTION: 'SUBSCRIPTION';
 SUBSCRIPTIONS: 'SUBSCRIPTIONS';
 SUBSET: 'SUBSET';

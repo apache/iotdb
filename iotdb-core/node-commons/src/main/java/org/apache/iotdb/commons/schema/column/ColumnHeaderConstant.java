@@ -320,6 +320,11 @@ public class ColumnHeaderConstant {
   public static final String SHOW_CONFIGURATIONS_DEFAULT_VALUE = "default_value";
   public static final String SHOW_CONFIGURATIONS_DESCRIPTION = "description";
 
+  // column names for show service
+  public static final String SERVICE_NAME = "ServiceName";
+  public static final String SERVICE_STATE_ON_DATA_NODE = "ServiceStateOnDataNode";
+  public static final String SERVICE_STATUS = "ServiceStatus";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -722,4 +727,17 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SHOW_CONFIGURATIONS_VALUE, TSDataType.TEXT),
           new ColumnHeader(SHOW_CONFIGURATIONS_DEFAULT_VALUE, TSDataType.TEXT),
           new ColumnHeader(SHOW_CONFIGURATIONS_DESCRIPTION, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showAllServicesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SERVICE_NAME, TSDataType.TEXT),
+          new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
+          new ColumnHeader(SERVICE_STATUS, TSDataType.TEXT));
+  public static final List<ColumnHeader> showServiceWithNameColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SERVICE_NAME, TSDataType.TEXT),
+          new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
+          new ColumnHeader(NODE_ID, TSDataType.TEXT),
+          new ColumnHeader(SERVICE_STATE_ON_DATA_NODE, TSDataType.TEXT),
+          new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT));
 }

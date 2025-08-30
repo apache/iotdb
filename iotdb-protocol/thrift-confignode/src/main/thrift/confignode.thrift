@@ -107,8 +107,9 @@ struct TRuntimeConfiguration {
   3: required list<binary> allUDFInformation
   4: required binary allTTLInformation
   5: required list<binary> allPipeInformation
-  6: optional string clusterId
-  7: optional binary tableInfo
+  6: required list<binary> allServiceInformation
+  7: optional string clusterId
+  8: optional binary tableInfo
 }
 
 struct TDataNodeRegisterReq {
@@ -1258,6 +1259,35 @@ struct TCreateTableViewReq {
     2: required bool replace
 }
 
+// Service
+struct TShowServiceInfo {
+    1: required string serviceName
+    2: required string className
+    3: required string nodeId
+    4: required string state
+    5: optional string message
+}
+
+struct TCreateServiceReq {
+    1: required string serviceName
+    2: required string className
+    3: required bool isUsingURI
+    4: optional string jarName
+    5: optional binary jarFile
+    6: optional string jarMD5
+}
+
+struct TShowServiceResp {
+    1: required common.TSStatus status
+    2: optional list<TShowServiceInfo> serviceInfoList
+}
+
+// Get trigger table from config node
+struct TGetServiceTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allServiceInformation
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -2045,5 +2075,31 @@ service IConfigNodeRPCService {
   // Table view
 
   common.TSStatus createTableView(TCreateTableViewReq req)
+
+  // ======================================================
+  // Service
+  // ======================================================
+  /** Create service */
+  common.TSStatus createService(TCreateServiceReq req)
+
+  /** Start Service */
+  common.TSStatus startService(string serviceName)
+
+  /** Stop Service */
+  common.TSStatus stopService(string serviceName)
+
+  /** Drop Service */
+  common.TSStatus dropService(string serviceName)
+
+  /** Show Service by name */
+  TShowServiceResp showService(string serviceName)
+
+  /** Get service table from config node */
+  TGetServiceTableResp getServiceTable()
+
+    /**
+     * Return the service jar list of the trigger name list
+     */
+    TGetJarInListResp getServiceJar(TGetJarInListReq req)
 }
 

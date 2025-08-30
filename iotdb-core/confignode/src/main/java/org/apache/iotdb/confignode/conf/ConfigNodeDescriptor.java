@@ -389,7 +389,7 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "procedure_core_worker_thread_count",
                 String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
-
+    conf.setServiceDir(properties.getProperty("service_lib_dir", conf.getServiceDir()));
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
   }

@@ -203,6 +203,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.CreateServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.DropServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.ShowServicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.StartServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.StopServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -4789,5 +4794,45 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowCurrentUser(IoTDBSqlParser.ShowCurrentUserContext ctx) {
     return new ShowCurrentUserStatement();
+  }
+
+  @Override
+  public Statement visitCreateService(IoTDBSqlParser.CreateServiceContext ctx) {
+    if (ctx.uriClause() == null) {
+      return new CreateServiceStatement(
+          parseIdentifier(ctx.serviceName.getText()),
+          parseStringLiteral(ctx.className.getText()),
+          Optional.empty());
+    } else {
+      String uriString = parseAndValidateURI(ctx.uriClause());
+      return new CreateServiceStatement(
+          parseIdentifier(ctx.serviceName.getText()),
+          parseStringLiteral(ctx.className.getText()),
+          Optional.of(uriString));
+    }
+  }
+
+  @Override
+  public Statement visitDropService(IoTDBSqlParser.DropServiceContext ctx) {
+    return new DropServiceStatement(ctx.serviceName.getText());
+  }
+
+  @Override
+  public Statement visitShowServices(IoTDBSqlParser.ShowServicesContext ctx) {
+    final ShowServicesStatement servicesStatement = new ShowServicesStatement();
+    if (ctx.serviceName != null) {
+      servicesStatement.setServiceName(parseIdentifier(ctx.serviceName.getText()));
+    }
+    return servicesStatement;
+  }
+
+  @Override
+  public Statement visitStartService(IoTDBSqlParser.StartServiceContext ctx) {
+    return new StartServiceStatement(ctx.serviceName.getText());
+  }
+
+  @Override
+  public Statement visitStopService(IoTDBSqlParser.StopServiceContext ctx) {
+    return new StopServiceStatement(ctx.serviceName.getText());
   }
 }

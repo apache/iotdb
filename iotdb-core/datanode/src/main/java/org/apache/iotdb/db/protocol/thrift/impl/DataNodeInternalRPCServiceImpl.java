@@ -72,6 +72,7 @@ import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.service.external.ServiceInformation;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -177,6 +178,7 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
+import org.apache.iotdb.db.service.external.ExternalServiceManagementService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
@@ -220,6 +222,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateServiceInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -233,6 +236,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropServiceInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
@@ -283,6 +287,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TShowServiceInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
@@ -293,6 +298,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.service.api.ServiceState;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
@@ -2960,6 +2966,78 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (IllegalPathException | QueryProcessException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     }
+  }
+
+  @Override
+  public TSStatus createServiceInstance(TCreateServiceInstanceReq req) {
+    ServiceInformation serviceInformation = ServiceInformation.deserialize(req.serviceInformation);
+    try {
+      ExternalServiceManagementService.getInstance().register(serviceInformation, req.jarFile);
+    } catch (IOException e) {
+      LOGGER.warn(
+          "Failed to register service {} with className: {}. The cause is: {}",
+          serviceInformation.getServiceName(),
+          serviceInformation.getClassName(),
+          e);
+      return new TSStatus(TSStatusCode.SERVICE_CREATE_SERVICE_ON_DATANODE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage("Create service instance successfully");
+  }
+
+  @Override
+  public TShowServiceInstanceResp showServiceInstance(String serviceName) throws TException {
+    Optional<ServiceState> serviceState =
+        ExternalServiceManagementService.getInstance().getServiceState(serviceName);
+    TShowServiceInstanceResp resp = new TShowServiceInstanceResp();
+    if (serviceState.isPresent()) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      resp.setServiceState(serviceState.get().toString());
+    } else {
+      resp.setStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.SERVICE_NOT_EXIST_ERROR, "Service " + serviceName + " does not exist"));
+    }
+    return resp;
+  }
+
+  @Override
+  public TSStatus activeServiceInstance(String serviceName) {
+    try {
+      ExternalServiceManagementService.getInstance().startService(serviceName);
+    } catch (Exception e) {
+      return new TSStatus(
+              TSStatusCode.SERVICE_START_SERVICE_ERROR_ON_DATANODE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage("Start service instance on Data Node");
+  }
+
+  @Override
+  public TSStatus inactiveServiceInstance(String serviceName) {
+    try {
+      ExternalServiceManagementService.getInstance().stopService(serviceName);
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.SERVICE_STOP_SERVICE_ERROR_ON_DATANODE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage("Stop service instance on Data Node");
+  }
+
+  @Override
+  public TSStatus dropServiceInstance(TDropServiceInstanceReq req) {
+    try {
+      ExternalServiceManagementService.getInstance()
+          .dropService(req.getServiceName(), req.isNeedToDeleteJarFile());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.SERVICE_DROP_SERVICE_ON_DATANODE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage("Drop service instance on Data Node");
   }
 
   public void handleClientExit() {
