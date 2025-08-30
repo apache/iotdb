@@ -17,37 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.sync;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-public enum CnToDnSyncRequestType {
-  // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
-  STOP_AND_CLEAR_DATA_NODE,
-  SET_SYSTEM_STATUS,
-  SHOW_CONFIGURATION,
-  SHOW_APPLIED_CONFIGURATIONS,
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
-  // Region Maintenance
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  DELETE_REGION,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  RESET_PEER_LIST,
+public class ShowConfiguration extends WrappedStatement {
 
-  // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
+  public ShowConfiguration(Statement innerTreeStatement, MPPQueryContext context) {
+    super(innerTreeStatement, context);
+  }
 
-  // Template
-  UPDATE_TEMPLATE,
-
-  // Schema
-  KILL_QUERY_INSTANCE,
-
-  // Table
-  UPDATE_TABLE,
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowConfiguration(this, context);
+  }
 }

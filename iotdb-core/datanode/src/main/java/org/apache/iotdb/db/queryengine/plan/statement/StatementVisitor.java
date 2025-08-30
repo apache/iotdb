@@ -128,6 +128,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
@@ -434,6 +435,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitSetConfiguration(SetConfigurationStatement setConfigurationStatement, C context) {
     return visitStatement(setConfigurationStatement, context);
+  }
+
+  public R visitShowConfiguration(
+      ShowConfigurationStatement showConfigurationStatement, C context) {
+    return visitStatement(showConfigurationStatement, context);
   }
 
   public R visitStartRepairData(StartRepairDataStatement startRepairDataStatement, C context) {

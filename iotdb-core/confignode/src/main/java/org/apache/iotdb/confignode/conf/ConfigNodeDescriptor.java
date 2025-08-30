@@ -147,6 +147,7 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
+    ConfigurationFileUtils.updateAppliedProperties(properties, false);
     conf.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
 
     conf.setInternalAddress(
@@ -765,6 +766,7 @@ public class ConfigNodeDescriptor {
   }
 
   public void loadHotModifiedProps(TrimProperties properties) {
+    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
   }
