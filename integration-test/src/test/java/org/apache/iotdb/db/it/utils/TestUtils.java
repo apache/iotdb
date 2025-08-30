@@ -1073,16 +1073,7 @@ public class TestUtils {
           }
         }
         connectionToUse = null;
-
-        if (retryCountLeft > 0) {
-          try {
-            Thread.sleep(10000);
-          } catch (InterruptedException ignored) {
-          }
-        } else {
-          e.printStackTrace();
-          return false;
-        }
+        throw new RuntimeException(e);
       }
     }
     return false;
