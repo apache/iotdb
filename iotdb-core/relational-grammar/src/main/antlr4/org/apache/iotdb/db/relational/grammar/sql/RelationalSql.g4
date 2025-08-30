@@ -574,15 +574,15 @@ migrateRegionStatement
     ;
 
 reconstructRegionStatement
-    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (COMMA regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
+    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
     ;
 
 extendRegionStatement
-    : EXTEND REGION regionId=INTEGER_VALUE TO targetDataNodeId=INTEGER_VALUE
+    : EXTEND REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* TO targetDataNodeId=INTEGER_VALUE
     ;
 
 removeRegionStatement
-    : REMOVE REGION regionId=INTEGER_VALUE FROM targetDataNodeId=INTEGER_VALUE
+    : REMOVE REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* FROM targetDataNodeId=INTEGER_VALUE
     ;
 
 removeDataNodeStatement

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IMetadata;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -100,7 +101,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         context,
         scanOptions.getGlobalTimeFilter(),
         isSeq,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        getTsDataTypeList());
   }
 
   @Override

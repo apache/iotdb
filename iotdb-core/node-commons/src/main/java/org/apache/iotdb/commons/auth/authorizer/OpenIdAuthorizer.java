@@ -194,11 +194,11 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   private Claims validateToken(String token) {
     return Jwts.parser()
         // Basically ignore the Expiration Date, if there is any???
-        .setAllowedClockSkewSeconds(Long.MAX_VALUE / 1000)
-        // .setSigningKey(DatatypeConverter.parseBase64Binary(secret))
-        .setSigningKey(providerKey)
-        .parseClaimsJws(token)
-        .getBody();
+        .clockSkewSeconds(Long.MAX_VALUE / 1000)
+        .verifyWith(providerKey)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload();
   }
 
   private String getUsername(Claims claims) {

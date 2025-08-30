@@ -93,6 +93,8 @@ struct TRatisConfig {
 
   33: required i64 schemaRegionPeriodicSnapshotInterval
   34: required i64 dataRegionPeriodicSnapshotInterval
+
+  35: required i32 ratisTransferLeaderTimeoutMs;
 }
 
 struct TCQConfig {
@@ -320,13 +322,13 @@ struct TReconstructRegionReq {
 }
 
 struct TExtendRegionReq {
-    1: required i32 regionId
+    1: required list<i32> regionId
     2: required i32 dataNodeId
     3: required common.Model model
 }
 
 struct TRemoveRegionReq {
-    1: required i32 regionId
+    1: required list<i32> regionId
     2: required i32 dataNodeId
     3: required common.Model model
 }

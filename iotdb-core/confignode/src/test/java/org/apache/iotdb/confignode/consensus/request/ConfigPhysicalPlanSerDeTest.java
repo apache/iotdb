@@ -130,6 +130,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -1489,6 +1490,24 @@ public class ConfigPhysicalPlanSerDeTest {
         setTableColumnCommentPlan.getTableName(), setTableColumnCommentPlan1.getTableName());
     Assert.assertEquals(
         setTableColumnCommentPlan.getColumnName(), setTableColumnCommentPlan1.getColumnName());
+  }
+
+  @Test
+  public void PreAlterTableColumnDataTypePlanTest() throws IOException {
+    final AlterColumnDataTypePlan alterColumnDataTypePlan =
+        new AlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
+    final AlterColumnDataTypePlan alterColumnDataTypePlan1 =
+        (AlterColumnDataTypePlan)
+            ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getTableName(), alterColumnDataTypePlan1.getTableName());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getColumnName(), alterColumnDataTypePlan1.getColumnName());
+    Assert.assertEquals(alterColumnDataTypePlan.getType(), alterColumnDataTypePlan1.getType());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
   }
 
   @Test

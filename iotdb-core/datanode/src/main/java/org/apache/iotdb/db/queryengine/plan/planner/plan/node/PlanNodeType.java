@@ -130,6 +130,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctio
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
@@ -308,6 +309,7 @@ public enum PlanNodeType {
   TABLE_PATTERN_RECOGNITION_NODE((short) 1031),
   TABLE_WINDOW_FUNCTION((short) 1032),
   TABLE_INTO_NODE((short) 1033),
+  TABLE_UNION_NODE((short) 1034),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -693,6 +695,8 @@ public enum PlanNodeType {
       case 1033:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode.deserialize(
             buffer);
+      case 1034:
+        return UnionNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

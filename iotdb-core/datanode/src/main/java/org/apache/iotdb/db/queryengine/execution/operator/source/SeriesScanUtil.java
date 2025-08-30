@@ -35,10 +35,12 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeRead
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
@@ -81,6 +83,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.function.ToLongFunction;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED;
@@ -620,7 +623,7 @@ public class SeriesScanUtil implements Accountable {
 
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     List<IPageReader> pageReaderList =
-        FileLoaderUtils.loadPageReaderList(chunkMetaData, scanOptions.getGlobalTimeFilter());
+        FileLoaderUtils.loadPageReaderList(chunkMetaData, scanOptions.getGlobalTimeFilter(), dataType);
     long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
     // init TsBlockBuilder for each page reader
@@ -765,9 +768,9 @@ public class SeriesScanUtil implements Accountable {
     boolean isTypeInconsistent = false;
     if (length > 0) {
       for (int i = 0; i < length; i++) {
-        TSDataType finalDataType =
-            isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
-        if (valueColumns[i].getDataType() != finalDataType) {
+        TSDataType finalDataType = getTsDataTypeList().get(i);
+        if ((valueColumns[i].getDataType() != finalDataType)
+            && SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)) {
           isTypeInconsistent = true;
           break;
         }
@@ -782,8 +785,7 @@ public class SeriesScanUtil implements Accountable {
     Column[] newValueColumns = new Column[length];
     for (int i = 0; i < length; i++) {
       TSDataType sourceType = valueColumns[i].getDataType();
-      TSDataType finalDataType =
-          isAligned ? getTsDataTypeList().get(i) : getTsDataTypeList().get(0);
+      TSDataType finalDataType = getTsDataTypeList().get(i);
       switch (finalDataType) {
         case BOOLEAN:
           if (sourceType == TSDataType.BOOLEAN) {
@@ -940,7 +942,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case TEXT:
-          if (sourceType == TSDataType.TEXT || sourceType == TSDataType.STRING) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.TEXT)) {
             newValueColumns[i] = valueColumns[i];
           } else if (sourceType == TSDataType.INT32) {
             newValueColumns[i] =
@@ -1032,21 +1034,6 @@ public class SeriesScanUtil implements Accountable {
                         String.valueOf(valueColumns[i].getBooleans()[j]), StandardCharsets.UTF_8);
               }
             }
-          } else if (sourceType == TSDataType.BLOB) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getBinaries()[j]), StandardCharsets.UTF_8);
-              }
-            }
           } else {
             newValueColumns[i] =
                 new BinaryColumn(
@@ -1059,7 +1046,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case TIMESTAMP:
-          if (sourceType == TSDataType.TIMESTAMP) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.TIMESTAMP)) {
             newValueColumns[i] = valueColumns[i];
           } else if (sourceType == TSDataType.INT32) {
             newValueColumns[i] =
@@ -1089,7 +1076,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case DATE:
-          if (sourceType == TSDataType.DATE) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.DATE)) {
             newValueColumns[i] = valueColumns[i];
           } else {
             newValueColumns[i] =
@@ -1101,9 +1088,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case BLOB:
-          if (sourceType == TSDataType.BLOB
-              || sourceType == TSDataType.STRING
-              || sourceType == TSDataType.TEXT) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.BLOB)) {
             newValueColumns[i] = valueColumns[i];
           } else {
             newValueColumns[i] =
@@ -1117,7 +1102,7 @@ public class SeriesScanUtil implements Accountable {
           }
           break;
         case STRING:
-          if (sourceType == TSDataType.STRING || sourceType == TSDataType.TEXT) {
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.STRING)) {
             newValueColumns[i] = valueColumns[i];
           } else if (sourceType == TSDataType.INT32) {
             newValueColumns[i] =
@@ -1207,21 +1192,6 @@ public class SeriesScanUtil implements Accountable {
                 newValueColumns[i].getBinaries()[j] =
                     new Binary(
                         String.valueOf(valueColumns[i].getBooleans()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.BLOB) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getBinaries()[j]), StandardCharsets.UTF_8);
               }
             }
           } else {
@@ -1769,7 +1739,8 @@ public class SeriesScanUtil implements Accountable {
         context,
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),
-        isSeq);
+        isSeq,
+        dataType);
   }
 
   public List<TSDataType> getTsDataTypeList() {

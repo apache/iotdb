@@ -1792,10 +1792,10 @@ public class TsFileProcessor {
   }
 
   /** Close this tsfile */
-  public void close() throws TsFileProcessorException {
+  public void closeWithoutSettingResourceStatus() throws TsFileProcessorException {
     try {
       // When closing resource file, its corresponding mod file is also closed.
-      tsFileResource.close();
+      tsFileResource.closeWithoutSettingStatus();
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
@@ -1970,7 +1970,7 @@ public class TsFileProcessor {
     return new ArrayList<>(alignedChunkMetadataForOneDevice);
   }
 
-  public void queryForSeriesRegionScan(
+  public void queryForSeriesRegionScanWithoutLock(
       List<IFullPath> pathList,
       QueryContext queryContext,
       List<IFileScanHandle> fileScanHandlesForQuery) {
@@ -1979,13 +1979,11 @@ public class TsFileProcessor {
       Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap = new HashMap<>();
       Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataListMap =
           new HashMap<>();
-      flushQueryLock.readLock().lock();
       try {
         for (IFullPath seriesPath : pathList) {
           Map<String, List<IChunkMetadata>> measurementToChunkMetaList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToChunkHandleList = new HashMap<>();
 
-          // TODO Tien change the way
           long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDeviceId());
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
@@ -2036,9 +2034,6 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
       }
       if (!deviceToMemChunkHandleMap.isEmpty() || !deviceToChunkMetadataListMap.isEmpty()) {
         fileScanHandlesForQuery.add(
@@ -2055,7 +2050,7 @@ public class TsFileProcessor {
    * Construct IFileScanHandle for data in memtable and the other ones in flushing memtables. Then
    * get the related ChunkMetadata of data on disk.
    */
-  public void queryForDeviceRegionScan(
+  public void queryForDeviceRegionScanWithoutLock(
       Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
       List<IFileScanHandle> fileScanHandlesForQuery) {
@@ -2064,7 +2059,6 @@ public class TsFileProcessor {
       Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap = new HashMap<>();
       Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataListMap =
           new HashMap<>();
-      flushQueryLock.readLock().lock();
       try {
         for (Map.Entry<IDeviceID, DeviceContext> entry : devicePathsToContext.entrySet()) {
           IDeviceID deviceID = entry.getKey();
@@ -2118,9 +2112,6 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
       }
 
       if (!deviceToMemChunkHandleMap.isEmpty() || !deviceToChunkMetadataListMap.isEmpty()) {
@@ -2141,18 +2132,39 @@ public class TsFileProcessor {
    *
    * @param seriesPaths selected paths
    */
+  public void queryWithoutLock(
+      List<IFullPath> seriesPaths,
+      QueryContext context,
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter)
+      throws IOException {
+    query(seriesPaths, context, tsfileResourcesForQuery, globalTimeFilter, false);
+  }
+
+  @TestOnly
   public void query(
       List<IFullPath> seriesPaths,
       QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery,
       Filter globalTimeFilter)
       throws IOException {
+    query(seriesPaths, context, tsfileResourcesForQuery, globalTimeFilter, true);
+  }
+
+  private void query(
+      List<IFullPath> seriesPaths,
+      QueryContext context,
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter,
+      boolean needLock)
+      throws IOException {
     long startTime = System.nanoTime();
     try {
       Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
       Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
-
-      flushQueryLock.readLock().lock();
+      if (needLock) {
+        flushQueryLock.readLock().lock();
+      }
       try {
         for (IFullPath seriesPath : seriesPaths) {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
@@ -2197,9 +2209,10 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
+        if (needLock) {
+          flushQueryLock.readLock().unlock();
+          logFlushQueryReadUnlocked();
+        }
       }
 
       if (!pathToReadOnlyMemChunkMap.isEmpty() || !pathToChunkMetadataListMap.isEmpty()) {
@@ -2318,8 +2331,20 @@ public class TsFileProcessor {
     getWriter().getSchema().getTableSchemaMap().computeIfAbsent(tableName, tableSchemaFunction);
   }
 
-  public ReadWriteLock getFlushQueryLock() {
-    return flushQueryLock;
+  public void writeLock() {
+    flushQueryLock.writeLock().lock();
+  }
+
+  public void writeUnlock() {
+    flushQueryLock.writeLock().unlock();
+  }
+
+  public boolean tryReadLock(long waitInMs) throws InterruptedException {
+    return flushQueryLock.readLock().tryLock(waitInMs, TimeUnit.MILLISECONDS);
+  }
+
+  public void readUnLock() {
+    flushQueryLock.readLock().unlock();
   }
 
   private void logFlushQueryWriteLocked() {

@@ -37,8 +37,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -54,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -82,7 +85,8 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       Set<String> allSensors,
-      boolean isSeq)
+      boolean isSeq,
+      TSDataType targetDataType)
       throws IOException {
     long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -146,6 +150,8 @@ public class FileLoaderUtils {
           return null;
         }
       }
+
+      changeMetadataModified(timeSeriesMetadata, seriesPath.getSeriesType(), targetDataType);
       return timeSeriesMetadata;
     } finally {
       long costTime = System.nanoTime() - t1;
@@ -169,6 +175,21 @@ public class FileLoaderUtils {
     }
   }
 
+  private static void changeMetadataModified(TimeseriesMetadata timeseriesMetadata, TSDataType sourceDataType, TSDataType targetDataType) {
+    if (timeseriesMetadata == null) {
+      return;
+    }
+    if ((sourceDataType != targetDataType) && (targetDataType == TSDataType.STRING)) {
+      timeseriesMetadata.setModified(true);
+      timeseriesMetadata.setChunkMetadataList(timeseriesMetadata.getChunkMetadataList().stream()
+              .map(iChunkMetadata -> {
+                iChunkMetadata.setModified(true);
+                return (ChunkMetadata) iChunkMetadata;
+              })
+              .collect(Collectors.toList()));
+    }
+  }
+
   /**
    * Load AlignedTimeSeriesMetadata for aligned time series.
    *
@@ -183,7 +204,8 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      List<TSDataType> targetDataTypeList)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -193,7 +215,7 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows);
+                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows, targetDataTypeList);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -258,7 +280,8 @@ public class FileLoaderUtils {
       AlignedFullPath alignedPath,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      List<TSDataType> targetDataTypeList)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -301,6 +324,7 @@ public class FileLoaderUtils {
             new ArrayList<>(valueMeasurementList.size());
         // if all the queried aligned sensors does not exist, we will return null
         boolean exist = false;
+        int i = 0;
         for (String valueMeasurement : valueMeasurementList) {
           TimeseriesMetadata valueColumn =
               cache.get(
@@ -313,7 +337,11 @@ public class FileLoaderUtils {
                   isDebug,
                   context);
           exist = (exist || (valueColumn != null));
+          if (valueColumn != null) {
+            changeMetadataModified(valueColumn, valueColumn.getTsDataType(), targetDataTypeList.get(i));
+          }
           valueTimeSeriesMetadataList.add(valueColumn);
+          i++;
         }
         if (!ignoreAllNullRows || exist) {
           alignedTimeSeriesMetadata =
@@ -433,11 +461,16 @@ public class FileLoaderUtils {
    *     IOException will be thrown
    */
   public static List<IPageReader> loadPageReaderList(
-      IChunkMetadata chunkMetaData, Filter globalTimeFilter) throws IOException {
+      IChunkMetadata chunkMetaData, Filter globalTimeFilter, TSDataType targetDataType) throws IOException {
     checkArgument(chunkMetaData != null, "Can't init null chunkMeta");
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
+    if ((chunkMetaData.getDataType() != targetDataType) && (targetDataType == TSDataType.STRING)) {
+      return chunkReader.loadPageReaderList().stream().peek(iPageReader -> {
+        iPageReader.setModified(true);
+      }).collect(Collectors.toList());
+    }
     return chunkReader.loadPageReaderList();
   }
 

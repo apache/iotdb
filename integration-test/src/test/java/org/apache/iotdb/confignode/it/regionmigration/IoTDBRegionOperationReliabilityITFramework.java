@@ -276,6 +276,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
       try {
         awaitUntilSuccess(
             client,
+            selectedRegion,
             migrateRegionPredicate,
             Optional.of(destDataNode),
             Optional.of(originalDataNode));
@@ -563,6 +564,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
 
   protected static void awaitUntilSuccess(
       SyncConfigNodeIServiceClient client,
+      int selectedRegion,
       Predicate<TShowRegionResp> predicate,
       Optional<Integer> dataNodeExpectInRegionGroup,
       Optional<Integer> dataNodeExpectNotInRegionGroup) {
@@ -577,6 +579,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
               () -> {
                 try {
                   TShowRegionResp resp = clientRef.get().showRegion(new TShowRegionReq());
+                  lastTimeDataNodes.set(getRegionMap(resp.getRegionInfoList()).get(selectedRegion));
                   return predicate.test(resp);
                 } catch (TException e) {
                   clientRef.set(
