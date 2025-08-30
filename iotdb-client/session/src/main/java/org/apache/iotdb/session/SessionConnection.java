@@ -77,11 +77,11 @@ import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -120,6 +120,8 @@ public class SessionConnection {
 
   // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
   private int timeFactor = 1_000;
+
+  private final Set<TEndPoint> triedEndpoints = ConcurrentHashMap.newKeySet();
 
   // TestOnly
   public SessionConnection(String sqlDialect) {
@@ -1057,63 +1059,96 @@ public class SessionConnection {
     RpcUtils.verifySuccess(status);
   }
 
-  @SuppressWarnings({
-    "squid:S3776"
-  }) // ignore Cognitive Complexity of methods should not be too high
+  /**
+   * Attempt to reconnect using configured selection strategy
+   *
+   * @return true if reconnection successful, false otherwise
+   */
+  @SuppressWarnings({"squid:S3776"})
   private boolean reconnect() {
     boolean connectedSuccess = false;
-    SecureRandom random = new SecureRandom();
-    for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
-      if (transport != null) {
-        transport.close();
-        endPointList = availableNodes.get();
-        int currHostIndex = random.nextInt(endPointList.size());
-        int tryHostNum = 0;
-        for (int j = currHostIndex; j < endPointList.size(); j++) {
-          if (tryHostNum == endPointList.size()) {
-            break;
-          }
-          this.endPoint = endPointList.get(j);
-          if (j == endPointList.size() - 1) {
-            j = -1;
-          }
-          tryHostNum++;
-          try {
-            init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
-            connectedSuccess = true;
-          } catch (IoTDBConnectionException e) {
-            logger.warn("The current node may have been down {}, try next node", endPoint);
-            continue;
-          } catch (StatementExecutionException e) {
-            logger.warn("login in failed, because {}", e.getMessage());
-          }
-          break;
-        }
+
+    // Reset state for new reconnection attempt
+    triedEndpoints.clear();
+    session.getEndpointSelectionStrategy().reset();
+
+    List<TEndPoint> availableEndpoints = availableNodes.get();
+    if (availableEndpoints.isEmpty()) {
+      logger.warn("No available endpoints for reconnection");
+      return false;
+    }
+
+    logger.debug(
+        "Starting reconnection with {} strategy, available endpoints: {}",
+        session.getEndpointSelectionStrategy().getName(),
+        availableEndpoints);
+
+    for (int attempt = 1; attempt <= SessionConfig.RETRY_NUM; attempt++) {
+      if (Thread.currentThread().isInterrupted()) {
+        logger.warn("Reconnection interrupted");
+        break;
       }
-      if (connectedSuccess) {
-        // remove the broken end point
-        session.removeBrokenSessionConnection(this);
-        session.defaultEndPoint = this.endPoint;
-        session.setDefaultSessionConnection(this);
-        if (session.endPointToSessionConnection == null) {
-          session.endPointToSessionConnection = new ConcurrentHashMap<>();
-        }
-        session.endPointToSessionConnection.compute(
-            session.defaultEndPoint,
-            (k, v) -> {
-              if (v != null && v.transport != null && v.transport.isOpen()) {
-                try {
-                  v.close();
-                } catch (IoTDBConnectionException e) {
-                  logger.warn("close connection failed, {}", e.getMessage());
-                }
-              }
-              return this;
-            });
+
+      // Close previous transport if exists
+      if (transport != null && transport.isOpen()) {
+        transport.close();
+      }
+
+      // Select next endpoint using strategy
+      TEndPoint nextEndpoint =
+          session.getEndpointSelectionStrategy().selectNext(availableEndpoints, triedEndpoints);
+
+      if (nextEndpoint == null) {
+        logger.debug("No more untried endpoints available");
+        break;
+      }
+
+      // Mark endpoint as tried
+      triedEndpoints.add(nextEndpoint);
+      this.endPoint = nextEndpoint;
+
+      logger.debug("Reconnection attempt {}: trying endpoint {}", attempt, endPoint);
+
+      try {
+        init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+        connectedSuccess = true;
+        logger.info("Successfully reconnected to endpoint: {}", endPoint);
+        break;
+      } catch (IoTDBConnectionException e) {
+        logger.warn("Connection failed to endpoint {}: {}", endPoint, e.getMessage());
+      } catch (StatementExecutionException e) {
+        logger.warn("Authentication failed to endpoint {}: {}", endPoint, e.getMessage());
         break;
       }
     }
+
+    if (connectedSuccess) {
+      updateSessionConnection();
+    }
+
     return connectedSuccess;
+  }
+
+  /** Update session with new successful connection */
+  private void updateSessionConnection() {
+    session.removeBrokenSessionConnection(this);
+    session.defaultEndPoint = this.endPoint;
+    session.setDefaultSessionConnection(this);
+    if (session.endPointToSessionConnection == null) {
+      session.endPointToSessionConnection = new ConcurrentHashMap<>();
+    }
+    session.endPointToSessionConnection.compute(
+        session.defaultEndPoint,
+        (k, v) -> {
+          if (v != null && v.transport != null && v.transport.isOpen()) {
+            try {
+              v.close();
+            } catch (IoTDBConnectionException e) {
+              logger.warn("close connection failed, {}", e.getMessage());
+            }
+          }
+          return this;
+        });
   }
 
   protected void createSchemaTemplate(TSCreateSchemaTemplateReq request)
