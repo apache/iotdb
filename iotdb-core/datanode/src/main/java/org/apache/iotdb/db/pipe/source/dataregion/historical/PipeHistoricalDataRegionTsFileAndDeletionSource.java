@@ -853,7 +853,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         && PipeConsensusProcessor.isShouldReplicate(event)) {
       event.setReplicateIndexForIoTV2(
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
-      LOGGER.info(
+      LOGGER.debug(
           "[{}]Set {} for historical event {}", pipeName, event.getReplicateIndexForIoTV2(), event);
     }
 

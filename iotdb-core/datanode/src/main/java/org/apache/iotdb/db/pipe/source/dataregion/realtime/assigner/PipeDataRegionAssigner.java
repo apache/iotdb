@@ -180,7 +180,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 innerEvent.setReplicateIndexForIoTV2(
                     ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
                         extractor.getPipeName()));
-                LOGGER.info(
+                LOGGER.debug(
                     "[{}]Set {} for realtime event {}",
                     extractor.getPipeName(),
                     innerEvent.getReplicateIndexForIoTV2(),
