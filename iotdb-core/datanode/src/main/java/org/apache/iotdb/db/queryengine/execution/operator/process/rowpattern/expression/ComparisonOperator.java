@@ -140,6 +140,8 @@ public enum ComparisonOperator implements BinaryOperator {
       return new NormalizedValue(NormalizedValue.Type.BOOLEAN, obj);
     } else if (obj instanceof Binary) {
       return new NormalizedValue(NormalizedValue.Type.BINARY, obj);
+    } else if (obj instanceof byte[]) {
+      return new NormalizedValue(NormalizedValue.Type.BINARY, new Binary((byte[]) obj));
     } else {
       throw new SemanticException("Unsupported type: " + obj.getClass());
     }

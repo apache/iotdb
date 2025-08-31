@@ -23,10 +23,12 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
@@ -129,6 +131,20 @@ public abstract class Computation {
         // undefined pattern variable is 'true'
         BooleanLiteral constExpr = (BooleanLiteral) expression;
         return new ConstantComputation(constExpr.getValue());
+      } else if (expression instanceof BinaryLiteral) {
+        BinaryLiteral constExpr = (BinaryLiteral) expression;
+        return new ConstantComputation(constExpr.getValue());
+      } else if (expression instanceof GenericLiteral) {
+        GenericLiteral constExpr = (GenericLiteral) expression;
+        String type = constExpr.getType();
+
+        if ("DATE".equalsIgnoreCase(type)) {
+          String dateStr = constExpr.getValue();
+          int dateInt = Integer.parseInt(dateStr);
+          return new ConstantComputation(dateInt);
+        } else {
+          return new ConstantComputation(constExpr.getValue());
+        }
       } else {
         throw new SemanticException(
             "Unsupported expression type: " + expression.getClass().getName());
