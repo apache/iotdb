@@ -35,13 +35,13 @@ public class PlanCacheTest {
   @Test
   public void statementGeneralizationTest() {
 
-    String databaseName = "tetsdb";
+    String databaseName = "testdb";
     IClientSession clientSession = Mockito.mock(IClientSession.class);
     Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseName);
 
     SqlParser sqlParser = new SqlParser();
     String sql =
-        "select id + 1 from table1 where id > 10 and time=13289078 and deviceId = 'test' order by rank+1";
+        "select id + 1 from table1 where id > 10 and time = 13289078 and deviceId = 'test' order by rank + 1";
     long startTime = System.nanoTime();
     Statement originalStatement =
         sqlParser.createStatement(sql, ZoneId.systemDefault(), clientSession);

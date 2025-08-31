@@ -277,20 +277,28 @@ public class TableLogicalPlanner {
     }
   }
 
-  boolean enableCache = true;
+  // We should check if statement is PreparedStmt in enablePlanCache() method
+  public boolean enablePlanCache(Statement statement) {
+
+    if (!(statement instanceof Query)) {
+      return false;
+    }
+
+    // PreparedStatement
+
+    return true;
+  }
 
   public LogicalQueryPlan plan(final Analysis analysis) {
     long startTime = System.nanoTime();
     long totalStartTime = startTime;
     Statement statement = analysis.getStatement();
 
-    // Try to use plan cache
-    // We should check if statement gis Query in enablePlanCache() method\
     String cachedKey = "";
 
     List<Literal> literalReference = null;
 
-    if (enableCache && statement instanceof Query) {
+    if (enablePlanCache(statement)) {
       List<Literal> literalList = generalizeStatement((Query) statement);
       cachedKey = calculateCacheKey(statement, analysis);
       CachedValue cachedValue = PlanCacheManager.getInstance().getCachedValue(cachedKey);

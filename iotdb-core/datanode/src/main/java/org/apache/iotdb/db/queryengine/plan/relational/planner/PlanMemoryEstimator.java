@@ -111,8 +111,6 @@ public final class PlanMemoryEstimator {
     protected Long visitNode(Node node, Void ctx) {
       throw new UnsupportedOperationException(
           "[ExpressionSizer] Unhandled node type: " + node.getClass().getName());
-
-      // return node == null || !seen.mark(node) ? 0L : RamUsageEstimator.sizeOfObject(node);
     }
 
     @Override
@@ -232,8 +230,6 @@ public final class PlanMemoryEstimator {
       if (node == null) return 0L;
       throw new UnsupportedOperationException(
           "[PlanSizer] Unhandled plan type: " + node.getClass().getName());
-
-      // return sizeOfPlan(node);
     }
 
     @Override

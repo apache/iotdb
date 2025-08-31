@@ -207,8 +207,6 @@ public class CachedValue {
 
     @Override
     public PlanNode visitPlan(PlanNode node, ClonerContext context) {
-      // Default case, just return the node itself
-      // return node;
       throw new UnsupportedOperationException(
           "visitNode of Node {" + node.getClass() + "} is not supported in PlanNodeCloner");
     }
