@@ -811,7 +811,7 @@ public class SeriesScanUtil implements Accountable {
         if (!lazyMemVersionPageReader.hasNextBatch()) {
           firstPageReader = null;
         }
-        return tsBlock;
+        return tsBlock == null ? null : getTransferedDataTypeTsBlock(tsBlock);
       }
 
       TsBlock tsBlock;
