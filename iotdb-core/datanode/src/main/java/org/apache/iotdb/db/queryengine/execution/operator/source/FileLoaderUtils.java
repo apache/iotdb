@@ -36,8 +36,10 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.M
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -134,7 +136,8 @@ public class FileLoaderUtils {
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
 
-        timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
+        timeSeriesMetadata =
+            (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath, globalTimeFilter);
         if (timeSeriesMetadata != null) {
           timeSeriesMetadata.setChunkMetadataLoader(
               new MemChunkMetadataLoader(resource, seriesPath, context, globalTimeFilter));
@@ -175,17 +178,21 @@ public class FileLoaderUtils {
     }
   }
 
-  private static void changeMetadataModified(TimeseriesMetadata timeseriesMetadata, TSDataType sourceDataType, TSDataType targetDataType) {
+  private static void changeMetadataModified(
+      TimeseriesMetadata timeseriesMetadata, TSDataType sourceDataType, TSDataType targetDataType) {
     if (timeseriesMetadata == null) {
       return;
     }
-    if ((sourceDataType != targetDataType) && (targetDataType == TSDataType.STRING)) {
+    if (!SchemaUtils.isUsingSameColumn(sourceDataType, targetDataType)
+        && (targetDataType == TSDataType.STRING)) {
       timeseriesMetadata.setModified(true);
-      timeseriesMetadata.setChunkMetadataList(timeseriesMetadata.getChunkMetadataList().stream()
-              .map(iChunkMetadata -> {
-                iChunkMetadata.setModified(true);
-                return (ChunkMetadata) iChunkMetadata;
-              })
+      timeseriesMetadata.setChunkMetadataList(
+          timeseriesMetadata.getChunkMetadataList().stream()
+              .map(
+                  iChunkMetadata -> {
+                    iChunkMetadata.setModified(true);
+                    return (ChunkMetadata) iChunkMetadata;
+                  })
               .collect(Collectors.toList()));
     }
   }
@@ -215,11 +222,17 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows, targetDataTypeList);
+                resource,
+                alignedPath,
+                context,
+                globalTimeFilter,
+                ignoreAllNullRows,
+                targetDataTypeList);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
-            (AbstractAlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(alignedPath);
+            (AbstractAlignedTimeSeriesMetadata)
+                resource.getTimeSeriesMetadata(alignedPath, globalTimeFilter);
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new MemAlignedChunkMetadataLoader(
@@ -338,7 +351,8 @@ public class FileLoaderUtils {
                   context);
           exist = (exist || (valueColumn != null));
           if (valueColumn != null) {
-            changeMetadataModified(valueColumn, valueColumn.getTsDataType(), targetDataTypeList.get(i));
+            changeMetadataModified(
+                valueColumn, valueColumn.getTsDataType(), targetDataTypeList.get(i));
           }
           valueTimeSeriesMetadataList.add(valueColumn);
           i++;
@@ -461,17 +475,49 @@ public class FileLoaderUtils {
    *     IOException will be thrown
    */
   public static List<IPageReader> loadPageReaderList(
-      IChunkMetadata chunkMetaData, Filter globalTimeFilter, TSDataType targetDataType) throws IOException {
+      IChunkMetadata chunkMetaData,
+      Filter globalTimeFilter,
+      boolean isAligned,
+      List<TSDataType> targetDataTypeList)
+      throws IOException {
     checkArgument(chunkMetaData != null, "Can't init null chunkMeta");
 
-    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-    IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
-    if ((chunkMetaData.getDataType() != targetDataType) && (targetDataType == TSDataType.STRING)) {
-      return chunkReader.loadPageReaderList().stream().peek(iPageReader -> {
-        iPageReader.setModified(true);
-      }).collect(Collectors.toList());
+    IChunkReader chunkReader;
+    boolean isModified = false;
+    if (isAligned) {
+      AbstractAlignedChunkMetadata alignedChunkMetadata =
+          (AbstractAlignedChunkMetadata) chunkMetaData;
+      for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
+        if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+          if (!SchemaUtils.isUsingSameColumn(
+                  alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
+                  targetDataTypeList.get(i))
+              && (targetDataTypeList.get(i) == TSDataType.STRING)) {
+            isModified = true;
+            alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
+          }
+        }
+      }
+      IChunkLoader chunkLoader = alignedChunkMetadata.getChunkLoader();
+      chunkReader = chunkLoader.getChunkReader(alignedChunkMetadata, globalTimeFilter);
+    } else {
+      if (!SchemaUtils.isUsingSameColumn(chunkMetaData.getDataType(), targetDataTypeList.get(0))
+          && (targetDataTypeList.get(0) == TSDataType.STRING)) {
+        isModified = true;
+        chunkMetaData.setModified(true);
+      }
+      IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+      chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
     }
-    return chunkReader.loadPageReaderList();
+
+    return isModified
+        ? chunkReader.loadPageReaderList().stream()
+            .peek(
+                iPageReader -> {
+                  iPageReader.setModified(true);
+                })
+            .collect(Collectors.toList())
+        : chunkReader.loadPageReaderList();
   }
 
   /**

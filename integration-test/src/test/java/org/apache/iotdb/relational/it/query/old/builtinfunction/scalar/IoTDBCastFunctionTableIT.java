@@ -1338,6 +1338,7 @@ public class IoTDBCastFunctionTableIT {
 
   @Test
   public void testDateOutOfRange() {
+    DateTimeUtils.initTimestampPrecision();
     tableAssertTestFail(
         String.format(
             "select CAST((s1 + %d) AS TIMESTAMP) from dateType where time = 1",

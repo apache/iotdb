@@ -147,6 +147,7 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
+    ConfigurationFileUtils.updateAppliedProperties(properties, false);
     conf.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
 
     conf.setInternalAddress(
@@ -181,6 +182,10 @@ public class ConfigNodeDescriptor {
     conf.setSeriesPartitionExecutorClass(
         properties.getProperty(
             "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
+
+    conf.setDataPartitionAllocationStrategy(
+        properties.getProperty(
+            "data_partition_allocation_strategy", conf.getDataPartitionAllocationStrategy()));
 
     conf.setConfigNodeConsensusProtocolClass(
         properties.getProperty(
@@ -761,6 +766,7 @@ public class ConfigNodeDescriptor {
   }
 
   public void loadHotModifiedProps(TrimProperties properties) {
+    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
   }

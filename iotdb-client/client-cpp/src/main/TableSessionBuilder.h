@@ -65,6 +65,10 @@ public:
         AbstractSessionBuilder::database = database;
         return this;
     }
+    TableSessionBuilder* nodeUrls(const std::vector<string>& nodeUrls) {
+        AbstractSessionBuilder::nodeUrls = nodeUrls;
+        return this;
+    }
     TableSession* build() {
         sqlDialect = "table";
         Session* newSession = new Session(this);

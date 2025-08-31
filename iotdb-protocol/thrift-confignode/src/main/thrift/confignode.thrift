@@ -1704,6 +1704,9 @@ service IConfigNodeRPCService {
   /** Show content of configuration file */
   common.TShowConfigurationResp showConfiguration(1: i32 nodeId)
 
+  /** Show applied configurations by TsBlock */
+  common.TShowAppliedConfigurationsResp showAppliedConfigurations(1: i32 nodeId)
+
   /** Check and repair unsorted tsfile by compaction */
   common.TSStatus startRepairData()
 

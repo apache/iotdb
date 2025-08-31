@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -171,7 +172,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final PipeTaskMeta pipeTaskMeta)
       throws IllegalPathException {
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
-      final PipeParameters sourceParameters = pipeStaticMeta.getExtractorParameters();
+      final PipeParameters sourceParameters = pipeStaticMeta.getSourceParameters();
       final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
       final boolean needConstructDataRegionTask =
           StorageEngine.getInstance().getAllDataRegionIds().contains(dataRegionId)
@@ -240,7 +241,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // Check each pipe
     for (final PipeMeta pipeMetaFromCoordinator : pipeMetaListFromCoordinator) {
       if (SchemaRegionListeningFilter.parseListeningPlanTypeSet(
-              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters())
+              pipeMetaFromCoordinator.getStaticMeta().getSourceParameters())
           .isEmpty()) {
         continue;
       }
@@ -359,14 +360,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       // subscribed pipe, so the subscription needs to be manually marked as completed.
       if (!hasPipeTasks && PipeStaticMeta.isSubscriptionPipe(pipeName)) {
         final String topicName =
-            pipeMeta
-                .getStaticMeta()
-                .getConnectorParameters()
-                .getString(PipeSinkConstant.SINK_TOPIC_KEY);
+            pipeMeta.getStaticMeta().getSinkParameters().getString(PipeSinkConstant.SINK_TOPIC_KEY);
         final String consumerGroupId =
             pipeMeta
                 .getStaticMeta()
-                .getConnectorParameters()
+                .getSinkParameters()
                 .getString(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY);
         SubscriptionAgent.broker().updateCompletedTopicNames(consumerGroupId, topicName);
       }
@@ -430,14 +428,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         final String sourceModeValue =
             pipeMeta
                 .getStaticMeta()
-                .getExtractorParameters()
+                .getSourceParameters()
                 .getStringOrDefault(
                     Arrays.asList(
                         PipeSourceConstant.EXTRACTOR_MODE_KEY, PipeSourceConstant.SOURCE_MODE_KEY),
                     PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
-                        pipeMeta.getStaticMeta().getExtractorParameters())
+                        pipeMeta.getStaticMeta().getSourceParameters())
                     .getLeft()
                 && (sourceModeValue.equalsIgnoreCase(PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE)
                     || sourceModeValue.equalsIgnoreCase(
@@ -453,14 +451,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         logger.ifPresent(
             l ->
-                l.info(
-                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                PipeLogger.log(
+                    l::info,
+                    "Reporting pipe meta: %s, isCompleted: %s, remainingEventCount: %s",
                     pipeMeta.coreReportMessage(),
                     isCompleted,
-                    remainingEventAndTime.getLeft(),
-                    remainingEventAndTime.getRight()));
+                    remainingEventAndTime.getLeft()));
       }
-      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
+      logger.ifPresent(
+          l -> PipeLogger.log(l::info, "Reported %s pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
@@ -512,9 +511,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
-                        pipeMeta.getStaticMeta().getExtractorParameters())
+                        pipeMeta.getStaticMeta().getSourceParameters())
                     .getLeft()
-                && isSnapshotMode(pipeMeta.getStaticMeta().getExtractorParameters());
+                && isSnapshotMode(pipeMeta.getStaticMeta().getSourceParameters());
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
@@ -526,14 +525,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         logger.ifPresent(
             l ->
-                l.info(
-                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                PipeLogger.log(
+                    l::info,
+                    "Reporting pipe meta: %s, isCompleted: %s, remainingEventCount: %s",
                     pipeMeta.coreReportMessage(),
                     isCompleted,
-                    remainingEventAndTime.getLeft(),
-                    remainingEventAndTime.getRight()));
+                    remainingEventAndTime.getLeft()));
       }
-      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
+      logger.ifPresent(
+          l -> PipeLogger.log(l::info, "Reported %s pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
@@ -585,6 +585,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     } finally {
       releaseReadLock();
     }
+  }
+
+  public boolean isFullSync(final PipeParameters parameters) {
+    if (isSnapshotMode(parameters)) {
+      return false;
+    }
+
+    final boolean isHistoryEnable =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+    final boolean isRealtimeEnable =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
+            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
+
+    return isHistoryEnable && isRealtimeEnable;
   }
 
   private boolean isSnapshotMode(final PipeParameters parameters) {

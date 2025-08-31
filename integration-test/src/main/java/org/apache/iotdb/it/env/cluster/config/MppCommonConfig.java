@@ -104,8 +104,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    setProperty("encrypt_key_path", encryptKeyPath);
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    setProperty("enable_grant_option", String.valueOf(enableGrantOption));
     return this;
   }
 
@@ -388,6 +388,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    setProperty("data_partition_allocation_strategy", dataPartitionAllocationStrategy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     setProperty("series_partition_executor_class", seriesPartitionExecutorClass);
     return this;
@@ -529,6 +535,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
         "pipe_connector_request_slice_threshold_bytes",
         String.valueOf(pipeConnectorRequestSliceThresholdBytes));
 
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    setProperty("pipe_auto_split_full_enabled", String.valueOf(pipeAutoSplitFullEnabled));
     return this;
   }
 

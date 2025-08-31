@@ -91,16 +91,16 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         && pipeTaskMeta.getLeaderNodeId()
             == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()
         && !ConfigRegionListeningFilter.parseListeningPlanTypeSet(
-                pipeStaticMeta.getExtractorParameters())
+                pipeStaticMeta.getSourceParameters())
             .isEmpty()) {
       final PipeConfigNodeTask pipeTask =
           new PipeConfigNodeTask(
               new PipeConfigNodeTaskStage(
                   pipeStaticMeta.getPipeName(),
                   pipeStaticMeta.getCreationTime(),
-                  pipeStaticMeta.getExtractorParameters().getAttribute(),
+                  pipeStaticMeta.getSourceParameters().getAttribute(),
                   pipeStaticMeta.getProcessorParameters().getAttribute(),
-                  pipeStaticMeta.getConnectorParameters().getAttribute(),
+                  pipeStaticMeta.getSinkParameters().getAttribute(),
                   pipeTaskMeta));
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
@@ -111,11 +111,6 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
-  }
-
-  public void stopAllPipesWithCriticalException() {
-    super.stopAllPipesWithCriticalException(
-        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId());
   }
 
   @Override

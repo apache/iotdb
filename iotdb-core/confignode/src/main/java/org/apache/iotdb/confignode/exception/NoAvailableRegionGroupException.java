@@ -21,18 +21,22 @@ package org.apache.iotdb.confignode.exception;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
+import java.util.List;
+
 public class NoAvailableRegionGroupException extends ConfigNodeException {
 
-  private static final String SCHEMA_REGION_GROUP = "SchemaRegionGroup";
-  private static final String DATA_REGION_GROUP = "DataRegionGroup";
+  private static final String SCHEMA_REGION_GROUP = "SchemaRegionGroups";
+  private static final String DATA_REGION_GROUP = "DataRegionGroups";
 
-  public NoAvailableRegionGroupException(final TConsensusGroupType regionGroupType) {
+  public NoAvailableRegionGroupException(
+      final TConsensusGroupType regionGroupType, final List<String> databases) {
     super(
         String.format(
-            "There are no available %s RegionGroups currently, "
+            "There are no available %s for databases: %s currently, "
                 + "please use \"show cluster\" or \"show regions\" to check the cluster status",
             TConsensusGroupType.SchemaRegion.equals(regionGroupType)
                 ? SCHEMA_REGION_GROUP
-                : DATA_REGION_GROUP));
+                : DATA_REGION_GROUP,
+            databases));
   }
 }

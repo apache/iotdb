@@ -1059,7 +1059,8 @@ public class TsFileResource implements PersistentResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) throws IOException {
+  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath, Filter globalTimeFilter)
+      throws IOException {
     try {
       return pathToTimeSeriesMetadataMap.computeIfAbsent(
           seriesPath,
@@ -1069,7 +1070,8 @@ public class TsFileResource implements PersistentResource {
                 return ResourceByPathUtils.getResourceInstance(seriesPath)
                     .generateTimeSeriesMetadata(
                         pathToReadOnlyMemChunkMap.get(seriesPath),
-                        pathToChunkMetadataListMap.get(seriesPath));
+                        pathToChunkMetadataListMap.get(seriesPath),
+                        globalTimeFilter);
               } catch (IOException e) {
                 throw new UncheckedIOException(e);
               }
@@ -1387,7 +1389,8 @@ public class TsFileResource implements PersistentResource {
     }
 
     if (!maxProgressIndex.compareAndSet(null, progressIndex)) {
-      maxProgressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+      maxProgressIndex.updateAndGet(
+          index -> index.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
     }
   }
 

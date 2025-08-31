@@ -403,6 +403,9 @@ public class IoTDBConfig {
    */
   private int tvListSortThreshold = 0;
 
+  /** Enable streaming query mem chunk */
+  private boolean streamingQueryMemChunk = true;
+
   /** Enable inner space compaction for sequence files */
   private volatile boolean enableSeqSpaceCompaction = true;
 
@@ -1109,6 +1112,10 @@ public class IoTDBConfig {
   private long loadTabletConversionThresholdBytes = -1;
 
   private boolean loadActiveListeningEnable = true;
+
+  private long loadTableSchemaCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
+
+  private long loadMeasurementIdCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
 
   private String[] loadActiveListeningDirs =
       new String[] {
@@ -2171,6 +2178,14 @@ public class IoTDBConfig {
 
   public void setTVListSortThreshold(int tvListSortThreshold) {
     this.tvListSortThreshold = tvListSortThreshold;
+  }
+
+  public boolean isStreamingQueryMemChunk() {
+    return streamingQueryMemChunk;
+  }
+
+  public void setStreamingQueryMemChunk(boolean streamingQueryMemChunk) {
+    this.streamingQueryMemChunk = streamingQueryMemChunk;
   }
 
   public boolean isRpcThriftCompressionEnable() {
@@ -3993,6 +4008,22 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningEnable(boolean loadActiveListeningEnable) {
     this.loadActiveListeningEnable = loadActiveListeningEnable;
+  }
+
+  public long getLoadTableSchemaCacheSizeInBytes() {
+    return loadTableSchemaCacheSizeInBytes;
+  }
+
+  public void setLoadTableSchemaCacheSizeInBytes(long loadTableSchemaCacheSizeInBytes) {
+    this.loadTableSchemaCacheSizeInBytes = loadTableSchemaCacheSizeInBytes;
+  }
+
+  public long getLoadMeasurementIdCacheSizeInBytes() {
+    return loadMeasurementIdCacheSizeInBytes;
+  }
+
+  public void setLoadMeasurementIdCacheSizeInBytes(long loadMeasurementIdCacheSizeInBytes) {
+    this.loadMeasurementIdCacheSizeInBytes = loadMeasurementIdCacheSizeInBytes;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
