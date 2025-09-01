@@ -171,7 +171,7 @@ public abstract class AbstractOperatePipeProcedureV2
     super.releaseLock(configNodeProcedureEnv);
 
     if (pipeTaskInfo == null) {
-      LOGGER.debug("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
+      LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
     } else {
       LOGGER.debug("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
       if (this instanceof PipeMetaSyncProcedure) {
