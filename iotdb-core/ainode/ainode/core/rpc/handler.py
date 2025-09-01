@@ -21,8 +21,8 @@ from ainode.core.manager.cluster_manager import ClusterManager
 from ainode.core.manager.inference_manager import InferenceManager
 from ainode.core.manager.model_manager import ModelManager
 from ainode.core.rpc.status import get_status
-from ainode.thrift.ainode import IAINodeRPCService
-from ainode.thrift.ainode.ttypes import (
+from iotdb.thrift.ainode import IAINodeRPCService
+from iotdb.thrift.ainode.ttypes import (
     TAIHeartbeatReq,
     TAIHeartbeatResp,
     TDeleteModelReq,
@@ -35,7 +35,7 @@ from ainode.thrift.ainode.ttypes import (
     TShowModelsResp,
     TTrainingReq,
 )
-from ainode.thrift.common.ttypes import TSStatus
+from iotdb.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 

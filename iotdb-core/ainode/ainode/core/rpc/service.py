@@ -24,7 +24,7 @@ from thrift.transport import TSocket, TTransport
 from ainode.core.config import AINodeDescriptor
 from ainode.core.log import Logger
 from ainode.core.rpc.handler import AINodeRPCServiceHandler
-from ainode.thrift.ainode import IAINodeRPCService
+from iotdb.thrift.ainode import IAINodeRPCService
 
 logger = Logger()
 

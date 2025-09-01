@@ -28,13 +28,13 @@ from ainode.core.log import Logger
 from ainode.core.rpc.client import ClientManager
 from ainode.core.rpc.handler import AINodeRPCServiceHandler
 from ainode.core.rpc.service import AINodeRPCService
-from ainode.thrift.common.ttypes import (
+from iotdb.thrift.common.ttypes import (
     TAINodeConfiguration,
     TAINodeLocation,
     TEndPoint,
     TNodeResource,
 )
-from ainode.thrift.confignode.ttypes import TNodeVersionInfo
+from iotdb.thrift.confignode.ttypes import TNodeVersionInfo
 
 logger = Logger()
 

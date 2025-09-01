@@ -50,7 +50,7 @@ from ainode.core.constant import (
 from ainode.core.exception import BadNodeUrlError
 from ainode.core.log import Logger
 from ainode.core.util.decorator import singleton
-from ainode.thrift.common.ttypes import TEndPoint
+from iotdb.thrift.common.ttypes import TEndPoint
 
 logger = Logger()
 

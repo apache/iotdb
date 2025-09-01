@@ -31,14 +31,14 @@ from ainode.core.model.model_info import ModelInfo
 from ainode.core.model.model_storage import ModelStorage
 from ainode.core.rpc.status import get_status
 from ainode.core.util.decorator import singleton
-from ainode.thrift.ainode.ttypes import (
+from iotdb.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,
     TRegisterModelResp,
     TShowModelsReq,
     TShowModelsResp,
 )
-from ainode.thrift.common.ttypes import TSStatus
+from iotdb.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 

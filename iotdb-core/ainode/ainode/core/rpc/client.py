@@ -26,14 +26,14 @@ from ainode.core.constant import TSStatusCode
 from ainode.core.log import Logger
 from ainode.core.rpc.status import verify_success
 from ainode.core.util.decorator import singleton
-from ainode.thrift.common.ttypes import (
+from iotdb.thrift.common.ttypes import (
     TAINodeConfiguration,
     TAINodeLocation,
     TEndPoint,
     TSStatus,
 )
-from ainode.thrift.confignode import IConfigNodeRPCService
-from ainode.thrift.confignode.ttypes import (
+from iotdb.thrift.confignode import IConfigNodeRPCService
+from iotdb.thrift.confignode.ttypes import (
     TAINodeRegisterReq,
     TAINodeRemoveReq,
     TAINodeRestartReq,

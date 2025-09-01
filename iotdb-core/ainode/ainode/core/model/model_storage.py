@@ -58,8 +58,8 @@ from ainode.core.model.model_info import (
 )
 from ainode.core.model.uri_utils import get_model_register_strategy
 from ainode.core.util.lock import ModelLockPool
-from ainode.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
-from ainode.thrift.common.ttypes import TSStatus
+from iotdb.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
+from iotdb.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 

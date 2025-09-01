@@ -15,19 +15,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-from ainode.core.constant import TSStatusCode
-from ainode.core.log import Logger
-from iotdb.thrift.common.ttypes import TSStatus
-
-
-def get_status(status_code: TSStatusCode, message: str = None) -> TSStatus:
-    status = TSStatus(status_code.get_status_code())
-    status.message = message
-    return status
-
-
-def verify_success(status: TSStatus, err_msg: str) -> None:
-    if status.code != TSStatusCode.SUCCESS_STATUS.get_status_code():
-        Logger().warning(err_msg + ", error status is ", status)
-        raise RuntimeError(str(status.code) + ": " + status.message)

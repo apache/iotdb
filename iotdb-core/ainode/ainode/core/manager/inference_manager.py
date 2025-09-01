@@ -57,7 +57,7 @@ from ainode.core.model.timerxl.configuration_timer import TimerConfig
 from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
 from ainode.core.rpc.status import get_status
 from ainode.core.util.serde import convert_to_binary
-from ainode.thrift.ainode.ttypes import (
+from iotdb.thrift.ainode.ttypes import (
     TForecastReq,
     TForecastResp,
     TInferenceReq,

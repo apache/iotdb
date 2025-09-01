@@ -35,7 +35,7 @@ from ainode.core.model.uri_utils import (
     download_snapshot_from_hf,
 )
 from ainode.core.util.serde import get_data_type_byte_from_str
-from ainode.thrift.ainode.ttypes import TConfigs
+from iotdb.thrift.ainode.ttypes import TConfigs
 
 logger = Logger()
 
