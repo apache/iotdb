@@ -300,7 +300,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws IOException, InterruptedException, ProcedureException {
     if (pipeTaskInfo == null) {
-      LOGGER.warn(
+      LOGGER.debug(
           "ProcedureId {}: Pipe lock is not acquired, rollbackState({})'s execution will be skipped.",
           getProcId(),
           state);
