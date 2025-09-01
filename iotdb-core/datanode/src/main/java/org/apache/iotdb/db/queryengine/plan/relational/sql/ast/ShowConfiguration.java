@@ -17,33 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.single;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.it.env.MultiEnvFactory;
-import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
-import org.junit.After;
-import org.junit.Before;
+public class ShowConfiguration extends WrappedStatement {
 
-abstract class AbstractPipeSingleIT {
-
-  protected BaseEnv env;
-
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    env = MultiEnvFactory.getEnv(0);
-    env.getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
-    env.initClusterEnvironment();
+  public ShowConfiguration(Statement innerTreeStatement, MPPQueryContext context) {
+    super(innerTreeStatement, context);
   }
 
-  @After
-  public final void tearDown() {
-    env.cleanClusterEnvironment();
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowConfiguration(this, context);
   }
 }

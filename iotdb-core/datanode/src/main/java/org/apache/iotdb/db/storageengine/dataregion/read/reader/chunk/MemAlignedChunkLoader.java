@@ -20,46 +20,31 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 
-import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.read.common.Chunk;
-import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_ALIGNED_MEM;
 
 /** To read one aligned chunk from memory, and only used in iotdb server module. */
-public class MemAlignedChunkLoader implements IChunkLoader {
-  private final QueryContext context;
-  private final AlignedReadOnlyMemChunk chunk;
-
-  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
-      SeriesScanCostMetricSet.getInstance();
+public class MemAlignedChunkLoader extends MemChunkLoader {
 
   public MemAlignedChunkLoader(QueryContext context, AlignedReadOnlyMemChunk chunk) {
-    this.context = context;
-    this.chunk = chunk;
+    super(context, chunk);
   }
 
-  @Override
-  public Chunk loadChunk(ChunkMetadata chunkMetaData) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void close() {
-    // no resources need to close
+  public MemAlignedChunkLoader(
+      QueryContext context, AlignedReadOnlyMemChunk chunk, boolean streamingQueryMemChunk) {
+    super(context, chunk, streamingQueryMemChunk);
   }
 
   @Override
   public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter) {
     long startTime = System.nanoTime();
     try {
-      return new MemAlignedChunkReader(chunk, globalTimeFilter);
+      return new MemAlignedChunkReader((AlignedReadOnlyMemChunk) chunk, globalTimeFilter);
     } finally {
       long duration = System.nanoTime() - startTime;
       context.getQueryStatistics().getConstructAlignedChunkReadersMemCount().getAndAdd(1);

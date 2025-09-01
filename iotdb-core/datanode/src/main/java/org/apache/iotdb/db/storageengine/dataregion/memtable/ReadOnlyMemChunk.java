@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
@@ -38,6 +39,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
@@ -81,6 +83,10 @@ public class ReadOnlyMemChunk {
 
   protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
+  protected final int MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE = 10 * MAX_NUMBER_OF_POINTS_IN_PAGE;
+
+  protected final int MAX_NUMBER_OF_FAKE_PAGE = 100;
 
   protected ReadOnlyMemChunk(QueryContext context) {
     this.context = context;
@@ -133,18 +139,11 @@ public class ReadOnlyMemChunk {
     }
   }
 
-  public void initChunkMetaFromTvLists() {
+  public void initChunkMetaFromTvLists(Filter globalTimeFilter) {
     // create chunk statistics
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
-    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataType,
-            tvLists,
-            deletionList,
-            floatPrecision,
-            encoding,
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+    timeValuePairIterator = createMemPointIterator(Ordering.ASC, globalTimeFilter);
+    timeValuePairIterator.setStreamingQueryMemChunk(false);
     while (timeValuePairIterator.hasNextBatch()) {
       // statistics for current batch
       Statistics<? extends Serializable> pageStatistics = Statistics.getStatsByType(dataType);
@@ -214,6 +213,48 @@ public class ReadOnlyMemChunk {
     cachedMetaData = metaData;
   }
 
+  // To avoid loading too much data from disk when the time range is too large during query, we
+  // segment the data according to the time range and construct false statistics.
+  public void initChunkMetaFromTVListsWithFakeStatistics() {
+    long chunkStartTime = Long.MAX_VALUE;
+    long chunkEndTime = Long.MIN_VALUE;
+    long rowNum = 0;
+    for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
+      TVList tvList = entry.getKey();
+      chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
+      chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
+      rowNum += entry.getValue();
+    }
+    Statistics<? extends Serializable> chunkStatistics =
+        generateFakeStatistics(dataType, chunkStartTime, chunkEndTime);
+    cachedMetaData = new ChunkMetadata(measurementUid, dataType, null, null, 0, chunkStatistics);
+
+    int pageNum =
+        (int)
+            Math.min(
+                MAX_NUMBER_OF_FAKE_PAGE, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE));
+    long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
+    for (int i = 0; i < pageNum; i++) {
+      long pageStartTime = chunkStartTime + i * timeInterval;
+      long pageEndTime = (i == pageNum - 1) ? chunkEndTime : (pageStartTime + timeInterval - 1);
+      pageStatisticsList.add(generateFakeStatistics(dataType, pageStartTime, pageEndTime));
+    }
+
+    cachedMetaData.setChunkLoader(new MemChunkLoader(context, this, true));
+    cachedMetaData.setVersion(Long.MAX_VALUE);
+    // By setting Modified to true, we can prevent these fake statistics from being used.
+    cachedMetaData.setModified(true);
+  }
+
+  protected Statistics<? extends Serializable> generateFakeStatistics(
+      TSDataType dataType, long startTime, long endTime) {
+    Statistics<? extends Serializable> stats = Statistics.getStatsByType(dataType);
+    stats.setStartTime(startTime);
+    stats.setEndTime(endTime);
+    stats.setCount(1);
+    return stats;
+  }
+
   public TSDataType getDataType() {
     return dataType;
   }
@@ -256,6 +297,8 @@ public class ReadOnlyMemChunk {
         MemPointIteratorFactory.create(
             getDataType(),
             tvLists,
+            Ordering.ASC,
+            null,
             deletionList,
             floatPrecision,
             encoding,
@@ -333,5 +376,18 @@ public class ReadOnlyMemChunk {
 
   public MemPointIterator getMemPointIterator() {
     return timeValuePairIterator;
+  }
+
+  public MemPointIterator createMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
+    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
+    return MemPointIteratorFactory.create(
+        dataType,
+        tvLists,
+        scanOrder,
+        globalTimeFilter,
+        deletionList,
+        floatPrecision,
+        encoding,
+        MAX_NUMBER_OF_POINTS_IN_PAGE);
   }
 }

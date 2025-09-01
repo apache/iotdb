@@ -539,6 +539,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    setProperty("pipe_auto_split_full_enabled", String.valueOf(pipeAutoSplitFullEnabled));
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     setProperty("chunk_timeseriesmeta_free_memory_proportion", queryMemoryProportion);
     return this;

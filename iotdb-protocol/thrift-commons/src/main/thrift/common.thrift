@@ -307,6 +307,11 @@ struct TShowConfigurationResp {
   2: required string content
 }
 
+struct TShowAppliedConfigurationsResp {
+  1: required TSStatus status
+  2: optional map<string, string> data
+}
+
 // for AINode
 enum TrainingState {
   PENDING,
