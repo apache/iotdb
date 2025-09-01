@@ -120,6 +120,10 @@ public class ProcedureExecutor<Env> {
     recover();
   }
 
+  /***
+   * Filter out pipe procedures that do not need to re-acquire lock and re-execute when there are multiple locked pipe procedures during restore.
+   * @return non pipe procedures and one pipe procedure with max lock seq id (if there is.)
+   */
   private List<Procedure<Env>> filteredProcedureList(final List<Procedure<Env>> procedures) {
     List<Procedure<Env>> nonPipeOrLockedProcedures =
         procedures.stream()
@@ -128,23 +132,23 @@ public class ProcedureExecutor<Env> {
 
     List<AbstractOperatePipeProcedureV2> lockedPipeProcedures =
         procedures.stream()
-            .filter(AbstractOperatePipeProcedureV2.class::isInstance)
-            .filter(Procedure::isLockedWhenLoading)
+            .filter(p -> p instanceof AbstractOperatePipeProcedureV2 && p.isLockedWhenLoading())
             .map(AbstractOperatePipeProcedureV2.class::cast)
             .collect(Collectors.toList());
     Optional<Procedure<Env>> maxPipeProcedure =
         lockedPipeProcedures.stream()
             .max(Comparator.comparingLong(AbstractOperatePipeProcedureV2::getLockSeqId))
             .map(p -> (Procedure<Env>) p);
+
     if (lockedPipeProcedures.size() > 1) {
       LOG.warn(
           "[Procedure restore]Detected multiple locked pipe procedures in procedure executor {}, only keep last one {}",
           lockedPipeProcedures,
           maxPipeProcedure.get());
     }
-    List<Procedure<Env>> result = new ArrayList<>(nonPipeOrLockedProcedures);
-    maxPipeProcedure.ifPresent(result::add);
-    return result;
+
+    maxPipeProcedure.ifPresent(nonPipeOrLockedProcedures::add);
+    return nonPipeOrLockedProcedures;
   }
 
   private void recover() {
