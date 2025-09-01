@@ -63,45 +63,45 @@ public class AlignedTimeseriesSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    //    createTemplate();
-    createAlignedTimeseries();
-    createAlignedTimeseriesWithNullPartical();
-
-    insertAlignedRecord();
+    //    //    createTemplate();
+    //    createAlignedTimeseries();
+    //    createAlignedTimeseriesWithNullPartical();
+    //
+    //    insertAlignedRecord();
     //    insertAlignedRecords();
     //    insertAlignedRecordsOfOneDevice();
 
     //    insertAlignedStringRecord();
     //    insertAlignedStringRecords();
 
-    //    insertTabletWithAlignedTimeseriesMethod1();
+    insertTabletWithAlignedTimeseriesMethod1();
     //    insertTabletWithAlignedTimeseriesMethod2();
     //    insertNullableTabletWithAlignedTimeseries();
     //    insertTabletsWithAlignedTimeseries();
-    session.executeNonQueryStatement(FLUSH);
-    selectTest();
-    selectWithValueFilterTest();
-    selectWithLastTest();
-    selectWithLastTestWithoutValueFilter();
-    session.executeNonQueryStatement("delete from root.sg_1.d1.s1 where time <= 5");
-    System.out.println("execute sql delete from root.sg_1.d1.s1 where time <= 5");
-    selectTest();
-    selectWithValueFilterTest();
-    selectWithLastTest();
-    selectWithLastTestWithoutValueFilter();
-    session.executeNonQueryStatement("delete from root.sg_1.d1.s2 where time <= 3");
-    System.out.println("execute sql delete from root.sg_1.d1.s2 where time <= 3");
-
-    selectTest();
-    selectWithValueFilterTest();
-    selectWithLastTest();
-    selectWithLastTestWithoutValueFilter();
-    session.executeNonQueryStatement("delete from root.sg_1.d1.s1 where time <= 10");
-    System.out.println("execute sql delete from root.sg_1.d1.s1 where time <= 10");
-    selectTest();
-    selectWithValueFilterTest();
-    selectWithLastTest();
-    selectWithLastTestWithoutValueFilter();
+    //    session.executeNonQueryStatement(FLUSH);
+    //    selectTest();
+    //    selectWithValueFilterTest();
+    //    selectWithLastTest();
+    //    selectWithLastTestWithoutValueFilter();
+    //    session.executeNonQueryStatement("delete from root.sg_1.d1.s1 where time <= 5");
+    //    System.out.println("execute sql delete from root.sg_1.d1.s1 where time <= 5");
+    //    selectTest();
+    //    selectWithValueFilterTest();
+    //    selectWithLastTest();
+    //    selectWithLastTestWithoutValueFilter();
+    //    session.executeNonQueryStatement("delete from root.sg_1.d1.s2 where time <= 3");
+    //    System.out.println("execute sql delete from root.sg_1.d1.s2 where time <= 3");
+    //
+    //    selectTest();
+    //    selectWithValueFilterTest();
+    //    selectWithLastTest();
+    //    selectWithLastTestWithoutValueFilter();
+    //    session.executeNonQueryStatement("delete from root.sg_1.d1.s1 where time <= 10");
+    //    System.out.println("execute sql delete from root.sg_1.d1.s1 where time <= 10");
+    //    selectTest();
+    //    selectWithValueFilterTest();
+    //    selectWithLastTest();
+    //    selectWithLastTestWithoutValueFilter();
 
     //    selectWithValueFilterTest();
     //    selectWithGroupByTest();
@@ -347,7 +347,6 @@ public class AlignedTimeseriesSessionExample {
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
     long timestamp = 1;
@@ -357,8 +356,6 @@ public class AlignedTimeseriesSessionExample {
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
           schemaList.get(0).getMeasurementName(), rowIndex, new SecureRandom().nextLong());
-      tablet.addValue(
-          schemaList.get(1).getMeasurementName(), rowIndex, new SecureRandom().nextInt());
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertAlignedTablet(tablet, true);
@@ -372,7 +369,31 @@ public class AlignedTimeseriesSessionExample {
       tablet.reset();
     }
 
-    session.executeNonQueryStatement(FLUSH);
+    schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
+
+    tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    timestamp = 1;
+
+    for (long row = 1; row < 100; row++) {
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue(
+          schemaList.get(0).getMeasurementName(), rowIndex, new SecureRandom().nextInt());
+
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+        session.insertAlignedTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.getRowSize() != 0) {
+      session.insertAlignedTablet(tablet);
+      tablet.reset();
+    }
+
+    //    session.executeNonQueryStatement(FLUSH);
   }
 
   /** Method 2 for insert tablet with aligned timeseries */

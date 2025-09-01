@@ -867,14 +867,11 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   public long getTvListArrayMemCostIncrement1(
       List<String> insertingMeasurements, List<TSDataType> insertingTypes) {
     long size = 0;
-    List<BitMap> bitMaps = list.getBitMap();
+    List<List<BitMap>> bitMaps = list.getBitMaps();
     // value & bitmap array mem size
     for (int column = 0; column < dataTypes.size(); column++) {
-      TSDataType type = dataTypes.get(column);
-      if (type != null) {
-        if (bitMaps != null && bitMaps.get(column) != null) {
-          size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
-        }
+      if (bitMaps != null && bitMaps.get(column) != null) {
+        size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
       }
     }
     int newMeasurementCount = 0;

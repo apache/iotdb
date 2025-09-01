@@ -787,6 +787,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void addTVListRamCost(long cost) {
     this.tvListRamCost += cost;
+    System.out.println(tvListRamCost);
   }
 
   @Override

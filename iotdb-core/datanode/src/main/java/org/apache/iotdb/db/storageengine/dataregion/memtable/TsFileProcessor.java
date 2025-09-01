@@ -1065,6 +1065,14 @@ public class TsFileProcessor {
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
       int currentPointNum = alignedMemChunk.alignedListSize();
       int newPointNum = currentPointNum + incomingPointNum;
+      // calculate how many new arrays will be added after this insertion
+      int currentArrayCnt =
+          currentPointNum / PrimitiveArrayManager.ARRAY_SIZE
+              + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
+      int newArrayCnt =
+          newPointNum / PrimitiveArrayManager.ARRAY_SIZE
+              + (newPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
+      long acquireArray = newArrayCnt - currentArrayCnt;
       List<String> insertingMeasurements = new ArrayList<>();
       List<TSDataType> insertingTypes = new ArrayList<>();
       for (int i = 0; i < dataTypes.length; i++) {
@@ -1083,19 +1091,10 @@ public class TsFileProcessor {
         if (!alignedMemChunk.containsMeasurement(measurementIds[i])) {
           // add a new column in the TVList, the new column should be as long as existing ones
           memIncrements[0] +=
-              (currentPointNum / PrimitiveArrayManager.ARRAY_SIZE + 1)
+              newArrayCnt
                   * AlignedTVList.emptyValueListArrayMemCost();
         }
       }
-
-      // calculate how many new arrays will be added after this insertion
-      int currentArrayCnt =
-          currentPointNum / PrimitiveArrayManager.ARRAY_SIZE
-              + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
-      int newArrayCnt =
-          newPointNum / PrimitiveArrayManager.ARRAY_SIZE
-              + (newPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
-      long acquireArray = newArrayCnt - currentArrayCnt;
 
       if (acquireArray != 0) {
         // memory of extending the TVList
