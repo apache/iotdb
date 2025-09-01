@@ -112,7 +112,7 @@ public abstract class AbstractOperatePipeProcedureV2
     LOGGER.debug("ProcedureId {} try to acquire pipe lock.", getProcId());
     pipeTaskInfo = acquireLockInternal(configNodeProcedureEnv);
     if (pipeTaskInfo == null) {
-      LOGGER.debug("ProcedureId {} failed to acquire pipe lock.", getProcId());
+      LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
     } else {
       LOGGER.debug("ProcedureId {} acquired pipe lock.", getProcId());
     }
@@ -121,7 +121,7 @@ public abstract class AbstractOperatePipeProcedureV2
     switch (procedureLockState) {
       case LOCK_ACQUIRED:
         if (pipeTaskInfo == null) {
-          LOGGER.debug(
+          LOGGER.warn(
               "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
               getProcId());
         } else {
@@ -132,8 +132,7 @@ public abstract class AbstractOperatePipeProcedureV2
         break;
       case LOCK_EVENT_WAIT:
         if (pipeTaskInfo == null) {
-          LOGGER.debug(
-              "ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
+          LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
         } else {
           LOGGER.debug("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
           configNodeProcedureEnv
@@ -224,7 +223,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws InterruptedException {
     if (pipeTaskInfo == null) {
-      LOGGER.debug(
+      LOGGER.warn(
           "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",
           getProcId());
       return Flow.NO_MORE_STATE;
@@ -300,7 +299,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws IOException, InterruptedException, ProcedureException {
     if (pipeTaskInfo == null) {
-      LOGGER.debug(
+      LOGGER.warn(
           "ProcedureId {}: Pipe lock is not acquired, rollbackState({})'s execution will be skipped.",
           getProcId(),
           state);
