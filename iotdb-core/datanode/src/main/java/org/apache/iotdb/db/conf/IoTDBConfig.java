@@ -407,7 +407,7 @@ public class IoTDBConfig {
   private long seqTsFileSize = 0L;
 
   /** Whether to timed flush sequence tsfiles' memtables. */
-  private boolean enableTimedFlushSeqMemtable = false;
+  private boolean enableTimedFlushSeqMemtable = true;
 
   /**
    * If a memTable's last update time is older than current time minus this, the memtable will be
