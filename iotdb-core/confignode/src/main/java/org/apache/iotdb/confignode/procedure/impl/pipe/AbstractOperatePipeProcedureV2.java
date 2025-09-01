@@ -112,7 +112,7 @@ public abstract class AbstractOperatePipeProcedureV2
     LOGGER.debug("ProcedureId {} try to acquire pipe lock.", getProcId());
     pipeTaskInfo = acquireLockInternal(configNodeProcedureEnv);
     if (pipeTaskInfo == null) {
-      LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
+      LOGGER.debug("ProcedureId {} failed to acquire pipe lock.", getProcId());
     } else {
       LOGGER.debug("ProcedureId {} acquired pipe lock.", getProcId());
     }
@@ -121,7 +121,7 @@ public abstract class AbstractOperatePipeProcedureV2
     switch (procedureLockState) {
       case LOCK_ACQUIRED:
         if (pipeTaskInfo == null) {
-          LOGGER.warn(
+          LOGGER.debug(
               "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
               getProcId());
         } else {
@@ -132,7 +132,8 @@ public abstract class AbstractOperatePipeProcedureV2
         break;
       case LOCK_EVENT_WAIT:
         if (pipeTaskInfo == null) {
-          LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
+          LOGGER.debug(
+              "ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
         } else {
           LOGGER.debug("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
           configNodeProcedureEnv
@@ -171,9 +172,9 @@ public abstract class AbstractOperatePipeProcedureV2
     super.releaseLock(configNodeProcedureEnv);
 
     if (pipeTaskInfo == null) {
-      LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
+      LOGGER.debug("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
     } else {
-      LOGGER.info("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
+      LOGGER.debug("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
       if (this instanceof PipeMetaSyncProcedure) {
         configNodeProcedureEnv
             .getConfigManager()
