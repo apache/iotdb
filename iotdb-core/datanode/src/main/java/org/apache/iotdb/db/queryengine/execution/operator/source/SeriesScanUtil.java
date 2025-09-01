@@ -44,7 +44,9 @@ import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
@@ -81,6 +83,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -151,6 +154,8 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(TimeOrderUtils.class)
           + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
           + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
+
+  public static final Logger logger = LoggerFactory.getLogger(SeriesScanUtil.class);
 
   public SeriesScanUtil(
       IFullPath seriesPath,
@@ -305,6 +310,7 @@ public class SeriesScanUtil implements Accountable {
     checkState(firstTimeSeriesMetadata != null, "no first file");
 
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
+      //        || !firstTimeSeriesMetadata.isModified()) {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstTimeSeriesMetadata)
@@ -388,6 +394,7 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
+      //        || !firstChunkMetadata.isModified()) {
       return;
     }
 
@@ -430,6 +437,15 @@ public class SeriesScanUtil implements Accountable {
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
+        if (isAligned) {
+          SchemaUtils.changeAlignedMetadataModified(
+              (AbstractAlignedChunkMetadata) firstChunkMetadata,
+              firstChunkMetadata.getDataType(),
+              getTsDataTypeList());
+        } else {
+          SchemaUtils.changeMetadataModified(
+              firstChunkMetadata, firstChunkMetadata.getDataType(), dataType);
+        }
         if (firstChunkMetadata.equals(cachedChunkMetadata.peek())) {
           firstChunkMetadata = cachedChunkMetadata.poll();
           break;
@@ -457,13 +473,46 @@ public class SeriesScanUtil implements Accountable {
 
     if (init && firstChunkMetadata == null && !cachedChunkMetadata.isEmpty()) {
       firstChunkMetadata = cachedChunkMetadata.poll();
+      if (isAligned) {
+        SchemaUtils.changeAlignedMetadataModified(
+            (AbstractAlignedChunkMetadata) firstChunkMetadata,
+            firstChunkMetadata.getDataType(),
+            getTsDataTypeList());
+      } else {
+        SchemaUtils.changeMetadataModified(
+            firstChunkMetadata, firstChunkMetadata.getDataType(), dataType);
+      }
     }
   }
 
   protected void unpackOneTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata) {
     List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
-    chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
+    chunkMetadataList.forEach(
+        chunkMetadata -> {
+          if (chunkMetadata instanceof AbstractAlignedChunkMetadata) {
+            AbstractAlignedChunkMetadata alignedChunkMetadata =
+                (AbstractAlignedChunkMetadata) chunkMetadata;
+            for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
+              if (!SchemaUtils.isUsingSameColumn(
+                      alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
+                      getTsDataTypeList().get(i))
+                  && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
+                      .contains(getTsDataTypeList().get(i))) {
+                alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
+              }
+            }
+            chunkMetadata = alignedChunkMetadata;
+          } else if (chunkMetadata instanceof ChunkMetadata) {
+            if (!SchemaUtils.isUsingSameColumn(
+                    chunkMetadata.getDataType(), getTsDataTypeList().get(0))
+                && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
+                    .contains(getTsDataTypeList().get(0))) {
+              chunkMetadata.setModified(true);
+            }
+          }
+          chunkMetadata.setSeq(timeSeriesMetadata.isSeq());
+        });
 
     cachedChunkMetadata.addAll(chunkMetadataList);
   }
@@ -478,6 +527,7 @@ public class SeriesScanUtil implements Accountable {
     checkState(firstChunkMetadata != null, "no first chunk");
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
+      //        || !firstChunkMetadata.isModified()) {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstChunkMetadata)
@@ -681,6 +731,10 @@ public class SeriesScanUtil implements Accountable {
                       pageReader,
                       false)));
     }
+
+    for (IPageReader pageReader : pageReaderList) {
+      logger.info("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
+    }
   }
 
   private void unpackOneFakeMemChunkMetaData(
@@ -750,6 +804,8 @@ public class SeriesScanUtil implements Accountable {
       return false;
     }
     if (currentPageOverlapped() || firstPageReader.isModified()) {
+      //    if (currentPageOverlapped() || firstPageReader.isModified() ||
+      // !firstPageReader.isModified()) {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstPageReader.getPageReader())
@@ -1295,6 +1351,8 @@ public class SeriesScanUtil implements Accountable {
 
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
+      //    if (firstPageReader == null || firstPageReader.isModified() ||
+      // !firstPageReader.isModified()) {
       return;
     }
 
@@ -1542,6 +1600,11 @@ public class SeriesScanUtil implements Accountable {
         // this page after unpacking must be the first page
         if (firstPageReader.equals(getFirstPageReaderFromCachedReaders())) {
           this.firstPageReader = firstPageReader;
+          if (isAligned) {
+
+          } else {
+
+          }
           if (!seqPageReaders.isEmpty() && firstPageReader.equals(seqPageReaders.get(0))) {
             seqPageReaders.remove(0);
             break;
@@ -1619,7 +1682,7 @@ public class SeriesScanUtil implements Accountable {
   private TsBlock nextOverlappedPage() throws IOException {
     if (hasCachedNextOverlappedPage || hasNextOverlappedPage()) {
       hasCachedNextOverlappedPage = false;
-      return cachedTsBlock;
+      return getTransferedDataTypeTsBlock(cachedTsBlock);
     }
     throw new IOException("No more batch data");
   }
@@ -1707,6 +1770,7 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
+      //        || !firstTimeSeriesMetadata.isModified()) {
       return;
     }
 

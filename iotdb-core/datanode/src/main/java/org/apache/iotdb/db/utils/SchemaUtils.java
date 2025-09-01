@@ -26,19 +26,28 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
 public class SchemaUtils {
 
   private static final Set<Pair<TSDataType, TSDataType>> SAME_TYPE_PAIRS;
+  public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
   static {
     SAME_TYPE_PAIRS = new HashSet<>();
@@ -290,5 +299,167 @@ public class SchemaUtils {
       return true;
     }
     return SAME_TYPE_PAIRS.contains(Pair.of(originalDataType, dataType));
+  }
+
+  public static void changeMetadataModified(
+      TimeseriesMetadata timeseriesMetadata, TSDataType targetDataType) {
+    if (timeseriesMetadata == null) {
+      return;
+    }
+    //    if (Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+    if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
+        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+      timeseriesMetadata.setModified(true);
+      if (timeseriesMetadata.getChunkMetadataList() != null) {
+        timeseriesMetadata.setChunkMetadataList(
+            timeseriesMetadata.getChunkMetadataList().stream()
+                .map(
+                    iChunkMetadata -> {
+                      iChunkMetadata.setModified(true);
+                      return (ChunkMetadata) iChunkMetadata;
+                    })
+                .collect(Collectors.toList()));
+        if (timeseriesMetadata.getChunkMetadataList() != null) {
+          timeseriesMetadata
+              .getChunkMetadataList()
+              .forEach(
+                  iChunkMetadata ->
+                      logger.info(
+                          "[SchemaUtils] iChunkMetadata.isModified() is {}, test update",
+                          iChunkMetadata.isModified()));
+        }
+      }
+    }
+
+    logger.info(
+        "[SchemaUtils changeMetadataModified] timeseriesMetadata.isModified() is {}, sourceDataType is {}, targetDataType is {}",
+        timeseriesMetadata.isModified(),
+        timeseriesMetadata.getTsDataType(),
+        targetDataType);
+    if (timeseriesMetadata.getChunkMetadataList() != null) {
+      timeseriesMetadata
+          .getChunkMetadataList()
+          .forEach(
+              iChunkMetadata ->
+                  logger.info(
+                      "[SchemaUtils] iChunkMetadata.isModified() is {}",
+                      iChunkMetadata.isModified()));
+    }
+  }
+
+  public static void changeAlignedMetadataModified(
+      AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
+      List<TSDataType> targetDataTypeList) {
+    if (alignedTimeSeriesMetadata == null) {
+      return;
+    }
+
+    int i = 0;
+    for (TimeseriesMetadata timeseriesMetadata :
+        alignedTimeSeriesMetadata.getValueTimeseriesMetadataList()) {
+      if (!SchemaUtils.isUsingSameColumn(
+              timeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))
+          && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
+              .contains(targetDataTypeList.get(i))) {
+        timeseriesMetadata.setModified(true);
+        alignedTimeSeriesMetadata.setModified(true);
+        if (timeseriesMetadata.getChunkMetadataList() != null) {
+          timeseriesMetadata.setChunkMetadataList(
+              timeseriesMetadata.getChunkMetadataList().stream()
+                  .map(
+                      iChunkMetadata -> {
+                        iChunkMetadata.setModified(true);
+                        return (ChunkMetadata) iChunkMetadata;
+                      })
+                  .collect(Collectors.toList()));
+        }
+      }
+      i++;
+    }
+
+    for (TimeseriesMetadata timeseriesMetadata :
+        alignedTimeSeriesMetadata.getValueTimeseriesMetadataList()) {
+      logger.info(
+          "[SchemaUtils] timeseriesMetadata.isModified() is {}", timeseriesMetadata.isModified());
+      if (timeseriesMetadata.getChunkMetadataList() != null) {
+        timeseriesMetadata
+            .getChunkMetadataList()
+            .forEach(
+                iChunkMetadata ->
+                    logger.info(
+                        "[SchemaUtils changeAlignedMetadataModified] iChunkMetadata.isModified() is {}",
+                        iChunkMetadata.isModified()));
+      }
+    }
+  }
+
+  public static void changeAlignedMetadataModified(
+      TimeseriesMetadata timeseriesMetadata, TSDataType targetDataType) {
+    if (timeseriesMetadata == null) {
+      return;
+    }
+
+    if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
+        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+      timeseriesMetadata.setModified(true);
+      if (timeseriesMetadata.getChunkMetadataList() != null) {
+        timeseriesMetadata.setChunkMetadataList(
+            timeseriesMetadata.getChunkMetadataList().stream()
+                .map(
+                    iChunkMetadata -> {
+                      iChunkMetadata.setModified(true);
+                      return (ChunkMetadata) iChunkMetadata;
+                    })
+                .collect(Collectors.toList()));
+      }
+    }
+
+    logger.info(
+        "[SchemaUtils] timeseriesMetadata.isModified() is {}", timeseriesMetadata.isModified());
+    if (timeseriesMetadata.getChunkMetadataList() != null) {
+      timeseriesMetadata
+          .getChunkMetadataList()
+          .forEach(
+              iChunkMetadata ->
+                  logger.info(
+                      "[SchemaUtils changeAlignedMetadataModified 383] iChunkMetadata.isModified() is {}",
+                      iChunkMetadata.isModified()));
+    }
+  }
+
+  public static void changeMetadataModified(
+      IChunkMetadata chunkMetadata, TSDataType sourceDataType, TSDataType targetDataType) {
+    if (chunkMetadata == null) {
+      return;
+    }
+    if (!SchemaUtils.isUsingSameColumn(sourceDataType, targetDataType)
+        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+      chunkMetadata.setModified(true);
+    }
+  }
+
+  public static void changeAlignedMetadataModified(
+      AbstractAlignedChunkMetadata chunkMetadata,
+      TSDataType sourceDataType,
+      List<TSDataType> targetDataTypeList) {
+    if (chunkMetadata == null) {
+      return;
+    }
+    int i = 0;
+    for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
+      if (!SchemaUtils.isUsingSameColumn(sourceDataType, targetDataTypeList.get(i))
+          && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
+              .contains(targetDataTypeList.get(i))) {
+        iChunkMetadata.setModified(true);
+        chunkMetadata.setModified(true);
+      }
+      i++;
+    }
+
+    for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
+      logger.info(
+          "[SchemaUtils changeAlignedMetadataModified 428] iChunkMetadata.isModified() is {}",
+          iChunkMetadata.isModified());
+    }
   }
 }
