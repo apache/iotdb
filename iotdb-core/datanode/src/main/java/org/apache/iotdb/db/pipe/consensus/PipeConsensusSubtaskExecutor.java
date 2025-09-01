@@ -38,10 +38,15 @@ public class PipeConsensusSubtaskExecutor extends PipeSinkSubtaskExecutor {
                 // schema regions also take up off-heap memory. So in fact, the soft cap of
                 // data region will be smaller than what is calculated here, but that's okay, we can
                 // set the core size quota of the Executor pool a little bit higher slightly
-                IoTDBDescriptor.getInstance()
-                        .getMemoryConfig()
-                        .getDirectBufferMemoryManager()
-                        .getTotalMemorySizeInBytes()
+                Math.max(
+                        IoTDBDescriptor.getInstance()
+                            .getMemoryConfig()
+                            .getDirectBufferMemoryManager()
+                            .getTotalMemorySizeInBytes(),
+                        IoTDBDescriptor.getInstance()
+                            .getMemoryConfig()
+                            .getOffHeapMemoryManager()
+                            .getTotalMemorySizeInBytes())
                     / DataRegion.getAcquireDirectBufferMemCost()),
         ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL.getName());
   }
