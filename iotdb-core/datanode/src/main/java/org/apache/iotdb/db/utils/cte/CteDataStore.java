@@ -19,7 +19,9 @@
  *
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
+package org.apache.iotdb.db.utils.cte;
+
+import org.apache.iotdb.commons.exception.IoTDBException;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -27,17 +29,29 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CteDataStore {
+  // 1MB buffer size
+  private static final long CTE_BUFFER_SIZE = 1024 * 1024L;
+
   private final List<TsBlock> cachedData;
   private long cachedBytes;
+  private final DiskSpiller diskSpiller;
 
-  public CteDataStore() {
+  public CteDataStore(DiskSpiller diskSpiller) {
     this.cachedData = new ArrayList<>();
     this.cachedBytes = 0L;
+    this.diskSpiller = diskSpiller;
   }
 
-  public void addTsBlock(TsBlock tsBlock) {
+  public void addTsBlock(TsBlock tsBlock) throws IoTDBException {
+    long bytesSize = tsBlock.getRetainedSizeInBytes();
+    if (bytesSize + cachedBytes < CTE_BUFFER_SIZE) {
+      cachedBytes += bytesSize;
+    } else {
+      spill();
+      cachedData.clear();
+      cachedBytes = bytesSize;
+    }
     cachedData.add(tsBlock);
-    cachedBytes += tsBlock.getRetainedSizeInBytes();
   }
 
   public void clear() {
@@ -45,14 +59,20 @@ public class CteDataStore {
     cachedBytes = 0L;
   }
 
+  public DiskSpiller getDiskSpiller() {
+    return diskSpiller;
+  }
+
   public List<TsBlock> getCachedData() {
     return cachedData;
   }
 
-  public TsBlock getTsBlock(int index) {
-    if (cachedData.isEmpty()) {
-      return null;
-    }
-    return cachedData.get(index);
+  public long getCachedBytes() {
+    return cachedBytes;
+  }
+
+  private void spill() throws IoTDBException {
+    // TODO: allocate memory
+    diskSpiller.spill(cachedData);
   }
 }
