@@ -1456,7 +1456,7 @@ public abstract class AlignedTVList extends TVList {
         }
 
         // valueColumnsDeletionList is set when AlignedTVList iterator is created by
-        // MemPointIterator.single method. Otherwise, all-null rows is checked by
+        // MemPointIterator.single method. Otherwise, it is checked by
         // MergeSortMultiAlignedTVListIterator or OrderedMultiAlignedTVListIterator.
         BitMap bitMap = null;
         time = getTime(getScanOrderIndex(index));
