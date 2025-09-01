@@ -68,18 +68,29 @@ public class IoTDBAlignedMemQueryIT {
         assertEquals(1, cnt);
       }
 
-      statement.execute("flush");
+      statement.execute("insert into root.vehicle.d1(time,s0,s1) aligned values (1,1,1)");
+      statement.execute("insert into root.vehicle.d1(time,s0) aligned values (2,2)");
+      statement.execute("insert into root.vehicle.d1(time,s1) aligned values (3,3)");
 
-      statement.execute("insert into root.vehicle.d0(time,s0) aligned values (10,310)");
-      statement.execute("insert into root.vehicle.d0(time,s3) aligned values (10,'text')");
-      statement.execute("insert into root.vehicle.d0(time,s4) aligned values (10,true)");
-
-      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d1")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
         }
-        assertEquals(1, cnt);
+        assertEquals(2, cnt);
+      }
+      statement.execute("flush");
+
+      statement.execute("insert into root.vehicle.d1(time,s0,s1) aligned values (1,1,1)");
+      statement.execute("insert into root.vehicle.d1(time,s0) aligned values (2,2)");
+      statement.execute("insert into root.vehicle.d1(time,s1) aligned values (3,3)");
+
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d1")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(2, cnt);
       }
     }
   }
