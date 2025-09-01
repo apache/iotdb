@@ -224,7 +224,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws InterruptedException {
     if (pipeTaskInfo == null) {
-      LOGGER.warn(
+      LOGGER.debug(
           "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",
           getProcId());
       return Flow.NO_MORE_STATE;
