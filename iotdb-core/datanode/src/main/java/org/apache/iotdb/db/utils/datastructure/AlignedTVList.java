@@ -1762,7 +1762,7 @@ public abstract class AlignedTVList extends TVList {
             continue;
           }
         }
-        // For DESC traversal, we previously set some -1. If these values are still -1 in the end,
+        // We previously set some -1. If these values are still -1 in the end,
         // it means that each index is invalid. At this time, we can use any one at random.
         if (!scanOrder.isAscending()) {
           for (int i = 0; i < selectedIndices.length; i++) {
