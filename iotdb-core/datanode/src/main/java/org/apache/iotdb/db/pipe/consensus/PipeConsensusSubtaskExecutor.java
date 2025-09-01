@@ -40,7 +40,7 @@ public class PipeConsensusSubtaskExecutor extends PipeSinkSubtaskExecutor {
                 // set the core size quota of the Executor pool a little bit higher slightly
                 IoTDBDescriptor.getInstance()
                         .getMemoryConfig()
-                        .getOffHeapMemoryManager()
+                        .getDirectBufferMemoryManager()
                         .getTotalMemorySizeInBytes()
                     / DataRegion.getAcquireDirectBufferMemCost()),
         ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL.getName());
