@@ -35,12 +35,6 @@ import static org.junit.Assert.assertEquals;
 
 public class IoTDBAlignedMemQueryIT {
 
-  private static String[] creationSqls =
-      new String[] {
-        "CREATE DATABASE root.vehicle",
-        "CREATE ALIGNED TIMESERIES root.vehicle.d0(s0 INT32 ENCODING=RLE, s1 INT64 ENCODING=RLE, s2 FLOAT ENCODING=RLE, s3 TEXT ENCODING=PLAIN, s4 BOOLEAN ENCODING=PLAIN)",
-      };
-
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
@@ -48,7 +42,6 @@ public class IoTDBAlignedMemQueryIT {
         .getConfig()
         .getCommonConfig()
         .setPartitionInterval(1000)
-        // Adjust memstable threshold size to make it flush automatically
         .setMemtableSizeThreshold(10000);
     EnvFactory.getEnv().initClusterEnvironment();
   }
