@@ -32,7 +32,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PipeTsFileResourceSegmentLock {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceSegmentLock.class);
-  private static final int SEGMENT_LOCK_DEFAULT_SIZE = 32;
+  private static final int SEGMENT_LOCK_MIN_SIZE = 32;
+  private static final int SEGMENT_LOCK_MAX_SIZE = 128;
   private volatile ReentrantLock[] locks;
 
   private void initIfNecessary() {
@@ -42,11 +43,16 @@ public class PipeTsFileResourceSegmentLock {
         if (locks == null) {
           if (lockSegmentSize <= 0) {
             try {
-              lockSegmentSize = StorageEngine.getInstance().getAllDataRegionIds().size();
+              lockSegmentSize =
+                  Math.min(
+                      Math.max(
+                          StorageEngine.getInstance().getAllDataRegionIds().size(),
+                          SEGMENT_LOCK_MIN_SIZE),
+                      SEGMENT_LOCK_MAX_SIZE);
             } catch (final Exception e) {
               LOGGER.warn(
                   "Cannot get data region ids, use default lock segment size: {}", lockSegmentSize);
-              lockSegmentSize = SEGMENT_LOCK_DEFAULT_SIZE;
+              lockSegmentSize = SEGMENT_LOCK_MIN_SIZE;
             }
           }
 
