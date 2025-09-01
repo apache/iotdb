@@ -1850,6 +1850,10 @@ public class CompactionSchedulerTest {
     IDeviceID device = new StringArrayDeviceID("root.test.d1");
     resource1.updateStartTime(device, 1);
     resource1.updateStartTime(device, 2);
+    File dir = resource1.getTsFile().getParentFile();
+    if (!dir.exists()) {
+      dir.mkdirs();
+    }
     resource1.serialize();
     resource1.degradeTimeIndex();
 
