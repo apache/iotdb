@@ -21,43 +21,74 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.CteDataStore;
+import org.apache.iotdb.db.utils.cte.CteDataReader;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
+import org.apache.iotdb.db.utils.cte.MemoryReader;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CteScanOperator extends AbstractSourceOperator {
+  private static final Logger logger = LoggerFactory.getLogger(CteScanOperator.class);
+
   private final CteDataStore dataStore;
-  private final int totalTsBlockNum;
-  private int tsBlockIndex;
+  private List<CteDataReader> dataReaders;
+  private int readerIndex;
 
   public CteScanOperator(
       OperatorContext operatorContext, PlanNodeId sourceId, CteDataStore dataStore) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.dataStore = dataStore;
-    this.tsBlockIndex = 0;
-    this.totalTsBlockNum = dataStore.getCachedData().size();
   }
 
   @Override
   public TsBlock next() throws Exception {
-    return dataStore.getTsBlock(tsBlockIndex++);
+    if (dataReaders == null || readerIndex >= dataReaders.size()) {
+      return null;
+    }
+    return dataReaders.get(readerIndex).next();
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    return tsBlockIndex < totalTsBlockNum;
+    if (dataReaders == null) {
+      prepareReaders();
+    }
+    while (readerIndex < dataReaders.size()) {
+      if (dataReaders.get(readerIndex).hasNext()) {
+        return true;
+      } else {
+        readerIndex++;
+      }
+    }
+    return false;
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    try {
+      if (dataReaders != null) {
+        for (CteDataReader reader : dataReaders) {
+          reader.close();
+        }
+      }
+    } catch (Exception e) {
+      logger.error("Fail to close fileChannel", e);
+    }
+  }
 
   @Override
   public boolean isFinished() throws Exception {
-    return false;
+    return !hasNextWithTimer();
   }
 
   @Override
@@ -78,5 +109,16 @@ public class CteScanOperator extends AbstractSourceOperator {
   @Override
   public long ramBytesUsed() {
     return 0;
+  }
+
+  private void prepareReaders() throws IoTDBException {
+    if (dataReaders != null) {
+      return;
+    }
+    dataReaders = new ArrayList<>();
+    dataReaders.addAll(dataStore.getDiskSpiller().getReaders());
+    if (dataStore.getCachedBytes() != 0) {
+      dataReaders.add(new MemoryReader(dataStore.getCachedData()));
+    }
   }
 }

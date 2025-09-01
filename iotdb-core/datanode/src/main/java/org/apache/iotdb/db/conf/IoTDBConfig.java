@@ -319,6 +319,14 @@ public class IoTDBConfig {
   private String sortTmpDir =
       IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
+  /** temp result directory for cte */
+  private String cteTmpDir =
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
+          + File.separator
+          + IoTDBConstant.CTE_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.TMP_FOLDER_NAME;
+
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
 
@@ -4088,6 +4096,10 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public String getCteTmpDir() {
+    return cteTmpDir;
   }
 
   public String getObjectStorageBucket() {
