@@ -23,19 +23,22 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.CteDataStore;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
+import org.apache.iotdb.db.utils.cte.DiskSpiller;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -49,18 +52,23 @@ public class CteMaterializer {
 
   public static void materializeCTE(Analysis analysis, MPPQueryContext context) {
     Set<Query> materializedQueries = new HashSet<>();
-    for (Query query : analysis.getNamedQueries()) {
-      if (query.isMaterialized() && !materializedQueries.contains(query)) {
-        CteDataStore dataStore = fetchCteQueryResult(query, context);
-        if (dataStore != null) {
-          analysis.addCteDataStore(query, dataStore);
-          materializedQueries.add(query);
-        }
-      }
-    }
+    analysis
+        .getNamedQueries()
+        .forEach(
+            (tableRef, query) -> {
+              if (query.isMaterialized() && !materializedQueries.contains(query)) {
+                CteDataStore dataStore =
+                    fetchCteQueryResult(tableRef.getNode().getName().toString(), query, context);
+                if (dataStore != null) {
+                  analysis.addCteDataStore(query, dataStore);
+                  materializedQueries.add(query);
+                }
+              }
+            });
   }
 
-  public static CteDataStore fetchCteQueryResult(Query query, MPPQueryContext context) {
+  public static CteDataStore fetchCteQueryResult(
+      String cteName, Query query, MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     try {
@@ -80,7 +88,13 @@ public class CteMaterializer {
         return null;
       }
 
-      CteDataStore cteDataStore = new CteDataStore();
+      String folderPath =
+          IoTDBDescriptor.getInstance().getConfig().getCteTmpDir()
+              + File.separator
+              + queryId
+              + File.separator;
+      CteDataStore cteDataStore =
+          new CteDataStore(new DiskSpiller(folderPath, folderPath + cteName));
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {
