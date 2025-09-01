@@ -113,7 +113,8 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public ArrayDeviceTimeIndex deserialize(InputStream inputStream) throws IOException {
+  public ArrayDeviceTimeIndex deserialize(
+      InputStream inputStream, IDeviceID.Deserializer deserializer) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
 
     startTimes = new long[deviceNum];
@@ -127,7 +128,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      IDeviceID deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(inputStream);
+      IDeviceID deviceID = deserializer.deserializeFrom(inputStream);
       int index = ReadWriteIOUtils.readInt(inputStream);
       deviceToIndex.put(deviceID, index);
     }
