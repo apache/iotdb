@@ -95,7 +95,7 @@ public class IoTDBPatternAggregationIT {
         "INSERT INTO t3 VALUES (2025-01-01T00:05:00, -8)",
       };
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
@@ -107,13 +107,13 @@ public class IoTDBPatternAggregationIT {
   }
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

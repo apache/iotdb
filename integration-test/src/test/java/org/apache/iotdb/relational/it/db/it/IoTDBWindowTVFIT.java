@@ -66,7 +66,7 @@ public class IoTDBWindowTVFIT {
         "CLEAR ATTRIBUTE CACHE",
       };
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {

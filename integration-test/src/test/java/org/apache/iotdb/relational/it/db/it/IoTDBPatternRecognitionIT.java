@@ -103,7 +103,7 @@ public class IoTDBPatternRecognitionIT {
         "INSERT INTO t5 VALUES (2025-01-01T00:01:00, 'p1', 1, 10.0)",
       };
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
@@ -115,13 +115,13 @@ public class IoTDBPatternRecognitionIT {
   }
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

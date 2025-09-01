@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.query.recent;
+package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -27,23 +27,18 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
+import static org.apache.iotdb.confignode.it.partition.IoTDBPartitionShuffleStrategyIT.SHUFFLE;
 
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBTableAggregationNonStreamIT extends IoTDBTableAggregationIT {
+public class IoTDBWindowFunction2IT extends IoTDBWindowFunctionIT {
 
   @BeforeClass
   public static void setUp() {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(1024 * 1024);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(60_000);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDataPartitionAllocationStrategy(SHUFFLE);
     EnvFactory.getEnv().initClusterEnvironment();
-    String original = createSqls[2];
-    // make 'province', 'city', 'region' be FIELD to cover cases using GroupedAccumulator
-    createSqls[2] =
-        "CREATE TABLE table1(province STRING FIELD, city STRING FIELD, region STRING FIELD, device_id STRING TAG, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)";
-    prepareTableData(createSqls);
-    // rollback original content
-    createSqls[2] = original;
+    insertData();
   }
 
   @AfterClass

@@ -88,7 +88,7 @@ public class IoTDBWindowFunctionIT {
         "CLEAR ATTRIBUTE CACHE",
       };
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqlsWithoutNulls) {
@@ -106,14 +106,14 @@ public class IoTDBWindowFunctionIT {
   }
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(1024 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
