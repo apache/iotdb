@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -280,8 +281,8 @@ public class Analysis implements IAnalysis {
     return namedQueries.get(NodeRef.of(table));
   }
 
-  public List<Query> getNamedQueries() {
-    return ImmutableList.copyOf(namedQueries.values());
+  public Map<NodeRef<Table>, Query> getNamedQueries() {
+    return namedQueries;
   }
 
   public void addCteDataStore(Query query, CteDataStore dataStore) {
