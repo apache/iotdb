@@ -624,6 +624,8 @@ public abstract class AbstractOperatePipeProcedureV2
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
-    lockSeqId = ReadWriteIOUtils.readLong(byteBuffer);
+    if (byteBuffer.remaining() >= Long.BYTES) {
+      lockSeqId = ReadWriteIOUtils.readLong(byteBuffer);
+    }
   }
 }
