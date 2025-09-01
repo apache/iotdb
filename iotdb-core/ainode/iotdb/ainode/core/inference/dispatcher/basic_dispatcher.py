@@ -19,7 +19,9 @@
 from iotdb.ainode.core.exception import (
     InferenceModelInternalError,
 )
-from iotdb.ainode.core.inference.dispatcher.abstract_dispatcher import AbstractDispatcher
+from iotdb.ainode.core.inference.dispatcher.abstract_dispatcher import (
+    AbstractDispatcher,
+)
 from iotdb.ainode.core.inference.inference_request import InferenceRequest
 from iotdb.ainode.core.inference.inference_request_pool import PoolState
 from iotdb.ainode.core.log import Logger

@@ -23,7 +23,10 @@ import torch
 import torch.multiprocessing as mp
 
 from iotdb.ainode.core.inference.inference_request import InferenceRequest
-from iotdb.ainode.core.inference.inference_request_pool import InferenceRequestPool, PoolState
+from iotdb.ainode.core.inference.inference_request_pool import (
+    InferenceRequestPool,
+    PoolState,
+)
 from iotdb.ainode.core.inference.pool_group import PoolGroup
 from iotdb.ainode.core.inference.pool_scheduler.basic_pool_scheduler import (
     BasicPoolScheduler,

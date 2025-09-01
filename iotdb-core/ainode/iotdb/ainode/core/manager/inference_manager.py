@@ -24,7 +24,6 @@ from typing import Dict
 import pandas as pd
 import torch
 import torch.multiprocessing as mp
-from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
@@ -63,6 +62,7 @@ from iotdb.thrift.ainode.ttypes import (
     TInferenceReq,
     TInferenceResp,
 )
+from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 logger = Logger()
 
