@@ -267,6 +267,7 @@ public class IoTDBConstant {
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
   public static final String PIPE_FOLDER_NAME = "pipe";
+  public static final String CTE_FOLDER_NAME = "cte";
   public static final String TMP_FOLDER_NAME = "tmp";
   public static final String DELETION_FOLDER_NAME = "deletion";
 
