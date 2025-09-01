@@ -79,12 +79,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -407,7 +405,7 @@ public class LoadTsFileManager {
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
     private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
-    private Map<IDeviceID, Set<DataPartitionInfo>> device2Partition;
+    private Map<IDeviceID, DataPartitionInfo> device2Partition;
     private boolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
@@ -506,13 +504,11 @@ public class LoadTsFileManager {
 
       if (!Objects.equals(device, lastDevice)) {
         if (lastDevice != null && device2Partition.containsKey(lastDevice)) {
-          Set<DataPartitionInfo> partitions = device2Partition.get(lastDevice);
-          for (DataPartitionInfo partition : partitions) {
-            TsFileIOWriter w = dataPartition2Writer.get(partition);
-            if (dataPartition2LastDevice.containsKey(partition) && w != null) {
-              w.endChunkGroup();
-              w.checkMetadataSizeAndMayFlush();
-            }
+          DataPartitionInfo partition = device2Partition.get(lastDevice);
+          TsFileIOWriter w = dataPartition2Writer.get(partition);
+          if (dataPartition2LastDevice.containsKey(partition) && w != null) {
+            w.endChunkGroup();
+            w.checkMetadataSizeAndMayFlush();
           }
           device2Partition.remove(lastDevice);
         }
@@ -526,8 +522,19 @@ public class LoadTsFileManager {
         }
         writer.startChunkGroup(device);
         dataPartition2LastDevice.put(partitionInfo, device);
-        device2Partition.computeIfAbsent(device, k -> new HashSet<>()).add(partitionInfo);
+      } else {
+        DataPartitionInfo partition = device2Partition.get(device);
+        TsFileIOWriter w = dataPartition2Writer.get(partition);
+        if (dataPartition2LastDevice.containsKey(partition)
+            && Objects.equals(partition, partitionInfo)
+            && w != null) {
+          w.endChunkGroup();
+          w.checkMetadataSizeAndMayFlush();
+          device2Partition.remove(device);
+        }
       }
+
+      device2Partition.put(device, partitionInfo);
 
       chunkData.writeToFileWriter(writer);
     }
