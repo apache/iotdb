@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -1468,23 +1469,23 @@ public abstract class AlignedTVList extends TVList {
         // valueColumnsDeletionList is set when AlignedTVList iterator is created by
         // MemPointIterator.single method. Otherwise, all-null rows is checked by
         // MergeSortMultiAlignedTVListIterator or OrderedMultiAlignedTVListIterator.
-        if (valueColumnsDeletionList != null) {
-          BitMap bitMap = new BitMap(dataTypeList.size());
-          time = getTime(getScanOrderIndex(index));
-          for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
-            if (isNullValue(index, columnIndex)
-                || isPointDeleted(
-                    time,
-                    valueColumnsDeletionList.get(columnIndex),
-                    valueColumnDeleteCursor.get(columnIndex),
-                    scanOrder)) {
-              bitMap.mark(columnIndex);
-            }
+        BitMap bitMap = null;
+        time = getTime(getScanOrderIndex(index));
+        for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
+          if (isNullValue(index, columnIndex)
+              || (valueColumnsDeletionList != null
+                  && isPointDeleted(
+                      time,
+                      valueColumnsDeletionList.get(columnIndex),
+                      valueColumnDeleteCursor.get(columnIndex),
+                      scanOrder))) {
+            bitMap = bitMap == null ? new BitMap(dataTypeList.size()) : bitMap;
+            bitMap.mark(columnIndex);
           }
-          if (bitMap.isAllMarked()) {
-            findValidRow = false;
-            index++;
-          }
+        }
+        if (bitMap != null && bitMap.isAllMarked()) {
+          findValidRow = false;
+          index++;
         }
       }
       probeNext = true;
@@ -1635,7 +1636,9 @@ public abstract class AlignedTVList extends TVList {
         index = nextRowIndex - 1;
       }
 
+      boolean[] hasAnyNonNullValue = new boolean[validRowCount];
       int columnCount = dataTypeList.size();
+      int currentWriteRowIndex;
       // value columns
       for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
         int validColumnIndex = columnIndexList.get(columnIndex);
@@ -1647,6 +1650,7 @@ public abstract class AlignedTVList extends TVList {
           lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
         }
         ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
+        currentWriteRowIndex = 0;
         for (int sortedRowIndex = startIndex; sortedRowIndex < index; sortedRowIndex++) {
           // skip empty row
           if ((allValueColDeletedMap != null
@@ -1683,6 +1687,7 @@ public abstract class AlignedTVList extends TVList {
           // append null value when query column does not exist in current aligned TVList
           if (validColumnIndex < 0 || validColumnIndex >= dataTypes.size()) {
             valueBuilder.appendNull();
+            currentWriteRowIndex++;
             continue;
           }
 
@@ -1716,13 +1721,19 @@ public abstract class AlignedTVList extends TVList {
                   deleteCursor,
                   scanOrder)) {
             valueBuilder.appendNull();
+            currentWriteRowIndex++;
             continue;
           }
+          hasAnyNonNullValue[currentWriteRowIndex++] = true;
           writeToColumn(validColumnIndex, valueBuilder, originRowIndex, columnIndex);
         }
       }
       builder.declarePositions(validRowCount);
       TsBlock tsBlock = builder.build();
+      if (needRebuildTsBlock(hasAnyNonNullValue)) {
+        // if exist all null rows, at most have validRowCount - 1 valid rows
+        tsBlock = reBuildTsBlock(hasAnyNonNullValue, validRowCount, dataTypeList, tsBlock);
+      }
       if (pushDownFilter != null) {
         tsBlock =
             TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
@@ -1778,6 +1789,47 @@ public abstract class AlignedTVList extends TVList {
         default:
           break;
       }
+    }
+
+    private TsBlock reBuildTsBlock(
+        boolean[] hasAnyNonNullValue,
+        int previousValidRowCount,
+        List<TSDataType> tsDataTypeList,
+        TsBlock previousTsBlock) {
+      TsBlockBuilder builder = new TsBlockBuilder(previousValidRowCount - 1, tsDataTypeList);
+      TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+      Column timeColumn = previousTsBlock.getTimeColumn();
+      for (int i = 0; i < previousValidRowCount; i++) {
+        if (hasAnyNonNullValue[i]) {
+          timeColumnBuilder.writeLong(timeColumn.getLong(i));
+          builder.declarePosition();
+        }
+      }
+
+      for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
+        ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
+        Column column = previousTsBlock.getColumn(columnIndex);
+        for (int i = 0; i < previousValidRowCount; i++) {
+          if (hasAnyNonNullValue[i]) {
+            if (column.isNull(i)) {
+              columnBuilder.appendNull();
+            } else {
+              columnBuilder.write(column, i);
+            }
+          }
+        }
+      }
+      return builder.build();
+    }
+
+    // existing any all null row should rebuild the tsblock
+    private boolean needRebuildTsBlock(boolean[] hasAnyNonNullValue) {
+      for (boolean b : hasAnyNonNullValue) {
+        if (!b) {
+          return true;
+        }
+      }
+      return false;
     }
 
     @Override
