@@ -484,7 +484,9 @@ public class LoadTsFileManager {
       } else {
         DataPartitionInfo partition = device2Partition.get(device);
         TsFileIOWriter w = dataPartition2Writer.get(partition);
-        if (!Objects.equals(partition, partitionInfo) && w != null) {
+        if (dataPartition2LastDevice.containsKey(partition)
+            && !Objects.equals(partition, partitionInfo)
+            && w != null) {
           w.endChunkGroup();
           w.checkMetadataSizeAndMayFlush();
           device2Partition.remove(device);
