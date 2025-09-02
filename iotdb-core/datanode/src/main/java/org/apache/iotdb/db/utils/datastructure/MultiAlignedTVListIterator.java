@@ -60,6 +60,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
       List<TSDataType> tsDataTypeList,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
       Ordering scanOrder,
       Filter globalTimeFilter,
       List<List<TimeRange>> valueColumnsDeletionList,
@@ -71,10 +72,12 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     this.columnIndexList = columnIndexList;
     this.alignedTvListIterators = new ArrayList<>(alignedTvLists.size());
     if (scanOrder.isAscending()) {
-      for (AlignedTVList alignedTVList : alignedTvLists) {
+      for (int i = 0; i < alignedTvLists.size(); i++) {
+        AlignedTVList alignedTVList = alignedTvLists.get(i);
         AlignedTVList.AlignedTVListIterator iterator =
             alignedTVList.iterator(
                 scanOrder,
+                tvListRowCounts.get(i),
                 globalTimeFilter,
                 tsDataTypeList,
                 columnIndexList,
@@ -90,6 +93,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
         AlignedTVList.AlignedTVListIterator iterator =
             alignedTVList.iterator(
                 scanOrder,
+                tvListRowCounts.get(i),
                 globalTimeFilter,
                 tsDataTypeList,
                 columnIndexList,
