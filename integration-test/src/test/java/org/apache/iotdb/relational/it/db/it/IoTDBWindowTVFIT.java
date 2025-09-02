@@ -252,7 +252,7 @@ public class IoTDBWindowTVFIT {
           "3,2021-01-01T09:05:00.000Z,device1,3,"
         };
     tableResultSetEqualTest(
-        "SELECT window_index, time, device_id, int_val FROM variation(multi_type, 'int_val', 1.0, false)",
+        "SELECT window_index, time, device_id, int_val FROM variation(multi_type, 'int_val', 1.0, false) order by window_index, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -551,7 +551,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:12:00.000Z,2021-01-01T09:24:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start, window_end",
         expectedHeader,
         retArray,
         DATABASE_NAME);
