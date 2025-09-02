@@ -185,7 +185,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
         InsertType.SQL_INSERT,
         (isAligned) -> {
           // Partial null
-          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          if (!TestUtils.executeNonQueries(
               senderEnv,
               isAligned
                   ? Collections.singletonList(
@@ -196,7 +196,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
             fail();
           }
           // All null
-          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          if (!TestUtils.executeNonQueries(
               senderEnv,
               isAligned
                   ? Collections.singletonList(
@@ -241,18 +241,18 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null)) {
       fail();
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null)) {
       fail();
     }
 
     INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
       fail();
     }
 

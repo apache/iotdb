@@ -431,7 +431,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.nonAligned.1TS (time, s_float) values (now(), 0.5)",
@@ -498,7 +498,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         // and is skipped flush when the pipe starts. In this case, the "waitForTsFileClose()"
         // may not return until a flush is executed, namely the data transfer relies
         // on a flush operation.
-        if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
+        if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
           return;
         }
         assertTimeseriesCountOnReceiver(receiverEnv, expectedTimeseriesCount.get(i));
@@ -560,7 +560,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
       assertTimeseriesCountOnReceiver(receiverEnv, 0);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (1, 10)",
@@ -586,7 +586,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (2, 11)",
@@ -623,7 +623,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (1, 10)",
@@ -681,7 +681,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p4").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (2, 11)",
@@ -714,7 +714,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -785,7 +785,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // insert history data
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -824,7 +824,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Collections.singleton("3,"));
 
       // Insert realtime data that overlapped with time range
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d3 (time, at1)"
@@ -841,7 +841,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Collections.singleton("3,3,"));
 
       // Insert realtime data that does not overlap with time range
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d4 (time, at1)"
@@ -868,7 +868,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -937,7 +937,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TsFile 1, extracted without parse
@@ -949,7 +949,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TsFile 3, not extracted because time range not overlapped
@@ -1024,7 +1024,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
@@ -1033,7 +1033,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
@@ -1042,7 +1042,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5000, 1), (16000, 3)",

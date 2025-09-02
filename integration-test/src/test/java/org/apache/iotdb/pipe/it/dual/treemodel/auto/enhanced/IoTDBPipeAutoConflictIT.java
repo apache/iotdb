@@ -96,14 +96,14 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 0; i < 100; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             senderEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             connection)) {
           return;
         }
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", connection)) {
+      if (!TestUtils.executeNonQuery(senderEnv, "flush", connection)) {
         return;
       }
     }
@@ -137,28 +137,28 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 100; i < 200; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             senderEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             connection)) {
           return;
         }
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", connection)) {
+      if (!TestUtils.executeNonQuery(senderEnv, "flush", connection)) {
         return;
       }
     }
 
     try (Connection connection = receiverEnv.getConnection()) {
       for (int i = 200; i < 300; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             connection)) {
           return;
         }
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", connection)) {
+      if (!TestUtils.executeNonQuery(receiverEnv, "flush", connection)) {
         return;
       }
     }
@@ -191,14 +191,14 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
     }
     try (Connection connection = receiverEnv.getConnection()) {
       for (int i = 300; i < 400; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             connection)) {
           return;
         }
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", connection)) {
+      if (!TestUtils.executeNonQuery(receiverEnv, "flush", connection)) {
         return;
       }
     }
@@ -223,21 +223,21 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 400; i < 500; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             senderEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             connection)) {
           return;
         }
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", connection)) {
+      if (!TestUtils.executeNonQuery(senderEnv, "flush", connection)) {
         return;
       }
     }
 
     try (Connection connection = receiverEnv.getConnection()) {
       for (int i = 500; i < 600; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             connection)) {
@@ -245,7 +245,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
         }
       }
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", connection)) {
+      if (!TestUtils.executeNonQuery(receiverEnv, "flush", connection)) {
         return;
       }
     }
@@ -321,7 +321,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             // Auto extend s1
@@ -334,7 +334,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 0; i < 200; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             senderEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             connection)) {
@@ -345,7 +345,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (Connection connection = receiverEnv.getConnection()) {
       for (int i = 200; i < 400; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             connection)) {
@@ -354,11 +354,11 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
       }
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
       return;
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(receiverEnv, "flush", null)) {
       return;
     }
 
@@ -403,12 +403,12 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           receiverEnv, "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN", null)) {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           senderEnv,
           "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN tags (tag3=v3) attributes (attr4=v4)",
           null)) {
@@ -434,7 +434,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.sg_aligned",

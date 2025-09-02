@@ -64,7 +64,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"),
           null)) {
@@ -96,7 +96,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
           null)) {
@@ -132,7 +132,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
           null)) {
@@ -166,7 +166,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
           null)) {
@@ -193,7 +193,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
@@ -248,7 +248,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"),
           null)) {
@@ -327,7 +327,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create timeSeries root.ln.wf01.wt01.boolean boolean",
@@ -398,7 +398,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
           null)) {
@@ -431,7 +431,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
           null)) {
@@ -458,7 +458,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
@@ -498,7 +498,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
           null)) {
@@ -532,7 +532,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create timeSeries root.vehicle.d0.s1 int32",

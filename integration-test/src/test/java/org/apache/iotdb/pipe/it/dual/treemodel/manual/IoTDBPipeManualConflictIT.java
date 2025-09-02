@@ -106,7 +106,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
@@ -116,7 +116,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
       return;
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
@@ -218,7 +218,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "create device template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
@@ -231,7 +231,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
       return;
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create timeseries using device template on root.sg1.d2",

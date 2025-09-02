@@ -101,7 +101,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 0; i < 10; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           senderEnv, String.format("create database root.ln%s", i), null)) {
         return;
       }
@@ -115,7 +115,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 10; i < 20; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           senderEnv, String.format("create database root.ln%s", i), null)) {
         return;
       }
@@ -160,7 +160,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 0; i < 10; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           senderEnv,
           String.format(
               "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",

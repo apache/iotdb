@@ -242,19 +242,18 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList, null)) {
       return;
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
+    if (!TestUtils.executeNonQuery(
         database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql, null)) {
       return;
     }
 
     // Create an idempotent conflict
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql, null)) {
+    if (!TestUtils.executeNonQuery(database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql, null)) {
       return;
     }
 

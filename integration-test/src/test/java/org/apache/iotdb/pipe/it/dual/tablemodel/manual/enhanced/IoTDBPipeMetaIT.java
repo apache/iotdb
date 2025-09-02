@@ -95,7 +95,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       final String dbName = "test";
       TableModelUtils.createDatabase(senderEnv, dbName, 300);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           dbName,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
@@ -123,7 +123,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,1,"), dbName);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           dbName,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
@@ -135,7 +135,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,2,"), dbName);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "update table1 set b = '3'", null)) {
         return;
       }
@@ -143,7 +143,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,3,"), dbName);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "delete from table1", null)) {
         return;
       }
@@ -151,7 +151,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from table1", "time,a,b,d,", Collections.emptySet(), dbName);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           dbName,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
@@ -183,7 +183,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
                   "d,INT64,FIELD,")),
           dbName);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop table table1", null)) {
         return;
       }
@@ -195,7 +195,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           Collections.emptySet(),
           dbName);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop database test", null)) {
         return;
       }
@@ -240,7 +240,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.test",
@@ -296,7 +296,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       final String dbName = "test";
       TableModelUtils.createDatabase(senderEnv, dbName, 300);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           dbName,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
@@ -328,14 +328,14 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("create user testUser 'password'", "grant all on root.** to user testUser"),
           null)) {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           null,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
@@ -373,7 +373,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client.startPipeExtended(new TStartPipeReq("testPipe").setIsTableModel(true)).getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           null,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,

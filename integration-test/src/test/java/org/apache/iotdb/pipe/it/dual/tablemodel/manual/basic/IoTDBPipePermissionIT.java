@@ -96,8 +96,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testSourcePermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        senderEnv, "create user `thulab` 'passwD@123456'", null)) {
+    if (!TestUtils.executeNonQuery(senderEnv, "create user `thulab` 'passwD@123456'", null)) {
       return;
     }
 
@@ -186,7 +185,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "information_schema");
 
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
+    if (!TestUtils.executeNonQuery(
         "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null)) {
       return;
     }
@@ -225,7 +224,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, receiverEnv);
 
     // Grant SELECT privilege
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         "test",
         BaseEnv.TABLE_SQL_DIALECT,
         senderEnv,
@@ -255,33 +254,32 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "create user testUser 'passwD@123456'", null)) {
+      if (!TestUtils.executeNonQuery(receiverEnv, "create user testUser 'passwD@123456'", null)) {
         return;
       }
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
       final String dbName = "test";
       final String tbName = "test";
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.capture.tree", "false");
-      extractorAttributes.put("extractor.capture.table", "true");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.capture.tree", "false");
+      sourceAttributes.put("source.capture.table", "true");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.user", "testUser");
-      connectorAttributes.put("connector.password", "passwD@123456");
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.user", "testUser");
+      sinkAttributes.put("sink.password", "passwD@123456");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -305,7 +303,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           Collections.singleton("information_schema,INF,null,null,null,"),
           (String) null);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
@@ -335,6 +333,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       }
 
       final String dbName2 = "test2";
+      TestUtils.executeNonQuery("create database " + dbName2);
 
       // Write some data
       if (!TableModelUtils.insertData(dbName2, tbName, 0, 100, senderEnv)) {
@@ -345,7 +344,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "count databases", "count,", Collections.singleton("2,"), (String) null);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,

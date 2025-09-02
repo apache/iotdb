@@ -45,8 +45,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          env, "insert into root.db.d1(time, s1) values (1, 1)", null)) {
+      if (!TestUtils.executeNonQuery(env, "insert into root.db.d1(time, s1) values (1, 1)", null)) {
         return;
       }
 
@@ -95,7 +94,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(env, "test", "test");
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           "test",
           BaseEnv.TABLE_SQL_DIALECT,
           env,

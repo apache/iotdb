@@ -163,7 +163,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     final String topicName = "topic1";
 
     // create user
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         EnvFactory.getEnv(),
         Arrays.asList("create user `thulab` 'passwd123456'", "create user `hacker` 'qwerty123456'"),
         null)) {
@@ -272,7 +272,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
     // create user
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         EnvFactory.getEnv(),
         Arrays.asList("create user `thulab` 'passwd123456'", "create user `hacker` 'qwerty123456'"),
         null)) {

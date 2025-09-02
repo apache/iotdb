@@ -134,7 +134,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     // insertion on sender
     try (Connection conn = senderEnv.getConnection()) {
       for (int i = 0; i < 100; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
           return;
         }
@@ -148,7 +148,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     if (!insertResult) {
       return;
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
       return;
     }
 
@@ -174,13 +174,13 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = senderEnv.getConnection()) {
       // insertion on sender
       for (int i = 100; i < 200; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
           return;
         }
       }
       for (int i = 200; i < 300; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             conn)) {
@@ -199,7 +199,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     if (!insertResult) {
       return;
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
       return;
     }
 
@@ -225,7 +225,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = receiverEnv.getConnection()) {
       // insertion on receiver
       for (int i = 300; i < 400; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             conn)) {
@@ -240,7 +240,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     if (!insertResult) {
       return;
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(receiverEnv, "flush", null)) {
       return;
     }
 
@@ -268,7 +268,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = receiverEnv.getConnection()) {
       // insertion on receiver
       for (int i = 400; i < 500; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        if (!TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
             conn)) {
@@ -283,7 +283,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     if (!insertResult) {
       return;
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(receiverEnv, "flush", null)) {
       return;
     }
 

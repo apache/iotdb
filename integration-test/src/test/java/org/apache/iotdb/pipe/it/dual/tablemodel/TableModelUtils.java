@@ -112,7 +112,7 @@ public class TableModelUtils {
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
-    return TestUtils.tryExecuteNonQueriesWithRetry(
+    return TestUtils.executeNonQueries(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
@@ -163,7 +163,7 @@ public class TableModelUtils {
               values[11],
               i));
     }
-    return TestUtils.tryExecuteNonQueriesWithRetry(
+    return TestUtils.executeNonQueries(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
@@ -180,7 +180,7 @@ public class TableModelUtils {
               "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
-    return TestUtils.tryExecuteNonQueriesWithRetry(
+    return TestUtils.executeNonQueries(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
@@ -246,7 +246,7 @@ public class TableModelUtils {
     List<String> list = new ArrayList<>(end - start + 1);
     list.add(
         String.format("delete from %s where time >= %s and time <= %s", tableName, start, end));
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null)) {
       fail();
     }

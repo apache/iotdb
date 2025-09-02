@@ -210,7 +210,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.executeNonQuery(
           senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", null)) {
         return;
       }
@@ -237,7 +237,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "drop database root.**", null)) {
+      if (!TestUtils.executeNonQuery(senderEnv, "drop database root.**", null)) {
         return;
       }
 

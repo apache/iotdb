@@ -152,8 +152,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Collections.singletonList("flush"), null)) {
+      if (!TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);
@@ -530,7 +529,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       t.join();
       client.stopPipe("p1");
       client.startPipe("p1");
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
+      if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
         return;
       }
       TableModelUtils.assertCountData(
@@ -616,7 +615,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
       return;
     }
 
@@ -652,7 +651,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
       return;
     }
 
@@ -693,7 +692,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
+    if (!TestUtils.executeNonQuery(receiverEnv, "flush", null)) {
       return;
     }
     insertResult = TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);

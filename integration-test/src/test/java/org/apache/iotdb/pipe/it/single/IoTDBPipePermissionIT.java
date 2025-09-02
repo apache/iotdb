@@ -41,7 +41,7 @@ import static org.junit.Assert.fail;
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
   @Test
   public void testSinkPermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(env, "create user `thulab` 'passwd'", null)) {
+    if (!TestUtils.executeNonQuery(env, "create user `thulab` 'passwd'", null)) {
       return;
     }
 
@@ -106,8 +106,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     }
 
     // Filter this
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush", null)) {
+    if (!TestUtils.executeNonQuery("test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush", null)) {
       return;
     }
 
@@ -115,7 +114,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
 
     // Continue, ensure that it won't block
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
+    if (!TestUtils.executeNonQuery(
         "test1",
         BaseEnv.TABLE_SQL_DIALECT,
         env,
@@ -129,7 +128,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.assertCountData("test", "test1", 100, env);
 
     // Clear data, avoid resending
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
+    if (!TestUtils.executeNonQuery(
         "test", BaseEnv.TABLE_SQL_DIALECT, env, "drop database test1", null)) {
       return;
     }
@@ -153,7 +152,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, env);
 
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
+    if (!TestUtils.executeNonQuery(
         "test", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on any to user thulab", null)) {
       return;
     }
@@ -168,7 +167,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.createDataBaseAndTable(env, "test", "test");
     TableModelUtils.createDataBaseAndTable(env, "test1", "test");
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         "test",
         BaseEnv.TABLE_SQL_DIALECT,
         env,

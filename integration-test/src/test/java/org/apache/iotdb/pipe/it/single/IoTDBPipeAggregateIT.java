@@ -47,7 +47,7 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
       // Test the mixture of historical and realtime data
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           env,
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.temperature with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)",
@@ -81,7 +81,7 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Test unsupported types
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           env,
           Arrays.asList(
               "create timeSeries root.ln.wf01.wt01.boolean boolean",
@@ -95,7 +95,7 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           env,
           Arrays.asList(
               "insert into root.ln.wf01.wt01(time, temperature, status) values (20000, 2, true)",

@@ -133,7 +133,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
       assertTimeseriesCountOnReceiver(receiverEnv, 0);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (1, 10)",
@@ -169,7 +169,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (2, 11)",
@@ -224,7 +224,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (1, 10)",
@@ -309,7 +309,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p4").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (2, 11)",
@@ -370,7 +370,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -394,8 +394,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Collections.singletonList("flush"), null)) {
+      if (!TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);
@@ -477,7 +476,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // insert history data
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -532,7 +531,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.assertCountData("test", "test1", 3, receiverEnv, handleFailure);
 
       // Insert realtime data that overlapped with time range
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d3 (time, at1)"
@@ -557,7 +556,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.assertCountData("test", "test3", 3, receiverEnv, handleFailure);
 
       // Insert realtime data that does not overlap with time range
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d4 (time, at1)"
@@ -600,7 +599,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -710,7 +709,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
     }
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TsFile 1, extracted without parse
@@ -722,7 +721,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TsFile 3, not extracted because time range not overlapped
@@ -737,8 +736,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Collections.singletonList("flush"), null)) {
+      if (!TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);
@@ -830,7 +828,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1, at2)" + " values (1, 1, 2), (3, 3, 4)", "flush"),
@@ -842,7 +840,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5, 1), (16, 3)",

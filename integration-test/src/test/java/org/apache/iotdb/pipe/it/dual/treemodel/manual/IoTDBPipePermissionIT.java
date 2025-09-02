@@ -99,7 +99,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   private void testWithConnector(final String connector) throws Exception {
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd123456'",
@@ -116,7 +116,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create user user 'passwd123456'",
@@ -178,7 +178,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
   @Test
   public void testNoPermission() throws Exception {
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    if (!TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd123456'",
@@ -195,7 +195,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create user someUser 'passwd'",
