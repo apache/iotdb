@@ -530,12 +530,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      // Do not fail if the failure has nothing to do with pipe
-      // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create timeSeries root.vehicle.d0.s1 int32",
               "insert into root.vehicle.d0(time, s1) values (2, 1)",
               "flush"),
           null)) {
