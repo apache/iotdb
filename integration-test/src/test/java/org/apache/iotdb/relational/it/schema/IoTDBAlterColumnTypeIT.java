@@ -41,6 +41,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -59,6 +60,7 @@ import javax.ws.rs.NotSupportedException;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.Statement;
@@ -128,37 +130,37 @@ public class IoTDBAlterColumnTypeIT {
     //    doWriteAndAlter(TSDataType.INT32, TSDataType.FLOAT, false);
     //    doWriteAndAlter(TSDataType.INT32, TSDataType.FLOAT, true);
 
-    for (TSDataType from : typesToTest) {
-      for (TSDataType to : typesToTest) {
-        //    TSDataType from = TSDataType.INT32;
-        //    TSDataType to = TSDataType.STRING;
-        //      if (from == TSDataType.DATE && to == TSDataType.DATE) {
-        //        continue;
-        //      }
+    //    for (TSDataType from : typesToTest) {
+    //      for (TSDataType to : typesToTest) {
+    //    TSDataType from = TSDataType.INT32;
+    //    TSDataType to = TSDataType.STRING;
+    //      if (from == TSDataType.DATE && to == TSDataType.DATE) {
+    //        continue;
+    //      }
 
-        //            TSDataType from = TSDataType.DATE;
-        //            TSDataType to = TSDataType.DATE;
+    TSDataType from = TSDataType.DATE;
+    TSDataType to = TSDataType.STRING;
 
-        /***@todo tmp test***/
-        //        System.out.printf("testing %s to %s%n", from, to);
-        //        doWriteAndAlter(from, to);
-        //        if (from == TSDataType.DATE && to == TSDataType.DATE) {
-        //          continue;
-        //        }
-        //        if (to.isCompatible(from)) {
-        //          testAlignDeviceSequenceDataQuery(from, to);
-        //          testAlignDeviceUnSequenceDataQuery(from, to);
-        //        }
-        /***@todo tmp test***/
+    /***@todo tmp test***/
+    //        System.out.printf("testing %s to %s%n", from, to);
+    //        doWriteAndAlter(from, to);
+    //        if (from == TSDataType.DATE && to == TSDataType.DATE) {
+    //          continue;
+    //        }
+    //        if (to.isCompatible(from)) {
+    //          testAlignDeviceSequenceDataQuery(from, to);
+    //          testAlignDeviceUnSequenceDataQuery(from, to);
+    //        }
+    /***@todo tmp test***/
 
-        if (from != to && to.isCompatible(from)) {
-          System.out.printf("testing %s to %s%n", from, to);
-          doWriteAndAlter(from, to);
-          testAlignDeviceSequenceDataQuery(from, to);
-          testAlignDeviceUnSequenceDataQuery(from, to);
-        }
-      }
+    if (from != to && to.isCompatible(from)) {
+      System.out.printf("testing %s to %s%n", from, to);
+      doWriteAndAlter(from, to);
+      testAlignDeviceSequenceDataQuery(from, to);
+      testAlignDeviceUnSequenceDataQuery(from, to);
     }
+    //      }
+    //    }
   }
 
   private void doWriteAndAlter(TSDataType from, TSDataType to)
@@ -260,11 +262,11 @@ public class IoTDBAlterColumnTypeIT {
           assertEquals(genValue(newType, i), rec.getFields().get(1).getDateV());
         } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
           if (from == TSDataType.DATE) {
-            assertEquals(genValue(from, i).toString(), rec.getFields().get(1).toString());
-            //
-            // getDateStringValue(Integer.parseInt(rec.getFields().get(1).toString())));
+            assertEquals(
+                new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8),
+                rec.getFields().get(1).getBinaryV());
           } else {
-            assertEquals(String.valueOf(genValue(from, i)), rec.getFields().get(1).toString());
+            assertEquals(newType.castFromSingleValue(from, i), rec.getFields().get(1).getBinaryV());
           }
         } else {
           assertEquals(genValue(newType, i).toString(), rec.getFields().get(1).toString());
@@ -2130,10 +2132,11 @@ public class IoTDBAlterColumnTypeIT {
                   "i is {}, expected value: {}, actual value: {}",
                   i,
                   TSDataType.getDateStringValue(expectedValue[i]),
-                  rec.getFields().get(i).toString());
+                  rec.getFields().get(i).getStringValue());
+              //                  rec.getFields().get(i).getBinaryV().toString());
               assertEquals(
                   TSDataType.getDateStringValue(expectedValue[i]),
-                  rec.getFields().get(i).toString());
+                  rec.getFields().get(i).getBinaryV().toString());
             } else {
               log.info(
                   "i is {}, expected value: {}, actual value: {}",
@@ -2205,9 +2208,11 @@ public class IoTDBAlterColumnTypeIT {
               "i is {}, expected value: {}, actual value: {}",
               i,
               TSDataType.getDateStringValue(expectedValue[i]),
-              rec.getFields().get(i).toString());
+              //              rec.getFields().get(i).getBinaryV().toString());
+              rec.getFields().get(i).getStringValue());
           assertEquals(
-              TSDataType.getDateStringValue(expectedValue[i]), rec.getFields().get(i).toString());
+              TSDataType.getDateStringValue(expectedValue[i]),
+              rec.getFields().get(i).getBinaryV().toString());
         }
       }
     }

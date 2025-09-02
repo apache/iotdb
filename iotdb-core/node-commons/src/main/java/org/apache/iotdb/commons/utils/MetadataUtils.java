@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.statistics.Statistics;
 
 public class MetadataUtils {
 
@@ -29,6 +28,6 @@ public class MetadataUtils {
   }
 
   public static boolean canAlter(TSDataType from, TSDataType to) {
-    return Statistics.canMerge(from, to);
+    return to.isCompatible(from);
   }
 }

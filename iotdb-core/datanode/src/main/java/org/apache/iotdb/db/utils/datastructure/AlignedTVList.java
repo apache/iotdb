@@ -53,7 +53,6 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -555,11 +554,9 @@ public abstract class AlignedTVList extends TVList {
         || dataTypes.get(columnIndex) == TSDataType.STRING) {
       return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
     } else {
-      return new Binary(
-          (String)
-              TSDataType.TEXT.castFromSingleValue(
-                  dataTypes.get(columnIndex), getObjectByValueIndex(rowIndex, columnIndex)),
-          StandardCharsets.UTF_8);
+      return (Binary)
+          TSDataType.TEXT.castFromSingleValue(
+              dataTypes.get(columnIndex), getObjectByValueIndex(rowIndex, columnIndex));
     }
   }
 
