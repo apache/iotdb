@@ -828,7 +828,11 @@ public class IoTDBAlterColumnTypeIT {
       assertFalse(dataSet.hasNext());
     }
 
-    filesToLoad.forEach(File::delete);
+    filesToLoad.forEach(tsfile -> {
+      tsfile.delete();
+      File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
+      resourceFile.delete();
+    });
     filesToLoad.clear();
 
     // file5-file8 s1=DOUBLE
@@ -908,7 +912,11 @@ public class IoTDBAlterColumnTypeIT {
           "ALTER TABLE load_and_alter ALTER COLUMN s1 SET DATA TYPE DOUBLE");
     }
 
-    filesToLoad.forEach(File::delete);
+    filesToLoad.forEach(tsfile -> {
+      tsfile.delete();
+      File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
+      resourceFile.delete();
+    });
     filesToLoad.clear();
 
     // file9-file12 s1=INT32
@@ -971,7 +979,12 @@ public class IoTDBAlterColumnTypeIT {
       assertFalse(dataSet.hasNext());
     }
 
-    filesToLoad.forEach(File::delete);
+    filesToLoad.forEach(tsfile -> {
+      tsfile.delete();
+      File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
+      resourceFile.delete();
+    });
+    filesToLoad.clear();
   }
 
   @Test
@@ -1106,6 +1119,7 @@ public class IoTDBAlterColumnTypeIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("set configuration \"enable_seq_space_compaction\"=\"false\"");
+      statement.execute("set configuration \"enable_unseq_space_compaction\"=\"false\"");
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -1183,7 +1197,11 @@ public class IoTDBAlterColumnTypeIT {
       }
 
       // clear data
-      filesToLoad.forEach(File::delete);
+      filesToLoad.forEach(tsfile -> {
+        tsfile.delete();
+        File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
+        resourceFile.delete();
+      });
       filesToLoad.clear();
 
       // check load result
@@ -1265,7 +1283,11 @@ public class IoTDBAlterColumnTypeIT {
       assertFalse(dataSet.hasNext());
 
       // clear data
-      filesToLoad.forEach(File::delete);
+      filesToLoad.forEach(tsfile -> {
+        tsfile.delete();
+        File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
+        resourceFile.delete();
+      });
       filesToLoad.clear();
       session.executeNonQueryStatement("DELETE TIMESERIES root.sg1.d1.s1");
     }
@@ -1655,7 +1677,8 @@ public class IoTDBAlterColumnTypeIT {
           if (from == TSDataType.DATE) {
             assertEquals(
                 genValue(from, i).toString(),
-                getDateStringValue(Integer.parseInt(rec1.getFields().get(1).toString())));
+                TSDataType.getDateStringValue(
+                    Integer.parseInt(rec1.getFields().get(1).toString())));
           } else {
             assertEquals(String.valueOf(genValue(from, i)), rec1.getFields().get(1).toString());
           }
@@ -1735,7 +1758,8 @@ public class IoTDBAlterColumnTypeIT {
           if (from == TSDataType.DATE) {
             assertEquals(
                 genValue(from, i).toString(),
-                getDateStringValue(Integer.parseInt(rec2.getFields().get(1).toString())));
+                TSDataType.getDateStringValue(
+                    Integer.parseInt(rec2.getFields().get(1).toString())));
           } else {
             assertEquals(String.valueOf(genValue(from, i)), rec2.getFields().get(1).toString());
           }
@@ -1820,7 +1844,7 @@ public class IoTDBAlterColumnTypeIT {
         if (from == TSDataType.DATE) {
           assertEquals(
               genValue(from, i).toString(),
-              getDateStringValue(Integer.parseInt(rec4.getFields().get(1).toString())));
+              TSDataType.getDateStringValue(Integer.parseInt(rec4.getFields().get(1).toString())));
         } else {
           assertEquals(String.valueOf(genValue(from, i)), rec4.getFields().get(1).toString());
         }
@@ -2096,16 +2120,21 @@ public class IoTDBAlterColumnTypeIT {
           } else if (newType == TSDataType.DATE) {
             assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
           } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
-            log.info(
-                "i is {}, expected value: {}, actual value: {}",
-                i,
-                genValue(from, expectedValue[i]).toString(),
-                rec.getFields().get(i).toString());
             if (from == TSDataType.DATE) {
+              log.info(
+                  "i is {}, expected value: {}, actual value: {}",
+                  i,
+                  TSDataType.getDateStringValue(expectedValue[i]),
+                  rec.getFields().get(i).toString());
               assertEquals(
-                  genValue(from, expectedValue[i]).toString(),
-                  getDateStringValue(Integer.parseInt(rec.getFields().get(i).toString())));
+                  TSDataType.getDateStringValue(expectedValue[i]),
+                  rec.getFields().get(i).toString());
             } else {
+              log.info(
+                  "i is {}, expected value: {}, actual value: {}",
+                  i,
+                  genValue(from, expectedValue[i]).toString(),
+                  rec.getFields().get(i).toString());
               assertEquals(
                   genValue(from, expectedValue[i]).toString(), rec.getFields().get(i).toString());
             }
@@ -2163,18 +2192,17 @@ public class IoTDBAlterColumnTypeIT {
         session.executeQueryStatement(
             "select first(s1),last(s1) from construct_and_alter_column_type");
     RowRecord rec = dataSet.next();
-    int[] expectedValue = {1, 1024};
+    int[] expectedValue = {19700102, 19721021};
     if (newType != TSDataType.BOOLEAN) {
       for (int i = 0; i < 2; i++) {
         if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
           log.info(
               "i is {}, expected value: {}, actual value: {}",
               i,
-              genValue(newType, expectedValue[i]).toString(),
+              TSDataType.getDateStringValue(expectedValue[i]),
               rec.getFields().get(i).toString());
           assertEquals(
-              genValue(TSDataType.DATE, expectedValue[i]).toString(),
-              getDateStringValue(Integer.parseInt(rec.getFields().get(i).toString())));
+              TSDataType.getDateStringValue(expectedValue[i]), rec.getFields().get(i).toString());
         }
       }
     }
@@ -2338,9 +2366,9 @@ public class IoTDBAlterColumnTypeIT {
   }
 
   public static String getDateStringValue(int value) {
-    if (value < 19700101) {
-      return String.valueOf(value);
-    }
+    //    if (value < 19700101) {
+    //      return String.valueOf(value);
+    //    }
     return String.format("%04d-%02d-%02d", value / 10000, (value % 10000) / 100, value % 100);
   }
 }

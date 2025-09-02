@@ -51,8 +51,6 @@ import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPageReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -66,7 +64,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class FileLoaderUtils {
 
-  public static Logger logger = LoggerFactory.getLogger(FileLoaderUtils.class);
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 

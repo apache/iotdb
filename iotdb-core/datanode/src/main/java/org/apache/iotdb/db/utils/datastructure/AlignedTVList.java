@@ -37,6 +37,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
@@ -1241,8 +1242,15 @@ public abstract class AlignedTVList extends TVList {
             valueBuilder.writeBoolean(getBooleanByValueIndex(originRowIndex, columnIndex));
             break;
           case INT32:
-          case DATE:
             valueBuilder.writeInt(getIntByValueIndex(originRowIndex, columnIndex));
+            break;
+          case DATE:
+            if (valueBuilder instanceof BinaryColumnBuilder) {
+              ((BinaryColumnBuilder) valueBuilder)
+                  .writeDate(getIntByValueIndex(originRowIndex, columnIndex));
+            } else {
+              valueBuilder.writeInt(getIntByValueIndex(originRowIndex, columnIndex));
+            }
             break;
           case INT64:
           case TIMESTAMP:
@@ -2136,8 +2144,15 @@ public abstract class AlignedTVList extends TVList {
           valueBuilder.writeBoolean(getBooleanByValueIndex(originRowIndex, validColumnIndex));
           break;
         case INT32:
-        case DATE:
           valueBuilder.writeInt(getIntByValueIndex(originRowIndex, validColumnIndex));
+          break;
+        case DATE:
+          if (valueBuilder instanceof BinaryColumnBuilder) {
+            ((BinaryColumnBuilder) valueBuilder)
+                .writeDate(getIntByValueIndex(originRowIndex, validColumnIndex));
+          } else {
+            valueBuilder.writeInt(getIntByValueIndex(originRowIndex, validColumnIndex));
+          }
           break;
         case INT64:
         case TIMESTAMP:

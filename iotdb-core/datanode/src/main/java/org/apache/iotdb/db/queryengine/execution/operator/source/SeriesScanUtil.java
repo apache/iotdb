@@ -155,8 +155,6 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
           + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
 
-  public static final Logger logger = LoggerFactory.getLogger(SeriesScanUtil.class);
-
   public SeriesScanUtil(
       IFullPath seriesPath,
       Ordering scanOrder,
@@ -494,7 +492,8 @@ public class SeriesScanUtil implements Accountable {
             AbstractAlignedChunkMetadata alignedChunkMetadata =
                 (AbstractAlignedChunkMetadata) chunkMetadata;
             for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-              if (!SchemaUtils.isUsingSameColumn(
+              if ((alignedChunkMetadata.getValueChunkMetadataList().get(i) != null)
+                  && !SchemaUtils.isUsingSameColumn(
                       alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
                       getTsDataTypeList().get(i))
                   && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
@@ -732,8 +731,10 @@ public class SeriesScanUtil implements Accountable {
                       false)));
     }
 
-    for (IPageReader pageReader : pageReaderList) {
-      logger.info("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
+    if (LOGGER.isDebugEnabled()) {
+      for (IPageReader pageReader : pageReaderList) {
+        LOGGER.debug("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
+      }
     }
   }
 
@@ -1095,7 +1096,8 @@ public class SeriesScanUtil implements Accountable {
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
                     new Binary(
-                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
+                        TSDataType.getDateStringValue(valueColumns[i].getInts()[j]),
+                        StandardCharsets.UTF_8);
               }
             }
           } else if (sourceType == TSDataType.INT64 || sourceType == TSDataType.TIMESTAMP) {
@@ -1255,7 +1257,8 @@ public class SeriesScanUtil implements Accountable {
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
                     new Binary(
-                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
+                        TSDataType.getDateStringValue(valueColumns[i].getInts()[j]),
+                        StandardCharsets.UTF_8);
               }
             }
           } else if (sourceType == TSDataType.INT64 || sourceType == TSDataType.TIMESTAMP) {
