@@ -37,7 +37,6 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.GenericFutureListener;
-import java.util.concurrent.CompletableFuture;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -56,6 +55,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.security.KeyStore;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -244,8 +244,8 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
 
       int available = Math.min(buffer.remaining(), byteBuf.readableBytes());
       if (available > 0) {
-        buffer.limit(buffer.position() + available);
-        byteBuf.readBytes(buffer);
+        buffer.put(byteBuf.nioBuffer(byteBuf.readerIndex(), available));
+        byteBuf.readerIndex(byteBuf.readerIndex() + available);
         if (logger.isDebugEnabled()) {
           logger.debug(
               "Read {} bytes into ByteBuffer, remaining space: {}", available, buffer.remaining());
@@ -498,6 +498,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       return false; // Return false to indicate pending connect for dummy
     } catch (Exception e) {
       connecting.set(false);
+      listenerFuture.completeExceptionally(e);
       return false;
     }
   }

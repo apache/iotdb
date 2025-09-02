@@ -17,14 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.db.it;
+package org.apache.iotdb.relational.it.insertquery;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.relational.it.insertquery.IoTDBInsertQueryIT;
 
 import org.junit.After;
 import org.junit.Before;

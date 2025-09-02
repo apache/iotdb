@@ -97,7 +97,6 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
 
   @Override
   public void onError(Exception e) {
-    e.printStackTrace();
     super.onError(e);
     ThriftClient.resolveException(e, this);
     returnSelf();
