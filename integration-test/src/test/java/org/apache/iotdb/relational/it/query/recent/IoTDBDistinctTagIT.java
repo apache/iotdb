@@ -59,6 +59,7 @@ public class IoTDBDistinctTagIT {
         "insert into t1(time, deviceId, attr1, s1) values(3000, 'd2', 'a2', 12)",
         "insert into t1(time, deviceId, attr1, s1) values(2000, 'd1', 'a1', 13)",
         "flush",
+        "clear attribute cache",
 
         // test memory
         "CREATE TABLE IF NOT EXISTS t2(deviceId STRING TAG, attr1 STRING ATTRIBUTE, s1 INT64 FIELD)",

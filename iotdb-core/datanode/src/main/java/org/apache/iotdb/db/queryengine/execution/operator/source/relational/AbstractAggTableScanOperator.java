@@ -647,8 +647,9 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   /** Append a row of aggregation results to the result tsBlock. */
   protected void appendAggregationResult() {
-    System.out.println(deviceEntries.toString());
+    System.out.println(deviceEntries.get(currentDeviceIndex));
     if (!timeIterator.hasCachedTimeRange()) {
+      System.out.println();
       System.out.println(Arrays.toString(Thread.currentThread().getStackTrace()));
     }
 
