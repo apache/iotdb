@@ -246,7 +246,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test3", "test3");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test3", "test");
       insertResult = TableModelUtils.insertData("test", "test3", 0, 100, senderEnv);
       if (!insertResult) {
         return;
