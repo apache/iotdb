@@ -1705,17 +1705,14 @@ public abstract class AlignedTVList extends TVList {
           probeNext = true;
           return;
         }
-        if (scanOrder.isAscending()) {
-          // When traversing in ASC order, we only need to overwrite the previous non-null value
-          // with the non-null value encountered later
-          Arrays.fill(selectedIndices, index);
-        } else {
-          // When traversing in DESC order, we need to keep the non-null value encountered first,
-          // and only overwrite it if the previous value is null and current value is non-null. In
-          // order to identify the previous null, we use index -1 here to represent
-          for (int i = 0; i < selectedIndices.length; i++) {
-            selectedIndices[i] = isNullValue(index, i) ? -1 : index;
-          }
+        // When traversing in ASC order, we only need to overwrite the previous non-null value
+        // with the non-null value encountered later.
+        // When traversing in DESC order, we need to keep the non-null value encountered first,
+        // and only overwrite it if the previous value is null and current value is non-null.
+        for (int i = 0; i < selectedIndices.length; i++) {
+          // In order to identify the previous null, we use index -1 here to represent.
+          // The -1 here is also used for checking all null rows
+          selectedIndices[i] = isNullValue(index, i) ? -1 : index;
         }
         findValidRow = true;
 
@@ -1740,35 +1737,36 @@ public abstract class AlignedTVList extends TVList {
             }
           }
         }
-        // For DESC traversal, we previously set some -1. If these values are still -1 in the end,
-        // it means that each index is invalid. At this time, we can use any one at random.
-        if (!scanOrder.isAscending()) {
-          for (int i = 0; i < selectedIndices.length; i++) {
-            if (selectedIndices[i] == -1) {
-              selectedIndices[i] = index;
-            }
-          }
-        }
 
         // valueColumnsDeletionList is set when AlignedTVList iterator is created by
-        // MemPointIterator.single method. Otherwise, all-null rows is checked by
+        // MemPointIterator.single method. Otherwise, it is checked by
         // MergeSortMultiAlignedTVListIterator or OrderedMultiAlignedTVListIterator.
-        if (valueColumnsDeletionList != null) {
-          BitMap bitMap = new BitMap(dataTypeList.size());
+        if (ignoreAllNullRows) {
+          BitMap bitMap = null;
           time = getTime(getScanOrderIndex(index));
           for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
-            if (isNullValue(index, columnIndex)
-                || isPointDeleted(
-                    time,
-                    valueColumnsDeletionList.get(columnIndex),
-                    valueColumnDeleteCursor.get(columnIndex),
-                    scanOrder)) {
+            if (selectedIndices[columnIndex] == -1
+                || (valueColumnsDeletionList != null
+                    && isPointDeleted(
+                        time,
+                        valueColumnsDeletionList.get(columnIndex),
+                        valueColumnDeleteCursor.get(columnIndex),
+                        scanOrder))) {
+              bitMap = bitMap == null ? new BitMap(dataTypeList.size()) : bitMap;
               bitMap.mark(columnIndex);
             }
           }
-          if (ignoreAllNullRows && bitMap.isAllMarked()) {
+          if (bitMap != null && bitMap.isAllMarked()) {
             findValidRow = false;
             index++;
+            continue;
+          }
+        }
+        // We previously set some -1. If these values are still -1 in the end,
+        // it means that each index is invalid. At this time, we can use any one at random.
+        for (int i = 0; i < selectedIndices.length; i++) {
+          if (selectedIndices[i] == -1) {
+            selectedIndices[i] = index;
           }
         }
       }

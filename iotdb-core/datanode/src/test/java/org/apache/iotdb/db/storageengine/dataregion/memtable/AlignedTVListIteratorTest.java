@@ -109,17 +109,16 @@ public class AlignedTVListIteratorTest {
   public void otherTest() throws IOException {
     Map<TVList, Integer> tvListMap =
         buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1)));
-    //    testAligned(
-    //        tvListMap,
-    //        Ordering.ASC,
-    //        null,
-    //        null,
-    //        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
-    //        Collections.emptyList(),
-    //        Arrays.asList(Collections.emptyList(), Collections.emptyList(),
-    // Collections.emptyList()),
-    //        false,
-    //        1);
+    testAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        false,
+        1);
     testAligned(
         tvListMap,
         Ordering.DESC,
