@@ -2531,6 +2531,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         node.getStep(),
                         typeProvider,
                         true,
+                        false,
                         null,
                         Collections.emptySet())));
     return new AggregationOperator(operatorContext, child, aggregatorBuilder.build());
@@ -2544,6 +2545,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationNode.Step step,
       TypeProvider typeProvider,
       boolean scanAscending,
+      boolean isAggTableScan,
       String timeColumnName,
       Set<String> measurementColumnNames) {
     List<Integer> argumentChannels = new ArrayList<>();
@@ -2565,6 +2567,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             aggregation.getArguments(),
             Collections.emptyMap(),
             scanAscending,
+            isAggTableScan,
             timeColumnName,
             measurementColumnNames,
             aggregation.isDistinct());
@@ -2610,6 +2613,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                             node.getStep(),
                             typeProvider,
                             true,
+                            false,
                             null,
                             Collections.emptySet())));
 
@@ -2905,6 +2909,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               node.getStep(),
               context.getTypeProvider(),
               scanAscending,
+              true,
               timeColumnName,
               measurementColumnsIndexMap.keySet()));
     }
@@ -3370,7 +3375,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             originalArgumentTypes,
             arguments.stream().map(Map.Entry::getKey).collect(Collectors.toList()),
             Collections.emptyMap(),
-            true);
+            true,
+            false);
 
     BoundSignature signature = resolvedFunction.getSignature();
 
@@ -4070,7 +4076,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             originalArgumentTypes,
             function.getArguments(),
             Collections.emptyMap(),
-            true);
+            true,
+            false);
 
     // Create aggregator by accumulator
     return new WindowAggregator(
