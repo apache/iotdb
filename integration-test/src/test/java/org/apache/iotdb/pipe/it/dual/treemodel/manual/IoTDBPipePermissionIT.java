@@ -89,16 +89,16 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
-  public void testWithSyncConnector() throws Exception {
-    testWithConnector("iotdb-thrift-sync-connector");
+  public void testWithSyncSink() throws Exception {
+    testWithSink("iotdb-thrift-sync-sink");
   }
 
   @Test
-  public void testWithAsyncConnector() throws Exception {
-    testWithConnector("iotdb-thrift-async-connector");
+  public void testWithAsyncSink() throws Exception {
+    testWithSink("iotdb-thrift-async-sink");
   }
 
-  private void testWithConnector(final String connector) throws Exception {
+  private void testWithSink(final String sink) throws Exception {
     if (!TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
@@ -129,22 +129,22 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       }
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
+      sourceAttributes.put("source.inclusion", "all");
 
-      connectorAttributes.put("connector", connector);
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.username", "thulab");
-      connectorAttributes.put("connector.password", "passwd123456");
+      sinkAttributes.put("sink", sink);
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.username", "thulab");
+      sinkAttributes.put("sink.password", "passwd123456");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -206,22 +206,22 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       }
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
+      sourceAttributes.put("source.inclusion", "all");
 
-      connectorAttributes.put("connector", "iotdb-thrift-async-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.username", "thulab");
-      connectorAttributes.put("connector.password", "passwd123456");
+      sinkAttributes.put("sink", "iotdb-thrift-async-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.username", "thulab");
+      sinkAttributes.put("sink.password", "passwd123456");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
