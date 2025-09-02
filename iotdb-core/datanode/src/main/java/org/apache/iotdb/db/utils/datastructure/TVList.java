@@ -951,7 +951,7 @@ public abstract class TVList implements WALEntryValue {
 
     // When traversing in desc order, the index needs to be converted
     public int getScanOrderIndex(int rowIndex) {
-      return scanOrder.isAscending() ? rowIndex : rowCount - 1 - rowIndex;
+      return scanOrder.isAscending() ? rowIndex : rows - 1 - rowIndex;
     }
 
     @Override
