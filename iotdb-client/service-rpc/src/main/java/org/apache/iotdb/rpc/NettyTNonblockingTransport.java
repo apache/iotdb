@@ -79,7 +79,6 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
   private final AtomicBoolean connecting = new AtomicBoolean(false);
   private final CompletableFuture<Void> listenerFuture = new CompletableFuture<>();
   private final LinkedBlockingQueue<ByteBuf> readQueue = new LinkedBlockingQueue<>();
-  private final Object lock = new Object();
 
   // SSL configuration
   private final String keystorePath;
@@ -211,7 +210,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
 
   @Override
   public boolean isOpen() {
-    synchronized (lock) {
+    synchronized (this) {
       return connected.get() || (channel != null && channel.isActive());
     }
   }
@@ -335,7 +334,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       logger.debug("Writing {} bytes from ByteBuffer", remaining);
     }
 
-    synchronized (lock) {
+    synchronized (this) {
       ByteBuf byteBuf = Unpooled.wrappedBuffer(buffer);
       try {
         ChannelFuture future = channel.writeAndFlush(byteBuf);
@@ -385,7 +384,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       }
       throw new TTransportException(TTransportException.NOT_OPEN, "Transport not open");
     }
-    synchronized (lock) {
+    synchronized (this) {
       channel.flush();
       if (logger.isDebugEnabled()) {
         logger.debug("Flushed channel");
@@ -395,7 +394,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
 
   @Override
   public void close() {
-    synchronized (lock) {
+    synchronized (this) {
       connected.set(false);
       if (channel != null) {
         channel.close();
@@ -455,7 +454,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       future.addListener(
           (GenericFutureListener<ChannelFuture>)
               future1 -> {
-                synchronized (lock) {
+                synchronized (this) {
                   if (future1.isSuccess()) {
                     if (logger.isDebugEnabled()) {
                       logger.debug("Connection established successfully to {}:{}", host, port);
@@ -510,7 +509,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
     } catch (Throwable e) {
       throw new IOException(e);
     }
-    synchronized (lock) {
+    synchronized (this) {
       boolean dummyFinished = dummyClient.finishConnect();
       boolean isConnected = connected.get() && dummyFinished;
       if (logger.isDebugEnabled()) {
@@ -525,7 +524,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
 
   @Override
   public SelectionKey registerSelector(Selector selector, int interests) throws IOException {
-    synchronized (lock) {
+    synchronized (this) {
       this.selector = selector;
       return dummyClient.register(selector, interests);
     }
@@ -562,7 +561,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
           logger.debug("Received {} bytes", byteBuf.readableBytes());
         }
         try {
-          synchronized (lock) {
+          synchronized (this) {
             readQueue.offer(byteBuf.retain());
             // Trigger OP_READ on dummy by writing dummy byte
             if (dummyServerAccepted != null) {
@@ -585,7 +584,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       if (logger.isDebugEnabled()) {
         logger.debug("Channel inactive: {}", ctx.channel().remoteAddress());
       }
-      synchronized (lock) {
+      synchronized (this) {
         if (dummyServerAccepted != null) {
           dummyServerAccepted.close();
           dummyServerAccepted = null;
@@ -603,7 +602,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       if (logger.isDebugEnabled()) {
         logger.debug("Channel exception: {}", cause.getMessage());
       }
-      synchronized (lock) {
+      synchronized (this) {
         ctx.close();
       }
     }
