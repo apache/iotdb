@@ -80,7 +80,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
         AlignedTVList.AlignedTVListIterator iterator =
             alignedTVList.iterator(
                 scanOrder,
-                tvListRowCounts.get(i),
+                tvListRowCounts == null ? alignedTVList.rowCount() : tvListRowCounts.get(i),
                 globalTimeFilter,
                 tsDataTypeList,
                 columnIndexList,
@@ -98,7 +98,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
         AlignedTVList.AlignedTVListIterator iterator =
             alignedTVList.iterator(
                 scanOrder,
-                tvListRowCounts.get(i),
+                tvListRowCounts == null ? alignedTVList.rowCount() : tvListRowCounts.get(i),
                 globalTimeFilter,
                 tsDataTypeList,
                 columnIndexList,
