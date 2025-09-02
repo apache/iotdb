@@ -555,6 +555,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    dnConfig.setPipeAutoSplitFullEnabled(pipeAutoSplitFullEnabled);
+    cnConfig.setPipeAutoSplitFullEnabled(pipeAutoSplitFullEnabled);
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     dnConfig.setQueryMemoryProportion(queryMemoryProportion);
     cnConfig.setQueryMemoryProportion(queryMemoryProportion);

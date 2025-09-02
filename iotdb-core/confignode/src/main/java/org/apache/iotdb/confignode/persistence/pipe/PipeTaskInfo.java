@@ -655,7 +655,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private TSStatus handleMetaChangesInternal(final PipeHandleMetaChangePlan plan) {
-    LOGGER.info("Handling pipe meta changes ...");
+    LOGGER.debug("Handling pipe meta changes ...");
 
     pipeMetaKeeper.clear();
 

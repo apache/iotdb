@@ -96,7 +96,7 @@ public class PipeReceiverStatusHandler {
   public void handle(
       final TSStatus status, final String exceptionMessage, final String recordMessage) {
 
-    if (RetryUtils.needRetryForConsensus(status.getCode())) {
+    if (RetryUtils.needRetryForWrite(status.getCode())) {
       LOGGER.info("IoTConsensusV2: will retry with increasing interval. status: {}", status);
       throw new PipeConsensusRetryWithIncreasingIntervalException(
           exceptionMessage, Integer.MAX_VALUE);

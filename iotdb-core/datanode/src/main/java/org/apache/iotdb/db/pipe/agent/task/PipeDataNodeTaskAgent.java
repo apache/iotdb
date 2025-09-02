@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -450,14 +451,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         logger.ifPresent(
             l ->
-                l.info(
-                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                PipeLogger.log(
+                    l::info,
+                    "Reporting pipe meta: %s, isCompleted: %s, remainingEventCount: %s",
                     pipeMeta.coreReportMessage(),
                     isCompleted,
-                    remainingEventAndTime.getLeft(),
-                    remainingEventAndTime.getRight()));
+                    remainingEventAndTime.getLeft()));
       }
-      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
+      logger.ifPresent(
+          l -> PipeLogger.log(l::info, "Reported %s pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
@@ -523,14 +525,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         logger.ifPresent(
             l ->
-                l.info(
-                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                PipeLogger.log(
+                    l::info,
+                    "Reporting pipe meta: %s, isCompleted: %s, remainingEventCount: %s",
                     pipeMeta.coreReportMessage(),
                     isCompleted,
-                    remainingEventAndTime.getLeft(),
-                    remainingEventAndTime.getRight()));
+                    remainingEventAndTime.getLeft()));
       }
-      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
+      logger.ifPresent(
+          l -> PipeLogger.log(l::info, "Reported %s pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
@@ -582,6 +585,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     } finally {
       releaseReadLock();
     }
+  }
+
+  public boolean isFullSync(final PipeParameters parameters) {
+    if (isSnapshotMode(parameters)) {
+      return false;
+    }
+
+    final boolean isHistoryEnable =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+    final boolean isRealtimeEnable =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
+            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
+
+    return isHistoryEnable && isRealtimeEnable;
   }
 
   private boolean isSnapshotMode(final PipeParameters parameters) {

@@ -30,6 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
@@ -987,6 +988,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowConfigurationResp showConfiguration(int nodeId) throws TException {
     return configManager.showConfiguration(nodeId);
+  }
+
+  @Override
+  public TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId) throws TException {
+    return configManager.showAppliedConfigurations(nodeId);
   }
 
   @Override

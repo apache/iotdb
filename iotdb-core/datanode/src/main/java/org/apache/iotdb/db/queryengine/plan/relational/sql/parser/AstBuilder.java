@@ -177,6 +177,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -244,6 +245,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
@@ -1645,6 +1647,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     setConfigurationStatement.setNodeId(nodeId);
     setConfigurationStatement.setConfigItems(configItems);
     return new SetConfiguration(setConfigurationStatement, null);
+  }
+
+  @Override
+  public Node visitShowConfigurationStatement(
+      RelationalSqlParser.ShowConfigurationStatementContext ctx) {
+    ShowConfigurationStatement showConfigurationStatement;
+    boolean withDescription = ctx.DESC() != null;
+    boolean showAllConfiguration = (ctx.ALL() != null);
+    int nodeId = ctx.nodeId == null ? -1 : Integer.parseInt(ctx.nodeId.getText());
+    showConfigurationStatement =
+        new ShowConfigurationStatement(showAllConfiguration, nodeId, withDescription);
+    return new ShowConfiguration(showConfigurationStatement, null);
   }
 
   @Override

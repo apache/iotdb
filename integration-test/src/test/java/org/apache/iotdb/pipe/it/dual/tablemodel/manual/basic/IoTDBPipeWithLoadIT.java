@@ -377,7 +377,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           "select * from t1",
           "time,tag1,tag2,tag3,s3,s4,s1,s2,",
           expectedResSet,
-          10,
           "db",
           handleFailure);
     }

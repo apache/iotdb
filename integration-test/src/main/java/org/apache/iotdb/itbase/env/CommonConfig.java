@@ -172,6 +172,8 @@ public interface CommonConfig {
   CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes);
 
+  CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled);
+
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
 
   CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);

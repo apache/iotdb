@@ -437,6 +437,16 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_load_conversion_enabled",
                 String.valueOf(config.isPipeReceiverLoadConversionEnabled()))));
+    config.setPipePeriodicalLogMinIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_periodical_log_min_interval_seconds",
+                String.valueOf(config.getPipePeriodicalLogMinIntervalSeconds()))));
+    config.setPipeLoggerCacheMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_logger_cache_max_size_in_bytes",
+                String.valueOf(config.getPipeLoggerCacheMaxSizeInBytes()))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
@@ -488,6 +498,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_check_all_sync_client_live_time_interval_ms",
                 String.valueOf(config.getPipeCheckAllSyncClientLiveTimeIntervalMs()))));
+    config.setPipeTsFileResourceSegmentLockNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_resource_segment_lock_num",
+                String.valueOf(config.getPipeTsFileResourceSegmentLockNum()))));
 
     config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
         Long.parseLong(
@@ -537,6 +552,12 @@ public class PipeDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "pipe_max_wait_finish_time", String.valueOf(config.getPipeMaxWaitFinishTime()))));
+
+    config.setPipeAutoSplitFullEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_auto_split_full_enabled",
+                String.valueOf(config.getPipeAutoSplitFullEnabled()))));
   }
 
   public static void loadPipeExternalConfig(

@@ -28,7 +28,6 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -201,11 +200,11 @@ public class ExportDataTree extends AbstractExportData {
                     "SHOW TIMESERIES " + timeseries.get(index - startIndex), timeout);
             SessionDataSet.DataIterator iterator2 = sessionDataSet2.iterator();
             if (iterator2.next()) {
-              String value = iterator.getString(index + 1);
-              if (StringUtils.isEmpty(value)) {
+              if (iterator.isNull(index + 1)) {
                 headersTemp.remove(seriesList.get(index - startIndex));
                 continue;
               }
+              String value = iterator.getString(index + 1);
               if ("TEXT".equalsIgnoreCase(iterator2.getString(4))) {
                 values.add("\"" + value + "\"");
               } else {
@@ -298,10 +297,10 @@ public class ExportDataTree extends AbstractExportData {
           fromOuterloop = false;
           csvPrinterWrapper.print(timeTrans(iterator.getLong(1)));
           for (int curColumnIndex = 1; curColumnIndex < totalColumns; curColumnIndex++) {
-            String columnValue = iterator.getString(curColumnIndex + 1);
-            if (StringUtils.isEmpty(columnValue)) {
+            if (iterator.isNull(curColumnIndex + 1)) {
               csvPrinterWrapper.print("");
             } else {
+              String columnValue = iterator.getString(curColumnIndex + 1);
               String curType = columnTypeList.get(curColumnIndex);
               if ((curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING"))
                   && !columnValue.startsWith("root.")) {

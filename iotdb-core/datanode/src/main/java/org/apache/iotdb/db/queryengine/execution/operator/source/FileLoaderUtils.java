@@ -130,7 +130,8 @@ public class FileLoaderUtils {
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
 
-        timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
+        timeSeriesMetadata =
+            (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath, globalTimeFilter);
         if (timeSeriesMetadata != null) {
           timeSeriesMetadata.setChunkMetadataLoader(
               new MemChunkMetadataLoader(resource, seriesPath, context, globalTimeFilter));
@@ -197,7 +198,8 @@ public class FileLoaderUtils {
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
-            (AbstractAlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(alignedPath);
+            (AbstractAlignedTimeSeriesMetadata)
+                resource.getTimeSeriesMetadata(alignedPath, globalTimeFilter);
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new MemAlignedChunkMetadataLoader(

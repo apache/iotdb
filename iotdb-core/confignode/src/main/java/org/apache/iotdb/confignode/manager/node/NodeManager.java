@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
@@ -1120,6 +1121,37 @@ public class NodeManager {
                       nodeId,
                       CnToCnNodeRequestType.SHOW_CONFIGURATION);
       return resp;
+    }
+    return resp;
+  }
+
+  public TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId) {
+    // data node
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (dataNodeLocationMap.containsKey(nodeId)) {
+      TDataNodeLocation dataNodeLocation = dataNodeLocationMap.get(nodeId);
+      return (TShowAppliedConfigurationsResp)
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeLocation.getInternalEndPoint(),
+                  null,
+                  CnToDnSyncRequestType.SHOW_APPLIED_CONFIGURATIONS);
+    }
+
+    // other config node
+    TShowAppliedConfigurationsResp resp =
+        new TShowAppliedConfigurationsResp(RpcUtils.SUCCESS_STATUS);
+    for (TConfigNodeLocation registeredConfigNode : getRegisteredConfigNodes()) {
+      if (registeredConfigNode.getConfigNodeId() != nodeId) {
+        continue;
+      }
+      return (TShowAppliedConfigurationsResp)
+          SyncConfigNodeClientPool.getInstance()
+              .sendSyncRequestToConfigNodeWithRetry(
+                  registeredConfigNode.getInternalEndPoint(),
+                  nodeId,
+                  CnToCnNodeRequestType.SHOW_APPLIED_CONFIGURATIONS);
     }
     return resp;
   }
