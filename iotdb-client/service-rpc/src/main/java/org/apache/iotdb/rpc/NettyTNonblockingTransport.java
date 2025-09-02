@@ -37,6 +37,7 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.GenericFutureListener;
+import java.util.concurrent.CompletableFuture;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -56,7 +57,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.security.KeyStore;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -77,7 +77,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
   private volatile Channel channel;
   private final AtomicBoolean connected = new AtomicBoolean(false);
   private final AtomicBoolean connecting = new AtomicBoolean(false);
-  private ChannelFuture future;
+  private final CompletableFuture<Void> listenerFuture = new CompletableFuture<>();
   private final LinkedBlockingQueue<ByteBuf> readQueue = new LinkedBlockingQueue<>();
   private final Object lock = new Object();
 
@@ -244,9 +244,8 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
 
       int available = Math.min(buffer.remaining(), byteBuf.readableBytes());
       if (available > 0) {
-        byte[] tempArray = new byte[available];
-        byteBuf.readBytes(tempArray);
-        buffer.put(tempArray);
+        buffer.limit(buffer.position() + available);
+        byteBuf.readBytes(buffer);
         if (logger.isDebugEnabled()) {
           logger.debug(
               "Read {} bytes into ByteBuffer, remaining space: {}", available, buffer.remaining());
@@ -337,10 +336,10 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
     }
 
     synchronized (lock) {
-      ByteBuf byteBuf = Unpooled.buffer(remaining);
+      ByteBuf byteBuf = Unpooled.wrappedBuffer(buffer);
       try {
-        byteBuf.writeBytes(buffer);
         ChannelFuture future = channel.writeAndFlush(byteBuf);
+        buffer.position(buffer.position() + remaining);
         future.addListener(
             (GenericFutureListener<ChannelFuture>)
                 future1 -> {
@@ -452,7 +451,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       dummyClient.connect(new InetSocketAddress("localhost", dummyPort));
 
       // Initiate Netty connect
-      future = bootstrap.connect(host, port);
+      ChannelFuture future = bootstrap.connect(host, port);
       future.addListener(
           (GenericFutureListener<ChannelFuture>)
               future1 -> {
@@ -476,10 +475,12 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
                           selector.wakeup();
                         }
                       }
+                      listenerFuture.complete(null);
                     } catch (IOException e) {
                       if (logger.isDebugEnabled()) {
                         logger.debug("Failed to accept dummy connection", e);
                       }
+                      listenerFuture.completeExceptionally(e);
                     }
                   } else {
                     if (logger.isDebugEnabled()) {
@@ -489,6 +490,7 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
                           port,
                           future1.cause().getMessage());
                     }
+                    listenerFuture.completeExceptionally(future1.cause());
                   }
                   connecting.set(false);
                 }
@@ -503,16 +505,9 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
   @Override
   public boolean finishConnect() throws IOException {
     try {
-      future.sync();
+      listenerFuture.get();
     } catch (Throwable e) {
       throw new IOException(e);
-    }
-    if (connecting.get()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        throw new IOException(e);
-      }
     }
     synchronized (lock) {
       boolean dummyFinished = dummyClient.finishConnect();
@@ -537,21 +532,15 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
 
   @Override
   public String toString() {
-    synchronized (lock) {
-      return "[remote: " + getRemoteAddress() + ", local: " + getLocalAddress() + "]";
-    }
+    return "[remote: " + getRemoteAddress() + ", local: " + getLocalAddress() + "]";
   }
 
   public SocketAddress getRemoteAddress() {
-    synchronized (lock) {
-      return channel != null ? channel.remoteAddress() : null;
-    }
+    return channel != null ? channel.remoteAddress() : null;
   }
 
   public SocketAddress getLocalAddress() {
-    synchronized (lock) {
-      return channel != null ? channel.localAddress() : null;
-    }
+    return channel != null ? channel.localAddress() : null;
   }
 
   private class NettyTransportHandler extends ChannelInboundHandlerAdapter {
