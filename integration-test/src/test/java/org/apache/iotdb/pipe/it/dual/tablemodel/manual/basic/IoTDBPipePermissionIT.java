@@ -333,7 +333,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       }
 
       final String dbName2 = "test2";
-      TestUtils.executeNonQuery("create database " + dbName2);
+      TableModelUtils.createDataBaseAndTable(senderEnv, tbName, dbName2);
 
       // Write some data
       if (!TableModelUtils.insertData(dbName2, tbName, 0, 100, senderEnv)) {
