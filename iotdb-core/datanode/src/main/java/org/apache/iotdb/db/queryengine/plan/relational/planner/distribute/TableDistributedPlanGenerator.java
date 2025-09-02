@@ -634,15 +634,6 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitPatternRecognition(PatternRecognitionNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
-    if (node.getPartitionBy().isEmpty()) {
-      Optional<OrderingScheme> orderingScheme = node.getOrderingScheme();
-      orderingScheme.ifPresent(scheme -> nodeOrderingMap.put(node.getPlanNodeId(), scheme));
-    }
-
-    if (node.getChildren().isEmpty()) {
-      return Collections.singletonList(node);
-    }
-
     boolean canSplitPushDown = (node.getChild() instanceof GroupNode);
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
@@ -760,7 +751,15 @@ public class TableDistributedPlanGenerator
           new MergeSortNode(
               queryId.genPlanNodeId(), context.expectedOrderingScheme, node.getOutputSymbols());
       for (PlanNode node1 : constructDeviceTableScanByRegionReplicaSet(node, context)) {
-        mergeSortNode.addChild(node1);
+        if (canSortEliminated(
+            mergeSortNode.getOrderingScheme(), nodeOrderingMap.get(node1.getPlanNodeId()))) {
+          mergeSortNode.addChild(node1);
+        } else {
+          SortNode subSortNode =
+              new SortNode(
+                  queryId.genPlanNodeId(), node1, mergeSortNode.getOrderingScheme(), false, false);
+          mergeSortNode.addChild(subSortNode);
+        }
       }
       nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
       result.add(mergeSortNode);
