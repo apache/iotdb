@@ -109,12 +109,12 @@ public abstract class AbstractOperatePipeProcedureV2
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOGGER.info("ProcedureId {} try to acquire pipe lock.", getProcId());
+    LOGGER.debug("ProcedureId {} try to acquire pipe lock.", getProcId());
     pipeTaskInfo = acquireLockInternal(configNodeProcedureEnv);
     if (pipeTaskInfo == null) {
       LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
     } else {
-      LOGGER.info("ProcedureId {} acquired pipe lock.", getProcId());
+      LOGGER.debug("ProcedureId {} acquired pipe lock.", getProcId());
     }
 
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
@@ -125,7 +125,7 @@ public abstract class AbstractOperatePipeProcedureV2
               "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
               getProcId());
         } else {
-          LOGGER.info(
+          LOGGER.debug(
               "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with pipe lock.",
               getProcId());
         }
@@ -134,7 +134,7 @@ public abstract class AbstractOperatePipeProcedureV2
         if (pipeTaskInfo == null) {
           LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
         } else {
-          LOGGER.info("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
+          LOGGER.debug("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
           configNodeProcedureEnv
               .getConfigManager()
               .getPipeManager()
@@ -173,7 +173,7 @@ public abstract class AbstractOperatePipeProcedureV2
     if (pipeTaskInfo == null) {
       LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
     } else {
-      LOGGER.info("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
+      LOGGER.debug("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
       if (this instanceof PipeMetaSyncProcedure) {
         configNodeProcedureEnv
             .getConfigManager()

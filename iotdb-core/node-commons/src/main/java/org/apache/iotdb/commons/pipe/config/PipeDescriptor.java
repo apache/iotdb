@@ -498,6 +498,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_check_all_sync_client_live_time_interval_ms",
                 String.valueOf(config.getPipeCheckAllSyncClientLiveTimeIntervalMs()))));
+    config.setPipeTsFileResourceSegmentLockNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_resource_segment_lock_num",
+                String.valueOf(config.getPipeTsFileResourceSegmentLockNum()))));
 
     config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
         Long.parseLong(
