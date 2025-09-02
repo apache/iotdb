@@ -557,11 +557,15 @@ public class IoTDBPatternAggregationIT {
             + "        AND A.time = CAST('2025-06-01 00:00:00' AS TIMESTAMP) "
             + "        AND A.number = CAST('100' AS INT64) "
             + "        AND A.quantity = CAST('5' AS INT32) "
-            // + "        AND A.discount = CAST('0.95' AS DOUBLE) "
+            + "        AND A.quantity = CAST('5' AS INT64) "
+            + "        AND A.discount = 0.95 "
+            + "        AND A.discount = CAST('0.95' AS FLOAT) "
+            + "        AND A.discount = CAST('0.95' AS DOUBLE) "
             + "        AND A.totalprice = CAST('55000.5' AS DOUBLE) "
             + "        AND A.status = CAST('true' AS BOOLEAN) "
             + "        AND A.receipt = CAST(X'526563656970743130305F3230323530363031' AS BLOB) "
             + "        AND CAST(A.quantity AS INT64) = CAST('5' AS INT64) "
+            + "        AND CAST(A.quantity AS INT64) = CAST(5 AS INT64) "
             + ") AS m ",
         expectedHeader,
         retArray,
