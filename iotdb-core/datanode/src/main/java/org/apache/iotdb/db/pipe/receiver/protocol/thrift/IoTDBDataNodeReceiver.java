@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
@@ -376,7 +377,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     } catch (final Exception e) {
       final String error =
           String.format("Exception %s encountered while handling request %s.", e.getMessage(), req);
-      LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
+      PipeLogger.log(LOGGER::warn, e, "Receiver id = %s: %s", receiverId.get(), error);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
@@ -533,7 +534,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final TSStatus status =
           ((AlterLogicalViewNode) req.getPlanNode()).checkPermissionBeforeProcess(username);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
+        PipeLogger.log(
+            LOGGER::warn,
             "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
             receiverId.get(),
             StatementType.ALTER_LOGICAL_VIEW.name(),
@@ -681,7 +683,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result;
       } else {
-        LOGGER.warn(
+        PipeLogger.log(
+            LOGGER::warn,
             "Receiver id = {}: Failure status encountered while executing statement {}: {}",
             receiverId.get(),
             statement,
@@ -689,7 +692,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return statement.accept(STATEMENT_STATUS_VISITOR, result);
       }
     } catch (final Exception e) {
-      LOGGER.warn(
+      PipeLogger.log(
+          LOGGER::warn,
           "Receiver id = {}: Exception encountered while executing statement {}: ",
           receiverId.get(),
           statement,
@@ -733,8 +737,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     final TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Failed to check authority for statement %s, username = %s, response = %s.",
           receiverId.get(),
           statement.getType().name(),
           username,
