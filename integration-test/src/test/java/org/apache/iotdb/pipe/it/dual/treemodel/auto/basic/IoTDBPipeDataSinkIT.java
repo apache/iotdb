@@ -532,9 +532,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       if (!TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (2, 1)",
-              "flush"),
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
           null)) {
         return;
       }
