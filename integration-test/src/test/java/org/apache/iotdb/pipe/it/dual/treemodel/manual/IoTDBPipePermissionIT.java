@@ -184,7 +184,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"),
+            "grant READ on root.ln.** to role `admin`"),
         null)) {
       return;
     }
@@ -199,8 +199,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           senderEnv,
           Arrays.asList(
               "create user someUser 'passwd'",
-              "create database root.noPermission",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
+              "create timeseries root.noPermission.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
           null)) {
         fail();
         return;
@@ -229,8 +228,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("1,"));
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show timeseries",
