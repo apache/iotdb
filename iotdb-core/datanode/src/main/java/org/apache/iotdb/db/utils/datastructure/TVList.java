@@ -251,10 +251,6 @@ public abstract class TVList implements WALEntryValue {
     return indices.get(arrayIndex)[elementIndex];
   }
 
-  public int getValueIndex(int index, Ordering ordering) {
-    return ordering.isAscending() ? getValueIndex(index) : getValueIndex(rowCount - 1 - index);
-  }
-
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
