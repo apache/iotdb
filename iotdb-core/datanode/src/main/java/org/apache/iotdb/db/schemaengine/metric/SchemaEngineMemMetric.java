@@ -38,17 +38,18 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   private static final String MEM_CAPACITY = "schema_region_mem_capacity";
   private static final String REGION_NUMBER = "schema_region_number";
   private static final String DEVICE_NUMBER = "schema_region_total_device_cnt";
+  private static final String TABLE_DEVICE_NUMBER = "schema_region_table_device_cnt";
   private static final String SCHEMA_CONSENSUS = "schema_region_consensus";
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
 
   private final MemSchemaEngineStatistics engineStatistics;
 
-  public SchemaEngineMemMetric(MemSchemaEngineStatistics engineStatistics) {
+  public SchemaEngineMemMetric(final MemSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
   }
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public void bindTo(final AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
@@ -99,8 +100,18 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         SCHEMA_CONSENSUS);
   }
 
+  public void bindTableMetrics(final AbstractMetricService metricService, final String tableName) {
+    metricService.createAutoGauge(
+        Metric.SCHEMA_ENGINE.toString(),
+        MetricLevel.IMPORTANT,
+        engineStatistics,
+        statistics -> statistics.getTableDeviceNumber(tableName),
+        Tag.NAME.toString(),
+        DEVICE_NUMBER);
+  }
+
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
+  public void unbindFrom(final AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), DEVICE_NUMBER);
     metricService.remove(
@@ -122,6 +133,8 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
     metricService.remove(
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_CONSENSUS);
   }
+
+  public static void unbindTableMetrics() {}
 
   /**
    * Encode SchemaRegionConsensusProtocol to ordinal.
