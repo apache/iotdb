@@ -828,11 +828,12 @@ public class IoTDBAlterColumnTypeIT {
       assertFalse(dataSet.hasNext());
     }
 
-    filesToLoad.forEach(tsfile -> {
-      tsfile.delete();
-      File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
-      resourceFile.delete();
-    });
+    filesToLoad.forEach(
+        tsfile -> {
+          tsfile.delete();
+          File resourceFile = new File(tsfile.getAbsolutePath() + ".resource");
+          resourceFile.delete();
+        });
     filesToLoad.clear();
 
     // file5-file8 s1=DOUBLE
@@ -912,11 +913,12 @@ public class IoTDBAlterColumnTypeIT {
           "ALTER TABLE load_and_alter ALTER COLUMN s1 SET DATA TYPE DOUBLE");
     }
 
-    filesToLoad.forEach(tsfile -> {
-      tsfile.delete();
-      File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
-      resourceFile.delete();
-    });
+    filesToLoad.forEach(
+        tsfile -> {
+          tsfile.delete();
+          File resourceFile = new File(tsfile.getAbsolutePath() + ".resource");
+          resourceFile.delete();
+        });
     filesToLoad.clear();
 
     // file9-file12 s1=INT32
@@ -979,11 +981,12 @@ public class IoTDBAlterColumnTypeIT {
       assertFalse(dataSet.hasNext());
     }
 
-    filesToLoad.forEach(tsfile -> {
-      tsfile.delete();
-      File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
-      resourceFile.delete();
-    });
+    filesToLoad.forEach(
+        tsfile -> {
+          tsfile.delete();
+          File resourceFile = new File(tsfile.getAbsolutePath() + ".resource");
+          resourceFile.delete();
+        });
     filesToLoad.clear();
   }
 
@@ -1197,11 +1200,12 @@ public class IoTDBAlterColumnTypeIT {
       }
 
       // clear data
-      filesToLoad.forEach(tsfile -> {
-        tsfile.delete();
-        File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
-        resourceFile.delete();
-      });
+      filesToLoad.forEach(
+          tsfile -> {
+            tsfile.delete();
+            File resourceFile = new File(tsfile.getAbsolutePath() + ".resource");
+            resourceFile.delete();
+          });
       filesToLoad.clear();
 
       // check load result
@@ -1283,11 +1287,12 @@ public class IoTDBAlterColumnTypeIT {
       assertFalse(dataSet.hasNext());
 
       // clear data
-      filesToLoad.forEach(tsfile -> {
-        tsfile.delete();
-        File resourceFile = new File(tsfile.getAbsolutePath()+".resource");
-        resourceFile.delete();
-      });
+      filesToLoad.forEach(
+          tsfile -> {
+            tsfile.delete();
+            File resourceFile = new File(tsfile.getAbsolutePath() + ".resource");
+            resourceFile.delete();
+          });
       filesToLoad.clear();
       session.executeNonQueryStatement("DELETE TIMESERIES root.sg1.d1.s1");
     }
