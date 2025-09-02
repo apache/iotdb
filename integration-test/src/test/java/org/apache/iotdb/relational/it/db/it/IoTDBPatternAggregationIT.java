@@ -508,16 +508,17 @@ public class IoTDBPatternAggregationIT {
   @Test
   public void testDifferentTypes() {
     String[] expectedHeader = new String[] {"match", "count_total"};
-    String[] retArray = new String[] {"1,10,"};
+    String[] retArray = new String[] {"1,12,"};
     tableResultSetEqualTest(
         "SELECT m.match, m.count_total FROM orders "
             + "MATCH_RECOGNIZE ( "
             + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
-            + "        COUNT(totalprice) AS count_total "
+            + "        COUNT(totalprice) AS count_total, "
+            + "        L.time AS time "
             + "    ONE ROW PER MATCH "
-            + "    PATTERN (A B C D E F G H I J) "
+            + "    PATTERN (A B C D E F G H I J K L) "
             + "    DEFINE "
             + "        A AS A.customer_id = '100', "
             + "        B AS B.region = 'beijing', "
@@ -528,7 +529,39 @@ public class IoTDBPatternAggregationIT {
             + "        G AS G.totalprice = 667849.9, "
             + "        H AS H.quantity = 6, "
             + "        I AS I.discount = 1.00, "
-            + "        J AS J.receipt = X'526563656970743130305F3230323530363033' "
+            + "        J AS J.receipt = X'526563656970743130305F3230323530363033', "
+            + "        K AS K.time = 1748923300000, "
+            + "        L AS L.time = CAST('2025-06-03 04:18:20' AS TIMESTAMP) "
+            + ") AS m ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDifferentCast() {
+    String[] expectedHeader = new String[] {"match", "cnt"};
+    String[] retArray = new String[] {"1,1,"};
+    tableResultSetEqualTest(
+        "SELECT m.match, m.cnt FROM orders "
+            + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        COUNT(*) AS cnt "
+            + "    ONE ROW PER MATCH "
+            + "    PATTERN (A) "
+            + "    DEFINE "
+            + "        A AS "
+            + "            A.order_date = CAST('2025-06-01' AS DATE) "
+            + "        AND A.time = CAST('2025-06-01 00:00:00' AS TIMESTAMP) "
+            + "        AND A.number = CAST('100' AS INT64) "
+            + "        AND A.quantity = CAST('5' AS INT32) "
+            // + "        AND A.discount = CAST('0.95' AS DOUBLE) "
+            + "        AND A.totalprice = CAST('55000.5' AS DOUBLE) "
+            + "        AND A.status = CAST('true' AS BOOLEAN) "
+            + "        AND A.receipt = CAST(X'526563656970743130305F3230323530363031' AS BLOB) "
+            + "        AND CAST(A.quantity AS INT64) = CAST('5' AS INT64) "
             + ") AS m ",
         expectedHeader,
         retArray,
