@@ -42,9 +42,6 @@ class PipeConfigRegionSinkConstructor extends PipeSinkConstructor {
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
         IoTDBConfigRegionSink::new);
     pluginConstructors.put(
-        BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(),
-        IoTDBConfigRegionAirGapSink::new);
-    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingSink::new);
 
     pluginConstructors.put(
@@ -55,8 +52,6 @@ class PipeConfigRegionSinkConstructor extends PipeSinkConstructor {
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(), IoTDBConfigRegionSink::new);
     pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(), IoTDBConfigRegionSink::new);
-    pluginConstructors.put(
-        BuiltinPipePlugin.IOTDB_AIR_GAP_SINK.getPipePluginName(), IoTDBConfigRegionAirGapSink::new);
     pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingSink::new);
   }
