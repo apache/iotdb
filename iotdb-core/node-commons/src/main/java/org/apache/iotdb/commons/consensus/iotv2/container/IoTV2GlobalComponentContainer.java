@@ -119,6 +119,9 @@ public class IoTV2GlobalComponentContainer {
   }
 
   public static IoTV2GlobalComponentContainer getInstance() {
+    if (IoTV2GlobalComponentContainerHolder.INSTANCE == null) {
+      IoTV2GlobalComponentContainer.build();
+    }
     return IoTV2GlobalComponentContainerHolder.INSTANCE;
   }
 
