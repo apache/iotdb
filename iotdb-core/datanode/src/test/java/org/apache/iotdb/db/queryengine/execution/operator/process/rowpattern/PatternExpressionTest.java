@@ -50,4 +50,13 @@ public class PatternExpressionTest {
     values = Arrays.asList(6, 5, 10); // 6 + 5 < 10 -> false
     assertEquals(false, fullExpression.evaluate(values));
   }
+
+  @Test
+  public void testStringExpression() {
+    Computation expr =
+        new BinaryComputation(
+            new ReferenceComputation(0), new ReferenceComputation(1), ComparisonOperator.EQUAL);
+    List<Object> values = Arrays.asList("hello", "hello");
+    assertEquals(true, expr.evaluate(values));
+  }
 }

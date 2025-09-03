@@ -95,7 +95,7 @@ public class DeletionReader implements Closeable {
 
   @Override
   public void close() throws IOException {
-    this.fileInputStream.close();
     this.fileChannel.close();
+    this.fileInputStream.close();
   }
 }

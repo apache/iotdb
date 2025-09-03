@@ -329,6 +329,7 @@ public class CommonConfig {
   private volatile double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold = 0.8d;
   private volatile boolean pipeTransferTsFileSync = false;
   private volatile long pipeCheckAllSyncClientLiveTimeIntervalMs = 5 * 60 * 1000L; // 5 minutes
+  private int pipeTsFileResourceSegmentLockNum = -1;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1942,14 +1943,28 @@ public class CommonConfig {
   }
 
   public void setPipeCheckAllSyncClientLiveTimeIntervalMs(
-      long pipeCheckSyncAllClientLiveTimeIntervalMs) {
-    if (this.pipeCheckAllSyncClientLiveTimeIntervalMs == pipeCheckSyncAllClientLiveTimeIntervalMs) {
+      long pipeCheckAllSyncClientLiveTimeIntervalMs) {
+    if (this.pipeCheckAllSyncClientLiveTimeIntervalMs == pipeCheckAllSyncClientLiveTimeIntervalMs) {
       return;
     }
-    this.pipeCheckAllSyncClientLiveTimeIntervalMs = pipeCheckSyncAllClientLiveTimeIntervalMs;
+    this.pipeCheckAllSyncClientLiveTimeIntervalMs = pipeCheckAllSyncClientLiveTimeIntervalMs;
     logger.info(
         "pipeCheckSyncAllClientLiveTimeIntervalMs is set to {}",
-        pipeCheckSyncAllClientLiveTimeIntervalMs);
+        pipeCheckAllSyncClientLiveTimeIntervalMs);
+  }
+
+  public int getPipeTsFileResourceSegmentLockNum() {
+    return pipeTsFileResourceSegmentLockNum;
+  }
+
+  public void setPipeTsFileResourceSegmentLockNum(int pipeTsFileResourceSegmentLockNum) {
+    if (this.pipeTsFileResourceSegmentLockNum == pipeTsFileResourceSegmentLockNum) {
+      return;
+    }
+    this.pipeTsFileResourceSegmentLockNum = pipeTsFileResourceSegmentLockNum;
+    logger.info(
+        "pipeCheckSyncAllClientLiveTimeIntervalMs is set to {}",
+        pipeCheckAllSyncClientLiveTimeIntervalMs);
   }
 
   public double getPipeSendTsFileRateLimitBytesPerSecond() {
