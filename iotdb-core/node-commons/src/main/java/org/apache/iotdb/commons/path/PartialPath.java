@@ -202,6 +202,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return new PartialPath(newPathNodes);
   }
 
+  public MeasurementPath concatAsMeasurementPath(String measurement) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + 1);
+    newNodes[len] = measurement;
+    MeasurementPath measurementPath = new MeasurementPath(newNodes);
+    measurementPath.device = this.device;
+    return measurementPath;
+  }
+
   public String[] getNodes() {
     return nodes;
   }
