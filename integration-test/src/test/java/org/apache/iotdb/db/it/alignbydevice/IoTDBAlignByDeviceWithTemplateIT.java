@@ -63,13 +63,13 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   String[] retArray;
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -970,12 +970,12 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
     String[] retArray = new String[] {};
     resultSetEqualTest(
-        "SELECT * FROM root.sg1.** where time>=now()-1d and time<=now() "
+        "SELECT * FROM root.sg1.** where time>=now()-1ms and time<=now() "
             + "ORDER BY TIME DESC ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
     resultSetEqualTest(
-        "SELECT * FROM root.sg2.** where time>=now()-1d and time<=now() "
+        "SELECT * FROM root.sg2.** where time>=now()-1ms and time<=now() "
             + "ORDER BY TIME DESC ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
