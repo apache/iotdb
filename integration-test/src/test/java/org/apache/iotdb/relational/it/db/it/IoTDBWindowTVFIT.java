@@ -252,7 +252,7 @@ public class IoTDBWindowTVFIT {
           "3,2021-01-01T09:05:00.000Z,device1,3,"
         };
     tableResultSetEqualTest(
-        "SELECT window_index, time, device_id, int_val FROM variation(multi_type, 'int_val', 1.0, false) order by window_index, time",
+        "SELECT window_index, time, device_id, int_val FROM variation(multi_type order by time, 'int_val', 1.0, false) order by window_index, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
