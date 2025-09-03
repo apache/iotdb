@@ -1074,6 +1074,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                 }
                 currentTime[0] = System.currentTimeMillis();
               }
+              senderEnv.getSessionConnection().executeNonQueryStatement("flush");
               TestUtils.assertSingleResultSetEqual(
                   TestUtils.executeQueryWithRetry(
                       statement, "select count(*) from root.topic*,root.cg*.**"),
