@@ -54,10 +54,10 @@ public class CompressionRatio {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  static final String COMPRESSION_RATIO_DIR = "compression_ratio";
+  public static final String COMPRESSION_RATIO_DIR = "compression_ratio";
 
   private static final String FILE_PREFIX_BEFORE_V121 = "Ratio-";
-  private static final String FILE_PREFIX = "Compress-";
+  public static final String FILE_PREFIX = "Compress-";
 
   private static final String SEPARATOR = "-";
 
@@ -109,6 +109,7 @@ public class CompressionRatio {
             String.format(
                 Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, totalMemorySize.get(), totalDiskSize));
     persist(oldDataNodeFile, newDataNodeFile);
+    this.oldFileName = newDataNodeFile.getName();
 
     Pair<Long, Long> dataRegionCompressionRatio =
         dataRegionRatioMap.computeIfAbsent(dataRegionId, id -> new Pair<>(0L, 0L));
@@ -135,6 +136,26 @@ public class CompressionRatio {
                 + "."
                 + dataRegionId);
     persist(oldDataRegionFile, newDataRegionFile);
+  }
+
+  public synchronized void removeDataRegionRatio(String dataRegionId) {
+    Pair<Long, Long> dataRegionCompressionRatio = dataRegionRatioMap.remove(dataRegionId);
+    if (dataRegionCompressionRatio == null) {
+      return;
+    }
+    File oldDataRegionFile =
+        SystemFileFactory.INSTANCE.getFile(
+            directory,
+            String.format(
+                    Locale.ENGLISH,
+                    RATIO_FILE_PATH_FORMAT,
+                    dataRegionCompressionRatio.getLeft(),
+                    dataRegionCompressionRatio.getRight())
+                + "."
+                + dataRegionId);
+    if (!oldDataRegionFile.delete() && oldDataRegionFile.exists()) {
+      LOGGER.warn("Can't delete old data region compression file {}", oldDataRegionFile);
+    }
   }
 
   /** Get the average compression ratio for all closed files */
@@ -171,7 +192,6 @@ public class CompressionRatio {
           oldFile.getAbsolutePath(),
           newFile.getAbsolutePath());
     }
-    this.oldFileName = newFile.getName();
   }
 
   private void checkDirectoryExist() throws IOException {
