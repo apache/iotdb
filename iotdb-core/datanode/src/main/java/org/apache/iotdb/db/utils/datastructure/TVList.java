@@ -813,6 +813,9 @@ public abstract class TVList implements WALEntryValue {
         case BOOLEAN:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
             if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isLatestPoint(index, time)
@@ -831,6 +834,9 @@ public abstract class TVList implements WALEntryValue {
         case DATE:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
             if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isLatestPoint(index, time)
@@ -849,6 +855,9 @@ public abstract class TVList implements WALEntryValue {
         case TIMESTAMP:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
             if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isLatestPoint(index, time)
@@ -866,6 +875,9 @@ public abstract class TVList implements WALEntryValue {
         case FLOAT:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
             if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isLatestPoint(index, time)
@@ -885,6 +897,9 @@ public abstract class TVList implements WALEntryValue {
         case DOUBLE:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
             if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isLatestPoint(index, time)
@@ -906,6 +921,9 @@ public abstract class TVList implements WALEntryValue {
         case STRING:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
             if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
                 && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
                 && isLatestPoint(index, time)

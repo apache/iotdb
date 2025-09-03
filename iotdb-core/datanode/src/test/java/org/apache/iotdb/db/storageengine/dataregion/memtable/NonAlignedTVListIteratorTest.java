@@ -497,9 +497,15 @@ public class NonAlignedTVListIteratorTest {
     List<Statistics<? extends Serializable>> pageStatisticsList = chunk.getPageStatisticsList();
     int count = 0;
     long offset = paginationController.getCurOffset();
+    if (!scanOrder.isAscending()) {
+      Collections.reverse(pageStatisticsList);
+    }
     for (Statistics<? extends Serializable> statistics : pageStatisticsList) {
-      memPointIterator.setCurrentPageTimeRange(
-          new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
+      TimeRange currentTimeRange =
+          (statistics.getStartTime() <= statistics.getEndTime())
+              ? new TimeRange(statistics.getStartTime(), statistics.getEndTime())
+              : null;
+      memPointIterator.setCurrentPageTimeRange(currentTimeRange);
       while (memPointIterator.hasNextBatch()) {
         TsBlock tsBlock = memPointIterator.nextBatch();
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -512,6 +518,7 @@ public class NonAlignedTVListIteratorTest {
             count++;
           }
           long currentTimestamp = tsBlock.getTimeByIndex(i);
+          Assert.assertTrue(currentTimeRange.contains(currentTimestamp));
           long value = tsBlock.getColumn(0).getLong(i);
           Assert.assertEquals(currentTimestamp, value);
           if (globalTimeFilter != null) {
