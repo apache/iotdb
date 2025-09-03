@@ -120,7 +120,7 @@ public class PipeDataNodeTaskBuilder {
               regionId,
               pipeType.equals(PipeType.USER)
                   ? PipeSubtaskExecutorManager.getInstance().getConnectorExecutorSupplier()
-                  : PipeSubtaskExecutorManager.getInstance().getConsensusExecutorSupplier());
+                  : PipeSubtaskExecutorManager.getInstance()::getConsensusExecutor);
     }
 
     // The processor connects the extractor and connector.
