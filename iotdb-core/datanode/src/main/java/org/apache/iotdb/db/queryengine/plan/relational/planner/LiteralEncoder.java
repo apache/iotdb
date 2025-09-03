@@ -93,8 +93,7 @@ public final class LiteralEncoder {
     }
 
     if (type.equals(FLOAT) || type.equals(DOUBLE)) {
-      Double value = (Double) object;
-      return new DoubleLiteral(value);
+      return new DoubleLiteral(((Number) object).doubleValue());
     }
 
     if (isBool(type)) {

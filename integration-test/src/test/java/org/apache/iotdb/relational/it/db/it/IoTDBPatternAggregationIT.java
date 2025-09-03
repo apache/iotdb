@@ -93,6 +93,21 @@ public class IoTDBPatternAggregationIT {
         "INSERT INTO t3 VALUES (2025-01-01T00:03:00, 7)",
         "INSERT INTO t3 VALUES (2025-01-01T00:04:00, 7)",
         "INSERT INTO t3 VALUES (2025-01-01T00:05:00, -8)",
+
+        // TABLE: orders
+        "create table orders (customer_id TAG, region ATTRIBUTE, order_date DATE, product TEXT, status BOOLEAN, number INT64, totalprice DOUBLE, quantity INT32, discount FLOAT, receipt BLOB)",
+        "insert into orders values(1748736000000, '100', 'beijing', '2025-06-01', 'table', true, 100, 55000.5, 5, 0.95, X'526563656970743130305F3230323530363031')",
+        "insert into orders values(1748736600000, '100', 'beijing', '2025-06-01', 'table', true, 255, 13200.3, 10, 0.90, X'526563656970743130305F3230323530363031')",
+        "insert into orders values(1748737200000, '100', 'beijing', '2025-06-01', 'table', true, 888, 12400, 20, 0.85, X'526563656970743130305F3230323530363031')",
+        "insert into orders values(1748737800000, '100', 'beijing', '2025-06-01', 'table', true, 55, 9998.3, 2, 1.00, X'526563656970743130305F3230323530363031')",
+        "insert into orders values(1748739600000, '100', 'beijing', '2025-06-01', 'table', true, 666, 9998.3, 15, 0.92, X'526563656970743130305F3230323530363031')",
+        "insert into orders values(1748822400000, '101', 'shanghai', '2025-06-02', 'door', false, 608, 12350.5, 8, 0.88, X'526563656970743130315F3230323530363032')",
+        "insert into orders values(1748826000000, '101', 'shanghai', '2025-06-02', 'door', true, 1000, 667849.9, 12, 0.80, X'526563656970743130315F3230323530363032')",
+        "insert into orders values(1748831400000, '101', 'shanghai', '2025-06-02', 'door', true, 360, 33920.5, 6, 0.85, X'526563656970743130315F3230323530363032')",
+        "insert into orders values(1748835000000, '101', 'shanghai', '2025-06-02', 'door', true, 150, 33920.5, 3, 1.00, X'526563656970743130315F3230323530363032')",
+        "insert into orders values(1748923200000, '100', 'beijing', '2025-06-03', 'table', true, 150, 11230.4, 4, 0.97, X'526563656970743130305F3230323530363033')",
+        "insert into orders values(1748923300000, '101', 'beijing', '2025-06-04', 'table', true, 50, 55000.00, 2, 0.90, X'526563656970743130315F3230323530363034')",
+        "insert into orders values(1748924300000, '102', 'beijing', '2025-06-05', 'table', true, 50, 65000.00, 1, 0.85, X'526563656970743130325F3230323530363035')",
       };
 
   private static void insertData() {
@@ -484,6 +499,73 @@ public class IoTDBPatternAggregationIT {
             + "    PATTERN ((A | B)*) "
             + "    DEFINE "
             + "        A AS AVG(totalprice) = 5 "
+            + ") AS m ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDifferentTypes() {
+    String[] expectedHeader = new String[] {"match", "count_total"};
+    String[] retArray = new String[] {"1,12,"};
+    tableResultSetEqualTest(
+        "SELECT m.match, m.count_total FROM orders "
+            + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        COUNT(totalprice) AS count_total, "
+            + "        L.time AS time "
+            + "    ONE ROW PER MATCH "
+            + "    PATTERN (A B C D E F G H I J K L) "
+            + "    DEFINE "
+            + "        A AS A.customer_id = '100', "
+            + "        B AS B.region = 'beijing', "
+            + "        C AS C.order_date = CAST('2025-06-01' AS DATE), "
+            + "        D AS D.product = 'table', "
+            + "        E AS E.status = true, "
+            + "        F AS F.number = 608, "
+            + "        G AS G.totalprice = 667849.9, "
+            + "        H AS H.quantity = 6, "
+            + "        I AS I.discount = 1.00, "
+            + "        J AS J.receipt = X'526563656970743130305F3230323530363033', "
+            + "        K AS K.time = 1748923300000, "
+            + "        L AS L.time = CAST('2025-06-03 04:18:20' AS TIMESTAMP) "
+            + ") AS m ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDifferentCast() {
+    String[] expectedHeader = new String[] {"match", "cnt"};
+    String[] retArray = new String[] {"1,1,"};
+    tableResultSetEqualTest(
+        "SELECT m.match, m.cnt FROM orders "
+            + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        COUNT(*) AS cnt "
+            + "    ONE ROW PER MATCH "
+            + "    PATTERN (A) "
+            + "    DEFINE "
+            + "        A AS "
+            + "            A.order_date = CAST('2025-06-01' AS DATE) "
+            + "        AND A.time = CAST('2025-06-01 00:00:00' AS TIMESTAMP) "
+            + "        AND A.number = CAST('100' AS INT64) "
+            + "        AND A.quantity = CAST('5' AS INT32) "
+            + "        AND A.quantity = CAST('5' AS INT64) "
+            + "        AND A.discount = 0.95 "
+            + "        AND A.discount = CAST('0.95' AS FLOAT) "
+            + "        AND A.discount = CAST('0.95' AS DOUBLE) "
+            + "        AND A.totalprice = CAST('55000.5' AS DOUBLE) "
+            + "        AND A.status = CAST('true' AS BOOLEAN) "
+            + "        AND A.receipt = CAST(X'526563656970743130305F3230323530363031' AS BLOB) "
+            + "        AND CAST(A.quantity AS INT64) = CAST('5' AS INT64) "
+            + "        AND CAST(A.quantity AS INT64) = CAST(5 AS INT64) "
             + ") AS m ",
         expectedHeader,
         retArray,
