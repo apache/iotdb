@@ -230,7 +230,9 @@ public class IoTDBAlterColumnTypeIT {
                 new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8),
                 rec.getFields().get(1).getBinaryV());
           } else {
-            assertEquals(newType.castFromSingleValue(from, i), rec.getFields().get(1).getBinaryV());
+            assertEquals(
+                newType.castFromSingleValue(from, genValue(from, i)),
+                rec.getFields().get(1).getBinaryV());
           }
         } else {
           assertEquals(genValue(newType, i).toString(), rec.getFields().get(1).toString());
