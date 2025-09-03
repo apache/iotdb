@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.container;
+package org.apache.iotdb.commons.consensus.iotv2.container;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory.AsyncPipeConsensusServiceClientPoolFactory;
@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ public class IoTV2GlobalComponentContainer {
   private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncClientManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
+  private PipeSubtaskExecutor consensusExecutor;
 
   private IoTV2GlobalComponentContainer() {
     // load rpc client config
@@ -96,10 +98,18 @@ public class IoTV2GlobalComponentContainer {
     }
   }
 
-  private static class PipeConsensusClientMgrContainerHolder {
+  public PipeSubtaskExecutor getConsensusExecutor() {
+    return consensusExecutor;
+  }
+
+  public void setConsensusExecutor(PipeSubtaskExecutor consensusExecutor) {
+    this.consensusExecutor = consensusExecutor;
+  }
+
+  private static class IoTV2GlobalComponentContainerHolder {
     private static IoTV2GlobalComponentContainer INSTANCE;
 
-    private PipeConsensusClientMgrContainerHolder() {}
+    private IoTV2GlobalComponentContainerHolder() {}
 
     public static void build() {
       if (INSTANCE == null) {
@@ -109,12 +119,15 @@ public class IoTV2GlobalComponentContainer {
   }
 
   public static IoTV2GlobalComponentContainer getInstance() {
-    return PipeConsensusClientMgrContainerHolder.INSTANCE;
+    if (IoTV2GlobalComponentContainerHolder.INSTANCE == null) {
+      IoTV2GlobalComponentContainer.build();
+    }
+    return IoTV2GlobalComponentContainerHolder.INSTANCE;
   }
 
   // Only when consensus protocol is PipeConsensus, this method will be called once when construct
   // consensus class.
   public static void build() {
-    PipeConsensusClientMgrContainerHolder.build();
+    IoTV2GlobalComponentContainerHolder.build();
   }
 }
