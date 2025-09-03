@@ -82,7 +82,7 @@ public class ConfigNodeConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
-  private String dataPartitionAllocationStrategy = "SHUFFLE";
+  private String dataPartitionAllocationStrategy = "INHERIT";
 
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
