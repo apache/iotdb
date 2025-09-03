@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
@@ -32,6 +31,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,13 +52,13 @@ public class SchemaUtils {
   static {
     SAME_TYPE_PAIRS = new HashSet<>();
 
-    // INT相关的配对
+    // related pair about INT
     addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.DATE, TSDataType.INT32);
 
-    // LONG相关的配对
+    // related pair about LONG
     addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.TIMESTAMP, TSDataType.INT64);
 
-    // TEXT相关的配对
+    // related pair about TEXT
     addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.STRING, TSDataType.BLOB, TSDataType.TEXT);
   }
 
@@ -288,8 +288,8 @@ public class SchemaUtils {
       Set<Pair<TSDataType, TSDataType>> set, TSDataType... dataTypes) {
     for (int i = 0; i < dataTypes.length; i++) {
       for (int j = i + 1; j < dataTypes.length; j++) {
-        set.add(Pair.of(dataTypes[i], dataTypes[j]));
-        set.add(Pair.of(dataTypes[j], dataTypes[i]));
+        set.add(new Pair<>(dataTypes[i], dataTypes[j]));
+        set.add(new Pair<>(dataTypes[j], dataTypes[i]));
       }
     }
   }
@@ -298,7 +298,7 @@ public class SchemaUtils {
     if (originalDataType == dataType) {
       return true;
     }
-    return SAME_TYPE_PAIRS.contains(Pair.of(originalDataType, dataType));
+    return SAME_TYPE_PAIRS.contains(new Pair<>(originalDataType, dataType));
   }
 
   public static void changeMetadataModified(
