@@ -1334,6 +1334,7 @@ public abstract class AlignedTVList extends TVList {
 
   public AlignedTVListIterator iterator(
       Ordering scanOrder,
+      int rowCount,
       Filter globalTimeFilter,
       List<TSDataType> dataTypeList,
       List<Integer> columnIndexList,
@@ -1343,6 +1344,7 @@ public abstract class AlignedTVList extends TVList {
       int maxNumberOfPointsInPage) {
     return new AlignedTVListIterator(
         scanOrder,
+        rowCount,
         globalTimeFilter,
         dataTypeList,
         columnIndexList,
@@ -1369,6 +1371,7 @@ public abstract class AlignedTVList extends TVList {
 
     public AlignedTVListIterator(
         Ordering scanOrder,
+        int rowCount,
         Filter globalTimeFilter,
         List<TSDataType> dataTypeList,
         List<Integer> columnIndexList,
@@ -1376,7 +1379,7 @@ public abstract class AlignedTVList extends TVList {
         Integer floatPrecision,
         List<TSEncoding> encodingList,
         int maxNumberOfPointsInPage) {
-      super(scanOrder, globalTimeFilter, null, null, null, maxNumberOfPointsInPage);
+      super(scanOrder, rowCount, globalTimeFilter, null, null, null, maxNumberOfPointsInPage);
       this.dataTypeList = dataTypeList;
       this.columnIndexList =
           (columnIndexList == null)

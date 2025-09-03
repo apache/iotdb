@@ -246,10 +246,6 @@ public abstract class TVList implements WALEntryValue {
     return indices.get(arrayIndex)[elementIndex];
   }
 
-  public int getValueIndex(int index, Ordering ordering) {
-    return ordering.isAscending() ? getValueIndex(index) : getValueIndex(rowCount - 1 - index);
-  }
-
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
@@ -650,6 +646,7 @@ public abstract class TVList implements WALEntryValue {
 
   public TVListIterator iterator(
       Ordering scanOrder,
+      int rowCount,
       Filter globalTimeFilter,
       List<TimeRange> deletionList,
       Integer floatPrecision,
@@ -657,6 +654,7 @@ public abstract class TVList implements WALEntryValue {
       int maxNumberOfPointsInPage) {
     return new TVListIterator(
         scanOrder,
+        rowCount,
         globalTimeFilter,
         deletionList,
         floatPrecision,
@@ -681,6 +679,7 @@ public abstract class TVList implements WALEntryValue {
 
     public TVListIterator(
         Ordering scanOrder,
+        int rowCount,
         Filter globalTimeFilter,
         List<TimeRange> deletionList,
         Integer floatPrecision,
@@ -942,7 +941,7 @@ public abstract class TVList implements WALEntryValue {
 
     // When traversing in desc order, the index needs to be converted
     public int getScanOrderIndex(int rowIndex) {
-      return scanOrder.isAscending() ? rowIndex : rowCount - 1 - rowIndex;
+      return scanOrder.isAscending() ? rowIndex : rows - 1 - rowIndex;
     }
 
     @Override
