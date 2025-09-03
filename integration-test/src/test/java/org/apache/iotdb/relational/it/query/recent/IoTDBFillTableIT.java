@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBFillTableIT {
   private static final String DATABASE_NAME = "test";
-  private static final String[] createSqls =
+  protected static final String[] createSqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
@@ -84,14 +84,14 @@ public class IoTDBFillTableIT {
       };
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

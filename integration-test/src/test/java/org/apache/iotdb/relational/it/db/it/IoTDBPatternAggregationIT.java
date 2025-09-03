@@ -110,7 +110,7 @@ public class IoTDBPatternAggregationIT {
         "insert into orders values(1748924300000, '102', 'beijing', '2025-06-05', 'table', true, 50, 65000.00, 1, 0.85, X'526563656970743130325F3230323530363035')",
       };
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
@@ -122,13 +122,13 @@ public class IoTDBPatternAggregationIT {
   }
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -160,6 +160,7 @@ public class IoTDBPatternAggregationIT {
             + ")"
             + "MATCH_RECOGNIZE ( "
             + "    PARTITION BY device_id "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        RPR_FIRST(A.time) AS event_start, "
@@ -208,6 +209,7 @@ public class IoTDBPatternAggregationIT {
         "SELECT m.time, m.match, m.count1, m.count2, m.max, m.min, m.sum1, m.sum2, m.avg1, m.avg2, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        COUNT(totalprice) AS count1, "
@@ -261,6 +263,7 @@ public class IoTDBPatternAggregationIT {
         "SELECT m.time, m.match, m.label, m.count_0, m.count_1, m.count_2, m.count_c, m.final_count_c, m.count_u, m.final_count_u, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        CLASSIFIER() AS label, "
@@ -313,6 +316,7 @@ public class IoTDBPatternAggregationIT {
         "SELECT m.time, m.match, m.label, m.sum, m.sum_c, m.final_sum_c, m.sum_u, m.final_sum_u, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        CLASSIFIER() AS label, "
@@ -363,6 +367,7 @@ public class IoTDBPatternAggregationIT {
         "SELECT m.time, m.match, m.label, m.avg, m.avg_c, m.final_avg_c, m.avg_u, m.final_avg_u, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        CLASSIFIER() AS label, "
@@ -405,6 +410,7 @@ public class IoTDBPatternAggregationIT {
         "SELECT m.time, m.match, m.firstTime, m.lastTime, m.maxTime, m.minTime, m.firstVal, m.lastVal "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "      MATCH_NUMBER() AS match, "
             + "      FIRST_BY(time, totalprice) AS firstTime, "
@@ -454,6 +460,7 @@ public class IoTDBPatternAggregationIT {
             + "ROUND(m.std_0, 6) AS std_0, ROUND(m.std_1, 6) AS std_1, ROUND(m.std_2, 6) AS std_2 "
             + "FROM t3 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "      MATCH_NUMBER() AS match, "
             + "      MODE(totalprice) AS mode, "
@@ -490,6 +497,7 @@ public class IoTDBPatternAggregationIT {
         "SELECT m.time, m.match, m.label, m.avg, m.running_avg_b, m.totalprice "
             + "FROM t2 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        CLASSIFIER() AS label, "
