@@ -1374,6 +1374,16 @@ public class IoTDBSessionRelationalIT {
           assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
         } else if (to == TSDataType.DATE) {
           assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+        } else if (to == TSDataType.STRING || to == TSDataType.TEXT) {
+          if (from == TSDataType.DATE) {
+            assertEquals(
+                new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
+                rec.getFields().get(2).getBinaryV());
+          } else {
+            assertEquals(
+                new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
+                rec.getFields().get(2).getBinaryV());
+          }
         } else {
           assertEquals(genValue(to, 1).toString(), rec.getFields().get(2).toString());
         }
