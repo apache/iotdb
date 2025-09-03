@@ -28,13 +28,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.mat
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.AbstractIntType;
+import org.apache.tsfile.read.common.type.AbstractLongType;
+import org.apache.tsfile.read.common.type.AbstractVarcharType;
+import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
-import org.apache.tsfile.read.common.type.IntType;
-import org.apache.tsfile.read.common.type.LongType;
-import org.apache.tsfile.read.common.type.StringType;
-import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -153,15 +153,15 @@ public class PatternExpressionComputation {
 
     if (type instanceof BooleanType) {
       return partition.getBoolean(channel, position);
-    } else if (type instanceof IntType) {
+    } else if (type instanceof AbstractIntType) {
       return partition.getInt(channel, position);
-    } else if (type instanceof LongType || type instanceof TimestampType) {
+    } else if (type instanceof AbstractLongType) {
       return partition.getLong(channel, position);
     } else if (type instanceof FloatType) {
       return partition.getFloat(channel, position);
     } else if (type instanceof DoubleType) {
       return partition.getDouble(channel, position);
-    } else if (type instanceof StringType) {
+    } else if (type instanceof AbstractVarcharType || type instanceof BlobType) {
       return partition.getBinary(channel, position);
     } else {
       throw new SemanticException("Unsupported type: " + type.getClass().getSimpleName());

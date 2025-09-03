@@ -23,10 +23,14 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
@@ -129,6 +133,31 @@ public abstract class Computation {
         // undefined pattern variable is 'true'
         BooleanLiteral constExpr = (BooleanLiteral) expression;
         return new ConstantComputation(constExpr.getValue());
+      } else if (expression instanceof BinaryLiteral) {
+        BinaryLiteral constExpr = (BinaryLiteral) expression;
+        return new ConstantComputation(constExpr.getValue());
+      } else if (expression instanceof GenericLiteral) { // handle the CAST function
+        GenericLiteral constExpr = (GenericLiteral) expression;
+        String type = constExpr.getType();
+
+        if ("DATE".equalsIgnoreCase(type)) { // CAST(... AS DATE)
+          String dateStr = constExpr.getValue();
+          int dateInt = Integer.parseInt(dateStr);
+          return new ConstantComputation(dateInt);
+        } else if ("TIMESTAMP".equalsIgnoreCase(type)) { // CAST(... AS TIMESTAMP)
+          String timestampStr = constExpr.getValue();
+          long timestampLong = Long.parseLong(timestampStr);
+          return new ConstantComputation(timestampLong);
+        } else {
+          return new ConstantComputation(constExpr.getValue());
+        }
+      } else if (expression instanceof Cast) {
+        // non-constant CAST scenario, such AS CAST(A.quantity AS INT64)
+        Cast castExpr = (Cast) expression;
+        Computation inner = parse(castExpr.getExpression(), counter, symbolToIndex);
+        DataType targetType = castExpr.getType();
+
+        return new CastComputation(inner, targetType);
       } else {
         throw new SemanticException(
             "Unsupported expression type: " + expression.getClass().getName());
