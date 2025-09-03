@@ -151,21 +151,49 @@ public class TimeseriesContext {
       return false;
     }
     TimeseriesContext that = (TimeseriesContext) obj;
-    boolean res =
-        Objects.equals(dataType, that.dataType)
-            && Objects.equals(alias, that.alias)
-            && encoding.equals(that.encoding)
-            && Objects.equals(compression, that.compression)
-            && Objects.equals(tags, that.tags)
-            && Objects.equals(attributes, that.attributes)
-            && Objects.equals(deadband, that.deadband)
-            && Objects.equals(deadbandParameters, that.deadbandParameters);
-    return res;
+    return Objects.equals(dataType, that.dataType)
+        && Objects.equals(alias, that.alias)
+        && encoding.equals(that.encoding)
+        && Objects.equals(compression, that.compression)
+        && Objects.equals(tags, that.tags)
+        && Objects.equals(attributes, that.attributes)
+        && Objects.equals(deadband, that.deadband)
+        && Objects.equals(deadbandParameters, that.deadbandParameters);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
         dataType, alias, encoding, compression, tags, attributes, deadband, deadbandParameters);
+  }
+
+  @Override
+  public String toString() {
+    return "TimeseriesContext{"
+        + "alias='"
+        + alias
+        + '\''
+        + ", dataType='"
+        + dataType
+        + '\''
+        + ", encoding='"
+        + encoding
+        + '\''
+        + ", compression='"
+        + compression
+        + '\''
+        + ", tags='"
+        + tags
+        + '\''
+        + ", attributes='"
+        + attributes
+        + '\''
+        + ", deadband='"
+        + deadband
+        + '\''
+        + ", deadbandParameters='"
+        + deadbandParameters
+        + '\''
+        + '}';
   }
 }
