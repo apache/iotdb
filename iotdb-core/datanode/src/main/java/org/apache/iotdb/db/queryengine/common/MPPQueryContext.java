@@ -96,6 +96,9 @@ public class MPPQueryContext {
 
   private boolean userQuery = false;
 
+  /** check if there is tmp file to be deleted. */
+  private boolean mayHaveTmpFile = false;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = ConcurrentHashMap.newKeySet();
@@ -425,5 +428,13 @@ public class MPPQueryContext {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public void setMayHaveTmpFile(boolean mayHaveTmpFile) {
+    this.mayHaveTmpFile = mayHaveTmpFile;
+  }
+
+  public boolean mayHaveTmpFile() {
+    return mayHaveTmpFile;
   }
 }

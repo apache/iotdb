@@ -426,6 +426,9 @@ public class IoTDBConfig {
   /** The buffer for sort operation */
   private long sortBufferSize = 32 * 1024 * 1024L;
 
+  /** The buffer for cte scan operation */
+  private long cteBufferSize = 32 * 1024 * 1024L;
+
   /** Mods cache size limit per fi */
   private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
 
@@ -1370,6 +1373,7 @@ public class IoTDBConfig {
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
     sortTmpDir = addDataHomeDir(sortTmpDir);
+    cteTmpDir = addDataHomeDir(cteTmpDir);
     formulateDataDirs(tierDataDirs);
   }
 
@@ -4076,6 +4080,14 @@ public class IoTDBConfig {
     return sortBufferSize;
   }
 
+  public void setCteBufferSize(long cteBufferSize) {
+    this.cteBufferSize = cteBufferSize;
+  }
+
+  public long getCteBufferSize() {
+    return cteBufferSize;
+  }
+
   public void setModsCacheSizeLimitPerFI(long modsCacheSizeLimitPerFI) {
     this.modsCacheSizeLimitPerFI = modsCacheSizeLimitPerFI;
   }
@@ -4090,6 +4102,10 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public void setCteTmpDir(String cteTmpDir) {
+    this.cteTmpDir = cteTmpDir;
   }
 
   public String getCteTmpDir() {
