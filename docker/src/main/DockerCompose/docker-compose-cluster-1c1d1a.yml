@@ -41,9 +41,9 @@ services:
     volumes:
         - ./data/iotdb:/iotdb/data
         - ./logs/iotdb:/iotdb/logs
-    # Kylin V10: Container nofile limit is very high (~2^30 = 1073741824). This may cause
-    # the startup step "Checking whether the ports are already occupied..." to hang (lsof too slow).
-    # If you get stuck there, lower the container nofile limit by uncommenting below:
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
     # ulimits:
     #   nofile:
     #     soft: 1048576
@@ -64,9 +64,9 @@ services:
     networks:
       iotdb:
     #     ipv4_address: 127.0.0.1
-    # Kylin V10: Container nofile limit is very high (~2^30 = 1073741824). This may cause
-    # the startup step "Checking whether the ports are already occupied..." to hang (lsof too slow).
-    # If you get stuck there, lower the container nofile limit by uncommenting below:
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
     # ulimits:
     #   nofile:
     #     soft: 1048576
