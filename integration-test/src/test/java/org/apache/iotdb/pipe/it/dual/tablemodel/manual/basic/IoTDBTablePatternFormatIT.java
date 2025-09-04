@@ -63,7 +63,7 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
+
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
@@ -71,22 +71,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -112,22 +103,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
 
       TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
       TableModelUtils.assertData("test1", "test1", 0, 200, receiverEnv, handleFailure);
@@ -151,7 +133,6 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -160,22 +141,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -227,7 +199,6 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -264,22 +235,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
 
       TableModelUtils.assertData("test", "test", 100, 150, receiverEnv, handleFailure);
       TableModelUtils.assertData("test1", "test1", 100, 150, receiverEnv, handleFailure);
@@ -303,7 +265,6 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -313,22 +274,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
 
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -354,22 +306,14 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+
       TableModelUtils.assertData("pattern", "pattern", 0, 200, receiverEnv, handleFailure);
       TableModelUtils.assertData("pattern1", "pattern1", 0, 200, receiverEnv, handleFailure);
 
@@ -394,7 +338,6 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -404,22 +347,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
 
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -468,7 +402,6 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -503,22 +436,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
 
       TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv, handleFailure);
       TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv, handleFailure);
@@ -538,7 +462,6 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -548,22 +471,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
       TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
 
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -590,22 +504,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      insertResult = TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+
+      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,

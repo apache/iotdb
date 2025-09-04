@@ -121,7 +121,6 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
   // org.apache.iotdb.pipe.it.autocreate.IoTDBPipeLifeCycleIT.testDoubleLiving
   @Test
   public void testBasicDoubleLiving() {
-    boolean insertResult;
 
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -144,10 +143,8 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     }
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-    insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-    if (!insertResult) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
     if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
       return;
     }
@@ -191,14 +188,10 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-    if (!insertResult) {
-      return;
-    }
-    insertResult = TableModelUtils.insertData("test", "test", 200, 300, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+    TableModelUtils.insertData("test", "test", 200, 300, receiverEnv);
+
     if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
       return;
     }
@@ -236,10 +229,8 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);
+
     if (!TestUtils.executeNonQuery(receiverEnv, "flush", null)) {
       return;
     }
@@ -279,10 +270,8 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 400, 500, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 400, 500, receiverEnv);
+
     if (!TestUtils.executeNonQuery(receiverEnv, "flush", null)) {
       return;
     }
