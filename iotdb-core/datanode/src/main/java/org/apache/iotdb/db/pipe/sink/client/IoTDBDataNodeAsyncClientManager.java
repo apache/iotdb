@@ -252,6 +252,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             }
 
             isHandshakeFinished.set(true);
+            synchronized (isHandshakeFinished){
+              isHandshakeFinished.notifyAll();
+            }
           }
 
           @Override
@@ -265,6 +268,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             exception.set(e);
 
             isHandshakeFinished.set(true);
+            synchronized (isHandshakeFinished){
+              isHandshakeFinished.notifyAll();
+            }
           }
         };
 
@@ -353,11 +359,13 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final long startTime = System.currentTimeMillis();
       while (!isHandshakeFinished.get()) {
         if (isClosed
-            || System.currentTimeMillis() - startTime
+            && System.currentTimeMillis() - startTime
                 > PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs() * 2L) {
           throw new PipeConnectionException("Timed out when waiting for client handshake finish.");
         }
-        Thread.sleep(10);
+        synchronized (isHandshakeFinished){
+          isHandshakeFinished.wait(1);
+        }
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
