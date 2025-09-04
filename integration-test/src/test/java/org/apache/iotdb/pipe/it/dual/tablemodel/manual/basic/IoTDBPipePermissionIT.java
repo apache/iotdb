@@ -353,6 +353,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         return;
       }
 
+      TableModelUtils.createDataBaseAndTable(receiverEnv, tbName, dbName2);
       if (!TableModelUtils.insertData(dbName2, tbName, 100, 200, senderEnv)) {
         return;
       }
