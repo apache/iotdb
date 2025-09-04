@@ -102,7 +102,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   public void testAlterViewDropColumnIdempotent() throws Exception {
     testTableConfigIdempotent(
         Collections.singletonList("create view test(a tag, s1 int32 field) restrict as root.a.**"),
-        "alter view test drop column a");
+        "alter view test drop column s1");
   }
 
   @Test
