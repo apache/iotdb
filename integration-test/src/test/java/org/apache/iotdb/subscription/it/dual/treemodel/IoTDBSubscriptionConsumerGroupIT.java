@@ -972,7 +972,6 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final Map<String, String> expectedHeaderWithResult)
       throws Exception {
     final AtomicBoolean isClosed = new AtomicBoolean(false);
-    final AtomicBoolean receiverCrashed = new AtomicBoolean(false);
 
     final List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < consumers.size(); ++i) {
@@ -1000,11 +999,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                               final List<String> columnNameList = dataSet.getColumnNames();
                               while (dataSet.hasNext()) {
                                 final RowRecord record = dataSet.next();
-                                if (!insertRowRecordEnrichedByConsumerGroupId(
-                                    columnNameList, record.getTimestamp(), consumerGroupId)) {
-                                  receiverCrashed.set(true);
-                                  throw new RuntimeException("detect receiver crashed");
-                                }
+                                insertRowRecordEnrichedByConsumerGroupId(
+                                    columnNameList, record.getTimestamp(), consumerGroupId);
                               }
                             }
                             break;
@@ -1023,11 +1019,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                               while (dataSet.hasNext()) {
                                 final RowRecord record = dataSet.next();
                                 for (final Path path : dataSet.getPaths()) {
-                                  if (!insertRowRecordEnrichedByConsumerGroupId(
-                                      path.toString(), record.getTimestamp(), consumerGroupId)) {
-                                    receiverCrashed.set(true);
-                                    throw new RuntimeException("detect receiver crashed");
-                                  }
+                                  insertRowRecordEnrichedByConsumerGroupId(
+                                      path.toString(), record.getTimestamp(), consumerGroupId);
                                 }
                               }
                             }
@@ -1061,10 +1054,6 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         // Keep retrying if there are execution failures
         AWAIT.untilAsserted(
             () -> {
-              if (receiverCrashed.get()) {
-                LOGGER.info("detect receiver crashed, skipping this test...");
-                return;
-              }
               // potential stuck
               if (System.currentTimeMillis() - currentTime[0] > 60_000L) {
                 for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
@@ -1106,9 +1095,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
     for (int columnIndex = 1; columnIndex < columnSize; ++columnIndex) {
       final String columnName = columnNameList.get(columnIndex);
-      if (!insertRowRecordEnrichedByConsumerGroupId(columnName, timestamp, consumerGroupId)) {
-        return false;
-      }
+      insertRowRecordEnrichedByConsumerGroupId(columnName, timestamp, consumerGroupId);
     }
 
     return true;
@@ -1117,7 +1104,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   /**
    * @return false -> receiver crashed
    */
-  private boolean insertRowRecordEnrichedByConsumerGroupId(
+  private void insertRowRecordEnrichedByConsumerGroupId(
       final String columnName, final long timestamp, final String consumerGroupId)
       throws Exception {
     if ("root.topic1.s".equals(columnName)) {
@@ -1125,7 +1112,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
           String.format(
               "insert into root.%s.topic1(time, s) values (%s, 1)", consumerGroupId, timestamp);
       LOGGER.info(sql);
-      return TestUtils.executeNonQuery(receiverEnv, sql, null);
+      TestUtils.executeNonQuery(receiverEnv, sql, null);
     }
 
     if ("root.topic2.s".equals(columnName)) {
@@ -1133,7 +1120,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
           String.format(
               "insert into root.%s.topic2(time, s) values (%s, 3)", consumerGroupId, timestamp);
       LOGGER.info(sql);
-      return TestUtils.executeNonQuery(receiverEnv, sql, null);
+      TestUtils.executeNonQuery(receiverEnv, sql, null);
     }
 
     LOGGER.warn("unexpected column name: {}", columnName);
