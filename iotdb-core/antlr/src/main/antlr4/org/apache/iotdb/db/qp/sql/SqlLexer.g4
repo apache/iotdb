@@ -1080,6 +1080,7 @@ PRIVILEGE_VALUE
     | EXTEND_TEMPLATE
     | MANAGE_DATABASE
     | MAINTAIN
+    | USE_SERVICE
     ;
 
 READ_DATA
@@ -1124,6 +1125,10 @@ USE_CQ
 
 USE_PIPE
     : U S E '_' P I P E
+    ;
+
+USE_SERVICE
+    : U S E '_' S E R V I C E
     ;
 
 EXTEND_TEMPLATE

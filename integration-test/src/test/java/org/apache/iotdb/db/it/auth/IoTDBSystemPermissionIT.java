@@ -31,6 +31,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import static org.apache.iotdb.db.it.service.external.IoTDBServiceExecutionIT.SERVICE_CLASS_NAME;
+import static org.apache.iotdb.db.it.service.external.IoTDBServiceExecutionIT.SERVICE_JAR_PATH;
 import static org.apache.iotdb.db.it.trigger.IoTDBTriggerManagementIT.TRIGGER_FILE_TIMES_COUNTER;
 import static org.apache.iotdb.db.it.trigger.IoTDBTriggerManagementIT.TRIGGER_JAR_PREFIX;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
@@ -251,5 +253,52 @@ public class IoTDBSystemPermissionIT {
         "803: Only the admin user can perform this operation",
         "test",
         "test123123456");
+  }
+
+  @Test
+  public void manageServiceTest() {
+    assertNonQueryTestFail(
+        String.format(
+            "create service testService as '%s' using URI '%s'",
+            SERVICE_CLASS_NAME, SERVICE_JAR_PATH),
+        "803: No permissions for this operation, please add privilege USE_SERVICE",
+        "test",
+        "test123123456");
+    assertNonQueryTestFail(
+        "start service testService",
+        "803: No permissions for this operation, please add privilege USE_SERVICE",
+        "test",
+        "test123123456");
+    assertNonQueryTestFail(
+        "stop service testService",
+        "803: No permissions for this operation, please add privilege USE_SERVICE",
+        "test",
+        "test123123456");
+    assertNonQueryTestFail(
+        "show service testService",
+        "803: No permissions for this operation, please add privilege USE_SERVICE",
+        "test",
+        "test123123456");
+    assertNonQueryTestFail(
+        "drop service testService",
+        "803: No permissions for this operation, please add privilege USE_SERVICE",
+        "test",
+        "test123123456");
+    assertTestFail(
+        "show services",
+        "803: No permissions for this operation, please add privilege USE_SERVICE",
+        "test",
+        "test123123456");
+
+    grantUserSystemPrivileges("test", PrivilegeType.USE_SERVICE);
+
+    executeNonQuery(
+        String.format(
+            "create service testService as '%s' using URI '%s'",
+            SERVICE_CLASS_NAME, SERVICE_JAR_PATH),
+        "test",
+        "test123123456");
+    executeNonQuery("drop service testService", "test", "test123123456");
+    executeNonQuery("show services", "test", "test123123456");
   }
 }

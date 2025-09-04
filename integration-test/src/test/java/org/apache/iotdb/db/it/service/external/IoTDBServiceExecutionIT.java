@@ -31,10 +31,10 @@ public class IoTDBServiceExecutionIT {
           + "test-classes"
           + File.separator;
 
-  private static final String SERVICE_JAR_PATH =
+  public static final String SERVICE_JAR_PATH =
       new File(SERVICE_PATH_PREFIX).toURI() + "service/service-example.jar";
 
-  private static final String SERVICE_CLASS_NAME = "org.apache.iotdb.service.TestService";
+  public static final String SERVICE_CLASS_NAME = "org.apache.iotdb.service.TestService";
 
   private static final int SERVICE_PORT = 5555;
 
