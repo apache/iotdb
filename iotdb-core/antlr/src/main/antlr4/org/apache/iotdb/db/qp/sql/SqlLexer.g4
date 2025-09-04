@@ -45,6 +45,10 @@ AFTER
     : A F T E R
     ;
 
+AI_DEVICES
+    : A I '_' D E V I C E S
+    ;
+
 ALIAS
     : A L I A S
     ;
@@ -476,6 +480,10 @@ LIST
 
 LOAD
     : L O A D
+    ;
+
+LOADED
+    : L O A D E D
     ;
 
 LOCAL

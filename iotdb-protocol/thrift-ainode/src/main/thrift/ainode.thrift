@@ -103,6 +103,10 @@ struct TShowModelsReq {
   1: optional string modelId
 }
 
+struct TShowLoadedModelsReq {
+  1: optional string deviceId
+}
+
 struct TShowModelsResp {
   1: required common.TSStatus status
   2: optional list<string> modelIdList
@@ -111,15 +115,24 @@ struct TShowModelsResp {
   5: optional map<string, string> stateMap
 }
 
-struct TInstallModelReq {
-  1: required string modelId
-  2: required string existingModelId
-  3: required string device
+struct TShowLoadedModelsResp {
+    1: required common.TSStatus status
+    2: required map<string, map<string, i32>> deviceLoadedModelsMap
 }
 
-struct TUninstallModelReq {
+struct TShowAIDevicesResp {
+    1: required common.TSStatus status
+    2: required list<string> deviceIdList
+}
+
+struct TLoadModelReq {
+  1: required string existingModelId
+  2: required list<string> deviceIdList
+}
+
+struct TUnloadModelReq {
   1: required string modelId
-  2: required string device
+  2: required list<string> deviceIdList
 }
 
 service IAINodeRPCService {
@@ -129,6 +142,10 @@ service IAINodeRPCService {
 
   TShowModelsResp showModels(TShowModelsReq req)
 
+  TShowLoadedModelsResp showLoadedModels(TShowLoadedModelsReq req)
+
+  TShowAIDevicesResp showAIDevices()
+
   common.TSStatus deleteModel(TDeleteModelReq req)
 
   TRegisterModelResp registerModel(TRegisterModelReq req)
@@ -137,9 +154,9 @@ service IAINodeRPCService {
 
   common.TSStatus createTrainingTask(TTrainingReq req)
 
-  common.TSStatus installModel(TInstallModelReq req)
+  common.TSStatus loadModel(TLoadModelReq req)
 
-  common.TSStatus uninstallModel(TUninstallModelReq req)
+  common.TSStatus unloadModel(TUnloadModelReq req)
 
   // -------------- For Data Node --------------
 

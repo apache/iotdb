@@ -188,8 +188,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.LoadModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.UnloadModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -1416,6 +1420,30 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return createModelStatement;
   }
 
+  @Override
+  public Statement visitLoadModel(IoTDBSqlParser.LoadModelContext ctx) {
+    String modelId = parseIdentifier(ctx.existingModelId.getText());
+    validateModelId(modelId);
+    List<IdentifierContext> deviceIdList = ctx.deviceIdList().identifier();
+    List<String> deviceIds = new ArrayList<>();
+    for (IdentifierContext deviceId : deviceIdList) {
+      deviceIds.add(parseIdentifier(deviceId.getText()));
+    }
+    return new LoadModelStatement(modelId, deviceIds);
+  }
+
+  @Override
+  public Statement visitUnloadModel(IoTDBSqlParser.UnloadModelContext ctx) {
+    String modelId = parseIdentifier(ctx.existingModelId.getText());
+    validateModelId(modelId);
+    List<IdentifierContext> deviceIdList = ctx.deviceIdList().identifier();
+    List<String> deviceIds = new ArrayList<>();
+    for (IdentifierContext deviceId : deviceIdList) {
+      deviceIds.add(parseIdentifier(deviceId.getText()));
+    }
+    return new UnloadModelStatement(modelId, deviceIds);
+  }
+
   // Drop Model =====================================================================
   @Override
   public Statement visitDropModel(IoTDBSqlParser.DropModelContext ctx) {
@@ -1430,6 +1458,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       statement.setModelId(parseIdentifier(ctx.modelId.getText()));
     }
     return statement;
+  }
+
+  @Override
+  public Statement visitShowLoadedModels(IoTDBSqlParser.ShowLoadedModelsContext ctx) {
+    return new ShowLoadedModelsStatement(
+        ctx.deviceId != null ? parseIdentifier(ctx.deviceId.getText()) : null);
+  }
+
+  public Statement visitShowAIDevices(IoTDBSqlParser.ShowAIDevicesContext ctx) {
+    return new ShowAIDevicesStatement();
   }
 
   /** Data Manipulation Language (DML). */

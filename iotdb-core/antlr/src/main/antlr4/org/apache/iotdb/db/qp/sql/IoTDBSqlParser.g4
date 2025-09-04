@@ -66,7 +66,8 @@ ddlStatement
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
     // AINode
-    | showAINodes | createModel | dropModel | showModels | callInference
+    | showAINodes | createModel | dropModel | showModels | showLoadedModels | showAIDevices
+    | callInference | loadModel | unloadModel
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -738,6 +739,18 @@ hparamValue
     | windowFunction
     ;
 
+loadModel
+    : LOAD MODEL existingModelId=identifier TO DEVICE deviceIdList
+    ;
+
+unloadModel
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICE deviceIdList
+    ;
+
+deviceIdList
+    : deviceId=identifier (COMMA deviceId=identifier)*
+    ;
+
 // ---- Drop Model
 dropModel
     : DROP MODEL modelId=identifier
@@ -747,6 +760,15 @@ dropModel
 showModels
     : SHOW MODELS
     | SHOW MODELS modelId=identifier
+    ;
+
+showLoadedModels
+    : SHOW LOADED MODELS
+    | SHOW LOADED MODELS deviceId=identifier
+    ;
+
+showAIDevices
+    : SHOW AI_DEVICES
     ;
 
 // Create Logical View
