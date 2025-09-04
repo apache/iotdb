@@ -271,7 +271,8 @@ public class IoTDBAlterColumnTypeIT {
       tablet.reset();
 
       dataSet =
-          session.executeQueryStatement("select * from write_and_alter_column_type order by time");
+          session.executeQueryStatement(
+              "select time, s1 from write_and_alter_column_type order by time");
       for (int i = 1; i <= 4; i++) {
         rec = dataSet.next();
         assertEquals(i, rec.getFields().get(0).getLongV());
@@ -279,6 +280,8 @@ public class IoTDBAlterColumnTypeIT {
           assertEquals(genValue(newType, i), rec.getFields().get(1).getBinaryV());
         } else if (newType == TSDataType.DATE) {
           assertEquals(genValue(newType, i), rec.getFields().get(1).getDateV());
+        } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
+          assertEquals(genValue(to, i), rec.getFields().get(1).getBinaryV());
         } else {
           assertEquals(genValue(newType, i).toString(), rec.getFields().get(1).toString());
         }
@@ -1566,11 +1569,12 @@ public class IoTDBAlterColumnTypeIT {
         } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
           if (from == TSDataType.DATE) {
             assertEquals(
-                genValue(from, i).toString(),
-                TSDataType.getDateStringValue(
-                    Integer.parseInt(rec1.getFields().get(1).toString())));
+                new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8),
+                rec1.getFields().get(1).getBinaryV());
           } else {
-            assertEquals(String.valueOf(genValue(from, i)), rec1.getFields().get(1).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, genValue(from, i)),
+                rec1.getFields().get(1).getBinaryV());
           }
         } else {
           assertEquals(genValue(newType, i).toString(), rec1.getFields().get(1).toString());
@@ -1647,11 +1651,12 @@ public class IoTDBAlterColumnTypeIT {
         } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
           if (from == TSDataType.DATE) {
             assertEquals(
-                genValue(from, i).toString(),
-                TSDataType.getDateStringValue(
-                    Integer.parseInt(rec2.getFields().get(1).toString())));
+                new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8),
+                rec2.getFields().get(1).getBinaryV());
           } else {
-            assertEquals(String.valueOf(genValue(from, i)), rec2.getFields().get(1).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, genValue(from, i)),
+                rec2.getFields().get(1).getBinaryV());
           }
         } else {
           assertEquals(genValue(newType, i).toString(), rec2.getFields().get(1).toString());
@@ -1733,10 +1738,12 @@ public class IoTDBAlterColumnTypeIT {
       } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
         if (from == TSDataType.DATE) {
           assertEquals(
-              genValue(from, i).toString(),
-              TSDataType.getDateStringValue(Integer.parseInt(rec4.getFields().get(1).toString())));
+              new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8),
+              rec4.getFields().get(1).getBinaryV());
         } else {
-          assertEquals(String.valueOf(genValue(from, i)), rec4.getFields().get(1).toString());
+          assertEquals(
+              newType.castFromSingleValue(from, genValue(from, i)),
+              rec4.getFields().get(1).getBinaryV());
         }
       } else {
         assertEquals(genValue(newType, i).toString(), rec4.getFields().get(1).toString());
@@ -2014,20 +2021,20 @@ public class IoTDBAlterColumnTypeIT {
               log.info(
                   "i is {}, expected value: {}, actual value: {}",
                   i,
-                  TSDataType.getDateStringValue(expectedValue[i]),
-                  rec.getFields().get(i).getStringValue());
-              //                  rec.getFields().get(i).getBinaryV().toString());
+                  new Binary(genValue(from, expectedValue[i]).toString(), StandardCharsets.UTF_8),
+                  rec.getFields().get(i).getBinaryV());
               assertEquals(
-                  TSDataType.getDateStringValue(expectedValue[i]),
-                  rec.getFields().get(i).getBinaryV().toString());
+                  new Binary(genValue(from, expectedValue[i]).toString(), StandardCharsets.UTF_8),
+                  rec.getFields().get(i).getBinaryV());
             } else {
               log.info(
                   "i is {}, expected value: {}, actual value: {}",
                   i,
-                  genValue(from, expectedValue[i]).toString(),
-                  rec.getFields().get(i).toString());
+                  newType.castFromSingleValue(from, genValue(from, expectedValue[i])),
+                  rec.getFields().get(i).getBinaryV());
               assertEquals(
-                  genValue(from, expectedValue[i]).toString(), rec.getFields().get(i).toString());
+                  newType.castFromSingleValue(from, genValue(from, expectedValue[i])),
+                  rec.getFields().get(i).getBinaryV());
             }
           } else {
             log.info(
