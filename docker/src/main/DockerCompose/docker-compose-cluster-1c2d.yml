@@ -34,6 +34,13 @@ services:
     networks:
       iotdb:
         ipv4_address: 172.18.0.2
+    # Kylin V10: Container nofile limit is very high (~2^30 = 1073741824). This may cause
+    # the startup step "Checking whether the ports are already occupied..." to hang (lsof too slow).
+    # If you get stuck there, lower the container nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
   iotdb-datanode1:
     image: apache/iotdb:1.1.0-datanode
@@ -56,6 +63,13 @@ services:
     networks:
       iotdb:
         ipv4_address: 172.18.0.3
+    # Kylin V10: Container nofile limit is very high (~2^30 = 1073741824). This may cause
+    # the startup step "Checking whether the ports are already occupied..." to hang (lsof too slow).
+    # If you get stuck there, lower the container nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
   iotdb-datanode2:
     image: apache/iotdb:1.1.0-datanode
@@ -76,6 +90,13 @@ services:
     networks:
       iotdb:
         ipv4_address: 172.18.0.4
+    # Kylin V10: Container nofile limit is very high (~2^30 = 1073741824). This may cause
+    # the startup step "Checking whether the ports are already occupied..." to hang (lsof too slow).
+    # If you get stuck there, lower the container nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
 networks:
   iotdb:
