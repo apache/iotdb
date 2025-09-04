@@ -119,4 +119,8 @@ public class CteScanNode extends SourceNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  public static CteScanNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
 }

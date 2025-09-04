@@ -22,11 +22,13 @@
 package org.apache.iotdb.db.utils.cte;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,13 +39,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FileSpillerReader implements CteDataReader {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FileSpillerReader.class);
+
   private final FileChannel fileChannel;
-  private final List<TsBlock> cacheBlocks;
+  private final List<TsBlock> cachedData;
   private final String fileName;
   private final TsBlockSerde serde;
 
   private int tsBlockIndex;
   private boolean isEnd = false;
+
+  private long cachedBytes = 0;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -53,15 +60,15 @@ public class FileSpillerReader implements CteDataReader {
     this.serde = serde;
     this.tsBlockIndex = 0;
     this.fileChannel = FileChannel.open(Paths.get(fileName), StandardOpenOption.READ);
-    this.cacheBlocks = new ArrayList<>();
+    this.cachedData = new ArrayList<>();
   }
 
   @Override
   public TsBlock next() throws IoTDBException {
-    if (cacheBlocks == null || tsBlockIndex >= cacheBlocks.size()) {
+    if (cachedData == null || tsBlockIndex >= cachedData.size()) {
       return null;
     }
-    return cacheBlocks.get(tsBlockIndex++);
+    return cachedData.get(tsBlockIndex++);
   }
 
   @Override
@@ -70,16 +77,18 @@ public class FileSpillerReader implements CteDataReader {
       return false;
     }
 
-    if (cacheBlocks.isEmpty() || tsBlockIndex == cacheBlocks.size() - 1) {
+    if (cachedData.isEmpty() || tsBlockIndex == cachedData.size() - 1) {
       boolean hasData = readTsBlockFromFile();
       if (!hasData) {
         isEnd = true;
+        cachedData.clear();
+        cachedBytes = 0L;
         return false;
       }
       return true;
     }
 
-    return tsBlockIndex < cacheBlocks.size();
+    return tsBlockIndex < cachedData.size();
   }
 
   @Override
@@ -94,19 +103,26 @@ public class FileSpillerReader implements CteDataReader {
     }
   }
 
+  @Override
+  public long bytesUsed() {
+    return INSTANCE_SIZE + cachedBytes;
+  }
+
   private boolean readTsBlockFromFile() throws IoTDBException {
-    long bufferSize = Long.MAX_VALUE;
-    cacheBlocks.clear();
-    while (bufferSize >= DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) {
+    long cteBufferSize = IoTDBDescriptor.getInstance().getConfig().getCteBufferSize();
+    cachedData.clear();
+    cachedBytes = 0L;
+    while (cteBufferSize >= DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) {
       long size = read();
       if (size == -1) {
         break;
       }
-      bufferSize -= size;
+      cteBufferSize -= size;
+      cachedBytes += size;
     }
 
     tsBlockIndex = 0;
-    return !cacheBlocks.isEmpty();
+    return !cachedData.isEmpty();
   }
 
   private long read() throws IoTDBException {
@@ -122,7 +138,7 @@ public class FileSpillerReader implements CteDataReader {
       fileChannel.read(tsBlockBytes);
       tsBlockBytes.flip();
       TsBlock cachedTsBlock = serde.deserialize(tsBlockBytes);
-      cacheBlocks.add(cachedTsBlock);
+      cachedData.add(cachedTsBlock);
       return cachedTsBlock.getRetainedSizeInBytes();
     } catch (IOException e) {
       throw new IoTDBException(
