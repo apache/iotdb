@@ -324,11 +324,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       if (!insertResult) {
         return;
       }
-      insertResult = TableModelUtils.insertData("test", "test3", 0, 100, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test3", 100, 200, senderEnv);
       if (!insertResult) {
         return;
       }
-      insertResult = TableModelUtils.insertData("test", "test4", 0, 200, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test4", 100, 200, senderEnv);
       if (!insertResult) {
         return;
       }
@@ -347,9 +347,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.assertData("test", "test2", 100, 200, receiverEnv, handleFailure);
 
-      TableModelUtils.assertData("test", "test3", 100, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test3", 0, 100, receiverEnv, handleFailure);
 
-      TableModelUtils.assertData("test", "test4", 100, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test4", 0, 200, receiverEnv, handleFailure);
     }
   }
 
