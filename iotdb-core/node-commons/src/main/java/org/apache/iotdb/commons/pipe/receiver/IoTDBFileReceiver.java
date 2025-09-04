@@ -116,7 +116,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
-    originalThreadName = Thread.currentThread().getName();
+    if (originalThreadName == null) {
+      originalThreadName = Thread.currentThread().getName();
+    }
     receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
     Thread.currentThread()
         .setName(
