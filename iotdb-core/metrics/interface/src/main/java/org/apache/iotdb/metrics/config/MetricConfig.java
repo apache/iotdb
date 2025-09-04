@@ -79,6 +79,12 @@ public class MetricConfig {
   private long upTimeInNs = 0;
   private String internalDatabase = "root.__system";
 
+  private boolean enableSSL = false;
+  private String keyStorePath = "";
+  private String keyStorePassword = "";
+  private String trustStorePath = "";
+  private String trustStorePassword = "";
+
   public MetricConfig() {
     // try to get pid of iotdb instance
     try {
