@@ -356,11 +356,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private void waitHandshakeFinished(final AtomicBoolean isHandshakeFinished) {
     try {
-      final long startTime = System.currentTimeMillis();
       while (!isHandshakeFinished.get()) {
-        if (isClosed
-            && System.currentTimeMillis() - startTime
-                > PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs() * 2L) {
+        if (isClosed) {
           throw new PipeConnectionException("Timed out when waiting for client handshake finish.");
         }
         synchronized (isHandshakeFinished) {
