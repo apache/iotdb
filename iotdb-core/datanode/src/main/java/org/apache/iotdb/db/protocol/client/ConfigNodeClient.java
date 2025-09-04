@@ -180,6 +180,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
@@ -727,9 +728,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus clearCache() throws TException {
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.clearCache(), status -> !updateConfigNodeLeader(status));
+        () -> client.clearCache(clearCacheOptions), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

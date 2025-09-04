@@ -53,6 +53,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -245,6 +246,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.db.service.DataNodeInternalRPCService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
@@ -1059,24 +1061,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache(boolean onCluster) {
+  public SettableFuture<ConfigTaskResult> clearCache(
+      boolean onCluster, final Set<CacheClearOptions> options) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     if (onCluster) {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.clearCache();
+        tsStatus =
+            client.clearCache(
+                options.stream().map(CacheClearOptions::ordinal).collect(Collectors.toSet()));
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }
     } else {
-      try {
-        StorageEngine.getInstance().clearCache();
-        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } catch (Exception e) {
-        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-      }
+      tsStatus = DataNodeInternalRPCService.getInstance().getImpl().clearCacheImpl(options);
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
