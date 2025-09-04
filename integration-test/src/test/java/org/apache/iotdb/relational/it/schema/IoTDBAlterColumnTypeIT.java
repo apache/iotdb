@@ -177,9 +177,6 @@ public class IoTDBAlterColumnTypeIT {
       session.insert(tablet);
       tablet.reset();
 
-      /**
-       * @todo tmp test if delete ?*
-       */
       SessionDataSet dataSet1 =
           session.executeQueryStatement("select * from write_and_alter_column_type order by time");
       RowRecord rec1;
@@ -188,9 +185,6 @@ public class IoTDBAlterColumnTypeIT {
         assertEquals(i, rec1.getFields().get(0).getLongV());
         System.out.println(i + " is " + rec1.getFields().get(1).toString());
       }
-      /**
-       * @todo tmp test end *
-       */
 
       // alter the type to "to"
       boolean isCompatible = MetadataUtils.canAlter(from, to);
@@ -1430,18 +1424,12 @@ public class IoTDBAlterColumnTypeIT {
       }
       dataSet.close();
 
-      /**
-       * @todo tmp test*
-       */
       try {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
       } catch (Exception e) {
         log.info(e.getMessage());
       }
-      /**
-       * @todo end*
-       */
 
       // alter the type to "to"
       boolean isCompatible = MetadataUtils.canAlter(from, to);
@@ -1502,8 +1490,6 @@ public class IoTDBAlterColumnTypeIT {
     // Value Filter Test
     // 1.satisfy the condition of value filter completely
     SessionDataSet dataSet1;
-    // @todo tmp
-    //    if (newType == TSDataType.STRING) {
     if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
       if (from == TSDataType.STRING || from == TSDataType.TEXT) {
         dataSet1 =
@@ -1522,8 +1508,6 @@ public class IoTDBAlterColumnTypeIT {
             session.executeQueryStatement(
                 "select time, s1 from construct_and_alter_column_type where s1 >= '1' and s2 > 2 order by time");
       }
-      // @todo tmp test
-      //    } else if (newType == TSDataType.BLOB || from == TSDataType.DATE) {
     } else if (newType == TSDataType.BLOB) {
       //      if (from == TSDataType.STRING || from == TSDataType.TEXT) {
       if (from == TSDataType.STRING || from == TSDataType.TEXT || from == TSDataType.BLOB) {
@@ -1552,12 +1536,7 @@ public class IoTDBAlterColumnTypeIT {
                 "select time, s1 from construct_and_alter_column_type where s1 >= 1 and s2 > 2 order by time");
       }
     }
-    //            "select time, s1 from construct_and_alter_column_type order by time limit 2 offset
-    // 1");
     RowRecord rec1;
-    // @todo tmp test
-    //    for (int i = (from == TSDataType.DATE) ? 1 : 2; i <= ((from == TSDataType.DATE) ? 2 : 3);
-    // i++) {
     for (int i = 2; i <= 3; i++) {
       rec1 = dataSet1.next();
       if (from != TSDataType.BOOLEAN) {
@@ -1585,9 +1564,6 @@ public class IoTDBAlterColumnTypeIT {
 
     // 2.satisfy the condition of value filter partially
     SessionDataSet dataSet2;
-    //    if (newType == TSDataType.STRING || from == TSDataType.TEXT) {
-    // @todo tmp test
-    //    if (newType == TSDataType.STRING) {
     if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
       if (from == TSDataType.STRING || from == TSDataType.TEXT) {
         dataSet2 =
@@ -1606,21 +1582,14 @@ public class IoTDBAlterColumnTypeIT {
             session.executeQueryStatement(
                 "select time, s1 from construct_and_alter_column_type where s1 >= '1' or s2 < 2 order by time");
       }
-      // @todo tmp test
-      //    } else if (newType == TSDataType.BLOB || from == TSDataType.DATE) {
     } else if (newType == TSDataType.BLOB) {
-      //      if (from == TSDataType.STRING || from == TSDataType.TEXT) {
       if (from == TSDataType.STRING || from == TSDataType.TEXT || from == TSDataType.BLOB) {
         dataSet2 =
             session.executeQueryStatement(
-                //                "select time, s1 from construct_and_alter_column_type where
-                // cast(s1 as TEXT) >= '1' or s2 < '2' order by time");
                 "select time, s1 from construct_and_alter_column_type where cast(s1 as TEXT) >= '1' or cast(s2 as TEXT) < '2' order by time");
       } else {
         dataSet2 =
             session.executeQueryStatement(
-                //                    "select time, s1 from construct_and_alter_column_type where
-                // cast(s1 as TEXT) >= '1' or s2 < 2 order by time");
                 "select time, s1 from construct_and_alter_column_type where cast(s1 as INT64) >= 1 or cast(s2 as INT64) < 2 order by time");
       }
     } else if (newType == TSDataType.BOOLEAN) {
@@ -1667,20 +1636,6 @@ public class IoTDBAlterColumnTypeIT {
 
     // 3.can't satisfy the condition of value filter at all
     SessionDataSet dataSet3;
-    //    if (newType == TSDataType.STRING || from == TSDataType.TEXT) {
-    /***@todo tmp test**/
-    //    if (newType == TSDataType.STRING) {
-    //      dataSet3 =
-    //          session.executeQueryStatement(
-    //              "select time, s1 from construct_and_alter_column_type where s1 < '1' order by
-    // time");
-    //      //    } else if (newType == TSDataType.BLOB || from == TSDataType.DATE) {
-    //    } else if (newType == TSDataType.BLOB || from == TSDataType.DATE || from ==
-    // TSDataType.BLOB) {
-    /***@todo tmp test end**/
-    /**
-     * @todo tmp test start*
-     */
     if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
       if (from == TSDataType.BLOB) {
         dataSet3 =
@@ -1696,9 +1651,6 @@ public class IoTDBAlterColumnTypeIT {
                 "select time, s1 from construct_and_alter_column_type where s1 < '1' order by time");
       }
     } else if (newType == TSDataType.BLOB || from == TSDataType.BLOB) {
-      /**
-       * @todo tmp test end*
-       */
       dataSet3 =
           session.executeQueryStatement(
               "select time, s1 from construct_and_alter_column_type where cast(s1 as TEXT) < '1' order by time");
@@ -1752,19 +1704,11 @@ public class IoTDBAlterColumnTypeIT {
     dataSet4.close();
   }
 
-  //  private static void standardSelectTest(TSDataType from, ITableSession session) @todo tmp test
   private static void standardSelectTest(ITableSession session, TSDataType from, TSDataType to)
       throws StatementExecutionException, IoTDBConnectionException {
-    /**
-     * @todo tmp test*
-     */
-    //    if (from == TSDataType.DATE && !to.isCompatible(from)) {
     if (from == TSDataType.DATE) {
       throw new NotSupportedException("Not supported DATE type.");
     }
-    /**
-     * @todo tmp test end*
-     */
 
     // Value Filter Test
     // 1.satisfy the condition of value filter completely
@@ -1777,21 +1721,6 @@ public class IoTDBAlterColumnTypeIT {
       dataSet1 =
           session.executeQueryStatement(
               "select s1, s2 from construct_and_alter_column_type where cast(s1 as TEXT) >= '1' and cast(s2 as TEXT) > '2' order by time");
-      /**
-       * @todo test**
-       */
-      //    } else if (from == TSDataType.DATE) {
-      //      dataSet1 =
-      //          session.executeQueryStatement(
-      //              //              "select s1, s2 from construct_and_alter_column_type where
-      // cast(s1 as
-      //              // INT64) >= 1 and cast(s2 as INT64) > 2 order by time");
-      //              "select s1, s2 from construct_and_alter_column_type where s1 >=
-      // TO_TIMESTAMP('1970-01-02', 'yyyy-MM-dd') and s2 > TO_TIMESTAMP('1970-01-02', 'yyyy-MM-dd')
-      // order by time");
-      /**
-       * @todo test end**
-       */
     } else if (from == TSDataType.BOOLEAN) {
       dataSet1 =
           session.executeQueryStatement(
@@ -1802,17 +1731,10 @@ public class IoTDBAlterColumnTypeIT {
               "select s1, s2 from construct_and_alter_column_type where s1 >= 1 and s2 > 2 order by time");
     }
     RowRecord rec1;
-    // @todo tmp test
-    //    for (int i = (from == TSDataType.DATE) ? 1 : 2; i <= ((from == TSDataType.DATE) ? 2 : 3);
-    // i++) {
     for (int i = 2; i <= 3; i++) {
       rec1 = dataSet1.next();
       System.out.println("rec1: " + rec1.toString());
       if (from != TSDataType.BOOLEAN) {
-        //        assertEquals(genValue(TSDataType.INT64, i),
-        // rec1.getFields().get(0).getObjectValue(TSDataType.INT64));
-        //        assertEquals(genValue(TSDataType.INT64, i * 2),
-        // rec1.getFields().get(1).getObjectValue(TSDataType.INT64));
         assertEquals(genValue(from, i), rec1.getFields().get(0).getObjectValue(from));
         assertEquals(genValue(from, i * 2), rec1.getFields().get(1).getObjectValue(from));
       }
@@ -1826,17 +1748,6 @@ public class IoTDBAlterColumnTypeIT {
           session.executeQueryStatement(
               "select s1, s2 from construct_and_alter_column_type where s1 >= '1' or s2 < '2' order by time");
     } else if (from == TSDataType.BLOB) {
-      /**
-       * @todo tmp test *
-       */
-      //      dataSet2 =
-      //          session.executeQueryStatement(
-      //              "select s1, s2 from construct_and_alter_column_type where cast(s1 as TEXT) >=
-      // '1' or cast(s2 as TEXT) < '2' order by time");
-      //    } else if (from == TSDataType.DATE) {
-      /**
-       * @todo tmp test end *
-       */
       dataSet2 =
           session.executeQueryStatement(
               "select s1, s2 from construct_and_alter_column_type where cast(s1 as TEXT) >= '1' or cast(s2 as TEXT) < '2' order by time");
@@ -1869,17 +1780,6 @@ public class IoTDBAlterColumnTypeIT {
       dataSet3 =
           session.executeQueryStatement(
               "select s1, s2 from construct_and_alter_column_type where cast(s1 as TEXT) < '1' order by time");
-      /**
-       * @todo tmp test*
-       */
-      //    } else if (from == TSDataType.DATE) {
-      //      dataSet3 =
-      //          session.executeQueryStatement(
-      //              "select s1, s2 from construct_and_alter_column_type where cast(s1 as TEXT) <
-      // '1' order by time");
-      /**
-       * @todo tmp test end*
-       */
     } else if (from == TSDataType.BOOLEAN) {
       dataSet3 =
           session.executeQueryStatement(
@@ -1912,15 +1812,9 @@ public class IoTDBAlterColumnTypeIT {
 
   private static void standardAccumulatorQueryTest(ITableSession session, TSDataType newType)
       throws StatementExecutionException, IoTDBConnectionException {
-    /**
-     * @todo tmp test*
-     */
     if (newType == TSDataType.DATE) {
       throw new NotSupportedException("Not supported DATE type.");
     }
-    /**
-     * @todo tmp test end*
-     */
     SessionDataSet dataSet =
         session.executeQueryStatement(
             "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
@@ -1938,7 +1832,6 @@ public class IoTDBAlterColumnTypeIT {
         } else if (newType == TSDataType.DATE) {
           assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
         } else {
-          // @todo tmp test
           log.info(
               "i is {}, expected value: {}, actual value: {}",
               i,

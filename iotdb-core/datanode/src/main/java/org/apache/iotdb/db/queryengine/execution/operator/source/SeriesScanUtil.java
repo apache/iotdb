@@ -1354,8 +1354,6 @@ public class SeriesScanUtil implements Accountable {
 
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
-      //    if (firstPageReader == null || firstPageReader.isModified() ||
-      // !firstPageReader.isModified()) {
       return;
     }
 
@@ -1773,7 +1771,6 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
-      //        || !firstTimeSeriesMetadata.isModified()) {
       return;
     }
 
