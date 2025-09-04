@@ -22,6 +22,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.db.utils.cte.MemoryReader;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +39,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CteScanOperator extends AbstractSourceOperator {
-  private static final Logger logger = LoggerFactory.getLogger(CteScanOperator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CteScanOperator.class);
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CteScanOperator.class);
 
   private final CteDataStore dataStore;
   private List<CteDataReader> dataReaders;
@@ -82,7 +86,7 @@ public class CteScanOperator extends AbstractSourceOperator {
         }
       }
     } catch (Exception e) {
-      logger.error("Fail to close fileChannel", e);
+      LOGGER.error("Fail to close fileChannel", e);
     }
   }
 
@@ -93,22 +97,27 @@ public class CteScanOperator extends AbstractSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    if (dataReaders == null || readerIndex >= dataReaders.size()) {
+      return 0;
+    }
+    return dataReaders.get(readerIndex).bytesUsed();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    // The returned object is a reference to TsBlock in CteDataReader
+    return RamUsageEstimator.NUM_BYTES_OBJECT_REF;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    return calculateMaxPeekMemoryWithCounter();
   }
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 
   private void prepareReaders() throws IoTDBException {

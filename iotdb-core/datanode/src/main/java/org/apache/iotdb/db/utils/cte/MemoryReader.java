@@ -24,29 +24,31 @@ package org.apache.iotdb.db.utils.cte;
 import org.apache.iotdb.commons.exception.IoTDBException;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
 public class MemoryReader implements CteDataReader {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(MemoryReader.class);
+
   // all the data in MemoryReader lies in memory
   private final List<TsBlock> cachedData;
-  private final int size;
   private int tsBlockIndex;
 
   public MemoryReader(List<TsBlock> cachedTsBlock) {
     this.cachedData = cachedTsBlock;
-    this.size = cachedTsBlock.size();
     this.tsBlockIndex = 0;
   }
 
   @Override
   public boolean hasNext() throws IoTDBException {
-    return cachedData != null && tsBlockIndex < size;
+    return cachedData != null && tsBlockIndex < cachedData.size();
   }
 
   @Override
   public TsBlock next() throws IoTDBException {
-    if (cachedData == null || tsBlockIndex >= size) {
+    if (cachedData == null || tsBlockIndex >= cachedData.size()) {
       return null;
     }
     return cachedData.get(tsBlockIndex++);
@@ -54,4 +56,9 @@ public class MemoryReader implements CteDataReader {
 
   @Override
   public void close() throws IoTDBException {}
+
+  @Override
+  public long bytesUsed() {
+    return INSTANCE_SIZE;
+  }
 }

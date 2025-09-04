@@ -250,7 +250,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       }
 
       if (namedQuery.isMaterialized()) {
-        CteDataStore dataStore = analysis.getCTEDataStore(namedQuery);
+        CteDataStore dataStore = analysis.getCteDataStore(table.getName().toString());
         if (dataStore != null) {
           List<Symbol> outputSymbols =
               analysis.getOutputDescriptor(table).getAllFields().stream()

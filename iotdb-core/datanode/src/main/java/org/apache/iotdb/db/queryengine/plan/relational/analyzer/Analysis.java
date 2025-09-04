@@ -122,7 +122,7 @@ public class Analysis implements IAnalysis {
 
   private String updateType;
 
-  private final Map<Query, CteDataStore> namedQueriesDataStore = new LinkedHashMap<>();
+  private final Map<String, CteDataStore> cteDataStores = new LinkedHashMap<>();
 
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
 
@@ -285,12 +285,16 @@ public class Analysis implements IAnalysis {
     return namedQueries;
   }
 
-  public void addCteDataStore(Query query, CteDataStore dataStore) {
-    namedQueriesDataStore.put(query, dataStore);
+  public void addCteDataStore(String cteName, CteDataStore dataStore) {
+    cteDataStores.put(cteName, dataStore);
   }
 
-  public CteDataStore getCTEDataStore(Query query) {
-    return namedQueriesDataStore.get(query);
+  public Map<String, CteDataStore> getCteDataStores() {
+    return cteDataStores;
+  }
+
+  public CteDataStore getCteDataStore(String cteName) {
+    return cteDataStores.get(cteName);
   }
 
   public boolean isAnalyzed(Expression expression) {

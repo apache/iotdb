@@ -22,6 +22,7 @@
 package org.apache.iotdb.db.utils.cte;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -29,9 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CteDataStore {
-  // 1MB buffer size
-  private static final long CTE_BUFFER_SIZE = 1024 * 1024L;
-
   private final List<TsBlock> cachedData;
   private long cachedBytes;
   private final DiskSpiller diskSpiller;
@@ -44,14 +42,13 @@ public class CteDataStore {
 
   public void addTsBlock(TsBlock tsBlock) throws IoTDBException {
     long bytesSize = tsBlock.getRetainedSizeInBytes();
-    if (bytesSize + cachedBytes < CTE_BUFFER_SIZE) {
-      cachedBytes += bytesSize;
-    } else {
+    if (bytesSize + cachedBytes >= IoTDBDescriptor.getInstance().getConfig().getCteBufferSize()) {
       spill();
       cachedData.clear();
-      cachedBytes = bytesSize;
+      cachedBytes = 0;
     }
     cachedData.add(tsBlock);
+    cachedBytes += bytesSize;
   }
 
   public void clear() {
@@ -72,7 +69,6 @@ public class CteDataStore {
   }
 
   private void spill() throws IoTDBException {
-    // TODO: allocate memory
     diskSpiller.spill(cachedData);
   }
 }

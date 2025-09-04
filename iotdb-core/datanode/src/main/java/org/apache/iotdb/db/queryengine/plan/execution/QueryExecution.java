@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
@@ -47,6 +48,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.CteMaterializer;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -59,6 +62,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -349,6 +353,9 @@ public class QueryExecution implements IQueryExecution {
       resultHandle.close();
       cleanUpResultHandle();
     }
+    if (getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
+      CteMaterializer.cleanUpCTE((Analysis) analysis, context);
+    }
   }
 
   private void cleanUpResultHandle() {
@@ -373,6 +380,15 @@ public class QueryExecution implements IQueryExecution {
   public void stopAndCleanup(Throwable t) {
     stop(t);
     releaseResource(t);
+
+    try {
+      // delete cte tmp file if exists
+      deleteTmpFile();
+    } catch (Throwable err) {
+      LOGGER.error(
+          "Errors occurred while attempting to delete tmp files, potentially leading to resource leakage.",
+          err);
+    }
   }
 
   /** Release the resources that current QueryExecution hold with a specified exception */
@@ -391,6 +407,9 @@ public class QueryExecution implements IQueryExecution {
         resultHandle.close();
       }
       cleanUpResultHandle();
+    }
+    if (getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
+      CteMaterializer.cleanUpCTE((Analysis) analysis, context);
     }
   }
 
@@ -716,5 +735,19 @@ public class QueryExecution implements IQueryExecution {
 
   public ScheduledExecutorService getScheduledExecutor() {
     return planner.getScheduledExecutorService();
+  }
+
+  private void deleteTmpFile() {
+    if (context.mayHaveTmpFile()) {
+      String tmpFilePath =
+          IoTDBDescriptor.getInstance().getConfig().getCteTmpDir()
+              + File.separator
+              + context.getQueryId()
+              + File.separator;
+      File tmpFile = new File(tmpFilePath);
+      if (tmpFile.exists()) {
+        FileUtils.deleteFileOrDirectory(tmpFile, true);
+      }
+    }
   }
 }

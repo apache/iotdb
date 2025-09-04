@@ -26,10 +26,33 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 public interface CteDataReader {
-
+  /**
+   * Check if there is more data in CteDataReader. DiskSpillerReader may run out of current TsBlocks
+   * , then it needs to read from file and cache more data. This method should be called before
+   * next() to ensure that there is data to read.
+   *
+   * @throws IoTDBException the error occurs when reading data from fileChannel
+   */
   boolean hasNext() throws IoTDBException;
 
+  /**
+   * output the cached data in CteDataReader, it needs to be called after hasNext() returns true.
+   *
+   * @return next TsBlock
+   */
   TsBlock next() throws IoTDBException;
 
+  /**
+   * Close the CteDataReader and release resources.
+   *
+   * @throws IoTDBException the error occurs when closing fileChannel
+   */
   void close() throws IoTDBException;
+
+  /**
+   * Get the bytes used by this CteDataReader.
+   *
+   * @return the bytes used by this CteDataReader
+   */
+  long bytesUsed();
 }

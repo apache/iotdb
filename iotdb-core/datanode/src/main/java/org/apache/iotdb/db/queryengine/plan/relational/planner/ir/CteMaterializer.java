@@ -40,11 +40,11 @@ import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.io.File;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 public class CteMaterializer {
-  private static final SqlParser relationSqlParser = new SqlParser();
 
   private static final Coordinator coordinator = Coordinator.getInstance();
 
@@ -57,14 +57,31 @@ public class CteMaterializer {
         .forEach(
             (tableRef, query) -> {
               if (query.isMaterialized() && !materializedQueries.contains(query)) {
-                CteDataStore dataStore =
-                    fetchCteQueryResult(tableRef.getNode().getName().toString(), query, context);
+                if (!context.mayHaveTmpFile()) {
+                  context.setMayHaveTmpFile(true);
+                }
+
+                String cteName = tableRef.getNode().getName().toString();
+                CteDataStore dataStore = fetchCteQueryResult(cteName, query, context);
                 if (dataStore != null) {
-                  analysis.addCteDataStore(query, dataStore);
+                  analysis.addCteDataStore(cteName, dataStore);
+                  context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
                   materializedQueries.add(query);
                 }
               }
             });
+  }
+
+  public static void cleanUpCTE(Analysis analysis, MPPQueryContext context) {
+    Map<String, CteDataStore> cteDataStores = analysis.getCteDataStores();
+    cteDataStores
+        .values()
+        .forEach(
+            dataStore -> {
+              context.releaseMemoryReservedForFrontEnd(dataStore.getCachedBytes());
+              dataStore.clear();
+            });
+    cteDataStores.clear();
   }
 
   public static CteDataStore fetchCteQueryResult(
@@ -91,7 +108,7 @@ public class CteMaterializer {
       String folderPath =
           IoTDBDescriptor.getInstance().getConfig().getCteTmpDir()
               + File.separator
-              + queryId
+              + context.getQueryId()
               + File.separator;
       CteDataStore cteDataStore =
           new CteDataStore(new DiskSpiller(folderPath, folderPath + cteName));

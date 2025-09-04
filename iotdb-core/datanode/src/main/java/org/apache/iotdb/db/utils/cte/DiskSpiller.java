@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DiskSpiller {
+
   private static final String FILE_SUFFIX = ".cteTemp";
   private final String folderPath;
   private final String filePrefix;
@@ -52,19 +53,6 @@ public class DiskSpiller {
     this.fileIndex = 0;
   }
 
-  private void createFolder(String folderPath) throws IoTDBException {
-    try {
-      Path path = Paths.get(folderPath);
-      Files.createDirectories(path);
-      folderCreated = true;
-    } catch (IOException e) {
-      throw new IoTDBException(
-          "Create folder error: " + folderPath,
-          e,
-          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-    }
-  }
-
   public void spill(List<TsBlock> tsBlocks) throws IoTDBException {
     if (!folderCreated) {
       createFolder(folderPath);
@@ -73,14 +61,6 @@ public class DiskSpiller {
     fileIndex++;
 
     writeData(tsBlocks, fileName);
-  }
-
-  public List<String> getFilePaths() {
-    List<String> filePaths = new ArrayList<>();
-    for (int i = 0; i < fileIndex; i++) {
-      filePaths.add(filePrefix + String.format("%05d", i) + FILE_SUFFIX);
-    }
-    return filePaths;
   }
 
   public List<FileSpillerReader> getReaders() throws IoTDBException {
@@ -121,5 +101,26 @@ public class DiskSpiller {
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
+  }
+
+  private void createFolder(String folderPath) throws IoTDBException {
+    try {
+      Path path = Paths.get(folderPath);
+      Files.createDirectories(path);
+      folderCreated = true;
+    } catch (IOException e) {
+      throw new IoTDBException(
+          "Create folder error: " + folderPath,
+          e,
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+  }
+
+  private List<String> getFilePaths() {
+    List<String> filePaths = new ArrayList<>();
+    for (int i = 0; i < fileIndex; i++) {
+      filePaths.add(filePrefix + String.format("%05d", i) + FILE_SUFFIX);
+    }
+    return filePaths;
   }
 }
