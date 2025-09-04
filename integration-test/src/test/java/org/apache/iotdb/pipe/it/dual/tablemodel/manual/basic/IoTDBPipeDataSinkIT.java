@@ -77,12 +77,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -112,12 +110,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.insertData("test", "test", 50, 100, senderEnv, true);
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -167,12 +163,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -204,12 +198,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.insertData("test", "test", 50, 150, senderEnv, true);
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.assertCountData("test", "test", 150, receiverEnv, handleFailure);
 
@@ -234,15 +226,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
               "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.insertData("test", "test", 150, 200, senderEnv, true);
       TableModelUtils.insertTablet("test", "test", 200, 250, senderEnv, true);
@@ -293,12 +283,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertDataNotThrowError("test", "test", 0, 20, senderEnv);
@@ -379,12 +367,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
         TableModelUtils.createDataBaseAndTable(senderEnv, "test" + i, "test1");
       }
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -414,12 +400,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       consumer.accept(testResult, test1Result);
 
@@ -430,15 +414,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))),
           handleFailure);
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
               "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -736,12 +718,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       for (int i = 0; i < 5; i++) {
         TableModelUtils.createDataBaseAndTable(senderEnv, "test" + i, "test0");
@@ -777,12 +757,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       Map<String, List<Tablet>> testResult = new HashMap<>();
       Map<String, List<Tablet>> test1Result = new HashMap<>();

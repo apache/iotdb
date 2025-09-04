@@ -629,9 +629,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         return;
       }
       t.join();
-      if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "flush", null);
 
       TableModelUtils.assertCountData(
           "test", "test", succeedNum.get() + 100, receiverEnv, handleFailure);
@@ -761,9 +759,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         succeedNum++;
       }
     }
-    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     try {
       TestUtils.restartCluster(senderEnv);

@@ -137,9 +137,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
 
       // wait for flush to complete
-      if (!TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null)) {
-        return;
-      }
+      TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null);
       Thread.sleep(10000);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -478,9 +476,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       t.join();
       client.stopPipe("p1");
       client.startPipe("p1");
-      if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "flush", null);
       TableModelUtils.assertCountData(
           "test", "test", 100 + succeedNum.get(), receiverEnv, handleFailure);
     }
@@ -557,9 +553,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
     TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
@@ -591,9 +585,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    if (!TestUtils.executeNonQuery(senderEnv, "flush", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
 
@@ -627,9 +619,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    if (!TestUtils.executeNonQuery(receiverEnv, "flush", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
     TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);
 
     TableModelUtils.assertData("test", "test", 0, 400, receiverEnv, handleFailure);

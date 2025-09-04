@@ -246,10 +246,7 @@ public class TableModelUtils {
     List<String> list = new ArrayList<>(end - start + 1);
     list.add(
         String.format("delete from %s where time >= %s and time <= %s", tableName, start, end));
-    if (!TestUtils.executeNonQueries(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null)) {
-      fail();
-    }
+    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   // s0 string, s1 string, s2 string, s3 string, s4 int64, s5 float, s6 string s7 timestamp, s8

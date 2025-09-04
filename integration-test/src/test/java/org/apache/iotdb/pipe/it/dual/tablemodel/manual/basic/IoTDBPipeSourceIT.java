@@ -133,15 +133,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
       assertTimeseriesCountOnReceiver(receiverEnv, 0);
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (1, 10)",
               "insert into root.db2.d1 (time, at1) values (1, 20)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
@@ -167,15 +165,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (2, 11)",
               "insert into root.db2.d1 (time, at1) values (2, 21)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
 
@@ -218,7 +214,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (1, 10)",
@@ -226,9 +222,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d3 (time, at1) values (1, 30)",
               "insert into root.db.d4 (time, at1) values (1, 40)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test");
       TableModelUtils.insertData("test", "test1", 0, 100, senderEnv);
@@ -295,16 +289,14 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p4").getCode());
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
               "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.insertData("test", "test2", 100, 200, senderEnv);
 
@@ -348,7 +340,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -356,9 +348,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d2 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test");
       TableModelUtils.insertData("test", "test1", 0, 10, senderEnv);
@@ -367,9 +357,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.insertData("test", "test2", 0, 10, senderEnv);
 
       // wait for flush to complete
-      if (!TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null)) {
-        return;
-      }
+      TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null);
       Thread.sleep(10000);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -447,7 +435,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // insert history data
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -455,9 +443,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d2 (time, at1)"
                   + " values (6, 6), (7, 7), (8, 8), (9, 9), (10, 10)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test");
       TableModelUtils.insertData("test", "test1", 0, 10, senderEnv);
@@ -498,15 +484,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.assertCountData("test", "test1", 3, receiverEnv, handleFailure);
 
       // Insert realtime data that overlapped with time range
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d3 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
       TableModelUtils.createDataBaseAndTable(senderEnv, "test3", "test");
       TableModelUtils.insertData("test", "test3", 0, 5, senderEnv);
 
@@ -521,15 +505,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.assertCountData("test", "test3", 3, receiverEnv, handleFailure);
 
       // Insert realtime data that does not overlap with time range
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d4 (time, at1)"
                   + " values (6, 6), (7, 7), (8, 8), (9, 9), (10, 10)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test4", "test");
       TableModelUtils.insertData("test", "test4", 6, 10, senderEnv);
@@ -562,7 +544,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
@@ -570,9 +552,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d2 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test");
       TableModelUtils.insertData("test", "test1", 0, 5, senderEnv);
@@ -661,7 +641,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TsFile 1, extracted without parse
@@ -669,25 +649,19 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
               // TsFile 2, not extracted because pattern not overlapped
               "insert into root.db1.d1 (time, at1, at2)" + " values (1, 1, 2), (2, 3, 4)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TsFile 3, not extracted because time range not overlapped
               "insert into root.db.d1 (time, at1, at2)" + " values (3, 1, 2), (4, 3, 4)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.insertData("test", "test1", 2, 5, senderEnv);
 
       // wait for flush to complete
-      if (!TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null)) {
-        return;
-      }
+      TestUtils.executeNonQueries(senderEnv, Collections.singletonList("flush"), null);
       Thread.sleep(10000);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -774,23 +748,19 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1, at2)" + " values (1, 1, 2), (3, 3, 4)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5, 1), (16, 3)",
               "insert into root.db.d1 (time, at1, at2)" + " values (5, 1, 2), (6, 3, 4)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,

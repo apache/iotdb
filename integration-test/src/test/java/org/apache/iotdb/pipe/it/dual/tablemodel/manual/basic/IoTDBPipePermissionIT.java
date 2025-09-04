@@ -96,9 +96,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testSourcePermission() {
-    if (!TestUtils.executeNonQuery(senderEnv, "create user `thulab` 'passwD@123456'", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "create user `thulab` 'passwD@123456'", null);
 
     // Shall fail if username is specified without password
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -185,10 +183,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "information_schema");
 
     // Grant some privilege
-    if (!TestUtils.executeNonQuery(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(
+        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null);
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
 
@@ -210,9 +206,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     }
 
     // Write some data
-    if (!TableModelUtils.insertData("test", "test", 0, 100, senderEnv)) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
 
     try {
       TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
@@ -224,14 +218,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, receiverEnv);
 
     // Grant SELECT privilege
-    if (!TestUtils.executeNonQueries(
+    TestUtils.executeNonQueries(
         "test",
         BaseEnv.TABLE_SQL_DIALECT,
         senderEnv,
         Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"),
-        null)) {
-      return;
-    }
+        null);
 
     // Will finally pass
     TableModelUtils.assertCountData(
@@ -254,9 +246,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.executeNonQuery(receiverEnv, "create user testUser 'passwD@123456'", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(receiverEnv, "create user testUser 'passwD@123456'", null);
 
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -291,9 +281,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, tbName, dbName);
 
       // Write some data
-      if (!TableModelUtils.insertData(dbName, tbName, 0, 100, senderEnv)) {
-        return;
-      }
+      TableModelUtils.insertData(dbName, tbName, 0, 100, senderEnv);
 
       // Shall not be transferred
       TestUtils.assertDataAlwaysOnEnv(
@@ -303,14 +291,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           Collections.singleton("information_schema,INF,null,null,null,"),
           (String) null);
 
-      if (!TestUtils.executeNonQuery(
+      TestUtils.executeNonQuery(
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
           "grant insert,create on database test to user testUser",
-          null)) {
-        return;
-      }
+          null);
 
       // Will finally pass
       TableModelUtils.assertCountData(
@@ -336,26 +322,20 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, tbName, dbName2);
 
       // Write some data
-      if (!TableModelUtils.insertData(dbName2, tbName, 0, 100, senderEnv)) {
-        return;
-      }
+      TableModelUtils.insertData(dbName2, tbName, 0, 100, senderEnv);
 
       // Shall not be transferred
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "count databases", "count,", Collections.singleton("2,"), (String) null);
 
-      if (!TestUtils.executeNonQuery(
+      TestUtils.executeNonQuery(
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
           "grant insert,create on database test2 to user testUser",
-          null)) {
-        return;
-      }
+          null);
 
-      if (!TableModelUtils.insertData(dbName2, tbName, 100, 200, senderEnv)) {
-        return;
-      }
+      TableModelUtils.insertData(dbName2, tbName, 100, 200, senderEnv);
 
       // Will finally pass
       TableModelUtils.assertCountData(

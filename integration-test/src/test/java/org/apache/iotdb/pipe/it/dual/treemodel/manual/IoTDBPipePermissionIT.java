@@ -43,8 +43,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.fail;
-
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
 public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
@@ -99,16 +97,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   private void testWithSink(final String sink) throws Exception {
-    if (!TestUtils.executeNonQueries(
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
             "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"),
-        null)) {
-      return;
-    }
+        null);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -116,17 +112,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create user user 'passwd123456'",
               "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"),
-          null)) {
-        fail();
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
       final Map<String, String> sourceAttributes = new HashMap<>();
@@ -178,16 +171,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
   @Test
   public void testNoPermission() throws Exception {
-    if (!TestUtils.executeNonQueries(
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
             "grant READ on root.ln.** to role `admin`"),
-        null)) {
-      return;
-    }
+        null);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -195,15 +186,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.executeNonQueries(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create user someUser 'passwd'",
               "create timeseries root.noPermission.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
-          null)) {
-        fail();
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
       final Map<String, String> sourceAttributes = new HashMap<>();

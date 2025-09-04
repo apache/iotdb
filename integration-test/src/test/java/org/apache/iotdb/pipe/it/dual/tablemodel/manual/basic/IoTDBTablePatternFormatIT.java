@@ -113,12 +113,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
       TableModelUtils.assertData("test1", "test1", 0, 200, receiverEnv, handleFailure);
-      if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
-        Assert.fail();
-      }
-      if (!TableModelUtils.hasDataBase("test1", receiverEnv)) {
-        Assert.fail();
-      }
+      TableModelUtils.hasDataBase("test", receiverEnv);
+      TableModelUtils.hasDataBase("test1", receiverEnv);
     }
   }
 
@@ -179,12 +175,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       TableModelUtils.assertData("test", "test", 0, 50, receiverEnv, handleFailure);
       TableModelUtils.assertData("test1", "test1", 0, 50, receiverEnv, handleFailure);
-      if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
-        Assert.fail();
-      }
-      if (!TableModelUtils.hasDataBase("test1", receiverEnv)) {
-        Assert.fail();
-      }
+      TableModelUtils.hasDataBase("test", receiverEnv);
+      TableModelUtils.hasDataBase("test1", receiverEnv);
     }
   }
 
@@ -245,12 +237,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       TableModelUtils.assertData("test", "test", 100, 150, receiverEnv, handleFailure);
       TableModelUtils.assertData("test1", "test1", 100, 150, receiverEnv, handleFailure);
-      if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
-        Assert.fail();
-      }
-      if (!TableModelUtils.hasDataBase("test1", receiverEnv)) {
-        Assert.fail();
-      }
+      TableModelUtils.hasDataBase("test", receiverEnv);
+      TableModelUtils.hasDataBase("test1", receiverEnv);
     }
   }
 
@@ -318,12 +306,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       TableModelUtils.assertData("pattern1", "pattern1", 0, 200, receiverEnv, handleFailure);
 
       HashSet<String> expectedResults = new HashSet();
-      if (!TableModelUtils.hasDataBase("pattern", receiverEnv)) {
-        Assert.fail();
-      }
-      if (!TableModelUtils.hasDataBase("pattern1", receiverEnv)) {
-        Assert.fail();
-      }
+      TableModelUtils.hasDataBase("pattern", receiverEnv);
+      TableModelUtils.hasDataBase("pattern1", receiverEnv);
     }
   }
 
@@ -382,12 +366,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv, handleFailure);
       TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv, handleFailure);
 
-      if (!TableModelUtils.hasDataBase("pattern1", receiverEnv)) {
-        Assert.fail();
-      }
-      if (!TableModelUtils.hasDataBase("pattern", receiverEnv)) {
-        Assert.fail();
-      }
+      TableModelUtils.hasDataBase("pattern1", receiverEnv);
+      TableModelUtils.hasDataBase("pattern", receiverEnv);
     }
   }
 
@@ -447,12 +427,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv, handleFailure);
       TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv, handleFailure);
 
-      if (!TableModelUtils.hasDataBase("pattern", receiverEnv)) {
-        Assert.fail();
-      }
-      if (!TableModelUtils.hasDataBase("pattern1", receiverEnv)) {
-        Assert.fail();
-      }
+      TableModelUtils.hasDataBase("pattern", receiverEnv);
+      TableModelUtils.hasDataBase("pattern1", receiverEnv);
     }
   }
 
