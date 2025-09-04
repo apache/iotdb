@@ -634,15 +634,6 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitPatternRecognition(PatternRecognitionNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
-    if (node.getPartitionBy().isEmpty()) {
-      Optional<OrderingScheme> orderingScheme = node.getOrderingScheme();
-      orderingScheme.ifPresent(scheme -> nodeOrderingMap.put(node.getPlanNodeId(), scheme));
-    }
-
-    if (node.getChildren().isEmpty()) {
-      return Collections.singletonList(node);
-    }
-
     boolean canSplitPushDown = (node.getChild() instanceof GroupNode);
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
@@ -719,6 +710,7 @@ public class TableDistributedPlanGenerator
                   regionReplicaSet, regionDeviceCount.getOrDefault(regionReplicaSet, 0) + 1));
       if (regionReplicaSets.size() != 1) {
         crossRegionDevices.add(deviceEntry);
+        context.deviceCrossRegion = true;
         continue;
       }
       final DeviceTableScanNode deviceTableScanNode =
@@ -760,7 +752,15 @@ public class TableDistributedPlanGenerator
           new MergeSortNode(
               queryId.genPlanNodeId(), context.expectedOrderingScheme, node.getOutputSymbols());
       for (PlanNode node1 : constructDeviceTableScanByRegionReplicaSet(node, context)) {
-        mergeSortNode.addChild(node1);
+        if (canSortEliminated(
+            mergeSortNode.getOrderingScheme(), nodeOrderingMap.get(node1.getPlanNodeId()))) {
+          mergeSortNode.addChild(node1);
+        } else {
+          SortNode subSortNode =
+              new SortNode(
+                  queryId.genPlanNodeId(), node1, mergeSortNode.getOrderingScheme(), false, false);
+          mergeSortNode.addChild(subSortNode);
+        }
       }
       nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
       result.add(mergeSortNode);
@@ -795,6 +795,9 @@ public class TableDistributedPlanGenerator
               deviceEntry.getDeviceID(),
               node.getTimeFilter(),
               cachedSeriesSlotWithRegions);
+      if (regionReplicaSets.size() > 1) {
+        context.deviceCrossRegion = true;
+      }
       for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         final DeviceTableScanNode deviceTableScanNode =
             tableScanNodeMap.computeIfAbsent(
@@ -883,6 +886,9 @@ public class TableDistributedPlanGenerator
               node.getTimeFilter(),
               cachedSeriesSlotWithRegions);
 
+      if (regionReplicaSets.size() > 1) {
+        context.deviceCrossRegion = true;
+      }
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         boolean aligned = deviceEntry instanceof AlignedDeviceEntry;
         Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair =
@@ -1035,9 +1041,15 @@ public class TableDistributedPlanGenerator
                   "Should never reach here. Child ordering: %s. PreGroupedSymbols: %s",
                   childOrdering.getOrderBy(), node.getPreGroupedSymbols()));
         }
+      } else if (context.deviceCrossRegion) {
+        // Child has no Ordering and the device cross region, the grouped property of child is not
+        // ensured, so we need to clear the attribute of AggNode
+        node.setPreGroupedSymbols(ImmutableList.of());
+        context.deviceCrossRegion = false;
       }
-      // Child has no Ordering, do nothing here because the logical optimizer
-      // 'TransformAggregationToStreamable' will ensure the grouped property of child
+      // Child has no Ordering and the device doesn't cross region, do nothing here because the
+      // logical optimizer 'TransformAggregationToStreamable' will ensure the grouped property of
+      // child
     }
 
     if (childrenNodes.size() == 1) {
@@ -1133,6 +1145,7 @@ public class TableDistributedPlanGenerator
                 cachedSeriesSlotWithRegions);
         if (regionReplicaSets.size() > 1) {
           needSplit = true;
+          context.deviceCrossRegion = true;
         }
         regionReplicaSetsList.add(regionReplicaSets);
       }
@@ -1773,6 +1786,7 @@ public class TableDistributedPlanGenerator
     boolean pushDownGrouping = false;
     OrderingScheme expectedOrderingScheme;
     TRegionReplicaSet mostUsedRegion;
+    boolean deviceCrossRegion;
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();

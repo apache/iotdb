@@ -139,7 +139,7 @@ schema_replication_factor=1
 # These consensus protocols are currently supported:
 # 1. org.apache.iotdb.consensus.ratis.RatisConsensus
 # 2. org.apache.iotdb.consensus.simple.SimpleConsensus   (The schema_replication_factor can only be set to 1)
-# effectiveMode: first_restart
+# effectiveMode: first_start
 # Datatype: string
 schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
 
@@ -438,12 +438,12 @@ dn_metric_internal_reporter_type=MEMORY
 ### SSL Configuration
 ####################
 
-# Does dn_rpc_port enable SSL
+# Whether enable SSL for thrift client connections
 # effectiveMode: restart
 # Datatype: boolean
 enable_thrift_ssl=false
 
-# Rest Service enabled SSL
+# Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean
 enable_https=false
@@ -458,6 +458,17 @@ key_store_path=
 # effectiveMode: restart
 # Datatype: String
 key_store_pwd=
+
+# SSL trust store path
+# linux e.g. /home/iotdb/server.truststore (absolute path) or server.truststore (relative path)
+# windows e.g. C:\\iotdb\\server.truststore (absolute path) or server.truststore (relative path)
+# effectiveMode: restart
+trust_store_path=
+
+# SSL trust store password
+# effectiveMode: restart
+# Datatype: String
+trust_store_pwd=
 
 ####################
 ### Connection Configuration
@@ -588,15 +599,6 @@ cache_init_num=10
 # effectiveMode: restart
 # Datatype: boolean
 client_auth=false
-
-# SSL trust store path
-# effectiveMode: restart
-trust_store_path=""
-
-# SSL trust store password.
-# effectiveMode: restart
-# Datatype: String
-trust_store_pwd=""
 
 # SSL timeout (in seconds)
 # effectiveMode: restart
@@ -1288,6 +1290,7 @@ tier_ttl_in_ms=-1
 ####################
 ### Compaction Configurations
 ####################
+
 # sequence space compaction: only compact the sequence files
 # effectiveMode: hot_reload
 # Datatype: boolean
@@ -1492,14 +1495,14 @@ max_wal_nodes_num=0
 # Duration a wal flush operation will wait before calling fsync in the async mode
 # A duration greater than 0 batches multiple wal fsync calls into one. This is useful when disks are slow or WAL write contention exists.
 # Notice: this value affects write performance significantly, values in the range of 10ms-2000ms are recommended.
-# effective: hot_reload
+# effectiveMode: hot_reload
 # Datatype: long
 wal_async_mode_fsync_delay_in_ms=1000
 
 # Duration a wal flush operation will wait before calling fsync in the sync mode
 # A duration greater than 0 batches multiple wal fsync calls into one. This is useful when disks are slow or WAL write contention exists.
 # Notice: this value affects write performance significantly, values in the range of 0ms-10ms are recommended.
-# effective: hot_reload
+# effectiveMode: hot_reload
 # Datatype: long
 wal_sync_mode_fsync_delay_in_ms=3
 
@@ -1598,6 +1601,7 @@ region_migration_speed_limit_bytes_per_second = 50331648
 ####################
 ### Blob Allocator Configuration
 ####################
+
 # Whether to enable binary allocator.
 # For scenarios where large binary streams cause severe GC, enabling this parameter significantly improves performance.
 # effectiveMode: hot_reload
@@ -1947,6 +1951,7 @@ ratis_first_election_timeout_min_ms=50
 ratis_first_election_timeout_max_ms=150
 
 # the timeout threshold for transferring leader in ratis
+# effectiveMode: restart
 # Datatype: int
 ratis_transfer_leader_timeout_ms=30000
 
@@ -1974,6 +1979,7 @@ data_region_ratis_periodic_snapshot_interval=86400
 ####################
 ### IoTConsensusV2 Configuration
 ####################
+
 # Default event buffer size for connector and receiver in iot consensus v2
 # effectiveMode: restart
 # DataType: int
@@ -2135,17 +2141,20 @@ load_active_listening_check_interval_seconds=5
 # UPDATE_NO_BLOB: similar to UPDATE, but will invalidate LastCache for blob series;
 # CLEAN_DEVICE: invalidate LastCache of devices contained in the TsFile;
 # CLEAN_ALL: clean the whole LastCache.
+# effectiveMode: restart
 last_cache_operation_on_load=UPDATE_NO_BLOB
 
 # Whether to cache last values before loading a TsFile. Only effective when
 # last_cache_operation_on_load=UPDATE_NO_BLOB or last_cache_operation_on_load=UPDATE.
 # When set to true, blob series will be ignored even with last_cache_operation_on_load=UPDATE.
 # Enabling this will increase the memory footprint during loading TsFiles.
+# effectiveMode: restart
 cache_last_values_for_load=true
 
 # When cache_last_values_for_load=true, the maximum memory that can be used to cache last values.
 # If this value is exceeded, the cached values will be abandoned and last values will be read from
 # the TsFile in a streaming manner.
+# effectiveMode: restart
 cache_last_values_memory_budget_in_byte=4194304
 
 ####################

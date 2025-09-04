@@ -31,6 +31,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
@@ -40,6 +41,8 @@ import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
@@ -239,6 +242,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
   ClientManager<ConfigRegionId, ConfigNodeClient> clientManager;
 
   ConfigRegionId configRegionId = ConfigNodeInfo.CONFIG_REGION_ID;
@@ -261,9 +266,18 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
     try {
       transport =
-          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-              // As there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), timeoutMs);
+          commonConfig.isEnableInternalSSL()
+              ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                  endpoint.getIp(),
+                  endpoint.getPort(),
+                  timeoutMs,
+                  commonConfig.getTrustStorePath(),
+                  commonConfig.getTrustStorePwd(),
+                  commonConfig.getKeyStorePath(),
+                  commonConfig.getKeyStorePwd())
+              : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                  // As there is a try-catch already, we do not need to use TSocket.wrap
+                  endpoint.getIp(), endpoint.getPort(), timeoutMs);
       if (!transport.isOpen()) {
         transport.open();
       }
@@ -816,6 +830,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TShowConfigurationResp showConfiguration(int nodeId) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showConfiguration(nodeId), resp -> !updateConfigNodeLeader(resp.getStatus()));
+  }
+
+  @Override
+  public TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showAppliedConfigurations(nodeId),
+        resp -> !updateConfigNodeLeader(resp.getStatus()));
   }
 
   @Override

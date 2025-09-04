@@ -34,15 +34,15 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 include = [
-    {path = "ainode/thrift/*", format = "wheel"},
-    {path = "ainode/thrift/common/*", format = "wheel"},
-    {path = "ainode/thrift/confignode/*", format = "wheel"},
-    {path = "ainode/thrift/datanode/*", format = "wheel"},
-    {path = "ainode/thrift/ainode/*", format = "wheel"},
-    {path = "ainode/conf/*", format = "wheel"},
+    {path = "iotdb/thrift/*", format = "wheel"},
+    {path = "iotdb/thrift/common/*", format = "wheel"},
+    {path = "iotdb/thrift/confignode/*", format = "wheel"},
+    {path = "iotdb/thrift/datanode/*", format = "wheel"},
+    {path = "iotdb/thrift/ainode/*", format = "wheel"},
+    {path = "iotdb/ainode/conf/*", format = "wheel"},
 ]
 packages = [
-    { include = "ainode" }
+    { include = "iotdb/ainode" }
 ]
 
 [tool.poetry.dependencies]
@@ -71,7 +71,7 @@ transformers = "==4.40.1"
 torchmetrics = ">=1.2.0"
 
 [tool.poetry.scripts]
-ainode = "ainode.core.script:main"
+ainode = "iotdb.ainode.core.script:main"
 
 [tool.isort]
 profile = "black"

@@ -38,6 +38,8 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.ainode.LoadModelException;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -46,6 +48,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -66,6 +69,8 @@ import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
 public class AINodeClient implements AutoCloseable, ThriftClient {
 
   private static final Logger logger = LoggerFactory.getLogger(AINodeClient.class);
+
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final TEndPoint endPoint;
 
@@ -94,14 +99,29 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   private void init() throws TException {
     try {
-      transport =
-          new TFramedTransport.Factory()
-              .getTransport(
-                  new TSocket(
-                      TConfigurationConst.defaultTConfiguration,
-                      endPoint.getIp(),
-                      endPoint.getPort(),
-                      property.getConnectionTimeoutMs()));
+      if (commonConfig.isEnableInternalSSL()) {
+        TSSLTransportFactory.TSSLTransportParameters params =
+            new TSSLTransportFactory.TSSLTransportParameters();
+        params.setTrustStore(commonConfig.getTrustStorePath(), commonConfig.getTrustStorePwd());
+        params.setKeyStore(commonConfig.getKeyStorePath(), commonConfig.getKeyStorePwd());
+        transport =
+            new TFramedTransport.Factory()
+                .getTransport(
+                    TSSLTransportFactory.getClientSocket(
+                        endPoint.getIp(),
+                        endPoint.getPort(),
+                        property.getConnectionTimeoutMs(),
+                        params));
+      } else {
+        transport =
+            new TFramedTransport.Factory()
+                .getTransport(
+                    new TSocket(
+                        TConfigurationConst.defaultTConfiguration,
+                        endPoint.getIp(),
+                        endPoint.getPort(),
+                        property.getConnectionTimeoutMs()));
+      }
       if (!transport.isOpen()) {
         transport.open();
       }

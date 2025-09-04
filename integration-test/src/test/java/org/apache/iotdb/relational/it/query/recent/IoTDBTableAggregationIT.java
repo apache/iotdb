@@ -158,12 +158,12 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,2024-09-24T06:16:00.000Z,d01,1,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(*) from table1 where device_id = 'd01' group by 1,device_id",
+        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(*) from table1 where device_id = 'd01' group by 1,device_id order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(1) from table1 where device_id = 'd01' group by 1,device_id",
+        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(1) from table1 where device_id = 'd01' group by 1,device_id order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -558,7 +558,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,2024-09-24T06:16:00.000Z,d16,0,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count_if(device_id = 'd01') from table1 group by 1,device_id",
+        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count_if(device_id = 'd01') from table1 group by 1,device_id order by device_id, 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -836,7 +836,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, avg(s3) from table1 where device_id = 'd01' group by 1, 2",
+        "select date_bin(5s, time), device_id, avg(s3) from table1 where device_id = 'd01' group by 1, 2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -1016,7 +1016,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, sum(s3) from table1 where device_id = 'd01' group by 1, 2",
+        "select date_bin(5s, time), device_id, sum(s3) from table1 where device_id = 'd01' group by 1, 2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -1940,7 +1940,7 @@ public class IoTDBTableAggregationIT {
         };
 
     tableResultSetEqualTest(
-        "select device_id, date_bin(5s, time), max_by(time, s3), max(s3) from table1 where device_id = 'd01' group by date_bin(5s, time), 1",
+        "select device_id, date_bin(5s, time), max_by(time, s3), max(s3) from table1 where device_id = 'd01' group by date_bin(5s, time), 1 order by 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2172,7 +2172,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,null,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, first(time),first(s1),first(s2),first(s3),first(s4),first(s5),first(s6),first(s7),first(s8),first(s9),first(s10) from table1 where device_id = 'd01' group by 1,2",
+        "select date_bin(5s, time), device_id, first(time),first(s1),first(s2),first(s3),first(s4),first(s5),first(s6),first(s7),first(s8),first(s9),first(s10) from table1 where device_id = 'd01' group by 1,2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2347,7 +2347,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55.0,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, first_by(time, s4), first(s4) from table1 where device_id = 'd01' group by 1,2",
+        "select date_bin(5s, time), device_id, first_by(time, s4), first(s4) from table1 where device_id = 'd01' group by 1,2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2539,7 +2539,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,null,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, last(time),last(s1),last(s2),last(s3),last(s4),last(s5),last(s6),last(s7),last(s8),last(s9),last(s10) from table1 where device_id = 'd01' group by 1,2",
+        "select date_bin(5s, time), device_id, last(time),last(s1),last(s2),last(s3),last(s4),last(s5),last(s6),last(s7),last(s8),last(s9),last(s10) from table1 where device_id = 'd01' group by 1,2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2717,7 +2717,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55.0,",
         };
     repeatTest(
-        "select date_bin(5s, time), device_id, last_by(time, s4), last(s4) from table1 where device_id = 'd01' group by 1,2",
+        "select date_bin(5s, time), device_id, last_by(time, s4), last(s4) from table1 where device_id = 'd01' group by 1,2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME,
@@ -2883,7 +2883,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id,extreme(s3) from table1 where device_id = 'd01' group by 1, 2",
+        "select date_bin(5s, time), device_id,extreme(s3) from table1 where device_id = 'd01' group by 1, 2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

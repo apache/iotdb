@@ -30,8 +30,10 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
+import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
+import org.apache.ratis.grpc.GrpcTlsConfig;
 import org.apache.ratis.proto.RaftProtos.RaftPeerProto;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
@@ -47,8 +49,16 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyStore;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -243,9 +253,10 @@ public class Utils {
     return TimeDuration.valueOf(maxWaitMs, TimeUnit.MILLISECONDS);
   }
 
-  public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
+  public static Parameters initRatisConfig(RaftProperties properties, RatisConfig config) {
     GrpcConfigKeys.setMessageSizeMax(properties, config.getGrpc().getMessageSizeMax());
     GrpcConfigKeys.setFlowControlWindow(properties, config.getGrpc().getFlowControlWindow());
+
     GrpcConfigKeys.Server.setAsyncRequestThreadPoolCached(
         properties, config.getGrpc().isAsyncRequestThreadPoolCached());
     GrpcConfigKeys.Server.setAsyncRequestThreadPoolSize(
@@ -345,6 +356,38 @@ public class Utils {
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
+
+    Parameters parameters = new Parameters();
+    if (config.getGrpc().isEnableSSL()) {
+      String keyStorePath = config.getGrpc().getSslKeyStorePath();
+      String keyStorePassword = config.getGrpc().getSslKeyStorePassword();
+      String trustStorePath = config.getGrpc().getSslTrustStorePath();
+      String trustStorePassword = config.getGrpc().getSslTrustStorePassword();
+      try {
+        // === 1) create KeyManager ===
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        keyStore.load(
+            Files.newInputStream(Paths.get(keyStorePath)), keyStorePassword.toCharArray());
+
+        KeyManagerFactory kmf =
+            KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        kmf.init(keyStore, keyStorePassword.toCharArray());
+        KeyManager keyManager = kmf.getKeyManagers()[0];
+
+        // === 2) create TrustManager ===
+        KeyStore trustStore = KeyStore.getInstance("JKS");
+        trustStore.load(
+            Files.newInputStream(Paths.get(trustStorePath)), trustStorePassword.toCharArray());
+
+        TrustManagerFactory tmf =
+            TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(trustStore);
+        TrustManager trustManager = tmf.getTrustManagers()[0];
+        GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
+      } catch (Exception ignored) {
+      }
+    }
+    return parameters;
   }
 
   public static boolean anyOf(BooleanSupplier... conditions) {

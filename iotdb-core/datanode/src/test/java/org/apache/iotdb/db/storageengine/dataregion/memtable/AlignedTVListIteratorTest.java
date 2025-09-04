@@ -109,17 +109,16 @@ public class AlignedTVListIteratorTest {
   public void otherTest() throws IOException {
     Map<TVList, Integer> tvListMap =
         buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1)));
-    //    testAligned(
-    //        tvListMap,
-    //        Ordering.ASC,
-    //        null,
-    //        null,
-    //        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
-    //        Collections.emptyList(),
-    //        Arrays.asList(Collections.emptyList(), Collections.emptyList(),
-    // Collections.emptyList()),
-    //        false,
-    //        1);
+    testAligned(
+        tvListMap,
+        Ordering.ASC,
+        null,
+        null,
+        PaginationController.UNLIMITED_PAGINATION_CONTROLLER,
+        Collections.emptyList(),
+        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+        false,
+        1);
     testAligned(
         tvListMap,
         Ordering.DESC,
@@ -655,11 +654,15 @@ public class AlignedTVListIteratorTest {
     List<Statistics<? extends Serializable>> pageStatisticsList = chunk.getTimeStatisticsList();
     int count = 0;
     long offset = paginationController.getCurOffset();
+    if (!scanOrder.isAscending()) {
+      Collections.reverse(pageStatisticsList);
+    }
     for (Statistics<? extends Serializable> statistics : pageStatisticsList) {
-      if (statistics.getStartTime() <= statistics.getEndTime()) {
-        memPointIterator.setCurrentPageTimeRange(
-            new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
-      }
+      TimeRange currentTimeRange =
+          (statistics.getStartTime() <= statistics.getEndTime())
+              ? new TimeRange(statistics.getStartTime(), statistics.getEndTime())
+              : null;
+      memPointIterator.setCurrentPageTimeRange(currentTimeRange);
       while (memPointIterator.hasNextBatch()) {
         TsBlock tsBlock = memPointIterator.nextBatch();
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -672,6 +675,8 @@ public class AlignedTVListIteratorTest {
             count++;
           }
           long currentTimestamp = tsBlock.getTimeByIndex(i);
+          Assert.assertTrue(
+              currentTimeRange == null || currentTimeRange.contains(currentTimestamp));
           Long int64Value = tsBlock.getColumn(0).isNull(i) ? null : tsBlock.getColumn(0).getLong(i);
           Boolean boolValue =
               tsBlock.getColumn(1).isNull(i) ? null : tsBlock.getColumn(1).getBoolean(i);

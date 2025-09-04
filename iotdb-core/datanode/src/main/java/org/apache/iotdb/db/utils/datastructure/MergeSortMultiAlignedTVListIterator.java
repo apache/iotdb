@@ -115,11 +115,20 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
             .isNullValue(rowIndices[columnIndex], columnIndex)) {
           bitMap.mark(columnIndex);
         }
+        // check valueColumnsDeletionList
+        if (valueColumnsDeletionList != null
+            && isPointDeleted(
+                currentTime,
+                valueColumnsDeletionList.get(columnIndex),
+                valueColumnDeleteCursor.get(columnIndex),
+                scanOrder)) {
+          iteratorIndices[columnIndex] = -1;
+          bitMap.mark(columnIndex);
+        }
       }
       hasNext = true;
 
       // duplicated timestamps
-      boolean[] valueDeleted = new boolean[tsDataTypeList.size()];
       while (!heap.isEmpty() && heap.peek().left == currentTime) {
         Pair<Long, Integer> element = heap.poll();
         probeIterators.add(element.right);
@@ -127,10 +136,14 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
           // if current column null, it needs update
           int iteratorIndex = currentIteratorIndex(columnIndex);
-          if (iteratorIndex == -1
-              || alignedTvListIterators
-                  .get(iteratorIndex)
-                  .isNullValue(rowIndices[columnIndex], columnIndex)) {
+          if (iteratorIndex == -1) {
+            // -1 means all point of this timestamp was deleted by Deletion and no further
+            // processing is required.
+            continue;
+          }
+          if (alignedTvListIterators
+              .get(iteratorIndex)
+              .isNullValue(rowIndices[columnIndex], columnIndex)) {
             iteratorIndices[columnIndex] = element.right;
             rowIndices[columnIndex] =
                 alignedTvListIterators.get(element.right).getSelectedIndex(columnIndex);

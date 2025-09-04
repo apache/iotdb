@@ -455,4 +455,16 @@ public class CommonDescriptor {
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }
+
+  public void initThriftSSL(TrimProperties properties) {
+    config.setEnableThriftClientSSL(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_thrift_ssl", Boolean.toString(config.isEnableThriftClientSSL()))));
+    config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
+    config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePwd()));
+    config.setTrustStorePath(
+        properties.getProperty("trust_store_path", config.getTrustStorePath()));
+    config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
+  }
 }

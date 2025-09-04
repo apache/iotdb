@@ -256,6 +256,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
+    ConfigurationFileUtils.updateAppliedProperties(properties, false);
     conf.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
 
     conf.setRpcAddress(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
@@ -1001,7 +1002,7 @@ public class IoTDBDescriptor {
     loadUDFProps(properties);
 
     // Thrift ssl
-    initThriftSSL(properties);
+    commonDescriptor.initThriftSSL(properties);
 
     // Trigger
     loadTriggerProps(properties);
@@ -1961,7 +1962,8 @@ public class IoTDBDescriptor {
   }
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
-      throws QueryProcessException {
+      throws QueryProcessException, IOException {
+    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
@@ -2453,14 +2455,6 @@ public class IoTDBDescriptor {
             e);
       }
     }
-  }
-
-  private void initThriftSSL(TrimProperties properties) {
-    conf.setEnableSSL(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_thrift_ssl", Boolean.toString(conf.isEnableSSL()))));
-    conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
-    conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePath()));
   }
 
   private void loadTriggerProps(TrimProperties properties) {

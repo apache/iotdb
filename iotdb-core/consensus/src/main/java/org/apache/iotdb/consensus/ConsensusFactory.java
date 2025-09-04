@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.commons.client.container.IoTV2GlobalComponentContainer;
+import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
 
