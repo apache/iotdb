@@ -997,7 +997,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "count timeseries root.db.**",
+        "count timeseries root.db*.**",
         "count(timeseries),",
         Collections.singleton(count + ","));
   }
