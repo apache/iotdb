@@ -44,7 +44,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
@@ -553,7 +552,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      final AtomicInteger succeedNum = new AtomicInteger(0);
       final Thread t =
           new Thread(
               () -> {
@@ -565,12 +563,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
                 }
                 try {
                   for (int i = 0; i < 100; ++i) {
-                    if (TestUtils.executeNonQuery(
+                    TestUtils.executeNonQuery(
                         senderEnv,
                         String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-                        connection)) {
-                      succeedNum.incrementAndGet();
-                    }
+                        connection);
                     Thread.sleep(100);
                   }
                 } catch (InterruptedException ignored) {
@@ -597,7 +593,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv,
           "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum.get() + ","));
+          Collections.singleton("100,"));
     }
   }
 

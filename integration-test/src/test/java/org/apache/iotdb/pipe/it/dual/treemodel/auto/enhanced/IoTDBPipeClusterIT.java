@@ -594,10 +594,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
       // ensure at least one insert happens before adding node so that the time series can be
       // created
-      if (TestUtils.executeNonQuery(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", 0), null)) {
-        succeedNum.incrementAndGet();
-      }
+      TestUtils.executeNonQuery(
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", 0), null);
       final Thread t =
           new Thread(
               () -> {
@@ -608,14 +606,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
                   // ignore
                 }
                 try {
-
                   for (int i = 1; i < 100; ++i) {
-                    if (TestUtils.executeNonQuery(
+                    TestUtils.executeNonQuery(
                         senderEnv,
                         String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-                        connection)) {
-                      succeedNum.incrementAndGet();
-                    }
+                        connection);
                     Thread.sleep(100);
                   }
                 } catch (final InterruptedException ignored) {
@@ -643,7 +638,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum.get() + ","));
+          Collections.singleton("100,"));
 
       try {
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
@@ -682,15 +677,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      int succeedNum = 0;
       try (Connection connection = senderEnv.getConnection()) {
         for (int i = 0; i < 100; ++i) {
-          if (TestUtils.executeNonQuery(
+          TestUtils.executeNonQuery(
               senderEnv,
               String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-              connection)) {
-            succeedNum++;
-          }
+              connection);
         }
       }
 
@@ -707,7 +699,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum + ","));
+          Collections.singleton("100,"));
 
       try {
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
@@ -751,15 +743,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      int succeedNum = 0;
       try (Connection connection = senderEnv.getConnection()) {
         for (int i = 0; i < 100; ++i) {
-          if (TestUtils.executeNonQuery(
+          TestUtils.executeNonQuery(
               senderEnv,
               String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000),
-              connection)) {
-            succeedNum++;
-          }
+              connection);
         }
       }
 
@@ -780,7 +769,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum + ","));
+          Collections.singleton("100,"));
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
@@ -818,15 +807,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    int succeedNum = 0;
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 0; i < 100; ++i) {
-        if (TestUtils.executeNonQuery(
+        TestUtils.executeNonQuery(
             senderEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000),
-            connection)) {
-          succeedNum++;
-        }
+            connection);
       }
     }
 
@@ -843,7 +829,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         receiverEnv,
         "select count(*) from root.db.**",
         "count(root.db.d1.s1),",
-        Collections.singleton(succeedNum + ","));
+        Collections.singleton("100,"));
   }
 
   @Test
