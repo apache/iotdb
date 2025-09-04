@@ -98,7 +98,7 @@ public class TableModelUtils {
     }
   }
 
-  public static boolean insertData(
+  public static void insertData(
       final String dataBaseName,
       final String tableName,
       final int startInclusive,
@@ -112,11 +112,10 @@ public class TableModelUtils {
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
-    return TestUtils.executeNonQueries(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
-  public static boolean insertData(
+  public static void insertData(
       final String dataBaseName,
       final String tableName,
       final int start,
@@ -163,8 +162,7 @@ public class TableModelUtils {
               values[11],
               i));
     }
-    return TestUtils.executeNonQueries(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   public static boolean insertDataNotThrowError(
@@ -180,8 +178,12 @@ public class TableModelUtils {
               "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
-    return TestUtils.executeNonQueries(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    try {
+      TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+      return true;
+    } catch (final Throwable e) {
+      return false;
+    }
   }
 
   public static boolean insertData(

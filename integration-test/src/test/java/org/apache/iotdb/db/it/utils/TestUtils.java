@@ -939,18 +939,18 @@ public class TestUtils {
     }
   }
 
-  public static boolean executeNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
-    return executeNonQuery(
+  public static void executeNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
+    executeNonQuery(
         env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
   }
 
-  public static boolean executeNonQuery(
+  public static void executeNonQuery(
       String dataBaseName,
       String sqlDialect,
       BaseEnv env,
       String sql,
       Connection defaultConnection) {
-    return executeNonQuery(
+    executeNonQuery(
         env,
         sql,
         SessionConfig.DEFAULT_USER,
@@ -960,13 +960,12 @@ public class TestUtils {
         defaultConnection);
   }
 
-  public static boolean executeNonQuery(
+  public static void executeNonQuery(
       BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
-    return executeNonQueries(
-        env, Collections.singletonList(sql), userName, password, defaultConnection);
+    executeNonQueries(env, Collections.singletonList(sql), userName, password, defaultConnection);
   }
 
-  public static boolean executeNonQuery(
+  public static void executeNonQuery(
       BaseEnv env,
       String sql,
       String userName,
@@ -974,7 +973,7 @@ public class TestUtils {
       String dataBaseName,
       String sqlDialect,
       Connection defaultConnection) {
-    return executeNonQueries(
+    executeNonQueries(
         env,
         Collections.singletonList(sql),
         userName,
@@ -984,9 +983,9 @@ public class TestUtils {
         defaultConnection);
   }
 
-  public static boolean executeNonQueries(
+  public static void executeNonQueries(
       BaseEnv env, List<String> sqlList, Connection defaultConnection) {
-    return executeNonQueries(
+    executeNonQueries(
         env,
         sqlList,
         SessionConfig.DEFAULT_USER,
@@ -996,13 +995,13 @@ public class TestUtils {
         defaultConnection);
   }
 
-  public static boolean executeNonQueries(
+  public static void executeNonQueries(
       String dataBase,
       String sqlDialect,
       BaseEnv env,
       List<String> sqlList,
       Connection defaultConnection) {
-    return executeNonQueries(
+    executeNonQueries(
         env,
         sqlList,
         SessionConfig.DEFAULT_USER,
@@ -1014,17 +1013,16 @@ public class TestUtils {
 
   // This method will not throw failure given that a failure is encountered.
   // Instead, it returns a flag to indicate the result of the execution.
-  public static boolean executeNonQueries(
+  public static void executeNonQueries(
       BaseEnv env,
       List<String> sqlList,
       String userName,
       String password,
       Connection defaultConnection) {
-    return executeNonQueries(
-        env, sqlList, userName, password, null, TREE_SQL_DIALECT, defaultConnection);
+    executeNonQueries(env, sqlList, userName, password, null, TREE_SQL_DIALECT, defaultConnection);
   }
 
-  public static boolean executeNonQueries(
+  public static void executeNonQueries(
       BaseEnv env,
       List<String> sqlList,
       String userName,
@@ -1055,7 +1053,6 @@ public class TestUtils {
       for (int i = lastIndex; i < sqlList.size(); ++i) {
         statement.execute(sqlList.get(i));
       }
-      return true;
     } catch (SQLException e) {
       // the default connection should be closed by the upper level
       // while the local connection should be closed here
