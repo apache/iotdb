@@ -72,6 +72,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicLong receiverId = new AtomicLong(0);
 
+  // Used to restore the original thread name when the receiver is closed.
+  private String originalThreadName;
+
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
@@ -113,6 +116,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
+    if (originalThreadName == null) {
+      originalThreadName = Thread.currentThread().getName();
+    }
     receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
     Thread.currentThread()
         .setName(
@@ -919,6 +925,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     closeSession();
 
     LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
+
+    if (originalThreadName != null) {
+      Thread.currentThread().setName(originalThreadName);
+    }
   }
 
   protected abstract void closeSession();
