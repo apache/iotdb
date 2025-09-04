@@ -110,7 +110,7 @@ public class IoTDBInsertQueryIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private static void prepareDatabase() {
+  protected static void prepareDatabase() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
@@ -594,7 +594,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
-  private static void prepareData() throws SQLException {
+  protected static void prepareData() throws SQLException {
     int deviceNum = 3;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {

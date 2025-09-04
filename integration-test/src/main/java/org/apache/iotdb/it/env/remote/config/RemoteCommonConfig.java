@@ -429,6 +429,31 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePath(String keyStorePath) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePath(String trustStorePath) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePwd(String keyStorePwd) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     return this;
   }
