@@ -1049,11 +1049,17 @@ public class IoTDBDescriptor {
     // The buffer for sort operator to calculate
     loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
 
+    // The buffer for cte scan operator
+    loadFixedSizeLimitForQuery(properties, "cte_buffer_size_in_bytes", conf::setCteBufferSize);
+
     loadFixedSizeLimitForQuery(
         properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
 
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
+
+    // tmp filePath for cte
+    conf.setCteTmpDir(properties.getProperty("cte_tmp_dir", conf.getCteTmpDir()));
 
     conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
 
