@@ -150,7 +150,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(
@@ -235,7 +235,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(

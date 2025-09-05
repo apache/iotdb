@@ -59,7 +59,6 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
-import org.apache.iotdb.db.exception.runtime.TableNotExistsRuntimeException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
@@ -82,6 +81,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -1414,7 +1414,8 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileProcessor.registerToTsFile(
           tableName,
           t -> {
-            TsTable tsTable = DataNodeTableCache.getInstance().getTable(getDatabaseName(), t);
+            TsTable tsTable =
+                DataNodeTableCache.getInstance().getTable(getDatabaseName(), t, false);
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.
@@ -1436,7 +1437,7 @@ public class DataRegion implements IDataRegionForQuery {
                       e.getMessage());
                 }
                 if (tsTable == null) {
-                  throw new TableNotExistsRuntimeException(getDatabaseName(), tableName);
+                  TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
                 }
               } else {
                 // Here may be invoked by leader node, the table is very unexpected not exist in the
