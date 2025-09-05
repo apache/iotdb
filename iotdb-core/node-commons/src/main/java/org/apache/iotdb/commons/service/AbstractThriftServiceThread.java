@@ -37,7 +37,6 @@ import org.apache.thrift.server.TThreadedSelectorServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TSSLTransportFactory;
-import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
@@ -214,7 +213,9 @@ public abstract class AbstractThriftServiceThread extends Thread {
     this.serviceName = serviceName;
 
     try {
-      serverTransport = openTransport(bindAddress, port);
+      serverTransport =
+          openNonblockingTransport(
+              bindAddress, port, (int) TimeUnit.SECONDS.toMillis(timeoutSecond));
       TThreadPoolServer.Args poolArgs =
           initSyncedPoolArgs(processor, threadsName, maxWorkerThreads, timeoutSecond);
       poolServer = new TThreadPoolServer(poolArgs);
@@ -273,12 +274,6 @@ public abstract class AbstractThriftServiceThread extends Thread {
     poolArgs.protocolFactory(protocolFactory);
     poolArgs.transportFactory(getTTransportFactory());
     return poolArgs;
-  }
-
-  @SuppressWarnings("java:S2259")
-  private TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
-    // bind any address
-    return new TServerSocket(new InetSocketAddress(port));
   }
 
   private TServerTransport openNonblockingTransport(
