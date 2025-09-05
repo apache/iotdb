@@ -173,6 +173,10 @@ public class MetricConfig {
     return enableSSL;
   }
 
+  public void setEnableSSL(boolean enableSSL) {
+    this.enableSSL = enableSSL;
+  }
+
   public String getKeyStorePath() {
     return keyStorePath;
   }

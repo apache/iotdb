@@ -70,10 +70,11 @@ public class IoTDBSessionReporter extends IoTDBReporter {
             .password(ioTDBReporterConfig.getPassword())
             .maxSize(ioTDBReporterConfig.getMaxConnectionNumber());
     if (metricConfig.isEnableSSL()) {
-      sessionPoolBuilder
-          .useSSL(true)
-          .trustStore(metricConfig.getTrustStorePath())
-          .trustStorePwd(metricConfig.getTrustStorePassword());
+      sessionPoolBuilder =
+          sessionPoolBuilder
+              .useSSL(true)
+              .trustStore(metricConfig.getTrustStorePath())
+              .trustStorePwd(metricConfig.getTrustStorePassword());
     }
     this.sessionPool = sessionPoolBuilder.build();
     try (SessionDataSetWrapper result =

@@ -106,21 +106,18 @@ public class PrometheusReporter implements Reporter {
                                 .sendString(Mono.just(scrape()));
                           }));
       if (METRIC_CONFIG.isEnableSSL()) {
-        serverTransport.secure(
-            spec -> {
-              SslContext sslContext;
-              try {
-                sslContext =
-                    createSslContext(
-                        METRIC_CONFIG.getKeyStorePath(),
-                        METRIC_CONFIG.getKeyStorePassword(),
-                        METRIC_CONFIG.getTrustStorePath(),
-                        METRIC_CONFIG.getTrustStorePassword());
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-              spec.sslContext(sslContext);
-            });
+        SslContext sslContext;
+        try {
+          sslContext =
+              createSslContext(
+                  METRIC_CONFIG.getKeyStorePath(),
+                  METRIC_CONFIG.getKeyStorePassword(),
+                  METRIC_CONFIG.getTrustStorePath(),
+                  METRIC_CONFIG.getTrustStorePassword());
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+        serverTransport = serverTransport.secure(spec -> spec.sslContext(sslContext));
       }
       httpServer = serverTransport.bindNow();
     } catch (Throwable e) {
