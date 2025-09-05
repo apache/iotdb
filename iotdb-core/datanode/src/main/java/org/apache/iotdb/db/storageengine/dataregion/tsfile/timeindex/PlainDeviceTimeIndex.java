@@ -41,7 +41,8 @@ public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeI
   }
 
   @Override
-  public PlainDeviceTimeIndex deserialize(InputStream inputStream) throws IOException {
+  public PlainDeviceTimeIndex deserialize(
+      InputStream inputStream, IDeviceID.Deserializer deserializer) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
 
     startTimes = new long[deviceNum];
