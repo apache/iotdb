@@ -47,9 +47,15 @@ public class ClientPoolProperty<V> {
 
     /**
      * the maximum number of clients that can be allocated for a node. When some clients are idle
-     * for more than {@code maxIdleTimeForClient}, they will be cleaned up.
+     * for more than {@code maxIdleTimeForClient}, they could be cleaned up.
      */
     private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+    /**
+     * the minimum number of idle clients could be reserved for each node in the pool. we reserve
+     * 10% of maxClientNumForEachNode as minIdleClientNumForEachNode by default.
+     */
+    private final int minIdleClientNumForEachNode = maxClientNumForEachNode / 10;
 
     /**
      * the minimum amount of time a client may sit idle in the pool before it is eligible for
@@ -88,6 +94,9 @@ public class ClientPoolProperty<V> {
       GenericKeyedObjectPoolConfig<V> poolConfig = new GenericKeyedObjectPoolConfig<>();
       poolConfig.setMaxTotalPerKey(maxClientNumForEachNode);
       poolConfig.setMaxIdlePerKey(maxClientNumForEachNode);
+      poolConfig.setMinIdlePerKey(minIdleClientNumForEachNode);
+      poolConfig.setNumTestsPerEvictionRun(minIdleClientNumForEachNode);
+      poolConfig.setSoftMinEvictableIdleTime(Duration.ofMillis(timeBetweenEvictionRuns));
       poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(timeBetweenEvictionRuns));
       poolConfig.setMinEvictableIdleTime(Duration.ofMillis(minIdleTimeForClient));
       poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMs));
