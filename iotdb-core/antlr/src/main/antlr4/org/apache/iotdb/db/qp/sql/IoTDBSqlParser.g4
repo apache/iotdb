@@ -740,11 +740,11 @@ hparamValue
     ;
 
 loadModel
-    : LOAD MODEL existingModelId=identifier TO DEVICE deviceIdList
+    : LOAD MODEL existingModelId=identifier TO DEVICES deviceIdList
     ;
 
 unloadModel
-    : UNLOAD MODEL existingModelId=identifier FROM DEVICE deviceIdList
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList
     ;
 
 deviceIdList

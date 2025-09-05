@@ -16,7 +16,6 @@
 # under the License.
 #
 
-import gc
 import random
 import threading
 import time
@@ -68,10 +67,15 @@ class InferenceRequestPool(mp.Process):
         self.model_id = model_id
         self.config = config
         self.pool_kwargs = pool_kwargs
-        self.model = None
-        self._model_manager = None
-        self.device = device
         self.ready_event = ready_event
+
+        if "cuda" in device and torch.cuda.is_available():
+            self.device = torch.device(device)
+        else:
+            self.device = torch.device("cpu")
+        self._logger = Logger(
+            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
+        )
 
         self._threads = []
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
@@ -82,38 +86,13 @@ class InferenceRequestPool(mp.Process):
         )
         self._stop_event = mp.Event()
 
+        self._model = None
+        self._model_manager = None
+
         # Fix inference seed
         random.seed(self.FIX_SEED)
         torch.manual_seed(self.FIX_SEED)
         np.random.seed(self.FIX_SEED)
-
-    def _warm_up_and_estimate_memory(self):
-        # TODO: Test per token memory usage, add support for cpu in the future
-        torch.cuda.empty_cache()
-        gc.collect()
-        dummy_input = torch.zeros(
-            (1, self.config.input_token_len), dtype=torch.float32
-        ).to(self.device)
-
-        # force cuda synchronization to avoid any asynchronous memory allocation issues
-        torch.cuda.reset_peak_memory_stats(self.device)
-        torch.cuda.synchronize(self.device)
-        memory_before_warmup = torch.cuda.memory_allocated(self.device)
-        self.logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Before warm-up, peak memory usage: {memory_before_warmup:.2f} bytes"
-        )
-
-        # warm-up
-        with torch.no_grad():
-            self.model.generate(dummy_input, max_new_tokens=1)
-        torch.cuda.synchronize(self.device)
-        peak_memory_1_token = torch.cuda.max_memory_allocated(self.device)
-        self.logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Baseline memory usage for 1 token: {peak_memory_1_token:.2f} bytes"
-        )
-        self.logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] Differentiation : {peak_memory_1_token-memory_before_warmup:.2f} bytes"
-        )
 
     def _activate_requests(self):
         requests = self._request_scheduler.schedule_activate()
@@ -123,8 +102,8 @@ class InferenceRequestPool(mp.Process):
             )
             request.mark_running()
             self._running_queue.put(request)
-            self.logger.debug(
-                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
+            self._logger.debug(
+                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][Req-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
             )
 
     def _requests_activate_loop(self):
@@ -138,7 +117,7 @@ class InferenceRequestPool(mp.Process):
         for request in requests:
             if self.model_id == "sundial":
                 request.inputs = request.inputs.to(self.device)
-                output = self.model.generate(
+                output = self._model.generate(
                     request.inputs,
                     max_new_tokens=request.max_new_tokens,
                     num_samples=10,
@@ -148,7 +127,7 @@ class InferenceRequestPool(mp.Process):
                 request.write_step_output(output[0].mean(dim=0))
             elif self.model_id == "timer_xl":
                 request.inputs = request.inputs.to(self.device)
-                output = self.model.generate(
+                output = self._model.generate(
                     request.inputs,
                     max_new_tokens=request.max_new_tokens,
                     revin=True,
@@ -158,15 +137,15 @@ class InferenceRequestPool(mp.Process):
             request.inference_pipeline.post_decode()
             if request.is_finished():
                 request.inference_pipeline.post_inference()
-                self.logger.debug(
-                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
+                self._logger.debug(
+                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][Req-{request.req_id}] Request is finished"
                 )
                 # ensure the output tensor is on CPU before sending to result queue
                 request.output_tensor = request.output_tensor.cpu()
                 self._finished_queue.put(request)
             else:
-                self.logger.debug(
-                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
+                self._logger.debug(
+                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][Req-{request.req_id}] Request is not finished, re-queueing"
                 )
                 self._waiting_queue.put(request)
 
@@ -177,18 +156,9 @@ class InferenceRequestPool(mp.Process):
 
     def run(self):
         self._model_manager = ModelManager()
-        if "cuda" in self.device and torch.cuda.is_available():
-            self.device = torch.device(self.device)
-        else:
-            self.device = torch.device("cpu")
-        self.logger = Logger(
-            INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
-        )
         self._request_scheduler.device = self.device
-        self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
+        self._model = self._model_manager.load_model(self.model_id, {}).to(self.device)
         self.ready_event.set()
-
-        # self._warm_up_and_estimate_memory()
 
         activate_daemon = threading.Thread(
             target=self._requests_activate_loop, daemon=True
@@ -202,7 +172,7 @@ class InferenceRequestPool(mp.Process):
         execute_daemon.start()
         for thread in self._threads:
             thread.join()
-        self.logger.info(
+        self._logger.info(
             f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_id} exited cleanly."
         )
 

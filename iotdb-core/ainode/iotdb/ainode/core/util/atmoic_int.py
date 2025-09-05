@@ -28,12 +28,39 @@ class AtomicInt:
         with self._lock:
             return self._value
 
-    def incr(self, delta=1):
+    def set(self, value):
         with self._lock:
-            self._value += delta
+            self._value = value
+
+    def get_and_increment(self) -> int:
+        with self._lock:
+            old_value = self._value
+            self._value += 1
+            return old_value
+
+    def increment_and_get(self) -> int:
+        with self._lock:
+            self._value += 1
             return self._value
 
-    def decr(self, delta=1):
+    def get_and_decrement(self) -> int:
         with self._lock:
-            self._value -= delta
+            old_value = self._value
+            self._value -= 1
+            return old_value
+
+    def decrement_and_get(self) -> int:
+        with self._lock:
+            self._value -= 1
+            return self._value
+
+    def get_and_add(self, delta=1) -> int:
+        with self._lock:
+            old_value = self._value
+            self._value += delta
+            return old_value
+
+    def add_and_get(self, delta=1) -> int:
+        with self._lock:
+            self._value += delta
             return self._value

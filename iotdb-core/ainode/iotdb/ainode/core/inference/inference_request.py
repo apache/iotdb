@@ -24,6 +24,7 @@ from iotdb.ainode.core.inference.strategy.abstract_inference_pipeline import (
     AbstractInferencePipeline,
 )
 from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.util.atmoic_int import AtomicInt
 
 logger = Logger()
 
@@ -110,15 +111,22 @@ class InferenceRequestProxy:
     def __init__(self, req_id: str):
         self.req_id = req_id
         self.result = None
+        self._counter: AtomicInt = None
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
 
     def set_result(self, result: Any):
         with self._lock:
             self.result = result
+            if self._counter is not None:
+                self._counter.decrement_and_get()
             self._condition.notify_all()
 
-    def wait_for_completion(self) -> Any:
+    def set_counter(self, counter: AtomicInt):
+        with self._lock:
+            self._counter = counter
+
+    def wait_for_result(self) -> Any:
         with self._lock:
             self._condition.wait()
             return self.result

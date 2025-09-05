@@ -15,12 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import torch.cuda
+
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.cluster_manager import ClusterManager
 from iotdb.ainode.core.manager.inference_manager import InferenceManager
 from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.rpc.status import get_status
+from iotdb.ainode.core.util.gpu_mapping import get_available_gpus
 from iotdb.thrift.ainode import IAINodeRPCService
 from iotdb.thrift.ainode.ttypes import (
     TAIHeartbeatReq,
@@ -29,13 +32,16 @@ from iotdb.thrift.ainode.ttypes import (
     TForecastReq,
     TInferenceReq,
     TInferenceResp,
-    TInstallModelReq,
+    TLoadModelReq,
     TRegisterModelReq,
     TRegisterModelResp,
+    TShowAIDevicesResp,
+    TShowLoadedModelsReq,
+    TShowLoadedModelsResp,
     TShowModelsReq,
     TShowModelsResp,
     TTrainingReq,
-    TUninstallModelReq,
+    TUnloadModelReq,
 )
 from iotdb.thrift.common.ttypes import TSStatus
 
@@ -59,6 +65,12 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         return self._model_manager.register_model(req)
 
+    def loadModel(self, req: TLoadModelReq) -> TSStatus:
+        return self._inference_manager.loadModel(req)
+
+    def unloadModel(self, req: TUnloadModelReq) -> TSStatus:
+        return self._inference_manager.unloadModel(req)
+
     def deleteModel(self, req: TDeleteModelReq) -> TSStatus:
         return self._model_manager.delete_model(req)
 
@@ -74,11 +86,14 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def showModels(self, req: TShowModelsReq) -> TShowModelsResp:
         return self._model_manager.show_models(req)
 
-    def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
+    def showLoadedModels(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
         pass
 
-    def installModel(self, req: TInstallModelReq) -> TSStatus:
-        return self._inference_manager.install_model(req)
+    def showAIDevices(self) -> TShowAIDevicesResp:
+        device_id_list = get_available_gpus()
+        device_id_list = [str(device_id) for device_id in device_id_list]
+        device_id_list.append("cpu")
+        return TShowAIDevicesResp(deviceIdList=device_id_list)
 
-    def uninstallModel(self, req: TUninstallModelReq) -> TSStatus:
-        return self._inference_manager.uninstall_model(req)
+    def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
+        pass

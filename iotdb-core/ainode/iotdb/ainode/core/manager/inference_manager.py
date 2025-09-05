@@ -47,9 +47,6 @@ from iotdb.ainode.core.inference.strategy.timerxl_inference_pipeline import (
 from iotdb.ainode.core.inference.utils import generate_req_id
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
-from iotdb.ainode.core.manager.utils import (
-    measure_model_memory,
-)
 from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
 from iotdb.ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
@@ -143,10 +140,6 @@ class RegisteredStrategy(InferenceStrategy):
 
 
 class InferenceManager:
-    ACCELERATE_MODEL_ID = ["sundial", "timer_xl"]
-    DEFAULT_DEVICE = torch.device("cpu")
-    # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     WAITING_INTERVAL_IN_MS = (
         AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
     )  # How often to check for requests in the result queue
@@ -166,20 +159,6 @@ class InferenceManager:
         )
         self._result_handler_thread.start()
         self._pool_controller = PoolController(self._result_queue)
-        # self._preload_model_benchmarks()
-
-    def _preload_model_benchmarks(self):
-        if "cuda" in str(self.DEFAULT_DEVICE):
-            for model_id in self.ACCELERATE_MODEL_ID:
-                mem_usage = measure_model_memory(self.DEFAULT_DEVICE, model_id)
-                self._model_mem_usage_map[model_id] = mem_usage
-                logger.info(
-                    f"[Inference] Preloaded benchmark for {model_id}, mem_usage={mem_usage/1024**2:.2f} MB"
-                )
-        else:
-            logger.warning(
-                f"[Inference] Skipped preloading benchmarks for {self.DEFAULT_DEVICE}, only supports CUDA currently"
-            )
 
     def _handle_results(self):
         while not self._stop_event.is_set():
@@ -192,17 +171,22 @@ class InferenceManager:
                     infer_req.get_final_output()
                 )
 
-    def process_request(self, req):
+    def _process_request(self, req):
         req_id = req.req_id
         infer_proxy = InferenceRequestProxy(req_id)
         with self._result_wrapper_lock:
             self._result_wrapper_map[req_id] = infer_proxy
-        # dispatch request to the pool
-        self._pool_controller.add_request(req.model_id, req)
-        outputs = infer_proxy.wait_for_completion()
-        with self._result_wrapper_lock:
-            del self._result_wrapper_map[req_id]
-        return outputs
+        try:
+            # dispatch request to the pool
+            self._pool_controller.add_request(req, infer_proxy)
+            outputs = infer_proxy.wait_for_result()
+            return outputs
+        except Exception as e:
+            logger.error(e)
+            raise InferenceModelInternalError(str(e))
+        finally:
+            with self._result_wrapper_lock:
+                del self._result_wrapper_map[req_id]
 
     def _get_strategy(self, model_id, model):
         if isinstance(model, TimerForPrediction):
@@ -242,10 +226,8 @@ class InferenceManager:
                     predict_length,
                 )
 
-            if model_id in self.ACCELERATE_MODEL_ID and "cuda" in str(
-                self.DEFAULT_DEVICE
-            ):
-                # TODO: Logic in this branch shall handle all LTSM inferences
+            if self._pool_controller.has_request_pools(model_id=model_id):
+                # use request pool to accelerate inference when the model instance is already loaded.
                 # TODO: TSBlock -> Tensor codes should be unified
                 data = full_data[1][0]
                 if data.dtype.byteorder not in ("=", "|"):
@@ -267,7 +249,7 @@ class InferenceManager:
                     inference_pipeline=inference_pipeline,
                     max_new_tokens=predict_length,
                 )
-                outputs = self.process_request(infer_req)
+                outputs = self._process_request(infer_req)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
             else:
                 # load model

@@ -824,11 +824,11 @@ showAIDevicesStatement
     ;
 
 loadModelStatement
-    : LOAD MODEL existingModelId=identifier TO DEVICE deviceIdList
+    : LOAD MODEL existingModelId=identifier TO DEVICES deviceIdList
     ;
 
 unloadModelStatement
-    : UNLOAD MODEL existingModelId=identifier FROM DEVICE deviceIdList
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList
     ;
 
 deviceIdList
@@ -1494,7 +1494,6 @@ DESCRIBE: 'DESCRIBE';
 DESCRIPTOR: 'DESCRIPTOR';
 DETAILS: 'DETAILS';
 DETERMINISTIC: 'DETERMINISTIC';
-DEVICE: 'DEVICE';
 DEVICES: 'DEVICES';
 DISTINCT: 'DISTINCT';
 DISTRIBUTED: 'DISTRIBUTED';
