@@ -34,6 +34,7 @@ class ScaleAction:
     action: ScaleActionType
     amount: int
     model_id: str
+    device_id: str
 
 
 class AbstractPoolScheduler(ABC):
@@ -41,10 +42,10 @@ class AbstractPoolScheduler(ABC):
     Abstract base class for pool scheduling strategies.
     """
 
-    def __init__(self, request_pool_map: Dict[str, PoolGroup]):
+    def __init__(self, request_pool_map: Dict[str, Dict[str, PoolGroup]]):
         """
         Args:
-            request_pool_map: A mapping from model IDs to their corresponding pool groups.
+            request_pool_map: Dict["model_id", Dict["device_id", PoolGroup]].
         """
         self._request_pool_map = request_pool_map
 
@@ -52,5 +53,33 @@ class AbstractPoolScheduler(ABC):
     def schedule(self, model_id: str) -> List[ScaleAction]:
         """
         Schedule a scaling action for the given model_id.
+        """
+        pass
+
+    @abstractmethod
+    def schedule_load_model_to_device(
+        self, model_id: str, device_id: str
+    ) -> List[ScaleAction]:
+        """
+        Schedule a series of actions to load the model to the device.
+        Args:
+            model_id: The model to be loaded.
+            device_id: The device to load the model to.
+        Returns:
+            A list of ScaleAction to be performed.
+        """
+        pass
+
+    @abstractmethod
+    def schedule_unload_model_from_device(
+        self, model_id: str, device_id: str
+    ) -> List[ScaleAction]:
+        """
+        Schedule a series of actions to unload the model from the device.
+        Args:
+            model_id: The model to be unloaded.
+            device_id: The device to unload the model from.
+        Returns:
+            A list of ScaleAction to be performed.
         """
         pass

@@ -745,6 +745,22 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitShowLoadedModels(ShowLoadedModels node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowAIDevices(ShowAIDevices node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitLoadModel(LoadModel node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitUnloadModel(UnloadModel node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitDropModel(DropModel node, C context) {
     return visitStatement(node, context);
   }

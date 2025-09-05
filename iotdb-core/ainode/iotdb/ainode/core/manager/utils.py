@@ -22,6 +22,7 @@ import psutil
 import torch
 
 from iotdb.ainode.core.config import AINodeDescriptor
+from iotdb.ainode.core.exception import ModelNotExistError
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.model.model_info import BUILT_IN_LTSM_MAP
@@ -70,7 +71,6 @@ def evaluate_system_resources(device: torch.device) -> dict:
         )
         return {"device": "cuda", "free_mem": free_mem, "total_mem": total_mem}
     else:
-        # TODO: test cpu in the future
         free_mem = psutil.virtual_memory().available
         total_mem = psutil.virtual_memory().total
         logger.info(
@@ -81,19 +81,18 @@ def evaluate_system_resources(device: torch.device) -> dict:
 
 def estimate_pool_size(device: torch.device, model_id: str) -> int:
     model_info = BUILT_IN_LTSM_MAP.get(model_id, None)
-    if model_info is None:
-        logger.error(f"[Inference][Device-{device}] Model {model_id} not found")
-        return 0
-
-    model_type = model_info.model_type
-    if model_type not in MODEL_MEM_USAGE_MAP:
-        logger.error(f"[Inference][Device-{device}] Model {model_id} not supported now")
-        return 0
+    if model_info is None or model_info.model_type not in MODEL_MEM_USAGE_MAP:
+        logger.error(
+            f"[Inference] Cannot estimate inference pool size on device: {device}, because model: {model_id} is not supported."
+        )
+        raise ModelNotExistError(model_id)
 
     system_res = evaluate_system_resources(device)
     free_mem = system_res["free_mem"]
 
-    mem_usage = MODEL_MEM_USAGE_MAP[model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+    mem_usage = (
+        MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+    )
     size = int((free_mem * INFERENCE_MEMORY_USAGE_RATIO) // mem_usage)
     if size <= 0:
         logger.error(

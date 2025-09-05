@@ -26,11 +26,16 @@ import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
+import org.apache.iotdb.ainode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowAIDevicesResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowLoadedModelsReq;
+import org.apache.iotdb.ainode.rpc.thrift.TShowLoadedModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
 import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
+import org.apache.iotdb.ainode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -195,9 +200,57 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     }
   }
 
+  public TSStatus loadModel(TLoadModelReq req) throws TException {
+    try {
+      return client.loadModel(req);
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
+  public TSStatus unloadModel(TUnloadModelReq req) throws TException {
+    try {
+      return client.unloadModel(req);
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
   public TShowModelsResp showModels(TShowModelsReq req) throws TException {
     try {
       return client.showModels(req);
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
+  public TShowLoadedModelsResp showLoadedModels(TShowLoadedModelsReq req) throws TException {
+    try {
+      return client.showLoadedModels(req);
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
+  public TShowAIDevicesResp showAIDevices() throws TException {
+    try {
+      return client.showAIDevices();
     } catch (TException e) {
       logger.warn(
           "Failed to connect to AINode from ConfigNode when executing {}: {}",

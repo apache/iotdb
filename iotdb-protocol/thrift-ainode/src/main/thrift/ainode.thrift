@@ -103,12 +103,36 @@ struct TShowModelsReq {
   1: optional string modelId
 }
 
+struct TShowLoadedModelsReq {
+  1: optional string deviceId
+}
+
 struct TShowModelsResp {
   1: required common.TSStatus status
   2: optional list<string> modelIdList
   3: optional map<string, string> modelTypeMap
   4: optional map<string, string> categoryMap
   5: optional map<string, string> stateMap
+}
+
+struct TShowLoadedModelsResp {
+    1: required common.TSStatus status
+    2: required map<string, map<string, i32>> deviceLoadedModelsMap
+}
+
+struct TShowAIDevicesResp {
+    1: required common.TSStatus status
+    2: required list<string> deviceIdList
+}
+
+struct TLoadModelReq {
+  1: required string existingModelId
+  2: required list<string> deviceIdList
+}
+
+struct TUnloadModelReq {
+  1: required string modelId
+  2: required list<string> deviceIdList
 }
 
 service IAINodeRPCService {
@@ -118,6 +142,10 @@ service IAINodeRPCService {
 
   TShowModelsResp showModels(TShowModelsReq req)
 
+  TShowLoadedModelsResp showLoadedModels(TShowLoadedModelsReq req)
+
+  TShowAIDevicesResp showAIDevices()
+
   common.TSStatus deleteModel(TDeleteModelReq req)
 
   TRegisterModelResp registerModel(TRegisterModelReq req)
@@ -125,6 +153,10 @@ service IAINodeRPCService {
   TAIHeartbeatResp getAIHeartbeat(TAIHeartbeatReq req)
 
   common.TSStatus createTrainingTask(TTrainingReq req)
+
+  common.TSStatus loadModel(TLoadModelReq req)
+
+  common.TSStatus unloadModel(TUnloadModelReq req)
 
   // -------------- For Data Node --------------
 
