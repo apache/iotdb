@@ -38,15 +38,15 @@ public interface IProcedureStore<Env> {
 
   long getNextProcId();
 
-  void update(Procedure<Env> procedure);
+  void update(Procedure<Env> procedure) throws Exception;
 
-  void update(Procedure<Env>[] subprocs);
+  void update(Procedure<Env>[] subprocs) throws Exception;
 
-  void delete(long procId);
+  void delete(long procId) throws Exception;
 
-  void delete(long[] childProcIds);
+  void delete(long[] childProcIds) throws Exception;
 
-  void delete(long[] batchIds, int startIndex, int batchCount);
+  void delete(long[] batchIds, int startIndex, int batchCount) throws Exception;
 
   void cleanup();
 
