@@ -86,7 +86,7 @@ public class DataNodeTTLCache {
   }
 
   public long getTTLForTable(final String database, final String table) {
-    final TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, table);
+    final TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, table, false);
     return tsTable == null ? Long.MAX_VALUE : tsTable.getCachedTableTTL();
   }
 

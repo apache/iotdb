@@ -262,7 +262,6 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exception.write.NoTableException;
 import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -779,15 +778,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         return new Insert(new Table(qualifiedName), identifiers, query);
       }
     } else {
-      if (query.getQueryBody() instanceof Values) {
-        final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
-        if (table == null) {
-          throw new SemanticException(new NoTableException(tableName));
-        }
-        return visitInsertValues(databaseName, table, ((Values) query.getQueryBody()));
-      } else {
-        return new Insert(new Table(qualifiedName), query);
-      }
+      return query.getQueryBody() instanceof Values
+          ? visitInsertValues(
+              databaseName,
+              DataNodeTableCache.getInstance().getTable(databaseName, tableName),
+              ((Values) query.getQueryBody()))
+          : new Insert(new Table(qualifiedName), query);
     }
   }
 
