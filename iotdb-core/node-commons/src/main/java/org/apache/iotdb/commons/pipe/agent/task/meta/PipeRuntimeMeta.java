@@ -94,6 +94,7 @@ public class PipeRuntimeMeta {
   private final ConcurrentMap<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();
 
+  // Previous ser-de
   private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
 
   private final AtomicBoolean isStoppedByRuntimeException = new AtomicBoolean(false);

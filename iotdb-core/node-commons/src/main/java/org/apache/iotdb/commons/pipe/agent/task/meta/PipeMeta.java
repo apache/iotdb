@@ -121,7 +121,7 @@ public class PipeMeta {
                     "ConsensusGroupId="
                         + entry.getKey()
                         + ", ExceptionMessage="
-                        + entry.getValue().getExceptionMessagesString())
+                        + entry.getValue().getExceptionMessage())
             .reduce((s1, s2) -> s1 + "; " + s2)
             .orElse("")
         + "}";
