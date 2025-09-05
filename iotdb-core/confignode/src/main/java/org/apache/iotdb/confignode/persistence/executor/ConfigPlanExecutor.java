@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.service.GetServiceJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.DescTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.FetchTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
@@ -111,6 +112,9 @@ import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuot
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.CreateServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.DropServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.UpdateServiceStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
@@ -153,6 +157,7 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.ServiceInfo;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -220,6 +225,8 @@ public class ConfigPlanExecutor {
 
   private final TTLInfo ttlInfo;
 
+  private final ServiceInfo serviceInfo;
+
   public ConfigPlanExecutor(
       ClusterInfo clusterInfo,
       NodeInfo nodeInfo,
@@ -234,7 +241,8 @@ public class ConfigPlanExecutor {
       PipeInfo pipeInfo,
       SubscriptionInfo subscriptionInfo,
       QuotaInfo quotaInfo,
-      TTLInfo ttlInfo) {
+      TTLInfo ttlInfo,
+      ServiceInfo serviceInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -281,6 +289,9 @@ public class ConfigPlanExecutor {
     this.snapshotProcessorList.add(ttlInfo);
 
     this.snapshotProcessorList.add(PipeConfigNodeAgent.runtime().listener());
+
+    this.serviceInfo = serviceInfo;
+    this.snapshotProcessorList.add(serviceInfo);
   }
 
   public DataSet executeQueryPlan(final ConfigPhysicalReadPlan req)
@@ -378,6 +389,10 @@ public class ConfigPlanExecutor {
         return subscriptionInfo.showTopics();
       case ShowSubscription:
         return subscriptionInfo.showSubscriptions();
+      case GetServiceTable:
+        return serviceInfo.getServiceTable();
+      case GetServiceJar:
+        return serviceInfo.getServiceJar((GetServiceJarPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -675,6 +690,12 @@ public class ConfigPlanExecutor {
         // sender collects UnsetTemplatePlan and before receiver calls ConfigManager.
         throw new UnsupportedOperationException(
             String.format("Plan type %s is not supported.", physicalPlan.getType()));
+      case CreateService:
+        return serviceInfo.addServiceInTable((CreateServicePlan) physicalPlan);
+      case UpdateService:
+        return serviceInfo.updateServiceState((UpdateServiceStatusPlan) physicalPlan);
+      case DropService:
+        return serviceInfo.deleteServiceInTable(((DropServicePlan) physicalPlan).getServiceName());
       case TestOnly:
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:

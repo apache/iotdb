@@ -70,6 +70,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Ext
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.CreateServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.DropServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.ShowServicesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.StartServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.StopServiceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.AlterSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
@@ -164,6 +169,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.CreateServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.DropServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.ShowServicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.StartServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.StopServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -844,5 +854,33 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
         createTrainingStatement.getTargetTimeRanges(),
         createTrainingStatement.getExistingModelId(),
         targetPathPatterns);
+  }
+
+  public IConfigTask visitCreateService(
+      CreateServiceStatement createServiceStatement, MPPQueryContext context) {
+    return new CreateServiceTask(
+        createServiceStatement.getServiceName(),
+        createServiceStatement.getUriString().orElse(null),
+        createServiceStatement.getClassName());
+  }
+
+  public IConfigTask visitDropService(
+      DropServiceStatement dropServiceStatement, MPPQueryContext context) {
+    return new DropServiceTask(dropServiceStatement.getServiceName());
+  }
+
+  public IConfigTask visitShowServices(
+      ShowServicesStatement showServicesStatement, MPPQueryContext context) {
+    return new ShowServicesTask(showServicesStatement.getServiceName());
+  }
+
+  public IConfigTask visitStartService(
+      StartServiceStatement startServiceStatement, MPPQueryContext context) {
+    return new StartServiceTask(startServiceStatement.getServiceName());
+  }
+
+  public IConfigTask visitStopService(
+      StopServiceStatement stopServiceStatement, MPPQueryContext context) {
+    return new StopServiceTask(stopServiceStatement.getServiceName());
   }
 }

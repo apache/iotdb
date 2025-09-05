@@ -115,6 +115,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
@@ -168,6 +169,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetServiceTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
@@ -206,6 +208,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowServiceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -1423,6 +1426,41 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus createTableView(final TCreateTableViewReq req) {
     return configManager.createTableView(req);
+  }
+
+  @Override
+  public TSStatus createService(TCreateServiceReq req) throws TException {
+    return configManager.createService(req);
+  }
+
+  @Override
+  public TSStatus startService(String serviceName) throws TException {
+    return configManager.startService(serviceName);
+  }
+
+  @Override
+  public TSStatus stopService(String serviceName) throws TException {
+    return configManager.stopService(serviceName);
+  }
+
+  @Override
+  public TSStatus dropService(String serviceName) throws TException {
+    return configManager.dropService(serviceName);
+  }
+
+  @Override
+  public TShowServiceResp showService(String serviceName) throws TException {
+    return configManager.showService(serviceName);
+  }
+
+  @Override
+  public TGetServiceTableResp getServiceTable() throws TException {
+    return configManager.getServiceTable();
+  }
+
+  @Override
+  public TGetJarInListResp getServiceJar(TGetJarInListReq req) throws TException {
+    return configManager.getServiceJar(req);
   }
 
   @Override

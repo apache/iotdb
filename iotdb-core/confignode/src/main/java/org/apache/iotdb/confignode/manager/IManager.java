@@ -76,6 +76,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -119,6 +120,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetServiceTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
@@ -149,6 +151,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowServiceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -281,6 +284,13 @@ public interface IManager {
    * @return SubscriptionManager instance
    */
   SubscriptionManager getSubscriptionManager();
+
+  /**
+   * Get ServiceManager
+   *
+   * @return ServiceManager instance
+   */
+  ServiceManager getServiceManager();
 
   /**
    * Get RetryFailedTasksThread. Get {@link RetryFailedTasksThread}.
@@ -895,4 +905,18 @@ public interface IManager {
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 
   TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp);
+
+  TSStatus createService(TCreateServiceReq createServiceReq);
+
+  TSStatus dropService(String serviceName);
+
+  TSStatus startService(String serviceName);
+
+  TSStatus stopService(String serviceName);
+
+  TShowServiceResp showService(String serviceName);
+
+  TGetServiceTableResp getServiceTable();
+
+  TGetJarInListResp getServiceJar(TGetJarInListReq req);
 }

@@ -53,6 +53,8 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.service.external.ServiceInformation;
+import org.apache.iotdb.commons.service.external.ServiceStatus;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -116,6 +118,9 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.CreateServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.DropServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.service.UpdateServiceStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
@@ -1978,5 +1983,35 @@ public class ConfigPhysicalPlanSerDeTest {
     RemoveRegionLocationPlan dePlan =
         (RemoveRegionLocationPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan, dePlan);
+  }
+
+  @Test
+  public void createServicePlanTest() throws IOException {
+    ServiceInformation serviceInformation =
+        new ServiceInformation(
+            "testService", "test.class", true, "test.jar", "testMD5", ServiceStatus.INACTIVE);
+    CreateServicePlan plan =
+        new CreateServicePlan(serviceInformation, new Binary(new byte[] {1, 2, 3}));
+    CreateServicePlan dePlan =
+        (CreateServicePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getServiceInformation(), dePlan.getServiceInformation());
+    Assert.assertEquals(plan.getJarFile(), dePlan.getJarFile());
+  }
+
+  @Test
+  public void dropServicePlanTest() throws IOException {
+    DropServicePlan plan = new DropServicePlan("testService");
+    DropServicePlan dePlan =
+        (DropServicePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getServiceName(), dePlan.getServiceName());
+  }
+
+  @Test
+  public void updateServicePlanTest() throws IOException {
+    UpdateServiceStatusPlan plan = new UpdateServiceStatusPlan("testService", ServiceStatus.ACTIVE);
+    UpdateServiceStatusPlan dePlan =
+        (UpdateServiceStatusPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getServiceName(), dePlan.getServiceName());
+    Assert.assertEquals(plan.getServiceStatus(), dePlan.getServiceStatus());
   }
 }

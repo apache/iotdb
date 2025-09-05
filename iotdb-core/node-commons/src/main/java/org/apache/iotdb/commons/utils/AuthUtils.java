@@ -508,6 +508,8 @@ public class AuthUtils {
         return PrivilegeType.MAINTAIN;
       case 9:
         return PrivilegeType.USE_MODEL;
+      case 10:
+        return PrivilegeType.USE_SERVICE;
       default:
         // Not reach here.
         LOGGER.warn("Not support position");
@@ -537,6 +539,8 @@ public class AuthUtils {
         return 8;
       case USE_MODEL:
         return 9;
+      case USE_SERVICE:
+        return 10;
       default:
         return -1;
     }

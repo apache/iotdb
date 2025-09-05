@@ -43,6 +43,10 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.external.ServiceExecutableManager;
+import org.apache.iotdb.commons.service.external.ServiceInformation;
+import org.apache.iotdb.commons.service.external.ServiceStatus;
+import org.apache.iotdb.commons.service.external.exception.ServiceManagementException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
@@ -93,6 +97,7 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.service.external.ExternalServiceManagementService;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -416,6 +421,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    * <p>5. All Pipe information
    *
    * <p>6. All TTL information
+   *
+   * <p>7. All Service information
    */
   private void storeRuntimeConfigurations(
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
@@ -442,6 +449,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store ttl information */
     initTTLInformation(runtimeConfiguration.getAllTTLInformation());
+
+    /* Store serviceInformationList */
+    getServiceInformationList(runtimeConfiguration.getAllServiceInformation());
 
     /* Store cluster ID */
     String clusterId = runtimeConfiguration.getClusterId();
@@ -681,6 +691,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     prepareUDFResources();
     prepareTriggerResources();
     preparePipeResources();
+    prepareExternalServiceResources();
   }
 
   /**
@@ -1224,6 +1235,117 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void setUncaughtExceptionHandler() {
     Thread.setDefaultUncaughtExceptionHandler(new IoTDBDefaultThreadExceptionHandler());
+  }
+
+  private void prepareExternalServiceResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
+    initExternalServiceRelatedInstance();
+    if (resourcesInformationHolder.getServiceInformationList() == null
+        || resourcesInformationHolder.getServiceInformationList().isEmpty()) {
+      return;
+    }
+
+    List<ServiceInformation> serviceNeedJarList = getJarListForService();
+    int index = 0;
+    while (index < serviceNeedJarList.size()) {
+      List<ServiceInformation> curList = new ArrayList<>();
+      int offset = 0;
+      while (offset < ResourcesInformationHolder.getJarNumOfOneRpc()
+          && index + offset < serviceNeedJarList.size()) {
+        curList.add(serviceNeedJarList.get(index + offset));
+        offset++;
+      }
+      index += (offset + 1);
+      getJarOfServices(curList);
+    }
+
+    for (ServiceInformation serviceInformation :
+        resourcesInformationHolder.getServiceInformationList()) {
+      try {
+        ExternalServiceManagementService.getInstance().doRegister(serviceInformation);
+        if (serviceInformation.getServiceStatus() == ServiceStatus.ACTIVE) {
+          ExternalServiceManagementService.getInstance()
+              .startService(serviceInformation.getServiceName());
+        }
+      } catch (Exception e) {
+        throw new StartupException(e);
+      }
+    }
+
+    if (logger.isDebugEnabled()) {
+      ExternalServiceManagementService.getInstance().logServiceStates();
+    }
+    long endTime = System.currentTimeMillis();
+    logger.info(
+        "successfully registered all the external services, which takes {} ms.",
+        (endTime - startTime));
+  }
+
+  private void initExternalServiceRelatedInstance() throws StartupException {
+    try {
+      ServiceExecutableManager.setupAndGetInstance(
+          config.getServiceTemporaryLibDir(), config.getServiceDir());
+    } catch (IOException e) {
+      throw new StartupException(e);
+    }
+  }
+
+  private List<ServiceInformation> getJarListForService() {
+    List<ServiceInformation> res = new ArrayList<>();
+    for (ServiceInformation serviceInformation :
+        resourcesInformationHolder.getServiceInformationList()) {
+      if (serviceInformation.isUsingURI()) {
+        // Jar does not exist, add current serviceInformation to list
+        if (!ServiceExecutableManager.getInstance()
+            .hasFileUnderInstallDir(serviceInformation.getJarName())) {
+          res.add(serviceInformation);
+        } else {
+          try {
+            // Local jar has conflicts with jar on config node, add current serviceInformation to
+            // list
+            if (ExternalServiceManagementService.getInstance()
+                .isLocalJarConflicted(serviceInformation)) {
+              res.add(serviceInformation);
+            }
+          } catch (ServiceManagementException e) {
+            res.add(serviceInformation);
+          }
+        }
+      }
+    }
+    return res;
+  }
+
+  private void getJarOfServices(List<ServiceInformation> serviceInformationList)
+      throws StartupException {
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      List<String> jarNameList =
+          serviceInformationList.stream()
+              .map(ServiceInformation::getJarName)
+              .collect(Collectors.toList());
+      TGetJarInListResp resp = configNodeClient.getServiceJar(new TGetJarInListReq(jarNameList));
+      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+        throw new StartupException("Failed to get service jar from config node.");
+      }
+      List<ByteBuffer> jarList = resp.getJarList();
+      for (int i = 0; i < jarList.size(); i++) {
+        ServiceExecutableManager.getInstance()
+            .saveToInstallDir(jarList.get(i), serviceInformationList.get(i).getJarName());
+      }
+    } catch (IOException | TException | ClientManagerException e) {
+      throw new StartupException(e);
+    }
+  }
+
+  private void getServiceInformationList(List<ByteBuffer> allServiceInformation) {
+    if (allServiceInformation != null && !allServiceInformation.isEmpty()) {
+      List<ServiceInformation> list = new ArrayList<>();
+      for (ByteBuffer serviceInformationByteBuffer : allServiceInformation) {
+        list.add(ServiceInformation.deserialize(serviceInformationByteBuffer));
+      }
+      resourcesInformationHolder.setServiceInformationList(list);
+    }
   }
 
   private static class DataNodeHolder {

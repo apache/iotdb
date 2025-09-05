@@ -94,6 +94,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.CreateServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.DropServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.ShowServicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.StartServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.service.StopServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -700,5 +705,25 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {
     return visitStatement(createTrainingStatement, context);
+  }
+
+  public R visitCreateService(CreateServiceStatement createServiceStatement, C context) {
+    return visitStatement(createServiceStatement, context);
+  }
+
+  public R visitDropService(DropServiceStatement dropServiceStatement, C context) {
+    return visitStatement(dropServiceStatement, context);
+  }
+
+  public R visitShowServices(ShowServicesStatement showServicesStatement, C context) {
+    return visitStatement(showServicesStatement, context);
+  }
+
+  public R visitStartService(StartServiceStatement startServiceStatement, C context) {
+    return visitStatement(startServiceStatement, context);
+  }
+
+  public R visitStopService(StopServiceStatement stopServiceStatement, C context) {
+    return visitStatement(stopServiceStatement, context);
   }
 }

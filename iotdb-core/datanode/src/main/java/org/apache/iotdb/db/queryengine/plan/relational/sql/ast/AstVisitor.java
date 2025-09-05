@@ -837,4 +837,24 @@ public abstract class AstVisitor<R, C> {
   protected R visitRangeQuantifier(RangeQuantifier node, C context) {
     return visitPatternQuantifier(node, context);
   }
+
+  protected R visitCreateService(CreateService node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropService(DropService node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowServices(ShowServices node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStartService(StartService node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStopService(StopService node, C context) {
+    return visitStatement(node, context);
+  }
 }

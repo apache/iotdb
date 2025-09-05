@@ -311,6 +311,14 @@ public class ConfigNodeConfig {
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
+  /** External lib directory for service, stores user-uploaded JAR files. */
+  private String serviceDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.SERVICE_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded service JAR files. */
+  private String serviceTemporaryLibDir =
+      serviceDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -329,6 +337,8 @@ public class ConfigNodeConfig {
     pipeDir = addHomeDir(pipeDir);
     pipeTemporaryLibDir = addHomeDir(pipeTemporaryLibDir);
     pipeReceiverFileDir = addHomeDir(pipeReceiverFileDir);
+    serviceDir = addHomeDir(serviceDir);
+    serviceTemporaryLibDir = addHomeDir(serviceTemporaryLibDir);
   }
 
   public static String addHomeDir(String dir) {
@@ -1269,5 +1279,22 @@ public class ConfigNodeConfig {
 
   public void setFailureDetectorPhiAcceptablePauseInMs(long failureDetectorPhiAcceptablePauseInMs) {
     this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
+  }
+
+  public String getServiceDir() {
+    return serviceDir;
+  }
+
+  public void setServiceDir(String serviceDir) {
+    this.serviceDir = serviceDir;
+    updateTriggerTemporaryLibDir();
+  }
+
+  public String getServiceTemporaryLibDir() {
+    return serviceTemporaryLibDir;
+  }
+
+  public void updateServiceTemporaryLibDir() {
+    this.serviceTemporaryLibDir = serviceDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 }
