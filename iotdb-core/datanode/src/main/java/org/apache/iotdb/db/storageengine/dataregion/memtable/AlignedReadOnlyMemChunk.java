@@ -51,7 +51,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private final String timeChunkName;
@@ -377,23 +376,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   }
 
   private void writeValidValuesIntoTsBlock(TsBlockBuilder builder) throws IOException {
-    List<AlignedTVList> alignedTvLists =
-        alignedTvListQueryMap.keySet().stream()
-            .map(x -> (AlignedTVList) x)
-            .collect(Collectors.toList());
-    MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataTypes,
-            columnIndexList,
-            alignedTvLists,
-            Ordering.ASC,
-            null,
-            timeColumnDeletion,
-            valueColumnsDeletionList,
-            floatPrecision,
-            encodingList,
-            context.isIgnoreAllNullRows(),
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+    MemPointIterator timeValuePairIterator = createMemPointIterator(Ordering.ASC, null);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
@@ -475,14 +458,17 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   @Override
   public MemPointIterator createMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
-    List<AlignedTVList> alignedTvLists =
-        alignedTvListQueryMap.keySet().stream()
-            .map(x -> (AlignedTVList) x)
-            .collect(Collectors.toList());
+    List<AlignedTVList> tvLists = new ArrayList<>(alignedTvListQueryMap.size());
+    List<Integer> tvListRowCounts = new ArrayList<>(alignedTvListQueryMap.size());
+    for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
+      tvLists.add((AlignedTVList) entry.getKey());
+      tvListRowCounts.add(entry.getValue());
+    }
     return MemPointIteratorFactory.create(
         dataTypes,
         columnIndexList,
-        alignedTvLists,
+        tvLists,
+        tvListRowCounts,
         scanOrder,
         globalTimeFilter,
         timeColumnDeletion,

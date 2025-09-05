@@ -292,17 +292,7 @@ public class ReadOnlyMemChunk {
 
   // read all data in memory chunk and write to tsblock
   private void writeValidValuesIntoTsBlock(TsBlockBuilder builder) throws IOException {
-    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            getDataType(),
-            tvLists,
-            Ordering.ASC,
-            null,
-            deletionList,
-            floatPrecision,
-            encoding,
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+    MemPointIterator timeValuePairIterator = createMemPointIterator(Ordering.ASC, null);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
@@ -379,10 +369,16 @@ public class ReadOnlyMemChunk {
   }
 
   public MemPointIterator createMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
-    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
+    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.size());
+    List<Integer> tvListRowCounts = new ArrayList<>(tvListQueryMap.size());
+    for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
+      tvLists.add(entry.getKey());
+      tvListRowCounts.add(entry.getValue());
+    }
     return MemPointIteratorFactory.create(
         dataType,
         tvLists,
+        tvListRowCounts,
         scanOrder,
         globalTimeFilter,
         deletionList,
