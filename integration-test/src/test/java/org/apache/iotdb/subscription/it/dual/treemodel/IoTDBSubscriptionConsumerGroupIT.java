@@ -1124,6 +1124,6 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
 
     LOGGER.warn("unexpected column name: {}", columnName);
-    throw new Exception("unexpected column name");
+    throw new Exception(String.format("unexpected column name: %s", columnName));
   }
 }
