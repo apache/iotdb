@@ -44,7 +44,13 @@ public class TsFileEpoch {
 
   public TsFileEpoch.State getState(final PipeRealtimeDataRegionSource extractor) {
     return dataRegionExtractor2State
-        .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
+        .computeIfAbsent(
+            extractor,
+            o -> {
+              o.increaseExtractEpochSize();
+              setExtractorsRecentProcessedTsFileEpochState();
+              return new AtomicReference<>(State.EMPTY);
+            })
         .get();
   }
 
