@@ -302,6 +302,13 @@ public class LoadTsFileTableSchemaCache {
       return;
     }
 
+    if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+      throw new LoadAnalyzeException(
+          "The database "
+              + database
+              + " does not exist, please enable 'enable_auto_create_schema' to enable auto creation.");
+    }
+
     Coordinator.getInstance()
         .getAccessControl()
         .checkCanCreateDatabase(context.getSession().getUserName(), database);
