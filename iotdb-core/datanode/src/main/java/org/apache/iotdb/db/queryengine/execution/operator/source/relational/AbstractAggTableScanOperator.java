@@ -56,6 +56,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -646,6 +647,12 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   /** Append a row of aggregation results to the result tsBlock. */
   protected void appendAggregationResult() {
+    System.out.println(deviceEntries.get(currentDeviceIndex));
+    if (!timeIterator.hasCachedTimeRange()) {
+      System.out.println();
+      System.out.println(Arrays.toString(Thread.currentThread().getStackTrace()));
+    }
+
     // no data in current time range, just output empty
     if (!timeIterator.hasCachedTimeRange()) {
       return;
