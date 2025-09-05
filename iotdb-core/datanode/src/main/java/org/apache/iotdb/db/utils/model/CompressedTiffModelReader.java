@@ -34,6 +34,9 @@ public class CompressedTiffModelReader extends ModelReader {
 
   static {
     gdal.AllRegister();
+    int cacheMax = gdal.GetCacheMax();
+    LOGGER.info("GDAL Cache Max: {}", cacheMax);
+    gdal.SetCacheMax(cacheMax * 2);
   }
 
   @Override
