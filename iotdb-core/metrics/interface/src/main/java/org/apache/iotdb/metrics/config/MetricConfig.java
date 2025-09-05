@@ -169,6 +169,42 @@ public class MetricConfig {
     this.prometheusReporterPassword = prometheusReporterPassword;
   }
 
+  public boolean isEnableSSL() {
+    return enableSSL;
+  }
+
+  public String getKeyStorePath() {
+    return keyStorePath;
+  }
+
+  public void setKeyStorePath(String keyStorePath) {
+    this.keyStorePath = keyStorePath;
+  }
+
+  public String getKeyStorePassword() {
+    return keyStorePassword;
+  }
+
+  public void setKeyStorePassword(String keyStorePassword) {
+    this.keyStorePassword = keyStorePassword;
+  }
+
+  public String getTrustStorePath() {
+    return trustStorePath;
+  }
+
+  public void setTrustStorePath(String trustStorePath) {
+    this.trustStorePath = trustStorePath;
+  }
+
+  public String getTrustStorePassword() {
+    return trustStorePassword;
+  }
+
+  public void setTrustStorePassword(String trustStorePassword) {
+    this.trustStorePassword = trustStorePassword;
+  }
+
   public IoTDBReporterConfig getIoTDBReporterConfig() {
     return iotdbReporterConfig;
   }
