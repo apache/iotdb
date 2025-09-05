@@ -74,7 +74,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TODO: add database creation after the database auto creating on receiver can be
@@ -82,9 +82,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
               "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -93,13 +91,11 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           Collections.singleton(
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
@@ -137,10 +133,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "create user `ln_write_user` 'write_pwd123456'", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "create user `ln_write_user` 'write_pwd123456'", null);
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "list user", "user,", Collections.singleton("root,"));
@@ -178,15 +171,13 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create user `ln_write_user` 'write_pwd123456'",
               "grant manage_database,manage_user,manage_role,use_trigger,use_udf,use_cq,use_pipe on root.** to USER ln_write_user with grant option",
               "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
@@ -238,33 +229,27 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf01.wt01(time, status) values(0, true)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           receiverEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf01.wt01(time, status1) values(0, true)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "delete from root.**", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "delete from root.**", null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,

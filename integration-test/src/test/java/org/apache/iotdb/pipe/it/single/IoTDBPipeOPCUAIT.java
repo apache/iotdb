@@ -24,7 +24,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -45,10 +44,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          env, "insert into root.db.d1(time, s1) values (1, 1)", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(env, "insert into root.db.d1(time, s1) values (1, 1)", null);
 
       final Map<String, String> connectorAttributes = new HashMap<>();
       connectorAttributes.put("sink", "opc-ua-sink");
@@ -95,14 +91,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(env, "test", "test");
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          "test",
-          BaseEnv.TABLE_SQL_DIALECT,
-          env,
-          "insert into test (s0, s1, s2) values (1, 1, 1)",
-          null)) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 10, env);
 
       final Map<String, String> connectorAttributes = new HashMap<>();
       connectorAttributes.put("sink", "opc-ua-sink");

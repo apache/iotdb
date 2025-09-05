@@ -76,14 +76,12 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualTreeModelManualIT {
     }
 
     for (int i = 0; i < 10; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      TestUtils.executeNonQuery(
           senderEnv,
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i),
-          null)) {
-        return;
-      }
+          null);
     }
 
     try {
@@ -95,14 +93,12 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualTreeModelManualIT {
     }
 
     for (int i = 10; i < 20; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      TestUtils.executeNonQuery(
           senderEnv,
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i),
-          null)) {
-        return;
-      }
+          null);
     }
 
     TestUtils.assertDataEventuallyOnEnv(
@@ -148,10 +144,8 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualTreeModelManualIT {
 
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 0; i < 10; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv, String.format("create database root.ln%s", i), connection)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            senderEnv, String.format("create database root.ln%s", i), connection);
       }
     }
 
@@ -165,10 +159,7 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualTreeModelManualIT {
 
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 10; i < 20; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv, String.format("create database root.ln%s", i), null)) {
-          return;
-        }
+        TestUtils.executeNonQuery(senderEnv, String.format("create database root.ln%s", i), null);
       }
     }
 

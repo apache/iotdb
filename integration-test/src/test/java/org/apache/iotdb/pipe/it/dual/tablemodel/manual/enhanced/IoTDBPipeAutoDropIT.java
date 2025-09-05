@@ -63,7 +63,6 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAutoDropInHistoricalTransfer() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-    boolean insertResult = true;
 
     final Consumer<String> handleFailure =
         o -> {
@@ -78,10 +77,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -145,7 +141,6 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAutoDropInHistoricalTransferWithTimeRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-    boolean insertResult = true;
 
     final Consumer<String> handleFailure =
         o -> {
@@ -160,10 +155,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
