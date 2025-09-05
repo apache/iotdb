@@ -28,6 +28,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.nio.charset.StandardCharsets;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class MaxAccumulator implements TableAccumulator {
@@ -206,22 +208,27 @@ public class MaxAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntMaxValue((int) statistics[0].getMaxValue());
+        updateIntMaxValue(((Number) statistics[0].getMaxValue()).intValue());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongMaxValue((long) statistics[0].getMaxValue());
+        updateLongMaxValue(((Number) statistics[0].getMaxValue()).longValue());
         break;
       case FLOAT:
-        updateFloatMaxValue((float) statistics[0].getMaxValue());
+        updateFloatMaxValue(((Number) statistics[0].getMaxValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleMaxValue((double) statistics[0].getMaxValue());
+        updateDoubleMaxValue(((Number) statistics[0].getMaxValue()).doubleValue());
         break;
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
+        if (statistics[0].getMaxValue() instanceof Binary) {
+          updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
+        } else {
+          updateBinaryMaxValue(
+              new Binary(String.valueOf(statistics[0].getMaxValue()), StandardCharsets.UTF_8));
+        }
         break;
       case BOOLEAN:
         updateBooleanMaxValue((boolean) statistics[0].getMaxValue());

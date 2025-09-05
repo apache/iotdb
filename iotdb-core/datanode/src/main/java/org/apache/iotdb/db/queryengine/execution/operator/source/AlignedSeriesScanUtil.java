@@ -100,7 +100,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         context,
         scanOptions.getGlobalTimeFilter(),
         isSeq,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        getTsDataTypeList());
   }
 
   @Override
