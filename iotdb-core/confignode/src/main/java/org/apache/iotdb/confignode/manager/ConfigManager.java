@@ -1581,10 +1581,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus clearCache() {
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
+        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache(clearCacheOptions))
         : status;
   }
 

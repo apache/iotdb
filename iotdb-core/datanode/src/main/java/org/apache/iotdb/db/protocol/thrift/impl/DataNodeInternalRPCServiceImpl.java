@@ -62,6 +62,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -1959,10 +1960,28 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus clearCache() throws TException {
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) throws TException {
+    return clearCacheImpl(
+        clearCacheOptions.stream()
+            .map(i -> CacheClearOptions.values()[i])
+            .collect(Collectors.toSet()));
+  }
+
+  public TSStatus clearCacheImpl(final Set<CacheClearOptions> options) {
     try {
-      storageEngine.clearCache();
-    } catch (Exception e) {
+      final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
+      if (options.contains(CacheClearOptions.DEFAULT)
+          || options.contains(CacheClearOptions.QUERY)) {
+        storageEngine.clearCache();
+      }
+      if (options.contains(CacheClearOptions.TREE_SCHEMA)) {
+        schemaCache.invalidateAll();
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      if (options.contains(CacheClearOptions.QUERY)) {
+        schemaCache.invalidateLastCache(new PartialPath("root.**"));
+      }
+    } catch (final Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

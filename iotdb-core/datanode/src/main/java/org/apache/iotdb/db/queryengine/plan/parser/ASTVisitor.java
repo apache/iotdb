@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -3350,8 +3351,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
-    ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
+    final ClearCacheStatement clearCacheStatement =
+        new ClearCacheStatement(StatementType.CLEAR_CACHE);
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
+
+    if (ctx.SCHEMA() != null) {
+      clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.TREE_SCHEMA));
+    } else if (ctx.QUERY() != null) {
+      clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.QUERY));
+    } else if (ctx.ALL() != null) {
+      clearCacheStatement.setOptions(
+          new HashSet<>(Arrays.asList(CacheClearOptions.TREE_SCHEMA, CacheClearOptions.QUERY)));
+    } else {
+      clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.DEFAULT));
+    }
+
     return clearCacheStatement;
   }
 
