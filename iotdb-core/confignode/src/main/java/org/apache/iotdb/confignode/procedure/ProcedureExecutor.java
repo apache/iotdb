@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -37,10 +38,12 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -49,6 +52,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.procedure.Procedure.NO_PROC_ID;
 
@@ -116,9 +120,41 @@ public class ProcedureExecutor<Env> {
     recover();
   }
 
+  /***
+   * Filter out pipe procedures that do not need to re-acquire lock and re-execute when there are multiple locked pipe procedures during restore.
+   * @return non pipe procedures and one pipe procedure with max lock seq id (if there is.)
+   */
+  private List<Procedure<Env>> filteredProcedureList(final List<Procedure<Env>> procedures) {
+    List<Procedure<Env>> nonPipeOrLockedProcedures =
+        procedures.stream()
+            .filter(p -> !(p instanceof AbstractOperatePipeProcedureV2) || !p.isLockedWhenLoading())
+            .collect(Collectors.toList());
+
+    List<AbstractOperatePipeProcedureV2> lockedPipeProcedures =
+        procedures.stream()
+            .filter(p -> p instanceof AbstractOperatePipeProcedureV2 && p.isLockedWhenLoading())
+            .map(AbstractOperatePipeProcedureV2.class::cast)
+            .collect(Collectors.toList());
+    Optional<Procedure<Env>> maxPipeProcedure =
+        lockedPipeProcedures.stream()
+            .max(Comparator.comparingLong(AbstractOperatePipeProcedureV2::getLockSeqId))
+            .map(p -> (Procedure<Env>) p);
+
+    if (lockedPipeProcedures.size() > 1) {
+      LOG.warn(
+          "[Procedure restore]Detected multiple locked pipe procedures in procedure executor {}, only keep last one {}",
+          lockedPipeProcedures,
+          maxPipeProcedure.get());
+    }
+
+    maxPipeProcedure.ifPresent(nonPipeOrLockedProcedures::add);
+    return nonPipeOrLockedProcedures;
+  }
+
   private void recover() {
     // 1.Build rollback stack
-    List<Procedure<Env>> procedureList = getProcedureListFromDifferentVersion();
+    List<Procedure<Env>> procedureList =
+        filteredProcedureList(getProcedureListFromDifferentVersion());
     // Load procedure wal file
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished()) {

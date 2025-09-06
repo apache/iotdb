@@ -99,7 +99,7 @@ public class PipeHeartbeatParser {
         .submit(
             () -> {
               final AtomicReference<PipeTaskInfo> pipeTaskInfo =
-                  configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
+                  configManager.getPipeManager().getPipeTaskCoordinator().tryLock().left;
               if (pipeTaskInfo == null) {
                 LOGGER.warn(
                     "Failed to acquire lock when parseHeartbeat from node (id={}).", nodeId);

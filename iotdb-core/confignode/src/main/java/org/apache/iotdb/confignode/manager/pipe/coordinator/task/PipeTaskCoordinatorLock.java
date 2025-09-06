@@ -37,8 +37,9 @@ public class PipeTaskCoordinatorLock {
 
   private final BlockingDeque<Long> deque = new LinkedBlockingDeque<>(1);
   private final AtomicLong idGenerator = new AtomicLong(0);
+  private final AtomicLong lockSeqIdGenerator = new AtomicLong(0);
 
-  public void lock() {
+  public long lock() {
     try {
       final long id = idGenerator.incrementAndGet();
       LOGGER.debug(
@@ -50,15 +51,17 @@ public class PipeTaskCoordinatorLock {
           "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
           id,
           Thread.currentThread().getName());
+      return lockSeqIdGenerator.incrementAndGet();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error(
           "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
           Thread.currentThread().getName());
+      return -1;
     }
   }
 
-  public boolean tryLock() {
+  public long tryLock() {
     try {
       final long id = idGenerator.incrementAndGet();
       LOGGER.debug(
@@ -70,20 +73,20 @@ public class PipeTaskCoordinatorLock {
             "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
             id,
             Thread.currentThread().getName());
-        return true;
+        return lockSeqIdGenerator.incrementAndGet();
       } else {
         LOGGER.info(
             "PipeTaskCoordinator lock (id: {}) failed to acquire by thread {} because of timeout",
             id,
             Thread.currentThread().getName());
-        return false;
+        return -1;
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error(
           "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
           Thread.currentThread().getName());
-      return false;
+      return -1;
     }
   }
 
