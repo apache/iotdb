@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 
@@ -121,13 +122,43 @@ public class SnapshotLoader {
         return null;
       }
       LOGGER.info("Moving snapshot file to data dirs");
-      createLinksFromSnapshotDirToDataDirWithoutLog(new File(snapshotPath));
+      File snapshotDir = new File(snapshotPath);
+      createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir);
+      loadCompressionRatio(snapshotDir);
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
       LOGGER.error(
           "Exception occurs when loading snapshot for {}-{}", storageGroupName, dataRegionId, e);
       return null;
     }
+  }
+
+  private void loadCompressionRatio(File snapshotDir) {
+    File[] compressionFiles =
+        snapshotDir.listFiles(f -> f.getName().startsWith(CompressionRatio.FILE_PREFIX));
+    if (compressionFiles == null || compressionFiles.length == 0) {
+      LOGGER.info("No compression ratio file in dir {}", snapshotPath);
+      return;
+    }
+    File ratioFile = compressionFiles[0];
+    String fileName = ratioFile.getName();
+    String ratioPart = fileName.substring(0, fileName.lastIndexOf("."));
+    String dataRegionId = fileName.substring(fileName.lastIndexOf(".") + 1);
+
+    String[] fileNameArray = ratioPart.split("-");
+    // fileNameArray.length != 3 means the compression ratio may be negative, ignore it
+    if (fileNameArray.length == 3) {
+      try {
+        long rawSize = Long.parseLong(fileNameArray[1]);
+        long diskSize = Long.parseLong(fileNameArray[2]);
+        CompressionRatio.getInstance().updateRatio(rawSize, diskSize, dataRegionId);
+      } catch (NumberFormatException ignore) {
+        // ignore illegal compression file name
+      } catch (IOException e) {
+        LOGGER.warn("Cannot load compression ratio from {}", ratioFile, e);
+      }
+    }
+    LOGGER.info("Loaded compression ratio from {}", ratioFile);
   }
 
   private DataRegion loadSnapshotWithLog(File logFile) {
@@ -151,6 +182,7 @@ public class SnapshotLoader {
         deleteAllFilesInDataDirs();
         LOGGER.info("Remove all data files in original data dir");
         createLinksFromSnapshotDirToDataDirWithLog();
+        loadCompressionRatio(new File(snapshotPath));
         return loadSnapshot();
       } catch (IOException e) {
         LOGGER.error("Failed to remove origin data files", e);
@@ -496,6 +528,14 @@ public class SnapshotLoader {
                 + File.separator
                 + snapshotId;
         fileList.addAll(searchDataFilesRecursively(snapshotDir));
+      }
+
+      File[] compressionRatioFiles =
+          logFile
+              .getParentFile()
+              .listFiles(f -> f.getName().startsWith(CompressionRatio.FILE_PREFIX));
+      if (compressionRatioFiles != null) {
+        fileList.addAll(Arrays.asList(compressionRatioFiles));
       }
       return fileList;
     } finally {

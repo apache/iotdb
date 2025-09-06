@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -100,6 +101,7 @@ public class SnapshotTaker {
         }
         success = createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
+        success = success && snapshotCompressionRatio(snapshotDirPath);
       } finally {
         readUnlockTheFile();
       }
@@ -134,6 +136,31 @@ public class SnapshotTaker {
         LOGGER.error("Failed to close snapshot logger", e);
       }
     }
+  }
+
+  private boolean snapshotCompressionRatio(String snapshotDir) {
+    File compressionRatioFile =
+        CompressionRatio.getInstance().getCompressionRatioFile(dataRegion.getDataRegionId());
+    if (compressionRatioFile != null) {
+      LOGGER.info("Snapshotting compression ratio {}.", compressionRatioFile.getName());
+      try {
+        File snapshotFile = new File(snapshotDir, compressionRatioFile.getName());
+        if (snapshotFile.createNewFile()) {
+          // write one byte so that it will not be skipped
+          Files.write(snapshotFile.toPath(), new byte[1]);
+          LOGGER.info(
+              "Snapshot compression ratio {} in {}.", compressionRatioFile.getName(), snapshotDir);
+          return true;
+        }
+      } catch (IOException ignored) {
+        LOGGER.warn(
+            "Cannot snapshot compression ratio {} in {}.",
+            compressionRatioFile.getName(),
+            snapshotDir);
+      }
+      return false;
+    }
+    return true;
   }
 
   public boolean cleanSnapshot() {
