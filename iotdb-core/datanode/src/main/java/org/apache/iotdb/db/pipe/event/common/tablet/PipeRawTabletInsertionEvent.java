@@ -264,7 +264,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     tablet = null;
     eventParser = null;
 
-    //
+    // Update metrics of the source event
     if (needToReport && Objects.nonNull(pipeName)) {
       if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         PipeDataNodeSinglePipeMetrics.getInstance()
