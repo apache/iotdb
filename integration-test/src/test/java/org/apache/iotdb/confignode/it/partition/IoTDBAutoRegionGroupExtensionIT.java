@@ -113,6 +113,9 @@ public class IoTDBAutoRegionGroupExtensionIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         if (showRegionResp.getRegionInfoListSize() == 0) {
           isAllRegionGroupDeleted = true;
           break;
