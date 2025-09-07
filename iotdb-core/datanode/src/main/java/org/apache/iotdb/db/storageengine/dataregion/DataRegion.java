@@ -2841,14 +2841,32 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
+    logger.info("[deleteDataInSealedFiles] sealedTsFiles size is {} ", sealedTsFiles.size());
     for (TsFileResource sealedTsFile : sealedTsFiles) {
+      logger.info("[Deletion] sealedTsFile is {}, deletion is {}", sealedTsFile, deletion);
       if (canSkipDelete(sealedTsFile, deletion)) {
+        logger.info(
+            "[Deletion] sealedTsFile is {}, deletion is {}, skipped", sealedTsFile, deletion);
         continue;
       }
 
-      if (deletion instanceof TableDeletionEntry && sealedTsFile.getContainTableAmount() == 1) {
+      logger.info(
+          "[Deletion] deletion instanceof TableDeletionEntry is  {}, sealedTsFile.getContainTableAmount() is {}, sealedTsFile.getContainTableAmount() == 1 is {}",
+          deletion instanceof TableDeletionEntry,
+          sealedTsFile.getContainTableAmount(),
+          sealedTsFile.getContainTableAmount() == 1);
+      TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
+      tableDeletionEntry.
+      if ((deletion instanceof TableDeletionEntry) && (sealedTsFile.getContainTableAmount() == 1)) {
+        logger.info(
+            "[Deletion] enter deletion instanceof TableDeletionEntry is  {}, sealedTsFile.getContainTableAmount() is {}, sealedTsFile.getContainTableAmount() == 1 is {}",
+            deletion instanceof TableDeletionEntry,
+            sealedTsFile.getContainTableAmount(),
+            sealedTsFile.getContainTableAmount() == 1);
         sealedTsFile.close();
+        logger.info("sealedTsFile {} is deleteing.", sealedTsFile.getTsFilePath());
         sealedTsFile.remove();
+        logger.info("sealedTsFile {} is deleteing successful.", sealedTsFile.getTsFilePath());
       }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
     }

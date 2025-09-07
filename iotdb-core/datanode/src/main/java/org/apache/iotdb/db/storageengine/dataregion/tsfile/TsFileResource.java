@@ -208,6 +208,7 @@ public class TsFileResource implements PersistentResource {
   private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
   private int containTableAmount = 0;
+  private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
 
   @TestOnly
   public TsFileResource() {
@@ -257,9 +258,10 @@ public class TsFileResource implements PersistentResource {
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
     this.tierLevel = originTsFileResource.tierLevel;
-    if (pathToChunkMetadataListMap != null && !pathToChunkMetadataListMap.isEmpty()) {
-      this.containTableAmount = pathToChunkMetadataListMap.size();
-    }
+//    if (pathToChunkMetadataListMap != null && !pathToChunkMetadataListMap.isEmpty()) {
+//      this.containTableAmount = pathToChunkMetadataListMap.size();
+//    }
+//    logger.info("containTableAmount is {}.", this.containTableAmount);
   }
 
   public synchronized void serialize(String targetFilePath) throws IOException {
@@ -1577,6 +1579,10 @@ public class TsFileResource implements PersistentResource {
   }
 
   public int getContainTableAmount() {
+    if (pathToChunkMetadataListMap != null && !pathToChunkMetadataListMap.isEmpty()) {
+      this.containTableAmount = pathToChunkMetadataListMap.size();
+    }
+    logger.info("containTableAmount is {}.", this.containTableAmount);
     return containTableAmount;
   }
 }
