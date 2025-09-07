@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
@@ -237,6 +238,9 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     operator.decreaseInsertNodeEventCount();
+    if (transferTime > 0) {
+      operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+    }
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
@@ -271,6 +275,9 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
 
     operator.decreaseTsFileEventCount();
+    if (transferTime > 0) {
+      operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+    }
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
@@ -287,6 +294,30 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .decreaseHeartbeatEventCount();
+  }
+
+  public void updateInsertNodeTransferTimer(
+      final String pipeName, final long creationTime, final long transferTime) {
+    if (transferTime > 0) {
+      remainingEventAndTimeOperatorMap
+          .computeIfAbsent(
+              pipeName + "_" + creationTime,
+              k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+          .getInsertNodeTransferTimer()
+          .update(transferTime, TimeUnit.NANOSECONDS);
+    }
+  }
+
+  public void updateTsFileTransferTimer(
+      final String pipeName, final long creationTime, final long transferTime) {
+    if (transferTime > 0) {
+      remainingEventAndTimeOperatorMap
+          .computeIfAbsent(
+              pipeName + "_" + creationTime,
+              k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+          .getTsFileTransferTimer()
+          .update(transferTime, TimeUnit.NANOSECONDS);
+    }
   }
 
   public void thawRate(final String pipeID) {

@@ -263,6 +263,29 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // Actually release the occupied memory.
     tablet = null;
     eventParser = null;
+
+    //
+    if (needToReport && Objects.nonNull(pipeName)) {
+      if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateInsertNodeTransferTimer(
+                pipeName,
+                creationTime,
+                shouldReportOnCommit
+                    ? System.nanoTime()
+                        - ((PipeInsertNodeTabletInsertionEvent) sourceEvent).getExtractTime()
+                    : -1);
+      } else if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateTsFileTransferTimer(
+                pipeName,
+                creationTime,
+                shouldReportOnCommit
+                    ? System.nanoTime() - ((PipeTsFileInsertionEvent) sourceEvent).getExtractTime()
+                    : -1);
+      }
+    }
+
     return true;
   }
 
