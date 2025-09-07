@@ -51,6 +51,7 @@ import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPageReader;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -87,8 +88,7 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       Set<String> allSensors,
-      boolean isSeq,
-      TSDataType targetDataType)
+      boolean isSeq)
       throws IOException {
     long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -113,7 +113,7 @@ public class FileLoaderUtils {
                     context.isDebug(),
                     context);
         if (timeSeriesMetadata != null) {
-          SchemaUtils.changeMetadataModified(timeSeriesMetadata, targetDataType);
+          SchemaUtils.changeMetadataModified(timeSeriesMetadata, seriesPath.getSeriesType());
           long t2 = System.nanoTime();
           List<ModEntry> pathModifications =
               context.getPathModifications(
@@ -140,7 +140,7 @@ public class FileLoaderUtils {
         timeSeriesMetadata =
             (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath, globalTimeFilter);
         if (timeSeriesMetadata != null) {
-          SchemaUtils.changeMetadataModified(timeSeriesMetadata, targetDataType);
+          SchemaUtils.changeMetadataModified(timeSeriesMetadata, seriesPath.getSeriesType());
           timeSeriesMetadata.setChunkMetadataLoader(
               new MemChunkMetadataLoader(resource, seriesPath, context, globalTimeFilter));
         }
@@ -193,23 +193,21 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq,
-      boolean ignoreAllNullRows,
-      List<TSDataType> targetDataTypeList)
+      boolean ignoreAllNullRows)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
     try {
       AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata;
+      List<TSDataType> targetDataTypeList =
+          alignedPath.getSchemaList().stream()
+              .map(IMeasurementSchema::getType)
+              .collect(Collectors.toList());
       // If the tsfile is closed, we need to load from tsfile
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource,
-                alignedPath,
-                context,
-                globalTimeFilter,
-                ignoreAllNullRows,
-                targetDataTypeList);
+                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows);
         SchemaUtils.changeAlignedMetadataModified(alignedTimeSeriesMetadata, targetDataTypeList);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
@@ -278,8 +276,7 @@ public class FileLoaderUtils {
       AlignedFullPath alignedPath,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
-      boolean ignoreAllNullRows,
-      List<TSDataType> targetDataTypeList)
+      boolean ignoreAllNullRows)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -336,7 +333,8 @@ public class FileLoaderUtils {
                   context);
           exist = (exist || (valueColumn != null));
           if (valueColumn != null) {
-            SchemaUtils.changeAlignedMetadataModified(valueColumn, targetDataTypeList.get(i));
+            SchemaUtils.changeAlignedMetadataModified(
+                valueColumn, alignedPath.getSchemaList().get(i).getType());
           }
           valueTimeSeriesMetadataList.add(valueColumn);
           i++;

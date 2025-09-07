@@ -1873,8 +1873,7 @@ public class SeriesScanUtil implements Accountable {
         context,
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),
-        isSeq,
-        dataType);
+        isSeq);
   }
 
   public List<TSDataType> getTsDataTypeList() {
