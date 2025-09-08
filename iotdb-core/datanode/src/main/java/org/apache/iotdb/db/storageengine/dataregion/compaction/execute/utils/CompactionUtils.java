@@ -419,7 +419,7 @@ public class CompactionUtils {
       String measurement,
       ModEntry ttlDeletion)
       throws IllegalPathException {
-    if (patternTreeMap == null) {
+    if ((patternTreeMap == null) || patternTreeMap.isEmpty()) {
       return ttlDeletion == null ? Collections.emptyList() : Collections.singletonList(ttlDeletion);
     }
     PartialPath path = CompactionPathUtils.getPath(deviceID, measurement);
