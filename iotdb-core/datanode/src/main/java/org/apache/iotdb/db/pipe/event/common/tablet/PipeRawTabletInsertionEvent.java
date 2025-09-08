@@ -265,24 +265,20 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     eventParser = null;
 
     // Update metrics of the source event
-    if (needToReport && Objects.nonNull(pipeName)) {
+    if (needToReport && shouldReportOnCommit && Objects.nonNull(pipeName)) {
       if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         PipeDataNodeSinglePipeMetrics.getInstance()
             .updateInsertNodeTransferTimer(
                 pipeName,
                 creationTime,
-                shouldReportOnCommit
-                    ? System.nanoTime()
-                        - ((PipeInsertNodeTabletInsertionEvent) sourceEvent).getExtractTime()
-                    : -1);
+                System.nanoTime()
+                    - ((PipeInsertNodeTabletInsertionEvent) sourceEvent).getExtractTime());
       } else if (sourceEvent instanceof PipeTsFileInsertionEvent) {
         PipeDataNodeSinglePipeMetrics.getInstance()
             .updateTsFileTransferTimer(
                 pipeName,
                 creationTime,
-                shouldReportOnCommit
-                    ? System.nanoTime() - ((PipeTsFileInsertionEvent) sourceEvent).getExtractTime()
-                    : -1);
+                System.nanoTime() - ((PipeTsFileInsertionEvent) sourceEvent).getExtractTime());
       }
     }
 
