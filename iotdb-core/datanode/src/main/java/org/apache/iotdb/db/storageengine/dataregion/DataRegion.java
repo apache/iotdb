@@ -2308,6 +2308,21 @@ public class DataRegion implements IDataRegionForQuery {
           && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, false, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
+          if (tsFileProcessor == null) {
+            // tsFileProcessor == null means this tsfile is being closed, here we try to busy loop
+            // until status in TsFileResource has been changed which is supposed to be the last step
+            // of closing
+            while (!tsFileResource.isClosed() && waitTimeInMs > 0) {
+              TimeUnit.MILLISECONDS.sleep(5);
+              waitTimeInMs -= 5;
+            }
+            if (tsFileResource.isClosed()) {
+              continue;
+            } else {
+              clearAlreadyLockedList(needToUnLockList);
+              return false;
+            }
+          }
           long startTime = System.nanoTime();
           if (tsFileProcessor.tryReadLock(waitTimeInMs)) {
             // minus already consumed time
@@ -4400,7 +4415,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.directBufferMemoryCost = acquireDirectBufferMemCost;
   }
 
-  private static long getAcquireDirectBufferMemCost() {
+  public static long getAcquireDirectBufferMemCost() {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
         || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {

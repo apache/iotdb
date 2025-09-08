@@ -112,7 +112,7 @@ public class IoTDBConfig {
   private int mqttPort = 1883;
 
   /** The handler pool size for handing the mqtt messages. */
-  private int mqttHandlerPoolSize = 1;
+  private int mqttHandlerPoolSize = Math.max(1, Runtime.getRuntime().availableProcessors() >> 1);
 
   /** The mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
@@ -134,15 +134,6 @@ public class IoTDBConfig {
 
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
-
-  /** Enable the thrift rpcPort Service ssl. */
-  private boolean enableSSL = false;
-
-  /** ssl key Store Path. */
-  private String keyStorePath = "";
-
-  /** ssl key Store password. */
-  private String keyStorePwd = "";
 
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
@@ -1276,30 +1267,6 @@ public class IoTDBConfig {
 
   public void setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
-  }
-
-  public boolean isEnableSSL() {
-    return enableSSL;
-  }
-
-  public void setEnableSSL(boolean enableSSL) {
-    this.enableSSL = enableSSL;
-  }
-
-  public String getKeyStorePath() {
-    return keyStorePath;
-  }
-
-  public void setKeyStorePath(String keyStorePath) {
-    this.keyStorePath = keyStorePath;
-  }
-
-  public String getKeyStorePwd() {
-    return keyStorePwd;
-  }
-
-  public void setKeyStorePwd(String keyStorePwd) {
-    this.keyStorePwd = keyStorePwd;
   }
 
   public int getUdfInitialByteArrayLengthForMemoryControl() {

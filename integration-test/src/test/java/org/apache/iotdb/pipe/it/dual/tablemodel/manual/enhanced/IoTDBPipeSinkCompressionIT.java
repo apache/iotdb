@@ -258,8 +258,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
                     + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='3',"
-                    + "'connector.rate-limit-bytes-per-second'='2048.0')",
+                    + "'connector.compressor.zstd.level'='3')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -276,7 +275,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
                     + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='22')",
+                    + "'connector.compressor.zstd.level'='22',"
+                    + "'connector.rate-limit-bytes-per-second'='2048.0')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();

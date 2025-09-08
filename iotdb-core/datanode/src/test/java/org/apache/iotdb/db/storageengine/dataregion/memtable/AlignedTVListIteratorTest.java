@@ -654,11 +654,15 @@ public class AlignedTVListIteratorTest {
     List<Statistics<? extends Serializable>> pageStatisticsList = chunk.getTimeStatisticsList();
     int count = 0;
     long offset = paginationController.getCurOffset();
+    if (!scanOrder.isAscending()) {
+      Collections.reverse(pageStatisticsList);
+    }
     for (Statistics<? extends Serializable> statistics : pageStatisticsList) {
-      if (statistics.getStartTime() <= statistics.getEndTime()) {
-        memPointIterator.setCurrentPageTimeRange(
-            new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
-      }
+      TimeRange currentTimeRange =
+          (statistics.getStartTime() <= statistics.getEndTime())
+              ? new TimeRange(statistics.getStartTime(), statistics.getEndTime())
+              : null;
+      memPointIterator.setCurrentPageTimeRange(currentTimeRange);
       while (memPointIterator.hasNextBatch()) {
         TsBlock tsBlock = memPointIterator.nextBatch();
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -671,6 +675,8 @@ public class AlignedTVListIteratorTest {
             count++;
           }
           long currentTimestamp = tsBlock.getTimeByIndex(i);
+          Assert.assertTrue(
+              currentTimeRange == null || currentTimeRange.contains(currentTimestamp));
           Long int64Value = tsBlock.getColumn(0).isNull(i) ? null : tsBlock.getColumn(0).getLong(i);
           Boolean boolValue =
               tsBlock.getColumn(1).isNull(i) ? null : tsBlock.getColumn(1).getBoolean(i);
@@ -774,7 +780,6 @@ public class AlignedTVListIteratorTest {
     AlignedTVList alignedTVList =
         AlignedTVList.newAlignedList(
             Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN));
-    int rowCount = 0;
     for (TimeRange timeRange : timeRanges) {
       long start = timeRange.getMin();
       long end = timeRange.getMax();
@@ -793,11 +798,10 @@ public class AlignedTVListIteratorTest {
         }
         alignedTVList.putAlignedValue(
             timestamp, new Object[] {timestamp, timestamp % 2 == 0, true});
-        rowCount++;
       }
     }
     Map<TVList, Integer> tvListMap = new HashMap<>();
-    tvListMap.put(alignedTVList, rowCount);
+    tvListMap.put(alignedTVList, alignedTVList.rowCount());
     return tvListMap;
   }
 
@@ -808,7 +812,6 @@ public class AlignedTVListIteratorTest {
       AlignedTVList alignedTVList =
           AlignedTVList.newAlignedList(
               Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN));
-      int rowCount = 0;
       long start = timeRange.getMin();
       long end = timeRange.getMax();
       List<Long> timestamps = new ArrayList<>((int) (end - start + 1));
@@ -826,9 +829,8 @@ public class AlignedTVListIteratorTest {
         }
         alignedTVList.putAlignedValue(
             timestamp, new Object[] {timestamp, timestamp % 2 == 0, isLast});
-        rowCount++;
       }
-      tvListMap.put(alignedTVList, rowCount);
+      tvListMap.put(alignedTVList, alignedTVList.rowCount());
     }
     return tvListMap;
   }

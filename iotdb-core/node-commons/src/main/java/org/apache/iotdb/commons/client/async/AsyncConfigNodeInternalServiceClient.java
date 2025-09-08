@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
@@ -41,6 +43,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncConfigNodeInternalServiceClient.class);
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private long originalTimeout = -1;
 
@@ -57,8 +60,17 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
     super(
         property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(
-            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+        commonConfig.isEnableInternalSSL()
+            ? TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(),
+                endpoint.getPort(),
+                property.getConnectionTimeoutMs(),
+                commonConfig.getKeyStorePath(),
+                commonConfig.getKeyStorePwd(),
+                commonConfig.getTrustStorePath(),
+                commonConfig.getTrustStorePwd())
+            : TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;

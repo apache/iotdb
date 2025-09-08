@@ -25,6 +25,8 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.apache.thrift.transport.layered.TFramedTransport;
 
+import java.net.SocketTimeoutException;
+
 // https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
 public class TElasticFramedTransport extends TTransport {
 
@@ -113,8 +115,19 @@ public class TElasticFramedTransport extends TTransport {
       return got;
     }
 
-    // Read another frame of data
-    readFrame();
+    try {
+      // Read another frame of data
+      readFrame();
+    } catch (TTransportException e) {
+      // There is a bug fixed in Thrift 0.15. Some unnecessary error logs may be printed.
+      // See https://issues.apache.org/jira/browse/THRIFT-5411 and
+      // https://github.com/apache/thrift/commit/be20ad7e08fab200391e3eab41acde9da2a4fd07
+      // Adding this workaround to avoid the problem.
+      if (e.getCause() instanceof SocketTimeoutException) {
+        throw new TTransportException(TTransportException.TIMED_OUT, e.getCause());
+      }
+      throw e;
+    }
     return readBuffer.read(buf, off, len);
   }
 

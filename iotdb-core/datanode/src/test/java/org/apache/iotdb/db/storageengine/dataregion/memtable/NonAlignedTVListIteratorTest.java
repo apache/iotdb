@@ -497,9 +497,15 @@ public class NonAlignedTVListIteratorTest {
     List<Statistics<? extends Serializable>> pageStatisticsList = chunk.getPageStatisticsList();
     int count = 0;
     long offset = paginationController.getCurOffset();
+    if (!scanOrder.isAscending()) {
+      Collections.reverse(pageStatisticsList);
+    }
     for (Statistics<? extends Serializable> statistics : pageStatisticsList) {
-      memPointIterator.setCurrentPageTimeRange(
-          new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
+      TimeRange currentTimeRange =
+          (statistics.getStartTime() <= statistics.getEndTime())
+              ? new TimeRange(statistics.getStartTime(), statistics.getEndTime())
+              : null;
+      memPointIterator.setCurrentPageTimeRange(currentTimeRange);
       while (memPointIterator.hasNextBatch()) {
         TsBlock tsBlock = memPointIterator.nextBatch();
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -512,6 +518,7 @@ public class NonAlignedTVListIteratorTest {
             count++;
           }
           long currentTimestamp = tsBlock.getTimeByIndex(i);
+          Assert.assertTrue(currentTimeRange.contains(currentTimestamp));
           long value = tsBlock.getColumn(0).getLong(i);
           Assert.assertEquals(currentTimestamp, value);
           if (globalTimeFilter != null) {
@@ -582,7 +589,6 @@ public class NonAlignedTVListIteratorTest {
 
   private static Map<TVList, Integer> buildNonAlignedSingleTvListMap(List<TimeRange> timeRanges) {
     TVList tvList = TVList.newList(TSDataType.INT64);
-    int rowCount = 0;
     for (TimeRange timeRange : timeRanges) {
       long start = timeRange.getMin();
       long end = timeRange.getMax();
@@ -599,11 +605,10 @@ public class NonAlignedTVListIteratorTest {
           }
         }
         tvList.putLong(timestamp, timestamp);
-        rowCount++;
       }
     }
     Map<TVList, Integer> tvListMap = new HashMap<>();
-    tvListMap.put(tvList, rowCount);
+    tvListMap.put(tvList, tvList.rowCount());
     return tvListMap;
   }
 
@@ -611,7 +616,6 @@ public class NonAlignedTVListIteratorTest {
     Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
     for (TimeRange timeRange : timeRanges) {
       TVList tvList = TVList.newList(TSDataType.INT64);
-      int rowCount = 0;
       long start = timeRange.getMin();
       long end = timeRange.getMax();
       List<Long> timestamps = new ArrayList<>((int) (end - start + 1));
@@ -621,9 +625,8 @@ public class NonAlignedTVListIteratorTest {
       Collections.shuffle(timestamps);
       for (Long timestamp : timestamps) {
         tvList.putLong(timestamp, timestamp);
-        rowCount++;
       }
-      tvListMap.put(tvList, rowCount);
+      tvListMap.put(tvList, tvList.rowCount());
     }
     return tvListMap;
   }

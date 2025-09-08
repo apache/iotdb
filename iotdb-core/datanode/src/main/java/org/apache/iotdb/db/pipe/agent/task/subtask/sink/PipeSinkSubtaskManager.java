@@ -114,7 +114,6 @@ public class PipeSinkSubtaskManager {
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
-
       final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
