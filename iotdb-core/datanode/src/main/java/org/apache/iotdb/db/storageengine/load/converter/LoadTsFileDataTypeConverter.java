@@ -77,21 +77,6 @@ public class LoadTsFileDataTypeConverter {
         new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
   }
 
-  public LoadTsFileDataTypeConverter(
-      final MPPQueryContext context,
-      final boolean isGeneratedByPipe,
-      final boolean needConvertType) {
-    this.context = context;
-    this.isGeneratedByPipe = isGeneratedByPipe;
-
-    tableStatementDataTypeConvertExecutionVisitor =
-        new LoadTableStatementDataTypeConvertExecutionVisitor(
-            this::executeForTableModel, needConvertType);
-    treeStatementDataTypeConvertExecutionVisitor =
-        new LoadTreeStatementDataTypeConvertExecutionVisitor(
-            this::executeForTreeModel, needConvertType);
-  }
-
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {
     try {
       return loadTsFileTableStatement.accept(

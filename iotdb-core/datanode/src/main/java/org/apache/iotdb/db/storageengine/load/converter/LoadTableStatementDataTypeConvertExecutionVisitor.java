@@ -49,8 +49,6 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTableStatementDataTypeConvertExecutionVisitor.class);
 
-  private boolean needConvertType = true;
-
   @FunctionalInterface
   public interface StatementExecutor {
     // databaseName can NOT be null
@@ -61,12 +59,6 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
 
   public LoadTableStatementDataTypeConvertExecutionVisitor(StatementExecutor statementExecutor) {
     this.statementExecutor = statementExecutor;
-  }
-
-  public LoadTableStatementDataTypeConvertExecutionVisitor(
-      StatementExecutor statementExecutor, boolean needConvertType) {
-    this.statementExecutor = statementExecutor;
-    this.needConvertType = needConvertType;
   }
 
   @Override
@@ -109,9 +101,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
                   loadTsFileStatement.isConvertOnTypeMismatch());
 
           if (!handleTSStatus(
-              executeInsertTabletWithRetry(statement, databaseName),
-              loadTsFileStatement,
-              needConvertType)) {
+              executeInsertTabletWithRetry(statement, databaseName), loadTsFileStatement)) {
             return Optional.empty();
           }
         }

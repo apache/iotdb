@@ -61,7 +61,6 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           .getLoadTsFileTabletConversionBatchMemorySizeInBytes();
 
   private final StatementExecutor statementExecutor;
-  private final boolean needConvertType = true;
 
   @FunctionalInterface
   public interface StatementExecutor {
@@ -70,11 +69,6 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
   public LoadTreeStatementDataTypeConvertExecutionVisitor(
       final StatementExecutor statementExecutor) {
-    this.statementExecutor = statementExecutor;
-  }
-
-  public LoadTreeStatementDataTypeConvertExecutionVisitor(
-      final StatementExecutor statementExecutor, boolean needConvertType) {
     this.statementExecutor = statementExecutor;
   }
 
@@ -122,7 +116,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             tabletRawReqs.clear();
             tabletRawReqSizes.clear();
 
-            if (!handleTSStatus(result, loadTsFileStatement, needConvertType)) {
+            if (!handleTSStatus(result, loadTsFileStatement)) {
               return Optional.empty();
             }
 
@@ -149,7 +143,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           tabletRawReqs.clear();
           tabletRawReqSizes.clear();
 
-          if (!handleTSStatus(result, loadTsFileStatement, needConvertType)) {
+          if (!handleTSStatus(result, loadTsFileStatement)) {
             return Optional.empty();
           }
         } catch (final Exception e) {
@@ -225,8 +219,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     return result;
   }
 
-  public static boolean handleTSStatus(
-      final TSStatus result, final Object loadTsFileStatement, final boolean needConvertType) {
+  public static boolean handleTSStatus(final TSStatus result, final Object loadTsFileStatement) {
     if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
