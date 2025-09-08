@@ -95,6 +95,7 @@ class BaseLogger:
             ) -> str:
                 # to avoid outer variable late binding
                 base, ext = os.path.splitext(internal_file_name)
+                base = base.replace("_", "-")
                 base_log_dir = os.path.dirname(default_name)
                 suffix = default_name.rsplit(".", 1)[-1]  # e.g. 2025-08-01_13-45
                 digits = re.sub(r"[-_]", "", suffix)
