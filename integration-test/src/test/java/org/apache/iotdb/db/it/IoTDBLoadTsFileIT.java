@@ -86,6 +86,10 @@ public class IoTDBLoadTsFileIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
     EnvFactory.getEnv()
         .getConfig()
+        .getCommonConfig()
+        .setDatanodeMemoryProportion("100:1000:100:100:100:100");
+    EnvFactory.getEnv()
+        .getConfig()
         .getDataNodeConfig()
         .setConnectionTimeoutInMS(connectionTimeoutInMS)
         .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(loadTsFileAnalyzeSchemaMemorySizeInBytes);
