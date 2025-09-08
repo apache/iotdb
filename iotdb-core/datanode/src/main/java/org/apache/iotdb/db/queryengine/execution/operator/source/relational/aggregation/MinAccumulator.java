@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -223,11 +224,13 @@ public class MinAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        if (statistics[0].getMinValue() instanceof Binary) {
-          updateBinaryMinValue((Binary) statistics[0].getMinValue());
-        } else {
-          updateBinaryMinValue(
-              new Binary(String.valueOf(statistics[0].getMinValue()), StandardCharsets.UTF_8));
+        if (!(statistics[0] instanceof BinaryStatistics)) {
+          if (statistics[0].getMinValue() instanceof Binary) {
+            updateBinaryMinValue((Binary) statistics[0].getMinValue());
+          } else {
+            updateBinaryMinValue(
+                new Binary(String.valueOf(statistics[0].getMinValue()), StandardCharsets.UTF_8));
+          }
         }
         break;
       case BOOLEAN:

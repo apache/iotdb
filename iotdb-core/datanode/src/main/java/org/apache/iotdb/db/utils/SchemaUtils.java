@@ -27,14 +27,19 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -408,5 +413,116 @@ public class SchemaUtils {
       }
       i++;
     }
+  }
+
+  public static AbstractAlignedChunkMetadata rewriteAlignedChunkMetadataStatistics(
+      AbstractAlignedChunkMetadata alignedChunkMetadata, TSDataType targetDataType) {
+    List<IChunkMetadata> newValueChunkMetadataList = new ArrayList<>();
+    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
+      newChunkMetadata.setTsDataType(targetDataType);
+      Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
+      switch (valueChunkMetadata.getDataType()) {
+        case INT32:
+        case DATE:
+        case INT64:
+        case TIMESTAMP:
+        case FLOAT:
+        case DOUBLE:
+        case BOOLEAN:
+          if (targetDataType == TSDataType.STRING) {
+            Binary[] binaryValues = new Binary[4];
+            binaryValues[0] =
+                new Binary(
+                    valueChunkMetadata.getStatistics().getFirstValue().toString(),
+                    StandardCharsets.UTF_8);
+            binaryValues[1] =
+                new Binary(
+                    valueChunkMetadata.getStatistics().getLastValue().toString(),
+                    StandardCharsets.UTF_8);
+            binaryValues[2] =
+                new Binary(
+                    valueChunkMetadata.getStatistics().getMinValue().toString(),
+                    StandardCharsets.UTF_8);
+            binaryValues[3] =
+                new Binary(
+                    valueChunkMetadata.getStatistics().getMaxValue().toString(),
+                    StandardCharsets.UTF_8);
+            long[] longValues = new long[2];
+            longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
+            longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
+            statistics.update(longValues, binaryValues, binaryValues.length);
+          } else if (targetDataType == TSDataType.TEXT) {
+            Binary[] binaryValues = new Binary[2];
+            binaryValues[0] =
+                new Binary(
+                    valueChunkMetadata.getStatistics().getMinValue().toString(),
+                    StandardCharsets.UTF_8);
+            binaryValues[1] =
+                new Binary(
+                    valueChunkMetadata.getStatistics().getMaxValue().toString(),
+                    StandardCharsets.UTF_8);
+            long[] longValues = new long[2];
+            longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
+            longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
+            statistics.update(longValues, binaryValues, binaryValues.length);
+          } else {
+            statistics = valueChunkMetadata.getStatistics();
+          }
+          break;
+        case STRING:
+          if (targetDataType == TSDataType.TEXT) {
+            Binary[] binaryValues = new Binary[2];
+            binaryValues[0] =
+                new Binary(
+                    Arrays.asList(TSDataType.TEXT, TSDataType.BLOB)
+                            .contains(valueChunkMetadata.getDataType())
+                        ? ""
+                        : valueChunkMetadata.getStatistics().getMinValue().toString(),
+                    StandardCharsets.UTF_8);
+            binaryValues[1] =
+                new Binary(
+                    Arrays.asList(TSDataType.TEXT, TSDataType.BLOB)
+                            .contains(valueChunkMetadata.getDataType())
+                        ? ""
+                        : valueChunkMetadata.getStatistics().getMaxValue().toString(),
+                    StandardCharsets.UTF_8);
+            long[] longValues = new long[2];
+            longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
+            longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
+            statistics.update(longValues, binaryValues, binaryValues.length);
+          } else {
+            statistics = valueChunkMetadata.getStatistics();
+          }
+          break;
+        case TEXT:
+        case BLOB:
+          if (targetDataType == TSDataType.STRING) {
+            Binary[] binaryValues = new Binary[2];
+            binaryValues[0] =
+                new Binary(
+                    valueChunkMetadata.getStatistics().getMinValue().toString(),
+                    StandardCharsets.UTF_8);
+            binaryValues[1] =
+                new Binary(
+                    valueChunkMetadata.getStatistics().getMaxValue().toString(),
+                    StandardCharsets.UTF_8);
+            long[] longValues = new long[2];
+            longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
+            longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
+            statistics.update(longValues, binaryValues, binaryValues.length);
+          } else {
+            statistics = valueChunkMetadata.getStatistics();
+          }
+          break;
+        default:
+          break;
+      }
+
+      newChunkMetadata.setStatistics(statistics);
+      newValueChunkMetadataList.add(newChunkMetadata);
+    }
+    return new AlignedChunkMetadata(
+        alignedChunkMetadata.getTimeChunkMetadata(), newValueChunkMetadataList);
   }
 }
