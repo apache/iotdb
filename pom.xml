@@ -129,8 +129,8 @@
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
-        <netty.version>4.1.119.Final</netty.version>
-        <nimbus-jose-jwt.version>9.37.3</nimbus-jose-jwt.version>
+        <netty.version>4.1.126.Final</netty.version>
+        <nimbus-jose-jwt.version>9.37.4</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
         <!-- This was the last version to support Java 8 -->
         <openapi.generator.version>6.6.0</openapi.generator.version>
@@ -146,8 +146,8 @@
     -->
         <ratis.version>3.2.1</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
-        <reactor-netty.version>1.2.8</reactor-netty.version>
-        <reactor.version>3.5.18</reactor.version>
+        <reactor-netty.version>1.2.9</reactor-netty.version>
+        <reactor.version>3.7.9</reactor.version>
         <reflections.version>0.10.2</reflections.version>
         <slf4j.version>2.0.9</slf4j.version>
         <snappy-java.version>1.1.10.5</snappy-java.version>
