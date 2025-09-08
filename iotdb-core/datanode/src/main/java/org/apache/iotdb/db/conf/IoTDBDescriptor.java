@@ -586,7 +586,7 @@ public class IoTDBDescriptor {
                 "degree_of_query_parallelism", Integer.toString(conf.getDegreeOfParallelism()))));
 
     if (conf.getDegreeOfParallelism() <= 0) {
-      conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+      conf.setDegreeOfParallelism(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
     conf.setMergeThresholdOfExplainAnalyze(
@@ -2730,7 +2730,7 @@ public class IoTDBDescriptor {
                 "continuous_query_thread_num",
                 Integer.toString(conf.getContinuousQueryThreadNum()))));
     if (conf.getContinuousQueryThreadNum() <= 0) {
-      conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
+      conf.setContinuousQueryThreadNum(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
