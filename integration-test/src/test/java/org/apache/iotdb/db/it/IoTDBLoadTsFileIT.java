@@ -83,11 +83,13 @@ public class IoTDBLoadTsFileIT {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
         .setConnectionTimeoutInMS(connectionTimeoutInMS)
         .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(loadTsFileAnalyzeSchemaMemorySizeInBytes);
+
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

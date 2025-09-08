@@ -227,12 +227,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
   public static boolean handleTSStatus(
       final TSStatus result, final Object loadTsFileStatement, final boolean needConvertType) {
-    System.out.println(result.getCode());
     if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
-        || (!needConvertType
-            && result.getCode() == TSStatusCode.LOAD_FILE_ERROR.getStatusCode()))) {
+        || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
       LOGGER.warn(
           "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
           loadTsFileStatement,
