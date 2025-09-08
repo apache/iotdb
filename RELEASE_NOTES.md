@@ -18,6 +18,46 @@
     under the License.
 
 -->
+# Apache IoTDB 1.3.5
+
+## Improvements
+- Storage Module: Optimize user password encryption by changing the algorithm to SHA-256
+- ... 
+
+## Bugs
+- Fixed the array out-of-bounds exception in cross-Region aggregate query with align by device
+- Fixed the error in aggregate queries with `order by time + align by device` for single or multiple devices spanning across Regions
+- Fixed the "out of memory" error in query with large TEXT objects + align by device + order by time
+- Fixed the issue where the last query with where time > X and time < X was not applied to partitioned table fetching, resulting in failure to hit PartitionCache
+- Fixed the error in using change_point function + align by device when single device data spans multiple Regions
+- Fixed the OOM (Out of Memory) issue caused by the asynchronous submission queue of pipeTransferFile
+- Fixed the memory leak issue in pipe password detection
+- For the pipe receiver and during Load, change the behavior of'clear schema cache' to 'update last cache'
+- Optimize the loading speed of TsFile when there are a large number of measuring points and the mods file contains deletions of a large number of measuring points
+- ...
+
+# Apache IoTDB 1.3.4-1
+
+This is a bug-fix version of 1.3.4
+
+- Fix the bug that will remove the data partition table by mistake in case of us/ns time precision and using ttl
+
+# Apache IoTDB 1.3.4
+
+## Features & Improvements
+
+- Data Query: Users can now control the loading of JAR packages via URI for UDF, PipePlugin, Trigger, and AINode through configuration items.
+- Data Query:  Added monitoring for TimeIndex cached during the merge process.
+- System Management: Expanded UDF functions with the addition of the pattern_match function for pattern matching.
+- System Management:The Python session SDK now includes a parameter for connection timeout.
+- System Management:Introduced authorization for cluster management-related operations.
+- System Management:ConfigNode/DataNode now supports scaling down using SQL.
+- System Management:ConfigNode automatically cleans up partition information exceeding the TTL (cleans up every 2 hours).
+- Data Synchronization: Supports specifying authorization information for the receiver on the sender's end.
+- Ecosystem Integration: Supports Kubernetes Operator.
+- Scripts and Tools: The import-data/export-data scripts have been expanded to support new data types (strings, large binary objects, dates, timestamps).
+- Scripts and Tools:The import-data/export-data scripts have been iterated to support importing and exporting data in three formats: TsFile, CSV, and SQL.
+  ...
 
 # Apache IoTDB 1.3.3
 
