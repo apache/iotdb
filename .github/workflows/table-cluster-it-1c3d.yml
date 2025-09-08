@@ -56,6 +56,9 @@ jobs:
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
+          -Dit.test=IoTDBDistinctTagIT \
+          -DfailIfNoTests=false \
+          -Dfailsafe.failIfNoSpecifiedTests=false \
           -pl integration-test \
           -am -PTableClusterIT
       - name: Upload Artifact
