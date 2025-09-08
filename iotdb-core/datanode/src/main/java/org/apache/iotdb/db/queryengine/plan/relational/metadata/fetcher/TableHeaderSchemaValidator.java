@@ -116,13 +116,13 @@ public class TableHeaderSchemaValidator {
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     // first round validate, check existing schema
     if (table == null) {
-      // TODO table metadata: authority check for table create
       // auto create missing table
       // it's ok that many write requests concurrently auto create same table, the thread safety
       // will be guaranteed by ProcedureManager.createTable in CN
       if (allowCreateTable && isAutoCreateSchemaEnabled) {
         autoCreateTable(context, database, tableSchema);
-        table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+        table =
+            DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName(), false);
         if (table == null) {
           throw new IllegalStateException(
               "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");

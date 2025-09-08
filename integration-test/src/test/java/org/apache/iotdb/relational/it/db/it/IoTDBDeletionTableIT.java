@@ -280,7 +280,7 @@ public class IoTDBDeletionTableIT {
         statement.execute("DELETE FROM vehicleNonExist");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: Table vehiclenonexist not found", e.getMessage());
+        assertEquals("550: Table 'test.vehiclenonexist' does not exist.", e.getMessage());
       }
 
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle1")) {

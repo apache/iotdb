@@ -101,7 +101,7 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
-    return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
+    return tableCache.getTable(name.getDatabaseName(), name.getObjectName(), false) != null;
   }
 
   @Override
@@ -110,7 +110,7 @@ public class TableMetadataImpl implements Metadata {
     final String databaseName = name.getDatabaseName();
     final String tableName = name.getObjectName();
 
-    final TsTable table = tableCache.getTable(databaseName, tableName);
+    final TsTable table = tableCache.getTable(databaseName, tableName, false);
     if (table == null) {
       return Optional.empty();
     }

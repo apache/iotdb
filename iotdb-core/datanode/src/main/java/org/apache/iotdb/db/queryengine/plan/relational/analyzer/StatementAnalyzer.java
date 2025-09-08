@@ -563,9 +563,6 @@ public class StatementAnalyzer {
           new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
-      if (Objects.isNull(table)) {
-        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTableName());
-      }
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
       node.parseModEntries(table);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
@@ -4457,10 +4454,8 @@ public class StatementAnalyzer {
       queryContext.setQueryType(QueryType.WRITE);
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
-      if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable()))) {
-        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTable());
-      }
+      // Check if the table exists
+      DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable());
       return null;
     }
 
