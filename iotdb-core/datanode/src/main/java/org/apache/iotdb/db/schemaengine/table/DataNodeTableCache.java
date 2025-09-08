@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -291,21 +292,29 @@ public class DataNodeTableCache implements ITableCache {
 
   public TsTable getTableInWrite(final String database, final String tableName) {
     final TsTable result = getTableInCache(database, tableName);
-    return Objects.nonNull(result) ? result : getTable(database, tableName);
+    return Objects.nonNull(result) ? result : getTable(database, tableName, false);
+  }
+
+  public TsTable getTable(final String database, final String tableName) {
+    return getTable(database, tableName, true);
   }
 
   /**
    * The following logic can handle the cases when configNode failed to clear some table in {@link
    * #preUpdateTableMap}, due to the failure of "commit" or rollback of "pre-update".
    */
-  public TsTable getTable(String database, final String tableName) {
+  public TsTable getTable(String database, final String tableName, final boolean force) {
     database = PathUtils.unQualifyDatabaseName(database);
     final Map<String, Map<String, Long>> preUpdateTables =
         mayGetTableInPreUpdateMap(database, tableName);
     if (Objects.nonNull(preUpdateTables) && !preUpdateTables.isEmpty()) {
       updateTable(getTablesInConfigNode(preUpdateTables), preUpdateTables);
     }
-    return getTableInCache(database, tableName);
+    final TsTable table = getTableInCache(database, tableName);
+    if (Objects.isNull(table) && force) {
+      TableMetadataImpl.throwTableNotExistsException(database, tableName);
+    }
+    return table;
   }
 
   private Map<String, Map<String, Long>> mayGetTableInPreUpdateMap(
