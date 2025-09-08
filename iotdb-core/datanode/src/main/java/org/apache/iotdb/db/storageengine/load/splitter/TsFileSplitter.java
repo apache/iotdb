@@ -21,7 +21,10 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.exception.load.LoadPartitionExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -65,6 +68,8 @@ import java.util.TreeMap;
 public class TsFileSplitter {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSplitter.class);
 
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
   private final File tsFile;
   private final TsFileDataConsumer consumer;
   private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
@@ -75,6 +80,7 @@ public class TsFileSplitter {
   private IDeviceID curDevice = null;
   private boolean isAligned;
   private int timeChunkIndexOfCurrentValueColumn = 0;
+  private Set<TTimePartitionSlot> timePartitionSlots = new HashSet<>();
 
   // Maintain the number of times the chunk of each measurement appears.
   private Map<String, Integer> valueColumn2TimeChunkIndex = new HashMap<>();
@@ -92,7 +98,7 @@ public class TsFileSplitter {
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition()
-      throws IOException, LoadFileException, IllegalStateException {
+      throws IOException, LoadFileException, LoadPartitionExceededException, IllegalStateException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       getAllModification(offset2Deletions);
 
@@ -147,7 +153,7 @@ public class TsFileSplitter {
   }
 
   private void processTimeChunkOrNonAlignedChunk(TsFileSequenceReader reader, byte marker)
-      throws IOException, LoadFileException {
+      throws IOException, LoadFileException, LoadPartitionExceededException {
     long chunkOffset = reader.position();
     timeChunkIndexOfCurrentValueColumn = pageIndex2TimesList.size();
     consumeAllAlignedChunkData(chunkOffset, pageIndex2ChunkData);
@@ -201,7 +207,7 @@ public class TsFileSplitter {
       IChunkMetadata chunkMetadata,
       long chunkOffset,
       ChunkData chunkData)
-      throws IOException, LoadFileException {
+      throws IOException, LoadFileException, LoadPartitionExceededException {
     String measurementId = header.getMeasurementID();
     TTimePartitionSlot timePartitionSlot = chunkData.getTimePartitionSlot();
     Decoder defaultTimeDecoder =
@@ -302,7 +308,7 @@ public class TsFileSplitter {
   }
 
   private void processValueChunk(TsFileSequenceReader reader, byte marker)
-      throws IOException, LoadFileException {
+      throws IOException, LoadFileException, LoadPartitionExceededException {
     long chunkOffset = reader.position();
     IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
     ChunkHeader header = reader.readChunkHeader(marker);
@@ -369,7 +375,8 @@ public class TsFileSplitter {
   }
 
   private void switchToTimeChunkContextOfCurrentMeasurement(
-      TsFileSequenceReader reader, String measurement) throws IOException, LoadFileException {
+      TsFileSequenceReader reader, String measurement)
+      throws IOException, LoadFileException, LoadPartitionExceededException {
     int index = valueColumn2TimeChunkIndex.getOrDefault(measurement, 0);
     if (index != timeChunkIndexOfCurrentValueColumn) {
       consumeAllAlignedChunkData(reader.position(), pageIndex2ChunkData);
@@ -438,7 +445,7 @@ public class TsFileSplitter {
 
   private void consumeAllAlignedChunkData(
       long offset, Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData)
-      throws LoadFileException {
+      throws LoadFileException, LoadPartitionExceededException {
     if (pageIndex2ChunkData.isEmpty()) {
       return;
     }
@@ -454,6 +461,13 @@ public class TsFileSplitter {
       }
     }
     for (AlignedChunkData chunkData : chunkDataMap.keySet()) {
+      timePartitionSlots.add(chunkData.getTimePartitionSlot());
+      if (timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
+        throw new LoadPartitionExceededException(
+            String.format(
+                "Time partition slots size is greater than %s",
+                CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
+      }
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
@@ -465,7 +479,14 @@ public class TsFileSplitter {
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)
-      throws LoadFileException {
+      throws LoadFileException, LoadPartitionExceededException {
+    timePartitionSlots.add(chunkData.getTimePartitionSlot());
+    if (timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
+      throw new LoadPartitionExceededException(
+          String.format(
+              "Time partition slots size is greater than %s",
+              CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
+    }
     if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
       throw new IllegalStateException(
           String.format(
