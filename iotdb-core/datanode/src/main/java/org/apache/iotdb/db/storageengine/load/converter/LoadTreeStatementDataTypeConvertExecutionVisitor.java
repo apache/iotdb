@@ -61,6 +61,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           .getLoadTsFileTabletConversionBatchMemorySizeInBytes();
 
   private final StatementExecutor statementExecutor;
+  private final boolean needConvertType = true;
 
   @FunctionalInterface
   public interface StatementExecutor {
@@ -69,6 +70,11 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
   public LoadTreeStatementDataTypeConvertExecutionVisitor(
       final StatementExecutor statementExecutor) {
+    this.statementExecutor = statementExecutor;
+  }
+
+  public LoadTreeStatementDataTypeConvertExecutionVisitor(
+      final StatementExecutor statementExecutor, boolean needConvertType) {
     this.statementExecutor = statementExecutor;
   }
 
@@ -116,7 +122,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             tabletRawReqs.clear();
             tabletRawReqSizes.clear();
 
-            if (!handleTSStatus(result, loadTsFileStatement)) {
+            if (!handleTSStatus(result, loadTsFileStatement, needConvertType)) {
               return Optional.empty();
             }
 
@@ -143,7 +149,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           tabletRawReqs.clear();
           tabletRawReqSizes.clear();
 
-          if (!handleTSStatus(result, loadTsFileStatement)) {
+          if (!handleTSStatus(result, loadTsFileStatement, needConvertType)) {
             return Optional.empty();
           }
         } catch (final Exception e) {
@@ -219,10 +225,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     return result;
   }
 
-  public static boolean handleTSStatus(final TSStatus result, final Object loadTsFileStatement) {
+  public static boolean handleTSStatus(
+      final TSStatus result, final Object loadTsFileStatement, final boolean needConvertType) {
+    System.out.println(result.getCode());
     if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
+        || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
+        || (!needConvertType
+            && result.getCode() == TSStatusCode.LOAD_FILE_ERROR.getStatusCode()))) {
       LOGGER.warn(
           "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
           loadTsFileStatement,
