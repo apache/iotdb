@@ -335,6 +335,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "grant insert,create on database test2 to user testUser",
           null);
 
+      TableModelUtils.createDataBaseAndTable(receiverEnv, tbName, dbName2);
       TableModelUtils.insertData(dbName2, tbName, 100, 200, senderEnv);
 
       // Will finally pass
