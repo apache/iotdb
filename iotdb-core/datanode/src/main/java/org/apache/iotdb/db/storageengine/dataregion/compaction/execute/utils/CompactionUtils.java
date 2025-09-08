@@ -420,7 +420,7 @@ public class CompactionUtils {
       ModEntry ttlDeletion)
       throws IllegalPathException {
     if (patternTreeMap == null) {
-      return Collections.emptyList();
+      return ttlDeletion == null ? Collections.emptyList() : Collections.singletonList(ttlDeletion);
     }
     PartialPath path = CompactionPathUtils.getPath(deviceID, measurement);
     List<ModEntry> modEntries = patternTreeMap.getOverlapped(path);
