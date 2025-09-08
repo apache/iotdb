@@ -453,7 +453,8 @@ public class TsFileSplitter {
     }
     for (AlignedChunkData chunkData : chunkDataMap.keySet()) {
       timePartitionSlots.add(chunkData.getTimePartitionSlot());
-      if (timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
+      if (deletions.isEmpty()
+          && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
         throw new LoadPartitionExceededException(
             String.format(
                 "Time partition slots size is greater than %s",
@@ -472,7 +473,8 @@ public class TsFileSplitter {
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)
       throws LoadFileException, LoadPartitionExceededException {
     timePartitionSlots.add(chunkData.getTimePartitionSlot());
-    if (timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
+    if (deletions.isEmpty()
+        && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
       throw new LoadPartitionExceededException(
           String.format(
               "Time partition slots size is greater than %s",
