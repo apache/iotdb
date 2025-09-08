@@ -79,11 +79,11 @@ public class MetricConfig {
   private long upTimeInNs = 0;
   private String internalDatabase = "root.__system";
 
-  private boolean enableSSL = false;
-  private String keyStorePath = "";
-  private String keyStorePassword = "";
-  private String trustStorePath = "";
-  private String trustStorePassword = "";
+  private boolean enableSSL = true;
+  private String keyStorePath = "/Users/ht/.keystore";
+  private String keyStorePassword = "123456";
+  private String trustStorePath = "/Users/ht/.truststore";
+  private String trustStorePassword = "123456";
 
   public MetricConfig() {
     // try to get pid of iotdb instance
@@ -95,16 +95,19 @@ public class MetricConfig {
   }
 
   public List<ReporterType> getMetricReporterList() {
+    this.metricReporterList = new ArrayList<>();
+    this.metricReporterList.add(ReporterType.valueOf("PROMETHEUS"));
     return metricReporterList;
   }
 
   public void setMetricReporterList(String metricReporterList) {
     this.metricReporterList = new ArrayList<>();
-    for (String type : metricReporterList.split(",")) {
-      if (type.trim().length() != 0) {
-        this.metricReporterList.add(ReporterType.valueOf(type));
-      }
-    }
+    //    for (String type : metricReporterList.split(",")) {
+    //      if (type.trim().length() != 0) {
+    //        this.metricReporterList.add(ReporterType.valueOf(type));
+    //      }
+    //    }
+    this.metricReporterList.add(ReporterType.valueOf("PROMETHEUS"));
   }
 
   public InternalReporterType getInternalReportType() {

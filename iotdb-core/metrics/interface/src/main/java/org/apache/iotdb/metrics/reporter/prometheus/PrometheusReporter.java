@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.reporter.prometheus;
 
+import io.netty.handler.ssl.ClientAuth;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -309,6 +310,7 @@ public class PrometheusReporter implements Reporter {
     if (sslContextBuilder == null) {
       throw new Exception("Keystore or Truststore is null");
     }
+    sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
     return sslContextBuilder.build();
   }
 
