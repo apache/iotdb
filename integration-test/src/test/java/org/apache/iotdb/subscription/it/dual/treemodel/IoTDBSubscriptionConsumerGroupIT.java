@@ -44,11 +44,11 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.opentest4j.TestAbortedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +64,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
@@ -973,6 +974,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final Map<String, String> expectedHeaderWithResult)
       throws Exception {
     final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final AtomicReference<Throwable> childFailure = new AtomicReference<>();
 
     final List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < consumers.size(); ++i) {
@@ -1037,9 +1039,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   // No need to unsubscribe
                 } catch (final Exception e) {
                   e.printStackTrace();
-                  // Avoid failure
-                  Assume.assumeTrue(
-                      String.format("Skipping test due to unexpected exception: %s", e), false);
+                  // Store any thrown exception (including TestAbortedException)
+                  childFailure.set(e);
                 } finally {
                   LOGGER.info("consumer {} exiting...", consumers.get(index));
                 }
@@ -1057,6 +1058,12 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         // Keep retrying if there are execution failures
         AWAIT.untilAsserted(
             () -> {
+              final Throwable thrown = childFailure.get();
+              if (thrown instanceof TestAbortedException) {
+                throw thrown;
+              } else if (thrown != null) {
+                throw new RuntimeException("Worker thread failure", thrown);
+              }
               // potential stuck
               if (System.currentTimeMillis() - currentTime[0] > 60_000L) {
                 for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
