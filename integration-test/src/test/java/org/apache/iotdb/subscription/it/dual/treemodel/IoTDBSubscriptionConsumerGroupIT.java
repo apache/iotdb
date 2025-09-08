@@ -1103,6 +1103,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               "insert into root.%s.topic1(time, s) values (%s, 1)", consumerGroupId, timestamp);
       LOGGER.info(sql);
       TestUtils.executeNonQuery(receiverEnv, sql, null);
+      return;
     }
 
     if ("root.topic2.s".equals(columnName)) {
@@ -1111,6 +1112,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               "insert into root.%s.topic2(time, s) values (%s, 3)", consumerGroupId, timestamp);
       LOGGER.info(sql);
       TestUtils.executeNonQuery(receiverEnv, sql, null);
+      return;
     }
 
     LOGGER.warn("unexpected column name: {}", columnName);
