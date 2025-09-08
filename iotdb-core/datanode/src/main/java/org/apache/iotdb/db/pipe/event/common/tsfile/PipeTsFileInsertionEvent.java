@@ -298,6 +298,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return resource.getTimePartition();
   }
 
+  public long getExtractTime() {
+    return extractTime;
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
