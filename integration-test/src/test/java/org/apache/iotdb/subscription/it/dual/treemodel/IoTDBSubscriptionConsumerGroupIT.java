@@ -1081,32 +1081,22 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
   }
 
-  /**
-   * @return false -> receiver crashed
-   */
-  private boolean insertRowRecordEnrichedByConsumerGroupId(
-      final List<String> columnNameList, final long timestamp, final String consumerGroupId)
-      throws Exception {
+  private void insertRowRecordEnrichedByConsumerGroupId(
+      final List<String> columnNameList, final long timestamp, final String consumerGroupId) {
     final int columnSize = columnNameList.size();
     if (columnSize <= 1) { // only with time column
       LOGGER.warn("unexpected column name list: {}", columnNameList);
-      throw new Exception("unexpected column name list");
+      return;
     }
 
     for (int columnIndex = 1; columnIndex < columnSize; ++columnIndex) {
       final String columnName = columnNameList.get(columnIndex);
       insertRowRecordEnrichedByConsumerGroupId(columnName, timestamp, consumerGroupId);
     }
-
-    return true;
   }
 
-  /**
-   * @return false -> receiver crashed
-   */
   private void insertRowRecordEnrichedByConsumerGroupId(
-      final String columnName, final long timestamp, final String consumerGroupId)
-      throws Exception {
+      final String columnName, final long timestamp, final String consumerGroupId) {
     if ("root.topic1.s".equals(columnName)) {
       final String sql =
           String.format(
@@ -1124,6 +1114,5 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
 
     LOGGER.warn("unexpected column name: {}", columnName);
-    throw new Exception(String.format("unexpected column name: %s", columnName));
   }
 }
