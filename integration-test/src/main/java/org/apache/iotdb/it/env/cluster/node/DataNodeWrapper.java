@@ -157,8 +157,16 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return getNodePath() + File.separator + "data";
   }
 
+  public String getDataNodeDir() {
+    return getDataDir() + File.separator + "datanode";
+  }
+
   public String getWalDir() {
-    return getDataDir() + File.separator + "datanode" + File.separator + "wal";
+    return getDataNodeDir() + File.separator + "wal";
+  }
+
+  public String getSystemDir() {
+    return getDataNodeDir() + File.separator + "system";
   }
 
   @Override

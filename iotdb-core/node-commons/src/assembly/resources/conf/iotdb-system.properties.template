@@ -438,12 +438,12 @@ dn_metric_internal_reporter_type=MEMORY
 ### SSL Configuration
 ####################
 
-# Does dn_rpc_port enable SSL
+# Whether enable SSL for thrift client connections
 # effectiveMode: restart
 # Datatype: boolean
 enable_thrift_ssl=false
 
-# Rest Service enabled SSL
+# Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean
 enable_https=false
@@ -458,6 +458,17 @@ key_store_path=
 # effectiveMode: restart
 # Datatype: String
 key_store_pwd=
+
+# SSL trust store path
+# linux e.g. /home/iotdb/server.truststore (absolute path) or server.truststore (relative path)
+# windows e.g. C:\\iotdb\\server.truststore (absolute path) or server.truststore (relative path)
+# effectiveMode: restart
+trust_store_path=
+
+# SSL trust store password
+# effectiveMode: restart
+# Datatype: String
+trust_store_pwd=
 
 ####################
 ### Connection Configuration
@@ -588,15 +599,6 @@ cache_init_num=10
 # effectiveMode: restart
 # Datatype: boolean
 client_auth=false
-
-# SSL trust store path
-# effectiveMode: restart
-trust_store_path=""
-
-# SSL trust store password.
-# effectiveMode: restart
-# Datatype: String
-trust_store_pwd=""
 
 # SSL timeout (in seconds)
 # effectiveMode: restart

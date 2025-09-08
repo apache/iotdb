@@ -67,9 +67,9 @@
                             <directory>dist</directory>
                         </fileset>
                         <fileset>
-                            <directory>ainode</directory>
+                            <directory>iotdb</directory>
                             <includes>
-                                <include>conf/</include>
+                                <include>ainode/conf/</include>
                                 <include>thrift/</include>
                             </includes>
                         </fileset>
@@ -138,7 +138,7 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${basedir}/ainode/thrift/</outputDirectory>
+                            <outputDirectory>${basedir}/iotdb/thrift/</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${basedir}/../../iotdb-protocol/thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>

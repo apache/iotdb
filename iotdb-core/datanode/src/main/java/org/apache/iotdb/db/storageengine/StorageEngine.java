@@ -67,6 +67,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogg
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
@@ -770,6 +771,7 @@ public class StorageEngine implements IService {
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
+      LOGGER.info("Removing data region {}", regionId);
       region.markDeleted();
       try {
         region.abortCompaction();
@@ -813,6 +815,8 @@ public class StorageEngine implements IService {
         WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
         WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
         FileMetrics.getInstance().deleteRegion(region.getDatabaseName(), region.getDataRegionId());
+        CompressionRatio.getInstance().removeDataRegionRatio(String.valueOf(regionId.getId()));
+        LOGGER.info("Removed data region {}", regionId);
       } catch (Exception e) {
         LOGGER.error(
             "Error occurs when deleting data region {}-{}",

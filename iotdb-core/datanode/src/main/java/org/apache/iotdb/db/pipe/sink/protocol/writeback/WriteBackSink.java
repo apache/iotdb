@@ -428,7 +428,8 @@ public class WriteBackSink implements PipeConnector {
   }
 
   private void autoCreateDatabaseIfNecessary(final String database) {
-    if (ALREADY_CREATED_DATABASES.contains(database)) {
+    if (ALREADY_CREATED_DATABASES.contains(database)
+        || !IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
       return;
     }
 

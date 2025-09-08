@@ -25,12 +25,17 @@ import org.apache.tsfile.enums.TSDataType;
 public class FirstDescAccumulator extends FirstAccumulator {
 
   public FirstDescAccumulator(TSDataType seriesDataType) {
-    super(seriesDataType);
+    super(seriesDataType, false);
   }
 
   @Override
   public boolean hasFinalResult() {
     return false;
+  }
+
+  @Override
+  public TableAccumulator copy() {
+    return new FirstDescAccumulator(seriesDataType);
   }
 
   @Override
