@@ -32,25 +32,13 @@
         <!-- These dependencies are just added to ensure the other modules are built first -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>2.0.6-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
             <version>2.0.6-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>2.0.6-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-ainode</artifactId>
+            <artifactId>iotdb-python-api</artifactId>
             <version>2.0.6-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
@@ -70,7 +58,12 @@
                             <directory>iotdb</directory>
                             <includes>
                                 <include>ainode/conf/</include>
+                                <include>dbapi/</include>
+                                <include>sqlalchemy/</include>
+                                <include>template/</include>
                                 <include>thrift/</include>
+                                <include>tsfile/</include>
+                                <include>utils/</include>
                             </includes>
                         </fileset>
                         <fileset>
@@ -132,26 +125,16 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>copy-thrift-python-resources</id>
+                        <id>copy-python-dependencies</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${basedir}/iotdb/thrift/</outputDirectory>
+                            <outputDirectory>${basedir}/iotdb/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
-                                </resource>
-                                <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-confignode/target/generated-sources-python/iotdb/thrift/</directory>
-                                </resource>
-                                <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-ainode/target/generated-sources-python/iotdb/thrift/</directory>
-                                </resource>
-                                <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-datanode/target/generated-sources-python/iotdb/thrift/</directory>
-                                    <excludes>rpc/**</excludes>
+                                    <directory>${basedir}/../../iotdb-client/client-py/iotdb</directory>
                                 </resource>
                             </resources>
                         </configuration>

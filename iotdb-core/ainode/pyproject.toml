@@ -34,12 +34,21 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 include = [
+    {path = "iotdb/*", format = "wheel"},
+    {path = "iotdb/dbapi/*", format = "wheel"},
+    {path = "iotdb/sqlalchemy/*", format = "wheel"},
+    {path = "iotdb/template/*", format = "wheel"},
     {path = "iotdb/thrift/*", format = "wheel"},
+    {path = "iotdb/thrift/ainode/*", format = "wheel"},
     {path = "iotdb/thrift/common/*", format = "wheel"},
     {path = "iotdb/thrift/confignode/*", format = "wheel"},
     {path = "iotdb/thrift/datanode/*", format = "wheel"},
-    {path = "iotdb/thrift/ainode/*", format = "wheel"},
-    {path = "iotdb/ainode/conf/*", format = "wheel"},
+    {path = "iotdb/thrift/rpc/*", format = "wheel"},
+    {path = "iotdb/tsfile/*", format = "wheel"},
+    {path = "iotdb/tsfile/common/*", format = "wheel"},
+    {path = "iotdb/tsfile/common/constant/*", format = "wheel"},
+    {path = "iotdb/tsfile/utils/*", format = "wheel"},
+    {path = "iotdb/utils/*", format = "wheel"},
 ]
 packages = [
     { include = "iotdb/ainode" }
@@ -59,7 +68,6 @@ sktime = "0.38.4"
 scikit-learn = "^1.4"
 statsmodels = "^0.14"
 hmmlearn = "^0.3.0"
-apache-iotdb = "2.0.4.dev0"
 einops = "^0.8.1"
 safetensors = "^0.5.1"
 huggingface_hub = "^0.30.1"
