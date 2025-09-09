@@ -26,25 +26,19 @@ import org.gdal.gdal.Driver;
 import org.gdal.gdal.gdal;
 import org.gdal.gdalconst.gdalconstConstants;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class CompressedTiffModelProcessor extends ModelProcessor {
   private static final Driver DRIVER;
   private static final String VIRTUAL_FILE_PATH_PREFIX = "/vsimem";
   private static final String VIRTUAL_FILE_PATH_SUFFIX = ".tif";
-  // ---- 写入压缩配置（核心配置）----
-  private static final String COMPRESS = "ZSTD"; // 备选："DEFLATE" / "LZW"
-  private static final int ZSTD_LEVEL = 3; // 仅 ZSTD 有效，可调 1~22
-  private static final String PREDICTOR = "2"; // 浮点差分
-  private static final int ROWS_PER_STRIP = 12; // 行随机读最佳；若 strip 过多可设 8/16/32
-
-  // 固定哨兵值作为 NoData（兼容面好于直接写 NaN）
-  private static final float NODATA_SENTINEL = -3.4028235e38f;
+  // Specifying compression options
+  private static String compressOption = "COMPRESS=LZW";
+  // Specifying block x size options
+  private static String blockXSize = "BLOCKXSIZE=256";
+  // Specifying block y size options
+  private static String blockYSize = "BLOCKYSIZE=256";
 
   static {
     gdal.AllRegister();
-    gdal.SetConfigOption("GDAL_NUM_THREADS", "ALL_CPUS");
     DRIVER = gdal.GetDriverByName("GTiff");
     if (DRIVER == null) {
       throw new RuntimeException("Failed to get GTiff driver: " + gdal.GetLastErrorMsg());
@@ -62,51 +56,31 @@ public class CompressedTiffModelProcessor extends ModelProcessor {
   }
 
   private byte[] write(String filePath, float[] values, int width, int height) {
-    if (values == null || values.length != (long) width * height) {
-      throw new IllegalArgumentException("values length must be width*height");
-    }
+    // floating point data should use predictor 2 (for difference prediction), and use block storage
+    // (recommended for LZW)
+    String[] options =
+        new String[] {compressOption, "PREDICTOR=2", "TILED=YES", blockXSize, blockYSize};
 
-    List<String> opts = new ArrayList<>();
-    opts.add("BIGTIFF=IF_SAFER");
-    opts.add("TILED=NO"); // 明确 strip 组织
-    opts.add("BLOCKYSIZE=" + ROWS_PER_STRIP); // rows-per-strip
-    opts.add("PREDICTOR=" + PREDICTOR);
-    opts.add("NUM_THREADS=ALL_CPUS");
-    if ("ZSTD".equalsIgnoreCase(COMPRESS)) {
-      opts.add("COMPRESS=ZSTD");
-      opts.add("ZSTD_LEVEL=" + ZSTD_LEVEL);
-    } else if ("DEFLATE".equalsIgnoreCase(COMPRESS)) {
-      opts.add("COMPRESS=DEFLATE");
-    } else if ("LZW".equalsIgnoreCase(COMPRESS)) {
-      opts.add("COMPRESS=LZW");
-    } else {
-      throw new IllegalArgumentException("Unsupported COMPRESS=" + COMPRESS);
-    }
-    String[] options = opts.toArray(new String[0]);
-
-    Dataset ds = null;
+    Dataset dataset = null;
     try {
-      ds = DRIVER.Create(filePath, width, height, 1, gdalconstConstants.GDT_Float32, options);
-      if (ds == null) {
+      // Create dataset with specified options
+      dataset = DRIVER.Create(filePath, width, height, 1, gdalconstConstants.GDT_Float32, options);
+
+      if (dataset == null) {
         throw new RuntimeException("Failed to create dataset: " + gdal.GetLastErrorMsg());
       }
-      Band band = ds.GetRasterBand(1);
 
-      // 统一设置 NoData（固定哨兵值）
-      band.SetNoDataValue(NODATA_SENTINEL);
-
-      // 顺序写整幅数据（strip 组织下吞吐较好）
-      int err = band.WriteRaster(0, 0, width, height, values);
-      if (err != gdalconstConstants.CE_None) {
-        throw new RuntimeException("Failed to write data: " + gdal.GetLastErrorMsg());
+      Band band = dataset.GetRasterBand(1);
+      int result = band.WriteRaster(0, 0, width, height, values);
+      if (result != gdalconstConstants.CE_None) {
+        throw new RuntimeException("Failed to write data to tiff file: " + gdal.GetLastErrorMsg());
       }
-
       band.FlushCache();
-      ds.FlushCache();
+      dataset.FlushCache();
       return VsiGdalNative.vsiGetMemFileBuffer(filePath, true);
     } finally {
-      if (ds != null) {
-        ds.delete();
+      if (dataset != null) {
+        dataset.delete();
       }
     }
   }
@@ -124,33 +98,23 @@ public class CompressedTiffModelProcessor extends ModelProcessor {
 
   @Override
   public float[] readAll(String filePath) {
-    Dataset ds = gdal.OpenShared(filePath, gdalconstConstants.GA_ReadOnly);
-    if (ds == null) {
-      throw new RuntimeException("Failed to open: " + gdal.GetLastErrorMsg());
+    Dataset dataset = gdal.Open(filePath, gdalconstConstants.GA_ReadOnly);
+    if (dataset == null) {
+      throw new RuntimeException("Failed to open tiff file: " + gdal.GetLastErrorMsg());
     }
     try {
-      Band band = ds.GetRasterBand(1);
-      int w = band.getXSize(), h = band.getYSize();
-      float[] out = new float[(int) ((long) w * h)];
-      int err = band.ReadRaster(0, 0, w, h, gdalconstConstants.GDT_Float32, out);
-      if (err != gdalconstConstants.CE_None) {
-        throw new RuntimeException("ReadRaster(all) failed: " + gdal.GetLastErrorMsg());
+      Band band = dataset.GetRasterBand(1);
+      if (band == null) {
+        throw new RuntimeException(
+            "Failed to get raster band from dataset" + gdal.GetLastErrorMsg());
       }
-
-      // NoData -> NaN
-      Double[] nd = new Double[1];
-      band.GetNoDataValue(nd);
-      float nodata = (nd[0] == null || Double.isNaN(nd[0])) ? Float.NaN : nd[0].floatValue();
-      if (!Float.isNaN(nodata)) {
-        for (int i = 0; i < out.length; i++) {
-          if (out[i] == nodata) {
-            out[i] = Float.NaN;
-          }
-        }
-      }
-      return out;
+      int width = band.getXSize();
+      int height = band.getYSize();
+      float[] result = new float[width * height];
+      band.ReadRaster(0, 0, width, height, gdalconstConstants.GDT_Float32, result);
+      return result;
     } finally {
-      ds.delete();
+      dataset.delete();
     }
   }
 
