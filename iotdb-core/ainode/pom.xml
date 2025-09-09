@@ -38,6 +38,24 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-confignode</artifactId>
+            <version>2.0.6-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
+            <version>2.0.6-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-ainode</artifactId>
+            <version>2.0.6-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-python-api</artifactId>
             <version>2.0.6-SNAPSHOT</version>
             <scope>provided</scope>
@@ -329,6 +347,9 @@
                                 <usedDependency>org.apache.iotdb:iotdb-thrift-confignode</usedDependency>
                                 <usedDependency>org.apache.iotdb:iotdb-thrift-ainode</usedDependency>
                             </usedDependencies>
+                            <ignoredUnusedDeclaredDependencies>
+                                <ignoredUnusedDeclaredDependency>org.apache.iotdb:iotdb-python-api</ignoredUnusedDeclaredDependency>
+                            </ignoredUnusedDeclaredDependencies>
                         </configuration>
                     </execution>
                 </executions>
