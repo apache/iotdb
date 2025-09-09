@@ -53,6 +53,8 @@ public class PipeTableResp implements DataSet {
   private final TSStatus status;
   private final List<PipeMeta> allPipeMeta;
 
+  private static final String CONFIG_REGION_ID = "CONFIG_REGION";
+
   public PipeTableResp(final TSStatus status, final List<PipeMeta> allPipeMeta) {
     this.status = status;
     this.allPipeMeta = allPipeMeta;
@@ -164,7 +166,17 @@ public class PipeTableResp implements DataSet {
         final Set<Integer> regionIds = entry.getValue();
         exceptionMessageBuilder
             .append("regionIds: ")
-            .append(regionIds)
+            .append(
+                regionIds.stream()
+                    .map(
+                        id -> {
+                          if (Objects.equals(Integer.MIN_VALUE, id)) {
+                            // handle config region id for user experience
+                            return CONFIG_REGION_ID;
+                          }
+                          return id.toString();
+                        })
+                    .collect(Collectors.toSet()))
             .append(", ")
             .append(exceptionMessage);
         if (++count < size) {
