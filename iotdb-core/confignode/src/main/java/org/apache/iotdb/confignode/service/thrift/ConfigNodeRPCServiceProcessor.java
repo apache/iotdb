@@ -216,6 +216,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -912,12 +913,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus clearCache() {
-    return configManager.clearCache();
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
+    return configManager.clearCache(clearCacheOptions);
   }
 
   @Override
-  public TSStatus setConfiguration(TSetConfigurationReq req) throws TException {
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
     return configManager.setConfiguration(req);
   }
 
@@ -927,7 +928,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus stopRepairData() throws TException {
+  public TSStatus stopRepairData() {
     return configManager.stopRepairData();
   }
 

@@ -18,6 +18,9 @@
 @REM
 
 @echo off
+@REM set cmd format
+powershell -NoProfile -Command "$v=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').CurrentMajorVersionNumber; if($v -gt 6) { cmd /c 'chcp 65001' }"
+
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%

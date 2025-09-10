@@ -873,7 +873,8 @@ public class TsFileResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) throws IOException {
+  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath, Filter globalTimeFilter)
+      throws IOException {
     try {
       return pathToTimeSeriesMetadataMap.computeIfAbsent(
           seriesPath,
@@ -883,7 +884,8 @@ public class TsFileResource {
                 return ResourceByPathUtils.getResourceInstance(seriesPath)
                     .generateTimeSeriesMetadata(
                         pathToReadOnlyMemChunkMap.get(seriesPath),
-                        pathToChunkMetadataListMap.get(seriesPath));
+                        pathToChunkMetadataListMap.get(seriesPath),
+                        globalTimeFilter);
               } catch (IOException e) {
                 throw new UncheckedIOException(e);
               }

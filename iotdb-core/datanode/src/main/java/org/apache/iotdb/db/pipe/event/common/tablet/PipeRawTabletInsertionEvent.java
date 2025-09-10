@@ -158,6 +158,25 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     // Actually release the occupied memory.
     tablet = null;
     dataContainer = null;
+
+    // Update metrics of the source event
+    if (needToReport && shouldReportOnCommit && Objects.nonNull(pipeName)) {
+      if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateInsertNodeTransferTimer(
+                pipeName,
+                creationTime,
+                System.nanoTime()
+                    - ((PipeInsertNodeTabletInsertionEvent) sourceEvent).getExtractTime());
+      } else if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateTsFileTransferTimer(
+                pipeName,
+                creationTime,
+                System.nanoTime() - ((PipeTsFileInsertionEvent) sourceEvent).getExtractTime());
+      }
+    }
+
     return true;
   }
 

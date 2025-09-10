@@ -75,7 +75,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     if (System.currentTimeMillis() - LAST_EXECUTION_TIME.get() < MIN_EXECUTION_INTERVAL_MS) {
       // Skip by setting the pipeTaskInfo to null
       pipeTaskInfo = null;
-      LOGGER.info(
+      LOGGER.debug(
           "PipeMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
@@ -91,7 +91,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromValidateTask");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromValidateTask");
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
     return true;
@@ -99,14 +99,14 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
 
     // Do nothing
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
 
     final List<PipeMeta> pipeMetaList = new ArrayList<>();
     for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
@@ -132,7 +132,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
@@ -145,28 +145,28 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromValidateTask");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromValidateTask");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
 
     // Do nothing
   }

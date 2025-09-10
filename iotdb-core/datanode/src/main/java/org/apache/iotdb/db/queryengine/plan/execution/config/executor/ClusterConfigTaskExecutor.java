@@ -53,6 +53,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -245,6 +246,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.db.service.DataNodeInternalRPCService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
@@ -1059,24 +1061,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache(boolean onCluster) {
+  public SettableFuture<ConfigTaskResult> clearCache(
+      boolean onCluster, final Set<CacheClearOptions> options) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     if (onCluster) {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.clearCache();
+        tsStatus =
+            client.clearCache(
+                options.stream().map(CacheClearOptions::ordinal).collect(Collectors.toSet()));
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }
     } else {
-      try {
-        StorageEngine.getInstance().clearCache();
-        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } catch (Exception e) {
-        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-      }
+      tsStatus = DataNodeInternalRPCService.getInstance().getImpl().clearCacheImpl(options);
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1808,50 +1808,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         && PipeDataNodeAgent.task().isFullSync(extractorPipeParameters)) {
       try (final ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        // 1. Send request to create the historical data synchronization pipeline
-        final TCreatePipeReq historyReq =
-            new TCreatePipeReq()
-                // Append suffix to the pipeline name for historical data
-                .setPipeName(createPipeStatement.getPipeName() + "_history")
-                // NOTE: set if not exists always to true to handle partial failure
-                .setIfNotExistsCondition(true)
-                // Use extractor parameters for historical data
-                .setExtractorAttributes(
-                    extractorPipeParameters
-                        .addOrReplaceEquivalentAttributesWithClone(
-                            new PipeParameters(
-                                ImmutableMap.of(
-                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
-                                    Boolean.toString(true),
-                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
-                                    Boolean.toString(false))))
-                        .getAttribute())
-                .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
-
-        final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
-        // If creation fails, immediately return with exception
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != historyTsStatus.getCode()) {
-          future.setException(new IoTDBException(historyTsStatus));
-          return future;
-        }
-
-        // 2. Send request to create the real-time data synchronization pipeline
+        // 1. Send request to create the real-time data synchronization pipeline
         final TCreatePipeReq realtimeReq =
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for real-time data
                 .setPipeName(createPipeStatement.getPipeName() + "_realtime")
-                .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+                // NOTE: set if not exists always to true to handle partial failure
+                .setIfNotExistsCondition(true)
                 // Use extractor parameters for real-time data
                 .setExtractorAttributes(
                     extractorPipeParameters
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
                                 ImmutableMap.of(
-                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
-                                    Boolean.toString(false),
                                     PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
-                                    Boolean.toString(true))))
+                                    Boolean.toString(true),
+                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
+                                    Boolean.toString(false))))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
                 .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
@@ -1860,6 +1833,33 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // If creation fails, immediately return with exception
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != realtimeTsStatus.getCode()) {
           future.setException(new IoTDBException(realtimeTsStatus));
+          return future;
+        }
+
+        // 2. Send request to create the historical data synchronization pipeline
+        final TCreatePipeReq historyReq =
+            new TCreatePipeReq()
+                // Append suffix to the pipeline name for historical data
+                .setPipeName(createPipeStatement.getPipeName() + "_history")
+                .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+                // Use extractor parameters for historical data
+                .setExtractorAttributes(
+                    extractorPipeParameters
+                        .addOrReplaceEquivalentAttributesWithClone(
+                            new PipeParameters(
+                                ImmutableMap.of(
+                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
+                                    Boolean.toString(false),
+                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
+                                    Boolean.toString(true))))
+                        .getAttribute())
+                .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+
+        final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
+        // If creation fails, immediately return with exception
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != historyTsStatus.getCode()) {
+          future.setException(new IoTDBException(historyTsStatus));
           return future;
         }
 
