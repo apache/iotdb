@@ -28,12 +28,14 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -55,6 +57,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
@@ -122,7 +125,11 @@ public class AuthorityChecker {
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
     try {
-      return statement.checkPermissionBeforeProcess(session.getUsername());
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableSeparationOfPowers()) {
+        return statement.checkSeparatedAdminPermissionBeforeProcess(session.getUsername());
+      } else {
+        return statement.checkPermissionBeforeProcess(session.getUsername());
+      }
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
@@ -131,7 +138,11 @@ public class AuthorityChecker {
   public static TSStatus checkAuthority(Statement statement, String userName) {
     long startTime = System.nanoTime();
     try {
-      return statement.checkPermissionBeforeProcess(userName);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableSeparationOfPowers()) {
+        return statement.checkSeparatedAdminPermissionBeforeProcess(userName);
+      } else {
+        return statement.checkPermissionBeforeProcess(userName);
+      }
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
@@ -154,7 +165,18 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + getSatisfyAnyNeededPrivilegeString(
+                        AuthUtils.getAllPrivilegesContainingCurrentPrivilege(neededPrivilege)));
+  }
+
+  private static String getSatisfyAnyNeededPrivilegeString(List<PrivilegeType> privileges) {
+    StringJoiner sj = new StringJoiner("/");
+    for (PrivilegeType privilege : privileges) {
+      sj.add(privilege.toString());
+    }
+    return sj.toString();
   }
 
   public static TSStatus getGrantOptTSStatus(
@@ -243,7 +265,7 @@ public class AuthorityChecker {
   }
 
   public static boolean checkSystemPermission(String userName, PrivilegeType permission) {
-    return authorityFetcher.get().checkUserSysPrivileges(userName, permission).getCode()
+    return authorityFetcher.get().checkUserHasAnySysPrivileges(userName, permission).getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 

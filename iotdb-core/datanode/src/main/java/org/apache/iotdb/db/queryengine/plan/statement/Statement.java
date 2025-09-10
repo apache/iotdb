@@ -68,6 +68,10 @@ public abstract class Statement extends StatementNode {
         "Only the admin user can perform this operation");
   }
 
+  public TSStatus checkSeparatedAdminPermissionBeforeProcess(final String userName) {
+    throw new RuntimeException("Not implemented yet");
+  }
+
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       final MPPQueryContext context) {
     throw new UnsupportedOperationException("Method not implemented yet");

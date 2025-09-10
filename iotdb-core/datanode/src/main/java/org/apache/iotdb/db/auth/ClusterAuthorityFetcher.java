@@ -117,14 +117,22 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUserSysPrivileges(String username, PrivilegeType permission) {
+  public TSStatus checkUserHasAnySysPrivileges(String username, PrivilegeType... permissions) {
     checkCacheAvailable();
-    return checkPrivilege(
-        username,
-        new PrivilegeUnion(permission, false),
-        (role, union) -> role.checkSysPrivilege(union.getPrivilegeType()),
-        new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false));
+    TSStatus status;
+    for (PrivilegeType permission : permissions) {
+      status =
+          checkPrivilege(
+              username,
+              new PrivilegeUnion(permission, false),
+              (role, union) -> role.checkSysPrivilege(union.getPrivilegeType()),
+              new TCheckUserPrivilegesReq(
+                  username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false));
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+    }
+    return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
   }
 
   @Override

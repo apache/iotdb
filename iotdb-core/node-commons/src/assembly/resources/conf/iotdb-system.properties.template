@@ -1713,6 +1713,21 @@ author_cache_expire_time=30
 # If you want to allow all URIs, you can specify it as .*
 trusted_uri_pattern=file:.*
 
+# Enable separation of powers
+# effectiveMode: first_start
+# Datatype: Boolean
+enable_separation_of_powers=false
+
+# The user name of default database security admin
+# effectiveMode: first_start
+# Datatype: string
+dsa_name=iotdb_security
+
+# The user name of default database auditor admin
+# effectiveMode: first_start
+# Datatype: string
+daa_name=iotdb_audit
+
 ####################
 ### UDF Configuration
 ####################

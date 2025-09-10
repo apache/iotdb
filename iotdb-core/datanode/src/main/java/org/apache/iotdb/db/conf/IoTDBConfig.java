@@ -929,6 +929,8 @@ public class IoTDBConfig {
   /** Cache expire time of user and role */
   private int authorCacheExpireTime = 30;
 
+  private boolean enableSeparationOfPowers = false;
+
   /** Number of queues per forwarding trigger */
   private int triggerForwardMaxQueueNumber = 8;
 
@@ -3136,6 +3138,14 @@ public class IoTDBConfig {
 
   public void setAuthorCacheExpireTime(int authorCacheExpireTime) {
     this.authorCacheExpireTime = authorCacheExpireTime;
+  }
+
+  public boolean isEnableSeparationOfPowers() {
+    return enableSeparationOfPowers;
+  }
+
+  public void setEnableSeparationOfPowers(boolean enableSeparationOfPowers) {
+    this.enableSeparationOfPowers = enableSeparationOfPowers;
   }
 
   public int getTriggerForwardMaxQueueNumber() {
