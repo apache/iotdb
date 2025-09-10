@@ -95,19 +95,16 @@ public class MetricConfig {
   }
 
   public List<ReporterType> getMetricReporterList() {
-    this.metricReporterList = new ArrayList<>();
-    this.metricReporterList.add(ReporterType.valueOf("PROMETHEUS"));
     return metricReporterList;
   }
 
   public void setMetricReporterList(String metricReporterList) {
     this.metricReporterList = new ArrayList<>();
-    //    for (String type : metricReporterList.split(",")) {
-    //      if (type.trim().length() != 0) {
-    //        this.metricReporterList.add(ReporterType.valueOf(type));
-    //      }
-    //    }
-    this.metricReporterList.add(ReporterType.valueOf("PROMETHEUS"));
+    for (String type : metricReporterList.split(",")) {
+      if (!type.trim().isEmpty()) {
+        this.metricReporterList.add(ReporterType.valueOf(type));
+      }
+    }
   }
 
   public InternalReporterType getInternalReportType() {
