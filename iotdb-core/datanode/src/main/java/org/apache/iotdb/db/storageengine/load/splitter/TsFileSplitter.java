@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
-import org.apache.iotdb.db.exception.load.LoadPartitionExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 
@@ -95,7 +94,7 @@ public class TsFileSplitter {
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition()
-      throws IOException, LoadFileException, LoadPartitionExceededException, IllegalStateException {
+      throws IOException, LoadFileException, IllegalStateException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       getAllModification(deletions);
 
@@ -150,7 +149,7 @@ public class TsFileSplitter {
   }
 
   private void processTimeChunkOrNonAlignedChunk(TsFileSequenceReader reader, byte marker)
-      throws IOException, LoadFileException, LoadPartitionExceededException {
+      throws IOException, LoadFileException {
     long chunkOffset = reader.position();
     timeChunkIndexOfCurrentValueColumn = pageIndex2TimesList.size();
     consumeAllAlignedChunkData(chunkOffset, pageIndex2ChunkData);
@@ -203,7 +202,7 @@ public class TsFileSplitter {
       IChunkMetadata chunkMetadata,
       long chunkOffset,
       ChunkData chunkData)
-      throws IOException, LoadFileException, LoadPartitionExceededException {
+      throws IOException, LoadFileException {
     String measurementId = header.getMeasurementID();
     TTimePartitionSlot timePartitionSlot = chunkData.getTimePartitionSlot();
     Decoder defaultTimeDecoder =
@@ -300,7 +299,7 @@ public class TsFileSplitter {
   }
 
   private void processValueChunk(TsFileSequenceReader reader, byte marker)
-      throws IOException, LoadFileException, LoadPartitionExceededException {
+      throws IOException, LoadFileException {
     long chunkOffset = reader.position();
     IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
     ChunkHeader header = reader.readChunkHeader(marker);
@@ -367,8 +366,7 @@ public class TsFileSplitter {
   }
 
   private void switchToTimeChunkContextOfCurrentMeasurement(
-      TsFileSequenceReader reader, String measurement)
-      throws IOException, LoadFileException, LoadPartitionExceededException {
+      TsFileSequenceReader reader, String measurement) throws IOException, LoadFileException {
     int index = valueColumn2TimeChunkIndex.getOrDefault(measurement, 0);
     if (index != timeChunkIndexOfCurrentValueColumn) {
       consumeAllAlignedChunkData(reader.position(), pageIndex2ChunkData);
@@ -436,7 +434,7 @@ public class TsFileSplitter {
 
   private void consumeAllAlignedChunkData(
       long offset, Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData)
-      throws LoadFileException, LoadPartitionExceededException {
+      throws LoadFileException {
     if (pageIndex2ChunkData.isEmpty()) {
       return;
     }
@@ -455,7 +453,7 @@ public class TsFileSplitter {
       timePartitionSlots.add(chunkData.getTimePartitionSlot());
       if (deletions.isEmpty()
           && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
-        throw new LoadPartitionExceededException(
+        throw new LoadFileException(
             String.format(
                 "Time partition slots size is greater than %s",
                 CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
@@ -471,11 +469,11 @@ public class TsFileSplitter {
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)
-      throws LoadFileException, LoadPartitionExceededException {
+      throws LoadFileException {
     timePartitionSlots.add(chunkData.getTimePartitionSlot());
     if (deletions.isEmpty()
         && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
-      throw new LoadPartitionExceededException(
+      throw new LoadFileException(
           String.format(
               "Time partition slots size is greater than %s",
               CONFIG.getLoadTsFileSpiltPartitionMaxSize()));

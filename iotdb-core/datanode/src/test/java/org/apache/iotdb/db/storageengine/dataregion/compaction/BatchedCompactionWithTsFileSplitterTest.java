@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
-import org.apache.iotdb.db.exception.load.LoadPartitionExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -90,8 +89,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           InterruptedException,
           MetadataException,
           PageException,
-          LoadFileException,
-          LoadPartitionExceededException {
+          LoadFileException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -126,8 +124,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           InterruptedException,
           MetadataException,
           PageException,
-          LoadFileException,
-          LoadPartitionExceededException {
+          LoadFileException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -162,8 +159,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           InterruptedException,
           MetadataException,
           PageException,
-          LoadFileException,
-          LoadPartitionExceededException {
+          LoadFileException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -202,8 +198,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           InterruptedException,
           MetadataException,
           PageException,
-          LoadFileException,
-          LoadPartitionExceededException {
+          LoadFileException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -269,7 +264,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
   }
 
   private void consumeChunkDataAndValidate(TsFileResource resource)
-      throws IOException, IllegalPathException, LoadFileException, LoadPartitionExceededException {
+      throws IOException, IllegalPathException, LoadFileException {
     Map<TTimePartitionSlot, TestLoadTsFileIOWriter> writerMap = new HashMap<>();
 
     TsFileSplitter splitter =
