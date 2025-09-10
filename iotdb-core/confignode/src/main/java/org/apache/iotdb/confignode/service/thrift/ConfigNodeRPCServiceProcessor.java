@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -571,35 +572,51 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       dbPath = req.getDatabasePath();
       LOGGER.info("getDatabaseSecurityLabel called with dbPath: '{}'", dbPath);
 
-      // If dbPath is null or empty, return all databases' security labels
-      if (dbPath == null || dbPath.trim().isEmpty()) {
-        // Use optimized method to get all database security labels
-        Map<String, String> allLabels =
-            configManager.getClusterSchemaManager().getAllDatabaseSecurityLabelsOptimized();
+      // Get all database security labels first
+      Map<String, String> allLabels =
+          configManager.getClusterSchemaManager().getAllDatabaseSecurityLabelsOptimized();
+      LOGGER.info("All database security labels: {}", allLabels);
 
-        // Set all labels to response
-        resp.setSecurityLabel(allLabels);
-        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-        return resp;
+      // Filter based on scopePatternTree if provided
+      if (req.getScopePatternTree() != null) {
+        PathPatternTree scopePatternTree =
+            PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
+        LOGGER.info("Scope pattern tree: {}", scopePatternTree);
+
+        Map<String, String> filteredLabels = new HashMap<>();
+        for (Map.Entry<String, String> entry : allLabels.entrySet()) {
+          String database = entry.getKey();
+          String label = entry.getValue();
+
+          try {
+            PartialPath databasePath = new PartialPath(database);
+            List<PartialPath> overlappedPatterns =
+                scopePatternTree.getOverlappedPathPatterns(databasePath);
+            LOGGER.info("Database: {}, overlapped patterns: {}", database, overlappedPatterns);
+            if (!overlappedPatterns.isEmpty()) {
+              filteredLabels.put(database, label);
+            }
+          } catch (IllegalPathException e) {
+            LOGGER.debug("Invalid database path: {}", database, e);
+          }
+        }
+        allLabels = filteredLabels;
+        LOGGER.info("Filtered labels: {}", allLabels);
+      } else {
+        LOGGER.info("No scope pattern tree provided, returning all labels");
       }
 
-      // Single database query - use existing fast method
-      Map<String, String> securityLabel =
-          configManager.getClusterSchemaManager().getDatabaseSecurityLabel(dbPath);
-
-      resp.setSecurityLabel(securityLabel);
+      // Set filtered labels to response
+      resp.setSecurityLabel(allLabels);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-    } catch (DatabaseNotExistsException e) {
-      LOGGER.warn("Database does not exist: {}", dbPath);
-      TSStatus errorStatus = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
-      errorStatus.setMessage("Database does not exist: " + dbPath);
-      resp.setStatus(errorStatus);
     } catch (Exception e) {
       LOGGER.error("Error in getDatabaseSecurityLabel", e);
       TSStatus errorStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       errorStatus.setMessage(e.getMessage());
       resp.setStatus(errorStatus);
+      // Always return a non-null map even on error
+      resp.setSecurityLabel(new HashMap<>());
     }
 
     return resp;

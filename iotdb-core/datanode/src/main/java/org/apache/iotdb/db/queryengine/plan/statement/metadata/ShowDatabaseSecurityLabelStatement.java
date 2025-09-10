@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -89,7 +90,11 @@ public class ShowDatabaseSecurityLabelStatement extends AuthorityInformationStat
   public void buildTSBlockFromSecurityLabel(
       Map<String, String> securityLabelMap, SettableFuture<ConfigTaskResult> future) {
     try {
-      // Use data returned from ConfigNode directly, no client-side filtering needed
+      // Handle null securityLabelMap as protection
+      if (securityLabelMap == null) {
+        securityLabelMap = new HashMap<>();
+      }
+
       List<TSDataType> outputDataTypes =
           ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
               .map(ColumnHeader::getColumnType)
@@ -105,6 +110,7 @@ public class ShowDatabaseSecurityLabelStatement extends AuthorityInformationStat
         String database = entry.getKey();
         String label = entry.getValue();
 
+        // No need for client-side filtering since ConfigNode already filtered
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
         builder

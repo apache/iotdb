@@ -22,7 +22,6 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SecurityLabel;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -30,12 +29,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUPER_USER;
-import static org.apache.iotdb.db.auth.AuthorityChecker.checkFullPathOrPatternPermission;
 
 public class LbacPermissionChecker {
 
@@ -262,25 +258,7 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Check LBAC permission for database-level operations with complete LBAC logic This method
-   * implements the detailed LBAC logic as specified:
-   *
-   * <p>No read/write policies (both read and write policies are empty): - No label data → No LBAC
-   * triggered, allow access - Has label data → No LBAC triggered, allow access
-   *
-   * <p>Has any policy (read/write/both exist): - No label data: - Only read policy: read operation
-   * → trigger LBAC, deny access; write operation → no LBAC, allow access; both operations → trigger
-   * LBAC, deny access - Only write policy: write operation → trigger LBAC, deny access; read
-   * operation → no LBAC, allow access; both operations → trigger LBAC, deny access - Both read and
-   * write policies: read operation → trigger LBAC, deny access; write operation → trigger LBAC,
-   * deny access; both operations → trigger LBAC, deny access - Has label data: - Only read policy:
-   * read operation → trigger LBAC, evaluate read policy with labels; write operation → no LBAC,
-   * allow access; both operations → trigger LBAC, evaluate read policy with labels - Only write
-   * policy: write operation → trigger LBAC, evaluate write policy with labels; read operation → no
-   * LBAC, allow access; both operations → trigger LBAC, evaluate write policy with labels - Both
-   * read and write policies: read operation → trigger LBAC, evaluate read policy with labels; write
-   * operation → trigger LBAC, evaluate write policy with labels; both operations → trigger LBAC,
-   * evaluate both policies with labels
+   * Check LBAC permission for database access
    *
    * @param userName the username
    * @param databasePath the database path
@@ -294,7 +272,6 @@ public class LbacPermissionChecker {
 
       // Check if LBAC is enabled
       if (!isLbacEnabled()) {
-
         return true;
       }
 
@@ -309,14 +286,20 @@ public class LbacPermissionChecker {
         return false;
       }
 
-      // Extract clean database path
-      String cleanDatabasePath = LbacPermissionChecker.extractDatabasePathFromPath(databasePath);
+      String cleanDatabasePath = extractDatabasePathWithModelDetection(databasePath);
       if (cleanDatabasePath == null) {
         return false;
       }
 
-      // Get database security label
-      SecurityLabel databaseLabel = DatabaseLabelFetcher.getSecurityLabelForPath(cleanDatabasePath);
+      boolean isTableModel = isTableModelPath(databasePath);
+
+      SecurityLabel databaseLabel;
+      if (isTableModel) {
+        databaseLabel = getTableModelDatabaseSecurityLabel(cleanDatabasePath);
+      } else {
+        databaseLabel = DatabaseLabelFetcher.getSecurityLabelForPath(cleanDatabasePath);
+      }
+
       boolean databaseHasLabels = (databaseLabel != null && !databaseLabel.getLabels().isEmpty());
 
       // Get user's read and write policies
@@ -329,7 +312,6 @@ public class LbacPermissionChecker {
 
       // Rule 1 & 2: No read/write policies (both read and write policies are empty)
       if (!hasAnyPolicy) {
-
         return true;
       }
 
@@ -340,7 +322,6 @@ public class LbacPermissionChecker {
 
       // Rule 4: Has any policy + Has labels
       if (hasAnyPolicy && databaseHasLabels) {
-
         return handleHasLabelsCaseForDatabase(
             user,
             cleanDatabasePath,
@@ -355,6 +336,39 @@ public class LbacPermissionChecker {
 
     } catch (Exception e) {
       return false; // Deny access on error
+    }
+  }
+
+  private static String extractDatabasePathWithModelDetection(String path) {
+    if (path == null || path.trim().isEmpty()) {
+      return null;
+    }
+
+    if (path.contains("*") || path.contains("**")) {
+      return null;
+    }
+
+    if (isTableModelPath(path)) {
+      return path;
+    } else {
+      return extractDatabasePathFromPath(path);
+    }
+  }
+
+  private static boolean isTableModelPath(String path) {
+    if (path == null || path.trim().isEmpty()) {
+      return false;
+    }
+    return !path.startsWith("root.");
+  }
+
+  private static SecurityLabel getTableModelDatabaseSecurityLabel(String databaseName) {
+    try {
+
+      return TableModelLbacCacheManager.getInstance().getDatabaseSecurityLabel(databaseName);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to get table model database security label for: {}", databaseName, e);
+      return null;
     }
   }
 
@@ -630,6 +644,4 @@ public class LbacPermissionChecker {
         return null;
     }
   }
-
-
 }

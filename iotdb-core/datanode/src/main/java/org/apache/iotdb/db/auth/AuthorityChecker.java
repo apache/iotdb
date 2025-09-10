@@ -832,7 +832,6 @@ public class AuthorityChecker {
           return true;
         }
 
-        // 添加路径验证
         if (!isValidPath(fullPath)) {
           LOGGER.warn("Invalid path for LBAC check: {}", fullPath);
           return false;

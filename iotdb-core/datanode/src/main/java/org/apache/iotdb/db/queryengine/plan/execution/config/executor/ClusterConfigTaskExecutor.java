@@ -227,7 +227,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.ShowTableDatabaseSecurityLabelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -250,6 +249,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
@@ -4782,20 +4782,25 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showDatabaseSecurityLabelTableModel(String databaseName) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (final ConfigNodeClient configNodeClient =
+    // Construct request using statement - 模仿showDatabases的模式
+    final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server - 模仿showDatabases的模式
       final TShowTableDatabaseSecurityLabelReq req = new TShowTableDatabaseSecurityLabelReq();
       if (databaseName != null) {
         req.setDatabaseName(databaseName);
       }
-      final TShowTableDatabaseSecurityLabelResp resp =
-          configNodeClient.showTableDatabaseSecurityLabel(req);
+      // 表模型没有scopePatternTree字段，权限过滤在客户端进行
+      final TShowTableDatabaseSecurityLabelResp resp = client.showTableDatabaseSecurityLabel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
         future.setException(
             new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
       } else {
-        // Build TsBlock using the new buildTsBlock method
-        ShowTableDatabaseSecurityLabelTask.buildTsBlock(databaseName, resp, future);
+        // Build TsBlock using the statement's buildTSBlockFromSecurityLabel method
+        ShowTableDatabaseSecurityLabelStatement statement =
+            new ShowTableDatabaseSecurityLabelStatement(null, databaseName);
+        statement.buildTSBlockFromSecurityLabel(resp, future);
       }
     } catch (final Exception e) {
       future.setException(e);

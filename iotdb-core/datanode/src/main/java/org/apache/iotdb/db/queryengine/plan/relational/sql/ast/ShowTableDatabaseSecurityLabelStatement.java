@@ -19,13 +19,27 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelResp;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import com.google.common.util.concurrent.SettableFuture;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Binary;
 
 import javax.annotation.Nullable;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Statement for showing database security label in table model SHOW DATABASES (database)?
@@ -46,6 +60,57 @@ public class ShowTableDatabaseSecurityLabelStatement extends Statement {
 
   public StatementType getStatementType() {
     return StatementType.SHOW_TABLE_DATABASE_SECURITY_LABEL;
+  }
+
+  /**
+   * Build TsBlock for showing database security labels
+   *
+   * @param resp the response from ConfigNode containing security label data
+   * @param future the future to set the result
+   */
+  public void buildTSBlockFromSecurityLabel(
+      TShowTableDatabaseSecurityLabelResp resp, SettableFuture<ConfigTaskResult> future) {
+
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+
+    try {
+      Map<String, String> securityLabelMap = resp.getSecurityLabel();
+
+      if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
+        for (Map.Entry<String, String> entry : securityLabelMap.entrySet()) {
+          String dbName = entry.getKey();
+          String securityLabel = entry.getValue();
+
+          // If database is specified, only show that database
+          if (database != null && !database.equals(dbName)) {
+            continue;
+          }
+
+          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+          tsBlockBuilder
+              .getColumnBuilder(0)
+              .writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
+          tsBlockBuilder
+              .getColumnBuilder(1)
+              .writeBinary(new Binary(securityLabel, TSFileConfig.STRING_CHARSET));
+          tsBlockBuilder.declarePosition();
+        }
+      }
+
+      future.set(
+          new ConfigTaskResult(
+              TSStatusCode.SUCCESS_STATUS,
+              tsBlockBuilder.build(),
+              DatasetHeaderFactory.getShowDatabaseSecurityLabelHeader()));
+
+    } catch (Exception e) {
+      future.setException(e);
+    }
   }
 
   @Override
