@@ -33,7 +33,8 @@ public class RetryUtils {
   public static boolean needRetryForWrite(int statusCode) {
     return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
         || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
+        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
+        || statusCode == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode();
   }
 
   public static boolean needRetryWithIncreasingInterval(Exception e) {

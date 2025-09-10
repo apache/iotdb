@@ -162,6 +162,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         : null;
   }
 
+  public long getExtractTime() {
+    return extractTime;
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override

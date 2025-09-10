@@ -780,7 +780,6 @@ public class AlignedTVListIteratorTest {
     AlignedTVList alignedTVList =
         AlignedTVList.newAlignedList(
             Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN));
-    int rowCount = 0;
     for (TimeRange timeRange : timeRanges) {
       long start = timeRange.getMin();
       long end = timeRange.getMax();
@@ -799,11 +798,10 @@ public class AlignedTVListIteratorTest {
         }
         alignedTVList.putAlignedValue(
             timestamp, new Object[] {timestamp, timestamp % 2 == 0, true});
-        rowCount++;
       }
     }
     Map<TVList, Integer> tvListMap = new HashMap<>();
-    tvListMap.put(alignedTVList, rowCount);
+    tvListMap.put(alignedTVList, alignedTVList.rowCount());
     return tvListMap;
   }
 
@@ -814,7 +812,6 @@ public class AlignedTVListIteratorTest {
       AlignedTVList alignedTVList =
           AlignedTVList.newAlignedList(
               Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN));
-      int rowCount = 0;
       long start = timeRange.getMin();
       long end = timeRange.getMax();
       List<Long> timestamps = new ArrayList<>((int) (end - start + 1));
@@ -832,9 +829,8 @@ public class AlignedTVListIteratorTest {
         }
         alignedTVList.putAlignedValue(
             timestamp, new Object[] {timestamp, timestamp % 2 == 0, isLast});
-        rowCount++;
       }
-      tvListMap.put(alignedTVList, rowCount);
+      tvListMap.put(alignedTVList, alignedTVList.rowCount());
     }
     return tvListMap;
   }
