@@ -23,12 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
@@ -58,7 +60,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -193,7 +194,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -343,11 +346,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus removeAINode(TAINodeRemoveReq req) {
-    LOGGER.info("ConfigNode RPC Service start to remove AINode, req: {}", req);
-    RemoveAINodePlan removeAINodePlan = new RemoveAINodePlan(req.getAiNodeLocation());
-    TSStatus status = configManager.removeAINode(removeAINodePlan);
-    LOGGER.info(
-        "ConfigNode RPC Service finished to remove AINode, req: {}, result: {}", req, status);
+    LOGGER.info("ConfigNode RPC Service start to remove AINode");
+    TSStatus status = configManager.removeAINode();
+    LOGGER.info("ConfigNode RPC Service finished to remove AINode, result: {}", status);
     return status;
   }
 
@@ -756,6 +757,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TPermissionInfoResp getUser(String userName) {
+    return configManager.getUser(userName);
+  }
+
+  @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
@@ -985,6 +991,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId) throws TException {
+    return configManager.showAppliedConfigurations(nodeId);
+  }
+
+  @Override
   public TSStatus setSystemStatus(String status) {
     return configManager.setSystemStatus(status);
   }
@@ -1033,8 +1044,18 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema() {
+    return configManager.showDataNodes4InformationSchema();
+  }
+
+  @Override
   public TShowConfigNodesResp showConfigNodes() {
     return configManager.showConfigNodes();
+  }
+
+  @Override
+  public TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema() {
+    return configManager.showConfigNodes4InformationSchema();
   }
 
   @Override
@@ -1402,5 +1423,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus createTableView(final TCreateTableViewReq req) {
     return configManager.createTableView(req);
+  }
+
+  @Override
+  public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
+    return configManager.pushHeartbeat(dataNodeId, resp);
   }
 }

@@ -141,7 +141,7 @@ class RatisConsensus implements IConsensus {
   private final RatisConfig.Read.Option readOption;
   private final RetryPolicy<RaftClientReply> readRetryPolicy;
   private final RetryPolicy<RaftClientReply> writeRetryPolicy;
-
+  private final int transferLeadershipTimeoutMs;
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
 
@@ -158,13 +158,15 @@ class RatisConsensus implements IConsensus {
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
-    Utils.initRatisConfig(properties, config.getRatisConfig());
+    Parameters parameters = Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
     this.readOption = this.config.getRead().getReadOption();
     this.canServeStaleRead =
         this.readOption == RatisConfig.Read.Option.DEFAULT ? new ConcurrentHashMap<>() : null;
     this.consensusGroupType = config.getConsensusGroupType();
     this.ratisMetricSet = new RatisMetricSet();
+    this.transferLeadershipTimeoutMs =
+        config.getRatisConfig().getUtils().getTransferLeaderTimeoutMs();
     this.readRetryPolicy =
         RetryPolicy.<RaftClientReply>newBuilder()
             .setRetryHandler(
@@ -211,7 +213,7 @@ class RatisConsensus implements IConsensus {
         new IClientManager.Factory<RaftGroup, RatisClient>()
             .createClientManager(new RatisClientPoolFactory(true));
 
-    clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
+    clientRpc = new GrpcFactory(parameters).newRaftClientRpc(ClientId.randomId(), properties);
 
     // do not build server in constructor in case stateMachine is not ready
     server =
@@ -264,7 +266,7 @@ class RatisConsensus implements IConsensus {
     try {
       diskGuardian.stop();
     } catch (InterruptedException e) {
-      logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
+      logger.warn("{}: interrupted when shutting down add Executor with exception ", this, e);
       Thread.currentThread().interrupt();
     } finally {
       clientManager.close();
@@ -704,10 +706,22 @@ class RatisConsensus implements IConsensus {
     try {
       reply = transferLeader(raftGroup, newRaftLeader);
       if (!reply.isSuccess()) {
-        throw new RatisRequestFailedException(reply.getException());
+        String errorMsg =
+            String.format(
+                "transferLeader for group %s to %s failed. This could be due to a timeout, "
+                    + "especially during heavy disk usage. Consider increasing the "
+                    + "'ratis_transfer_leader_timeout_ms' configuration property.",
+                groupId, newLeader);
+        throw new RatisRequestFailedException(errorMsg, reply.getException());
       }
     } catch (Exception e) {
-      throw new RatisRequestFailedException(e);
+      String errorMsg =
+          String.format(
+              "transferLeader for group %s to %s failed. This could be due to a timeout, "
+                  + "especially during initial startup. Consider increasing the "
+                  + "'ratis_rpc_transfer_leader_timeout_ms' configuration property.",
+              groupId, newLeader);
+      throw new RatisRequestFailedException(errorMsg, e);
     }
   }
 
@@ -722,7 +736,8 @@ class RatisConsensus implements IConsensus {
       return client
           .getRaftClient()
           .admin()
-          .transferLeadership(newLeader != null ? newLeader.getId() : null, 10000);
+          .transferLeadership(
+              newLeader != null ? newLeader.getId() : null, transferLeadershipTimeoutMs);
     }
   }
 
@@ -815,7 +830,7 @@ class RatisConsensus implements IConsensus {
     try {
       leaderId = server.get().getDivision(raftGroupId).getInfo().getLeaderId();
     } catch (IOException e) {
-      logger.warn("fetch division info for group " + groupId + " failed due to: ", e);
+      logger.warn("fetch division info for group {} failed due to: ", groupId, e);
       return null;
     }
     if (leaderId == null) {

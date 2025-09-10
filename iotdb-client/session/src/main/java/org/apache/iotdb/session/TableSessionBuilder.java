@@ -23,6 +23,10 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -47,10 +51,11 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    *
    * @param nodeUrls a list of node URLs.
    * @return the current {@link TableSessionBuilder} instance.
-   * @defaultValue Collection.singletonList("localhost:6667")
+   * @defaultValue Collection.singletonList(" localhost : 6667 ")
    */
   public TableSessionBuilder nodeUrls(List<String> nodeUrls) {
     this.nodeUrls = nodeUrls;
+
     return this;
   }
 
@@ -213,24 +218,24 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   /**
    * Sets the trust store path for SSL connections.
    *
-   * @param keyStore the trust store path.
+   * @param trustStore the trust store path.
    * @return the current {@link TableSessionBuilder} instance.
    * @defaultValue null
    */
-  public TableSessionBuilder trustStore(String keyStore) {
-    this.trustStore = keyStore;
+  public TableSessionBuilder trustStore(String trustStore) {
+    this.trustStore = trustStore;
     return this;
   }
 
   /**
    * Sets the trust store password for SSL connections.
    *
-   * @param keyStorePwd the trust store password.
+   * @param trustStorePwd the trust store password.
    * @return the current {@link TableSessionBuilder} instance.
    * @defaultValue null
    */
-  public TableSessionBuilder trustStorePwd(String keyStorePwd) {
-    this.trustStorePwd = keyStorePwd;
+  public TableSessionBuilder trustStorePwd(String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
     return this;
   }
 
@@ -242,7 +247,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    * @defaultValue false
    */
   public TableSessionBuilder enableCompression(boolean enableCompression) {
-    this.enableCompression = enableCompression;
+    this.isIoTDBRpcCompressionEnabled = enableCompression;
     return this;
   }
 
@@ -255,6 +260,117 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    */
   public TableSessionBuilder connectionTimeoutInMs(int connectionTimeoutInMs) {
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    return this;
+  }
+
+  public TableSessionBuilder enableCompaction(boolean enableCompaction) {
+    this.isThriftRpcCompactionEnabled = enableCompaction;
+    return this;
+  }
+
+  /**
+   * Setting the encoding type
+   *
+   * @param compressionType Compression type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withCompressionType(CompressionType compressionType) {
+    this.compressionType = compressionType;
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withTimeStampEncoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.TIMESTAMP, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withBooleanEncoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.BOOLEAN, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withInt32Encoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.INT32, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withInt64Encoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.INT64, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withFloatEncoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.FLOAT, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withDoubleEncoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.DOUBLE, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withStringEncoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.STRING, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withTextEncoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.TEXT, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withBlobEncoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.BLOB, tsEncoding);
+    return this;
+  }
+
+  /**
+   * @param tsEncoding Encoding type
+   * @return the current {@link TableSessionBuilder} instance.
+   */
+  public TableSessionBuilder withDateEncoding(TSEncoding tsEncoding) {
+    this.columnEncodersMap.put(TSDataType.DATE, tsEncoding);
+    return this;
+  }
+
+  public TableSessionBuilder tabletCompressionMinRowSize(int tabletCompressionMinRowSize) {
+    this.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
     return this;
   }
 
@@ -271,7 +387,15 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     }
     this.sqlDialect = TABLE;
     Session newSession = new Session(this);
-    newSession.open(enableCompression, connectionTimeoutInMs);
+    newSession.enableIoTDBRpcCompression = isIoTDBRpcCompressionEnabled;
+    newSession.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
+
+    try {
+      newSession.open(isThriftRpcCompactionEnabled, connectionTimeoutInMs);
+    } catch (IoTDBConnectionException e) {
+      newSession.close();
+      throw e;
+    }
     return new TableSession(newSession);
   }
 }

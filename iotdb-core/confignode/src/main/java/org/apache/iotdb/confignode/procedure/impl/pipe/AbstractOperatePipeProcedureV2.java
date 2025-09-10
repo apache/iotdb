@@ -32,7 +32,7 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -109,12 +109,12 @@ public abstract class AbstractOperatePipeProcedureV2
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOGGER.info("ProcedureId {} try to acquire pipe lock.", getProcId());
+    LOGGER.debug("ProcedureId {} try to acquire pipe lock.", getProcId());
     pipeTaskInfo = acquireLockInternal(configNodeProcedureEnv);
     if (pipeTaskInfo == null) {
       LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
     } else {
-      LOGGER.info("ProcedureId {} acquired pipe lock.", getProcId());
+      LOGGER.debug("ProcedureId {} acquired pipe lock.", getProcId());
     }
 
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
@@ -125,7 +125,7 @@ public abstract class AbstractOperatePipeProcedureV2
               "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
               getProcId());
         } else {
-          LOGGER.info(
+          LOGGER.debug(
               "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with pipe lock.",
               getProcId());
         }
@@ -134,7 +134,7 @@ public abstract class AbstractOperatePipeProcedureV2
         if (pipeTaskInfo == null) {
           LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
         } else {
-          LOGGER.info("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
+          LOGGER.debug("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
           configNodeProcedureEnv
               .getConfigManager()
               .getPipeManager()
@@ -173,7 +173,7 @@ public abstract class AbstractOperatePipeProcedureV2
     if (pipeTaskInfo == null) {
       LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
     } else {
-      LOGGER.info("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
+      LOGGER.debug("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
       if (this instanceof PipeMetaSyncProcedure) {
         configNodeProcedureEnv
             .getConfigManager()
@@ -426,12 +426,42 @@ public abstract class AbstractOperatePipeProcedureV2
    * @return Error messages for the given pipe after pushing pipe meta
    */
   public static String parsePushPipeMetaExceptionForPipe(
-      String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
+      final String pipeName, final Map<Integer, TPushPipeMetaResp> respMap) {
     final StringBuilder exceptionMessageBuilder = new StringBuilder();
+    final StringBuilder enoughMemoryMessageBuilder = new StringBuilder();
 
-    for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
-      int dataNodeId = respEntry.getKey();
-      TPushPipeMetaResp resp = respEntry.getValue();
+    for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+      final int dataNodeId = respEntry.getKey();
+      final TPushPipeMetaResp resp = respEntry.getValue();
+
+      if (resp.getStatus().getCode()
+          == TSStatusCode.PIPE_PUSH_META_NOT_ENOUGH_MEMORY.getStatusCode()) {
+        exceptionMessageBuilder.append(String.format("DataNodeId: %s,", dataNodeId));
+        resp.getExceptionMessages()
+            .forEach(
+                message -> {
+                  // Ignore the timeStamp for simplicity
+                  if (pipeName == null) {
+                    enoughMemoryMessageBuilder.append(
+                        String.format(
+                            "PipeName: %s, Message: %s",
+                            message.getPipeName(), message.getMessage()));
+                  } else if (pipeName.equals(message.getPipeName())) {
+                    enoughMemoryMessageBuilder.append(
+                        String.format("Message: %s", message.getMessage()));
+                  }
+                });
+        enoughMemoryMessageBuilder.append(".");
+        continue;
+      }
+
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()) {
+        exceptionMessageBuilder.append(
+            String.format(
+                "DataNodeId: %s, Message: Timeout to wait for lock while processing pushPipeMeta on dataNodes.",
+                dataNodeId));
+        continue;
+      }
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         if (!resp.isSetExceptionMessages()) {
@@ -442,7 +472,7 @@ public abstract class AbstractOperatePipeProcedureV2
           continue;
         }
 
-        AtomicBoolean hasException = new AtomicBoolean(false);
+        final AtomicBoolean hasException = new AtomicBoolean(false);
 
         resp.getExceptionMessages()
             .forEach(
@@ -468,6 +498,12 @@ public abstract class AbstractOperatePipeProcedureV2
         }
       }
     }
+
+    final String enoughMemoryMessage = enoughMemoryMessageBuilder.toString();
+    if (!enoughMemoryMessage.isEmpty()) {
+      throw new PipeException(enoughMemoryMessage);
+    }
+
     return exceptionMessageBuilder.toString();
   }
 
@@ -563,9 +599,7 @@ public abstract class AbstractOperatePipeProcedureV2
 
               try {
                 return !DataRegionListeningFilter.shouldDatabaseBeListened(
-                    copiedPipeMeta.getStaticMeta().getExtractorParameters(),
-                    isTableModel,
-                    database);
+                    copiedPipeMeta.getStaticMeta().getSourceParameters(), isTableModel, database);
               } catch (final Exception e) {
                 return false;
               }

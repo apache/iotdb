@@ -61,17 +61,33 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
       thriftServiceThread =
-          new ThriftServiceThread(
-              processor,
-              getID().getName(),
-              ThreadName.PIPE_CONSENSUS_RPC_PROCESSOR.getName(),
-              getBindIP(),
-              getBindPort(),
-              config.getRpc().getRpcMaxConcurrentClientNum(),
-              config.getRpc().getThriftServerAwaitTimeForStopService(),
-              new PipeConsensusRPCServiceHandler(pipeConsensusRPCServiceProcessor),
-              config.getRpc().isRpcThriftCompressionEnabled(),
-              ZeroCopyRpcTransportFactory.INSTANCE);
+          config.getRpc().isEnableSSL()
+              ? new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.PIPE_CONSENSUS_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpc().getRpcMaxConcurrentClientNum(),
+                  config.getRpc().getThriftServerAwaitTimeForStopService(),
+                  new PipeConsensusRPCServiceHandler(pipeConsensusRPCServiceProcessor),
+                  config.getRpc().isRpcThriftCompressionEnabled(),
+                  config.getRpc().getSslKeyStorePath(),
+                  config.getRpc().getSslKeyStorePassword(),
+                  config.getRpc().getSslTrustStorePath(),
+                  config.getRpc().getSslTrustStorePassword(),
+                  ZeroCopyRpcTransportFactory.INSTANCE)
+              : new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.PIPE_CONSENSUS_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpc().getRpcMaxConcurrentClientNum(),
+                  config.getRpc().getThriftServerAwaitTimeForStopService(),
+                  new PipeConsensusRPCServiceHandler(pipeConsensusRPCServiceProcessor),
+                  config.getRpc().isRpcThriftCompressionEnabled(),
+                  ZeroCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

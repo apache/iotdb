@@ -28,6 +28,8 @@ import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -36,6 +38,8 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.ainode.LoadModelException;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -44,6 +48,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -55,7 +60,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Optional;
 
@@ -65,6 +69,8 @@ import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
 public class AINodeClient implements AutoCloseable, ThriftClient {
 
   private static final Logger logger = LoggerFactory.getLogger(AINodeClient.class);
+
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final TEndPoint endPoint;
 
@@ -93,14 +99,29 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   private void init() throws TException {
     try {
-      transport =
-          new TFramedTransport.Factory()
-              .getTransport(
-                  new TSocket(
-                      TConfigurationConst.defaultTConfiguration,
-                      endPoint.getIp(),
-                      endPoint.getPort(),
-                      property.getConnectionTimeoutMs()));
+      if (commonConfig.isEnableInternalSSL()) {
+        TSSLTransportFactory.TSSLTransportParameters params =
+            new TSSLTransportFactory.TSSLTransportParameters();
+        params.setTrustStore(commonConfig.getTrustStorePath(), commonConfig.getTrustStorePwd());
+        params.setKeyStore(commonConfig.getKeyStorePath(), commonConfig.getKeyStorePwd());
+        transport =
+            new TFramedTransport.Factory()
+                .getTransport(
+                    TSSLTransportFactory.getClientSocket(
+                        endPoint.getIp(),
+                        endPoint.getPort(),
+                        property.getConnectionTimeoutMs(),
+                        params));
+      } else {
+        transport =
+            new TFramedTransport.Factory()
+                .getTransport(
+                    new TSocket(
+                        TConfigurationConst.defaultTConfiguration,
+                        endPoint.getIp(),
+                        endPoint.getPort(),
+                        property.getConnectionTimeoutMs()));
+      }
       if (!transport.isOpen()) {
         transport.open();
       }
@@ -112,6 +133,22 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   public TTransport getTransport() {
     return transport;
+  }
+
+  public TSStatus stopAINode() throws TException {
+    try {
+      TSStatus status = client.stopAINode();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new TException(status.message);
+      }
+      return status;
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
   }
 
   public ModelInformation registerModel(String modelName, String uri) throws LoadModelException {
@@ -158,6 +195,18 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     }
   }
 
+  public TShowModelsResp showModels(TShowModelsReq req) throws TException {
+    try {
+      return client.showModels(req);
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
   public TInferenceResp inference(
       String modelId,
       TsBlock inputTsBlock,
@@ -194,14 +243,14 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     } catch (IOException e) {
       TSStatus tsStatus = new TSStatus(INTERNAL_SERVER_ERROR.getStatusCode());
       tsStatus.setMessage(String.format("Failed to serialize input tsblock %s", e.getMessage()));
-      return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
+      return new TForecastResp(tsStatus);
     } catch (TException e) {
       TSStatus tsStatus = new TSStatus(CAN_NOT_CONNECT_AINODE.getStatusCode());
       tsStatus.setMessage(
           String.format(
-              "Failed to connect to AINode from DataNode when executing %s: %s",
+              "Failed to connect to AINode when executing %s: %s",
               Thread.currentThread().getStackTrace()[1].getMethodName(), e.getMessage()));
-      return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
+      return new TForecastResp(tsStatus);
     }
   }
 
@@ -210,7 +259,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to AINode from DataNode when executing {}: {}",
+          "Failed to connect to AINode when executing {}: {}",
           Thread.currentThread().getStackTrace()[1].getMethodName(),
           e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);

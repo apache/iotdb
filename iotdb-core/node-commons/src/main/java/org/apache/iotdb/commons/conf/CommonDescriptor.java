@@ -90,6 +90,12 @@ public class CommonDescriptor {
             "iotdb_server_encrypt_decrypt_provider_parameter",
             config.getEncryptDecryptProviderParameter()));
 
+    config.setUserEncryptTokenHint(System.getenv("user_encrypt_token_hint"));
+
+    config.setEnableGrantOption(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_grant_option", String.valueOf("true"))));
+
     String[] tierTTLStr = new String[config.getTierTTLInMs().length];
     for (int i = 0; i < tierTTLStr.length; ++i) {
       tierTTLStr[i] = String.valueOf(config.getTierTTLInMs()[i]);
@@ -256,6 +262,11 @@ public class CommonDescriptor {
   }
 
   private void loadSubscriptionProps(TrimProperties properties) {
+    config.setSubscriptionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_enabled", String.valueOf(config.getSubscriptionEnabled()))));
+
     config.setSubscriptionCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
@@ -443,5 +454,17 @@ public class CommonDescriptor {
     config.setSchemaEngineMode(globalConfig.schemaEngineMode);
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
+  }
+
+  public void initThriftSSL(TrimProperties properties) {
+    config.setEnableThriftClientSSL(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_thrift_ssl", Boolean.toString(config.isEnableThriftClientSSL()))));
+    config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
+    config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePwd()));
+    config.setTrustStorePath(
+        properties.getProperty("trust_store_path", config.getTrustStorePath()));
+    config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
   }
 }

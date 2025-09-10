@@ -53,6 +53,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -427,6 +429,10 @@ public final class PlanMatchPattern {
     return node(AggregationTableScanNode.class);
   }
 
+  public static PlanMatchPattern window(PlanMatchPattern source) {
+    return node(WindowNode.class, source);
+  }
+
   public static PlanMatchPattern markDistinct(
       String markerSymbol, List<String> distinctSymbols, PlanMatchPattern source) {
     return node(MarkDistinctNode.class, source)
@@ -507,14 +513,18 @@ public final class PlanMatchPattern {
       TopNRankingMatcher.Builder builder = new TopNRankingMatcher.Builder(source);
       handler.accept(builder);
       return builder.build();
-  }
-
-  public static PlanMatchPattern patternRecognition(Consumer<PatternRecognitionMatcher.Builder> handler, PlanMatchPattern source)
-  {
-      PatternRecognitionMatcher.Builder builder = new PatternRecognitionMatcher.Builder(source);
-      handler.accept(builder);
-      return builder.build();
   }*/
+
+  //  public static PlanMatchPattern patternRecognition(
+  //      Consumer<PatternRecognitionMatcher.Builder> handler, PlanMatchPattern source) {
+  //    PatternRecognitionMatcher.Builder builder = new PatternRecognitionMatcher.Builder(source);
+  //    handler.accept(builder);
+  //    return builder.build();
+  //  }
+
+  public static PlanMatchPattern join(PlanMatchPattern left, PlanMatchPattern right) {
+    return node(JoinNode.class, left, right);
+  }
 
   public static PlanMatchPattern join(
       JoinNode.JoinType type, Consumer<JoinMatcher.Builder> handler) {
@@ -561,6 +571,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern streamSort(List<Ordering> orderBy, PlanMatchPattern source) {
     return node(StreamSortNode.class, source).with(new SortMatcher(orderBy));
+  }
+
+  public static PlanMatchPattern topK(PlanMatchPattern... source) {
+    return node(TopKNode.class, source);
   }
 
   public static PlanMatchPattern topK(
@@ -753,6 +767,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern exchange() {
     return node(ExchangeNode.class).with(new ExchangeNodeMatcher());
+  }
+
+  public static PlanMatchPattern union(PlanMatchPattern... sources) {
+    return node(UnionNode.class, sources);
   }
 
   public static PlanMatchPattern enforceSingleRow(PlanMatchPattern source) {

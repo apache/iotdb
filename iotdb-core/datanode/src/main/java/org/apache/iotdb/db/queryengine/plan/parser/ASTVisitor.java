@@ -164,6 +164,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -288,6 +289,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
@@ -460,7 +462,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     createTimeSeriesStatement.setCompressor(
-        TSFileDescriptor.getInstance().getConfig().getCompressor());
+        TSFileDescriptor.getInstance()
+            .getConfig()
+            .getCompressor(createTimeSeriesStatement.getDataType()));
     if (props != null
         && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
       String compressionString =
@@ -522,7 +526,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createAlignedTimeSeriesStatement.addEncoding(encoding);
     }
 
-    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor(dataType);
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
       String compressorString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
@@ -1354,23 +1358,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // Create Model =====================================================================
-  public static void validateModelName(String modelName) {
-    if (modelName.length() < 2 || modelName.length() > 64) {
-      throw new SemanticException("Model name should be 2-64 characters");
-    } else if (modelName.startsWith("_")) {
-      throw new SemanticException("Model name should not start with '_'");
-    } else if (!modelName.matches("^[-\\w]*$")) {
-      throw new SemanticException("ModelName can only contain letters, numbers, and underscores");
+  public static void validateModelId(String modelId) {
+    if (modelId.length() < 2 || modelId.length() > 64) {
+      throw new SemanticException("ModelId should be 2-64 characters");
+    } else if (modelId.startsWith("_")) {
+      throw new SemanticException("ModelId should not start with '_'");
+    } else if (!modelId.matches("^[-\\w]*$")) {
+      throw new SemanticException("ModelId can only contain letters, numbers, and underscores");
     }
   }
 
   @Override
   public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
-    if (ctx.modelName == null) {
+    if (ctx.uriClause() == null) {
       String modelId = ctx.modelId.getText();
-      String modelType = ctx.modelType.getText();
-      CreateTrainingStatement createTrainingStatement =
-          new CreateTrainingStatement(modelId, modelType);
+      CreateTrainingStatement createTrainingStatement = new CreateTrainingStatement(modelId);
       if (ctx.hparamPair() != null) {
         Map<String, String> parameterList = new HashMap<>();
         for (IoTDBSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
@@ -1406,10 +1408,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createTrainingStatement.setTargetPathPatterns(targetPath);
       return createTrainingStatement;
     }
-    String modelName = ctx.modelName.getText();
-    validateModelName(modelName);
+    String modelId = ctx.modelId.getText();
+    validateModelId(modelId);
     CreateModelStatement createModelStatement = new CreateModelStatement();
-    createModelStatement.setModelName(parseIdentifier(modelName));
+    createModelStatement.setModelId(parseIdentifier(modelId));
     createModelStatement.setUri(parseAndValidateURI(ctx.uriClause()));
     return createModelStatement;
   }
@@ -1425,7 +1427,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitShowModels(IoTDBSqlParser.ShowModelsContext ctx) {
     ShowModelsStatement statement = new ShowModelsStatement();
     if (ctx.modelId != null) {
-      statement.setModelName(parseIdentifier(ctx.modelId.getText()));
+      statement.setModelId(parseIdentifier(ctx.modelId.getText()));
     }
     return statement;
   }
@@ -2121,6 +2123,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           LoadTsFileConfigurator.validateParameters(key, value);
           loadTsFileAttributes.put(key, value);
         }
+        LoadTsFileConfigurator.validateSynonymParameters(loadTsFileAttributes);
 
         loadTsFileStatement.setLoadAttributes(loadTsFileAttributes);
         return loadTsFileStatement;
@@ -2474,7 +2477,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPrivilegeList(priviParsed);
     authorStatement.setNodeNameList(nodeNameList);
+    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOption()
+        && ctx.grantOpt() != null) {
+      throw new SemanticException(
+          "Grant Option is disabled, Please check the parameter enable_grant_option.");
+    }
     authorStatement.setGrantOpt(ctx.grantOpt() != null);
+
     return authorStatement;
   }
 
@@ -2495,6 +2504,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(priviParsed);
     authorStatement.setNodeNameList(nodeNameList);
+    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOption()
+        && ctx.grantOpt() != null) {
+      throw new SemanticException(
+          "Grant Option is disabled, Please check the parameter enable_grant_option.");
+    }
     authorStatement.setGrantOpt(ctx.grantOpt() != null);
     return authorStatement;
   }
@@ -3745,7 +3759,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       encodings.add(encoding);
     }
 
-    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor(dataType);
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
       String compressorString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
@@ -4277,14 +4291,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitExtendRegion(IoTDBSqlParser.ExtendRegionContext ctx) {
-    return new ExtendRegionStatement(
-        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    return new ExtendRegionStatement(regionIds, Integer.parseInt(ctx.targetDataNodeId.getText()));
   }
 
   @Override
   public Statement visitRemoveRegion(IoTDBSqlParser.RemoveRegionContext ctx) {
-    return new RemoveRegionStatement(
-        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    return new RemoveRegionStatement(regionIds, Integer.parseInt(ctx.targetDataNodeId.getText()));
   }
 
   @Override
@@ -4292,6 +4308,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     List<Integer> nodeIds =
         Collections.singletonList(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     return new RemoveDataNodeStatement(nodeIds);
+  }
+
+  @Override
+  public Statement visitRemoveAINode(IoTDBSqlParser.RemoveAINodeContext ctx) {
+    return new RemoveAINodeStatement();
   }
 
   @Override
@@ -4572,7 +4593,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         (QueryStatement)
             StatementGenerator.createStatement(sql.substring(1, sql.length() - 1), zoneId);
 
-    statement.setModelName(parseIdentifier(ctx.modelId.getText()));
+    statement.setModelId(parseIdentifier(ctx.modelId.getText()));
     statement.setHasModelInference(true);
 
     if (ctx.hparamPair() != null) {
@@ -4622,8 +4643,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
     if (true) {
-      throw new UnsupportedOperationException(
-          "The 'CreateTableView' is unsupported in tree sql-dialect.");
+      throw new SemanticException("The 'CreateTableView' is unsupported in tree sql-dialect.");
     }
     return new CreateTableViewStatement(
         new CreateView(

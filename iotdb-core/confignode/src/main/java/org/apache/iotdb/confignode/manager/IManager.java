@@ -22,10 +22,12 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -39,7 +41,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -138,7 +139,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -336,10 +339,9 @@ public interface IManager {
   /**
    * Remove AINode.
    *
-   * @param removeAINodePlan RemoveAINodePlan
    * @return AINodeToStatusResp
    */
-  TSStatus removeAINode(RemoveAINodePlan removeAINodePlan);
+  TSStatus removeAINode();
 
   /**
    * Report that the specified DataNode will be shutdown.
@@ -597,6 +599,9 @@ public interface IManager {
   /** Show content of configuration file on specified node */
   TShowConfigurationResp showConfiguration(int nodeId);
 
+  /** Show configuration on specified node by TsBlock */
+  TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId);
+
   /** Set system status on all DataNodes. */
   TSStatus setSystemStatus(String status);
 
@@ -627,8 +632,14 @@ public interface IManager {
   /** Show DataNodes. */
   TShowDataNodesResp showDataNodes();
 
+  /** Show DataNodes for information schema. */
+  TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema();
+
   /** Show ConfigNodes. */
   TShowConfigNodesResp showConfigNodes();
+
+  /** Show ConfigNodes for information schema. */
+  TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema();
 
   /**
    * Show StorageGroup.
@@ -882,4 +893,6 @@ public interface IManager {
   TDescTable4InformationSchemaResp describeTable4InformationSchema();
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
+
+  TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp);
 }

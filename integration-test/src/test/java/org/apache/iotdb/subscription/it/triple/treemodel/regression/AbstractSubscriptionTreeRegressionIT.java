@@ -29,6 +29,7 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.WrappedVoidSupplier;
 import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionTripleIT;
 
 import org.apache.thrift.TException;
@@ -38,6 +39,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -50,13 +52,17 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS;
 
 public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubscriptionTripleIT {
@@ -276,7 +282,8 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
 
   public void check_count2(int expect_count, String sql, String msg)
       throws IoTDBConnectionException, StatementExecutionException {
-    assertEquals(getCount(session_dest2, sql), expect_count, "Query count:" + msg);
+    long count = getCount(session_dest2, sql);
+    assertEquals(count, expect_count, "Query count:" + msg);
   }
 
   public void consume_data(SubscriptionTreePullConsumer consumer, Session session)
@@ -296,16 +303,21 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
         for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
             it.hasNext(); ) {
           final Tablet tablet = it.next();
+          LOGGER.info(
+              "Inserting a tablet, device {}, times {}, measurements {}",
+              tablet.getDeviceId(),
+              Arrays.stream(tablet.getTimestamps())
+                  .boxed()
+                  .collect(Collectors.toList())
+                  .subList(0, tablet.getRowSize()),
+              tablet.getSchemas().stream()
+                  .map(IMeasurementSchema::getMeasurementName)
+                  .collect(Collectors.toList()));
           session.insertTablet(tablet);
         }
       }
       consumer.commitSync(messages);
     }
-  }
-
-  public List<Integer> consume_tsfile_withFileCount(
-      SubscriptionTreePullConsumer consumer, String device) throws InterruptedException {
-    return consume_tsfile(consumer, Collections.singletonList(device));
   }
 
   public int consume_tsfile(SubscriptionTreePullConsumer consumer, String device)
@@ -359,33 +371,119 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
     return results;
   }
 
-  public static void consume_data_long(
-      SubscriptionTreePullConsumer consumer, Session session, Long timeout)
-      throws StatementExecutionException, InterruptedException, IoTDBConnectionException {
-    timeout = System.currentTimeMillis() + timeout;
-    while (System.currentTimeMillis() < timeout) {
-      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
-      if (messages.isEmpty()) {
-        Thread.sleep(1000);
-      }
-      for (final SubscriptionMessage message : messages) {
-        for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-            it.hasNext(); ) {
-          final Tablet tablet = it.next();
-          session.insertTablet(tablet);
-        }
-      }
-      consumer.commitSync(messages);
-    }
+  public void consume_data_await(
+      SubscriptionTreePullConsumer consumer,
+      Session session,
+      List<WrappedVoidSupplier> assertions) {
+    AWAIT.untilAsserted(
+        () -> {
+          List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
+          if (messages.isEmpty()) {
+            session_src.executeNonQueryStatement("flush");
+          }
+          for (final SubscriptionMessage message : messages) {
+            for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
+                it.hasNext(); ) {
+              final Tablet tablet = it.next();
+              session.insertTablet(tablet);
+            }
+          }
+          consumer.commitSync(messages);
+          for (final WrappedVoidSupplier assertion : assertions) {
+            assertion.get();
+          }
+        });
   }
 
-  public void consume_data(SubscriptionTreePullConsumer consumer)
-      throws TException,
-          IOException,
-          StatementExecutionException,
-          InterruptedException,
-          IoTDBConnectionException {
-    consume_data(consumer, session_dest);
+  public void consume_tsfile_await(
+      SubscriptionTreePullConsumer consumer,
+      List<String> devices,
+      List<Integer> expected,
+      List<Boolean> allowGte) {
+    final List<AtomicInteger> counters = new ArrayList<>(devices.size());
+    for (int i = 0; i < devices.size(); i++) {
+      counters.add(new AtomicInteger(0));
+    }
+    AWAIT.untilAsserted(
+        () -> {
+          List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
+          if (messages.isEmpty()) {
+            session_src.executeNonQueryStatement("flush");
+          }
+          for (final SubscriptionMessage message : messages) {
+            final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
+            try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
+              for (int i = 0; i < devices.size(); i++) {
+                final Path path = new Path(devices.get(i), "s_0", true);
+                final QueryDataSet dataSet =
+                    tsFileReader.query(
+                        QueryExpression.create(Collections.singletonList(path), null));
+                while (dataSet.hasNext()) {
+                  dataSet.next();
+                  counters.get(i).addAndGet(1);
+                }
+              }
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          }
+          consumer.commitSync(messages);
+          for (int i = 0; i < devices.size(); i++) {
+            if (allowGte.get(i)) {
+              assertGte(counters.get(i).get(), expected.get(i));
+            } else {
+              assertEquals(counters.get(i).get(), expected.get(i));
+            }
+          }
+        });
+  }
+
+  public void consume_tsfile_await(
+      SubscriptionTreePullConsumer consumer, List<String> devices, List<Integer> expected) {
+    consume_tsfile_await(
+        consumer,
+        devices,
+        expected,
+        Stream.generate(() -> false).limit(devices.size()).collect(Collectors.toList()));
+  }
+
+  public void consume_tsfile_with_file_count_await(
+      SubscriptionTreePullConsumer consumer, List<String> devices, List<Integer> expected) {
+    final List<AtomicInteger> counters = new ArrayList<>(devices.size());
+    for (int i = 0; i < devices.size(); i++) {
+      counters.add(new AtomicInteger(0));
+    }
+    AtomicInteger onReceived = new AtomicInteger(0);
+    AWAIT.untilAsserted(
+        () -> {
+          List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
+          if (messages.isEmpty()) {
+            session_src.executeNonQueryStatement("flush");
+          }
+          for (final SubscriptionMessage message : messages) {
+            onReceived.incrementAndGet();
+            final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
+            try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
+              for (int i = 0; i < devices.size(); i++) {
+                final Path path = new Path(devices.get(i), "s_0", true);
+                final QueryDataSet dataSet =
+                    tsFileReader.query(
+                        QueryExpression.create(Collections.singletonList(path), null));
+                while (dataSet.hasNext()) {
+                  dataSet.next();
+                  counters.get(i).addAndGet(1);
+                }
+              }
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          }
+          consumer.commitSync(messages);
+          for (int i = 0; i < devices.size(); i++) {
+            assertEquals(counters.get(i).get(), expected.get(i));
+          }
+          assertEquals(onReceived.get(), expected.get(devices.size()));
+        });
   }
 
   //////////////////////////// strict assertions ////////////////////////////

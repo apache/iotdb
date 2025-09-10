@@ -236,7 +236,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
             real.getName(),
             tsDataType,
             getDefaultEncoding(tsDataType),
-            TSFileDescriptor.getInstance().getConfig().getCompressor());
+            TSFileDescriptor.getInstance().getConfig().getCompressor(tsDataType));
     innerTreeStatement.setMeasurementSchema(measurementSchema, i);
     try {
       innerTreeStatement.selfCheckDataTypes(i);

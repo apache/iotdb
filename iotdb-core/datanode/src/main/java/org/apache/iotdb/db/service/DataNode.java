@@ -114,6 +114,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.apache.ratis.util.ExitUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -134,7 +135,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
+import static org.apache.iotdb.commons.utils.StatusUtils.retrieveExitStatusCode;
 import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
+import static org.apache.iotdb.db.utils.DateTimeUtils.initTimestampPrecision;
 
 public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
@@ -178,7 +181,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     DataNodeHolder.INSTANCE = this;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     registerManager = new RegisterManager();
     DataNodeSystemPropertiesHandler.getInstance()
@@ -194,6 +196,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   public static void main(String[] args) {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
+    // let IoTDB handle the exception instead of ratis
+    ExitUtils.disableSystemExit();
     DataNode dataNode = new DataNode();
     int returnCode = dataNode.run(args);
     if (returnCode != 0) {
@@ -203,6 +207,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   @Override
   protected void start() {
+    logger.info("Starting DataNode...");
     boolean isFirstStart;
     try {
       // Check if this DataNode is start for the first time and do other pre-checks
@@ -275,11 +280,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         dataRegionConsensusStarted = true;
       }
 
-    } catch (StartupException | IOException e) {
+    } catch (Throwable e) {
+      int exitStatusCode = retrieveExitStatusCode(e);
       logger.error("Fail to start server", e);
       stop();
-      System.exit(-1);
+      System.exit(exitStatusCode);
     }
+    logger.info("DataNode started");
   }
 
   @Override
@@ -386,6 +393,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e.getMessage());
     }
+
+    // init
+    initTimestampPrecision();
     long endTime = System.currentTimeMillis();
     logger.info(
         "Successfully pull system configurations from ConfigNode-leader, which takes {} ms",
@@ -684,7 +694,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       setUp();
     } catch (StartupException e) {
       logger.error("Meet error while starting up.", e);
-      throw new StartupException("Error in activating IoTDB DataNode.");
+      throw e;
     }
     logger.info("IoTDB DataNode has started.");
 
@@ -781,8 +791,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
-    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCService.getInstance());
+
+    registerInternalRPCService();
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -791,12 +801,22 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Start client RPCService to indicate that the current DataNode provide external services
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
+        .setRpcImplClassName(getClientRPCServiceImplClassName());
     if (config.isEnableRpcService()) {
       registerManager.register(ExternalRPCService.getInstance());
     }
     // init service protocols
     initProtocols();
+  }
+
+  protected void registerInternalRPCService() throws StartupException {
+    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
+    registerManager.register(DataNodeInternalRPCService.getInstance());
+  }
+
+  // make it easier for users to extend ClientRPCServiceImpl to export more rpc services
+  protected String getClientRPCServiceImplClassName() {
+    return ClientRPCServiceImpl.class.getName();
   }
 
   private void setUpMetricService() throws StartupException {

@@ -191,7 +191,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       types.add(inferType(value));
       values.add(value);
     }
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values, measurements);
 
     request.setPrefixPath(prefix);
     request.setTimestamp(time);
@@ -220,7 +220,8 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       TSDataType type = inferType(entry.getValue());
       types.add(type.ordinal());
       encodings.add((int) getDefaultEncoding(type).serialize());
-      compressors.add((int) TSFileDescriptor.getInstance().getConfig().getCompressor().serialize());
+      compressors.add(
+          (int) TSFileDescriptor.getInstance().getConfig().getCompressor(type).serialize());
     }
     request.setPaths(paths);
     request.setDataTypes(types);

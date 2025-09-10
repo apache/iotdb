@@ -22,8 +22,8 @@ package org.apache.iotdb.db.storageengine.load.converter;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -219,8 +219,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     return result;
   }
 
-  private static boolean handleTSStatus(
-      final TSStatus result, final LoadTsFileStatement loadTsFileStatement) {
+  public static boolean handleTSStatus(final TSStatus result, final Object loadTsFileStatement) {
     if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {

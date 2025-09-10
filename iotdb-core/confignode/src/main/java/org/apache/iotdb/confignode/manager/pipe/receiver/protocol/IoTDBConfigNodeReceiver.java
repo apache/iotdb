@@ -26,15 +26,15 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -78,16 +78,16 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSch
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigNodeHandshakeV1Req;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigNodeHandshakeV2Req;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigPlanReq;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotPieceReq;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
-import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV1Req;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV2Req;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigPlanReq;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigSnapshotPieceReq;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigSnapshotSealReq;
+import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
@@ -280,6 +280,11 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
+    TSStatus status = loginIfNecessary();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
     switch (plan.getType()) {
       case CreateDatabase:
         return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
@@ -426,7 +431,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeUser:
       case RevokeRole:
         for (final int permission : ((AuthorTreePlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivilegeGrantOpt(
                       username,
@@ -447,7 +452,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserAny:
       case RRevokeRoleAny:
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivileges(
                       username, new PrivilegeUnion(PrivilegeType.values()[permission], true, true))
@@ -462,7 +467,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserAll:
       case RRevokeRoleAll:
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
-          final TSStatus status;
           if (privilegeType.isRelationalPrivilege()) {
             status =
                 configManager
@@ -486,7 +490,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserDBPriv:
       case RRevokeRoleDBPriv:
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivileges(
                       username,
@@ -505,7 +509,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserTBPriv:
       case RRevokeRoleTBPriv:
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivileges(
                       username,
@@ -525,7 +529,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserSysPri:
       case RRevokeRoleSysPri:
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivileges(
                       username, new PrivilegeUnion(PrivilegeType.values()[permission], true))
@@ -836,12 +840,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 true)
             .getStatus();
       case RenameTable:
-        configManager
+        return configManager
             .getProcedureManager()
             .executeWithoutDuplicate(
                 ((RenameTablePlan) plan).getDatabase(),
                 null,
                 ((RenameTablePlan) plan).getTableName(),
+                ((RenameTablePlan) plan).getNewName(),
                 queryId,
                 ProcedureType.RENAME_TABLE_PROCEDURE,
                 new RenameTableProcedure(
@@ -851,7 +856,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((RenameTablePlan) plan).getNewName(),
                     true));
       case RenameView:
-        configManager
+        return configManager
             .getProcedureManager()
             .executeWithoutDuplicate(
                 ((RenameViewPlan) plan).getDatabase(),
@@ -978,9 +983,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     return configManager.getClusterManager().getClusterId();
   }
 
+  // The configNode will try to log in per plan because:
+  // 1. The number of plans at configNode is rather small.
+  // 2. The detection period (300s) is too long for configPlans.
   @Override
   protected boolean shouldLogin() {
-    return lastSuccessfulLoginTime == Long.MIN_VALUE || super.shouldLogin();
+    return true;
   }
 
   @Override
@@ -992,6 +1000,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   protected String getReceiverFileBaseDir() {
     return ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
   }
+
+  @Override
+  protected void markFileBaseDirStateAbnormal(String dir) {}
 
   @Override
   protected String getSenderHost() {
@@ -1041,10 +1052,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             parameters.get(ColumnHeaderConstant.TABLE_NAME));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      IoTDBConfigRegionExtractor.parseConfigPlan(generator.next(), treePattern, tablePattern)
+      IoTDBConfigRegionSource.parseConfigPlan(generator.next(), treePattern, tablePattern)
           .filter(
               configPhysicalPlan ->
-                  IoTDBConfigRegionExtractor.isTypeListened(
+                  IoTDBConfigRegionSource.isTypeListened(
                       configPhysicalPlan, executionTypes, treePattern, tablePattern))
           .ifPresent(
               configPhysicalPlan ->

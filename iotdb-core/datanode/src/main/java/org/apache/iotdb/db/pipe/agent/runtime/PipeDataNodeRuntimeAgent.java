@@ -29,17 +29,20 @@ import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
+import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.slf4j.Logger;
@@ -70,7 +73,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
   //////////////////////////// System Service Interface ////////////////////////////
 
   public synchronized void preparePipeResources(
-      ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+      final ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
     // Clean sender (connector) hardlink file dir and snapshot dir
     PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean();
 
@@ -79,21 +82,16 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleProgressIndexAssigner.start();
+
+    IoTDBTreePattern.setDevicePathGetter(CompactionPathUtils::getPath);
+    IoTDBTreePattern.setMeasurementPathGetter(CompactionPathUtils::getPath);
+    PipeLogger.setLogger(PipePeriodicalLogReducer::log);
   }
 
   @Override
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
-
-    registerPeriodicalJob(
-        "PipeTaskAgent#restartAllStuckPipes",
-        PipeDataNodeAgent.task()::restartAllStuckPipes,
-        PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
-    registerPeriodicalJob(
-        "PipeTaskAgent#flushDataRegionIfNeeded",
-        PipeTerminateEvent::flushDataRegionIfNeeded,
-        PipeConfig.getInstance().getPipeFlushAfterLastTerminateSeconds());
 
     pipePeriodicalJobExecutor.start();
 

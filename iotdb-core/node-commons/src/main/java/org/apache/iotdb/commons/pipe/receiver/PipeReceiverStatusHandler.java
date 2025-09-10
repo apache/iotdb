@@ -20,12 +20,12 @@
 package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
+import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -96,9 +96,15 @@ public class PipeReceiverStatusHandler {
   public void handle(
       final TSStatus status, final String exceptionMessage, final String recordMessage) {
 
-    if (RetryUtils.needRetryForConsensus(status.getCode())) {
+    if (RetryUtils.needRetryForWrite(status.getCode())) {
       LOGGER.info("IoTConsensusV2: will retry with increasing interval. status: {}", status);
-      throw new PipeConsensusRetryWithIncreasingIntervalException(exceptionMessage);
+      throw new PipeConsensusRetryWithIncreasingIntervalException(
+          exceptionMessage, Integer.MAX_VALUE);
+    }
+
+    if (RetryUtils.notNeedRetryForConsensus(status.getCode())) {
+      LOGGER.info("IoTConsensusV2: will not retry. status: {}", status);
+      return;
     }
 
     switch (status.getCode()) {
@@ -117,7 +123,7 @@ public class PipeReceiverStatusHandler {
       case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
         {
           LOGGER.info("Temporary unavailable exception: will retry forever. status: {}", status);
-          throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
+          throw new PipeRuntimeSinkCriticalException(exceptionMessage);
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
@@ -155,7 +161,7 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          throw new PipeRuntimeSinkRetryTimesConfigurableException(
               exceptionMessage,
               (int)
                   Math.max(
@@ -194,7 +200,7 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          throw new PipeRuntimeSinkRetryTimesConfigurableException(
               exceptionMessage,
               (int)
                   Math.max(
@@ -230,7 +236,7 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          throw new PipeRuntimeSinkRetryTimesConfigurableException(
               exceptionMessage,
               (int)
                   Math.max(

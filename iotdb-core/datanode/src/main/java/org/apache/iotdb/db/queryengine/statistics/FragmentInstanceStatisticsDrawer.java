@@ -113,6 +113,17 @@ public class FragmentInstanceStatisticsDrawer {
           String.format(
               "Cost of initDataQuerySource: %.3f ms",
               statistics.getInitDataQuerySourceCost() * NS_TO_MS_FACTOR));
+
+      if (statistics.isSetInitDataQuerySourceRetryCount()
+          && statistics.getInitDataQuerySourceRetryCount() > 0) {
+        addLine(
+            singleFragmentInstanceArea,
+            1,
+            String.format(
+                "Retry count of initDataQuerySource: %d",
+                statistics.getInitDataQuerySourceRetryCount()));
+      }
+
       addLine(
           singleFragmentInstanceArea,
           1,

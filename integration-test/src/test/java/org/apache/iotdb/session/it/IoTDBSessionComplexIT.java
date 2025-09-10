@@ -38,6 +38,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -68,8 +69,9 @@ import static org.junit.Assert.fail;
 public class IoTDBSessionComplexIT {
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
-    createUser("test", "test123");
+    createUser("test", "test123123456");
   }
 
   @After
@@ -180,7 +182,8 @@ public class IoTDBSessionComplexIT {
       types.add(TSDataType.INT64);
 
       // auth test
-      try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123")) {
+      try (ISession authSession =
+          EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
         grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
         grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
         try {
@@ -549,9 +552,57 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  public void insertNotAutoCreateSchemaTest() {
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_auto_create_schema'='false'");
+      session.createDatabase("root.sg1");
+      session.createDatabase("root.sg2");
+      session.createDatabase("root.sg3");
+
+      try {
+        insertTablet(session, "root.sg1.d1");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                && e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      }
+
+      try {
+        insertRecords(session, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                    && e.getMessage().contains("Path [root.sg1.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      }
+
+      try {
+        insertMultiTablets(session, Arrays.asList("root.sg2.d1", "root.sg2.d2"));
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                    && e.getMessage().contains("Path [root.sg2.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.sg2.d1.s1] does not exist"));
+      }
+
+      try {
+        insertRecordsOfOneDevice(session, "root.sg3.d1");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                && e.getMessage().contains("Path [root.sg3.d1.s1] does not exist"));
+      }
+
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testAuth() {
     // auth test
-    try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123")) {
+    try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d2.**");
@@ -589,8 +640,11 @@ public class IoTDBSessionComplexIT {
         insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
-            .contains(
-                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
+                .contains(
+                    "No permissions for this operation, please add privilege WRITE_SCHEMA on ")
+            && !e.getMessage().contains("root.sg1.d1.s1")
+            && !e.getMessage().contains("root.sg1.d1.s2")
+            && !e.getMessage().contains("root.sg1.d1.s3")) {
           fail(e.getMessage());
         }
       }

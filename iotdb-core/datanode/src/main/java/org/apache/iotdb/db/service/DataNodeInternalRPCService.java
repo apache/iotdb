@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -33,10 +35,15 @@ import org.apache.iotdb.db.service.metrics.DataNodeInternalRPCServiceMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class DataNodeInternalRPCService extends ThriftService
     implements DataNodeInternalRPCServiceMBean {
 
-  private DataNodeInternalRPCServiceImpl impl;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
+  private final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
 
   private DataNodeInternalRPCService() {}
 
@@ -46,30 +53,43 @@ public class DataNodeInternalRPCService extends ThriftService
   }
 
   @Override
-  public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    impl = new DataNodeInternalRPCServiceImpl();
+  public void initTProcessor() {
+    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl());
     initSyncedServiceImpl(null);
-    processor = new Processor<>(impl);
+    processor = new Processor<>(impl.get());
   }
 
   @Override
-  public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+  public void initThriftServiceThread() throws IllegalAccessException {
     try {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       thriftServiceThread =
-          new ThriftServiceThread(
-              processor,
-              getID().getName(),
-              ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
-              getBindIP(),
-              getBindPort(),
-              config.getRpcMaxConcurrentClientNum(),
-              config.getThriftServerAwaitTimeForStopService(),
-              new InternalServiceThriftHandler(),
-              config.isRpcThriftCompressionEnable(),
-              DeepCopyRpcTransportFactory.INSTANCE);
+          commonConfig.isEnableInternalSSL()
+              ? new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpcMaxConcurrentClientNum(),
+                  config.getThriftServerAwaitTimeForStopService(),
+                  new InternalServiceThriftHandler(),
+                  config.isRpcThriftCompressionEnable(),
+                  commonConfig.getKeyStorePath(),
+                  commonConfig.getKeyStorePwd(),
+                  commonConfig.getTrustStorePath(),
+                  commonConfig.getTrustStorePwd(),
+                  DeepCopyRpcTransportFactory.INSTANCE)
+              : new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpcMaxConcurrentClientNum(),
+                  config.getThriftServerAwaitTimeForStopService(),
+                  new InternalServiceThriftHandler(),
+                  config.isRpcThriftCompressionEnable(),
+                  DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -80,16 +100,17 @@ public class DataNodeInternalRPCService extends ThriftService
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    return config.getInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    return config.getInternalPort();
   }
 
   public DataNodeInternalRPCServiceImpl getImpl() {
-    return impl;
+    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl());
+    return impl.get();
   }
 
   private static class DataNodeInternalRPCServiceHolder {

@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -37,7 +38,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -67,6 +67,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogg
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
@@ -81,6 +82,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -218,12 +220,6 @@ public class StorageEngine implements IService {
               LOGGER.info(
                   "Storage Engine recover cost: {}s.",
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
-
-              PipeDataNodeAgent.runtime()
-                  .registerPeriodicalJob(
-                      "StorageEngine#operateFlush",
-                      () -> operateFlush(new TFlushReq()),
-                      PipeConfig.getInstance().getPipeStorageEngineFlushTimeIntervalMs() / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
@@ -775,6 +771,7 @@ public class StorageEngine implements IService {
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
+      LOGGER.info("Removing data region {}", regionId);
       region.markDeleted();
       try {
         region.abortCompaction();
@@ -818,6 +815,8 @@ public class StorageEngine implements IService {
         WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
         WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
         FileMetrics.getInstance().deleteRegion(region.getDatabaseName(), region.getDataRegionId());
+        CompressionRatio.getInstance().removeDataRegionRatio(String.valueOf(regionId.getId()));
+        LOGGER.info("Removed data region {}", regionId);
       } catch (Exception e) {
         LOGGER.error(
             "Error occurs when deleting data region {}-{}",
@@ -953,7 +952,7 @@ public class StorageEngine implements IService {
 
     try {
       loadTsFileManager.writeToDataRegion(dataRegion, pieceNode, uuid);
-    } catch (IOException e) {
+    } catch (IOException | PageException e) {
       LOGGER.warn(
           "IO error when writing piece node of TsFile {} to DataRegion {}.",
           pieceNode.getTsFile(),
@@ -980,13 +979,13 @@ public class StorageEngine implements IService {
       LoadTsFileScheduler.LoadCommand loadCommand,
       String uuid,
       boolean isGeneratedByPipe,
-      ProgressIndex progressIndex) {
+      Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap) {
     TSStatus status = new TSStatus();
 
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, progressIndex)) {
+          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, timePartitionProgressIndexMap)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());

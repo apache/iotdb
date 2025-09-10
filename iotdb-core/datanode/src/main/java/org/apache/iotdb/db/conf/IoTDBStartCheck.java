@@ -29,10 +29,11 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 
-import com.google.common.base.Objects;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.exception.encrypt.EncryptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.function.Supplier;
 
@@ -77,7 +79,8 @@ public class IoTDBStartCheck {
   private static final String SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
   private static final String DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
   private static final String ENCRYPT_MAGIC_STRING = "encrypt_magic_string";
-
+  private static final String ENCRYPT_SALT = "encrypt_salt";
+  private static final String ENCRYPT_TOKEN_HINT = "encrypt_token_hint";
   private static final String magicString = "thisisusedfortsfileencrypt";
 
   // Mutable system parameters
@@ -115,7 +118,6 @@ public class IoTDBStartCheck {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     IoTDBConfigCheckHolder.INSTANCE = new IoTDBStartCheck();
   }
@@ -164,7 +166,6 @@ public class IoTDBStartCheck {
    * accessing same director.
    */
   public void checkDirectory() throws ConfigurationException, IOException {
-    // check data dirs TODO(zhm) only check local directories
     for (String dataDir : config.getLocalDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
@@ -308,12 +309,41 @@ public class IoTDBStartCheck {
   }
 
   public void serializeEncryptMagicString() throws IOException {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
+      String token = System.getenv("user_encrypt_token");
+      if (token == null || token.trim().isEmpty()) {
+        throw new EncryptException(
+            "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in the environment variable.");
+      }
+      String tokenHint = System.getenv("user_encrypt_token_hint");
+      if (tokenHint != null && !tokenHint.trim().isEmpty()) {
+        // If user_encrypt_token_hint is set, it should follow some rules.
+        // For example, it could not include user_encrypt_token.
+        if (tokenHint.toLowerCase().contains(token.toLowerCase())) {
+          throw new EncryptException(
+              "user_encrypt_token_hint should not include user_encrypt_token, please check it in your environment variable.");
+        }
+        if (tokenHint
+            .toLowerCase()
+            .contains(new StringBuilder(token.toLowerCase()).reverse().toString())) {
+          throw new EncryptException(
+              "user_encrypt_token_hint should not include the reverse of user_encrypt_token, please check it in your environment variable.");
+        }
+      }
+    }
     String encryptMagicString =
         EncryptUtils.byteArrayToHexString(
-            EncryptUtils.getEncrypt()
-                .getEncryptor()
-                .encrypt(magicString.getBytes(TSFileConfig.STRING_CHARSET)));
+            EncryptUtils.getEncrypt().getEncryptor().encrypt(magicString.getBytes()));
     systemProperties.put(ENCRYPT_MAGIC_STRING, () -> encryptMagicString);
+    String encryptSalt =
+        EncryptUtils.byteArrayToHexString(
+            TSFileDescriptor.getInstance().getConfig().getEncryptSalt());
+    systemProperties.put(ENCRYPT_SALT, () -> encryptSalt);
+    String encryptTokenHint = CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint();
+    systemProperties.put(ENCRYPT_TOKEN_HINT, () -> encryptTokenHint);
     generateOrOverwriteSystemPropertiesFile();
   }
 
@@ -352,18 +382,36 @@ public class IoTDBStartCheck {
   }
 
   public void checkEncryptMagicString() throws IOException, ConfigurationException {
-    properties = systemPropertiesHandler.read();
-    String encryptMagicString = properties.getProperty("encrypt_magic_string");
-    if (encryptMagicString != null) {
-      byte[] magicBytes = EncryptUtils.hexStringToByteArray(encryptMagicString);
-      String newMagicString =
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
+      properties = systemPropertiesHandler.read();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setUserEncryptTokenHint(properties.getProperty(ENCRYPT_TOKEN_HINT));
+      String encryptSalt = properties.getProperty(ENCRYPT_SALT);
+      byte[] saltBytes = EncryptUtils.hexStringToByteArray(encryptSalt);
+      TSFileDescriptor.getInstance().getConfig().setEncryptSalt(saltBytes);
+
+      String token = System.getenv("user_encrypt_token");
+      if (token == null || token.trim().isEmpty()) {
+        throw new EncryptException(
+            "restart system after not storing key, but user_encrypt_token is not set. Please set it in the environment variable before restart. Here is your token hint info: "
+                + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());
+      }
+      TSFileDescriptor.getInstance().getConfig().setEncryptKeyFromToken(token);
+      String encryptMagicString = properties.getProperty(ENCRYPT_MAGIC_STRING);
+      byte[] magicStringBytes = EncryptUtils.hexStringToByteArray(encryptMagicString);
+      String decryptedMagicString =
           new String(
-              EncryptUtils.getEncrypt().getDecryptor().decrypt(magicBytes),
+              EncryptUtils.getEncrypt().getDecryptor().decrypt(magicStringBytes),
               TSFileConfig.STRING_CHARSET);
-      if (!Objects.equal(magicString, newMagicString)) {
+      if (!Objects.equals(decryptedMagicString, magicString)) {
         logger.error("encrypt_magic_string is not matched");
         throw new ConfigurationException(
-            "Changing encrypt key for tsfile encryption after first start is not permitted");
+            "Changing encrypt type or key for tsfile encryption after first start is not permitted. Here is your token hint info: "
+                + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());
       }
     }
   }

@@ -107,6 +107,7 @@ public class IoTDBTableViewQueryIT {
     "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
     "CREATE VIEW view2 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) as root.db.battery.**",
     "CREATE VIEW view3 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) with (ttl=1) as root.db.battery.**",
+    "CREATE VIEW view4 (battery TAG, voltage INT32 FIELD FROM voltage) as root.db.battery.**",
     "CREATE TABLE table1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD)",
     "INSERT INTO table1 (time, battery, voltage, current) values (1, 'b1', 1, 1)",
     "INSERT INTO table1 (time, battery, voltage, current) values (2, 'b1', 1, 1)",
@@ -339,6 +340,46 @@ public class IoTDBTableViewQueryIT {
       // empty result
       compareQueryResults(
           session, "select * from view3 limit 1", "select * from table1 limit 0", true);
+
+      // not exists
+      compareQueryResults(
+          session,
+          "select count(*) from view1 where battery = 'b'",
+          "select count(*) from table1 where battery = 'b'",
+          false);
+      compareQueryResults(
+          session,
+          "select * from (select time, battery as device1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from view2 where battery = 'b') as t2 using(time)",
+          "select * from (select time, battery as device1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from table1 where battery = 'b') as t2 using(time)",
+          true);
+      compareQueryResults(
+          session,
+          "select * from (select * from view1 where battery = 'b1') join (select * from view1 where battery = 'b1' and (voltage > 0 or current > 0)) using(time)",
+          "select * from (select * from table1 where battery = 'b1') join (select * from table1 where battery = 'b1' and (voltage > 0 or current > 0)) using(time)",
+          true);
+
+      compareQueryResults(
+          session,
+          "select time from view1 where time > 604800000",
+          "select time from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select time from view2 where current_rename > 1",
+          "select time from table1 where current > 1",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(*) from view1 where time < -1",
+          "select count(*) from table1 where time < -1",
+          true);
+      compareQueryResults(
+          session,
+          "select count(distinct battery) from view4 where battery = 'b1'",
+          "select count(distinct battery) from table1 where battery = 'b1'",
+          true);
     }
   }
 

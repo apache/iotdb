@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -127,6 +128,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
@@ -435,6 +437,11 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(setConfigurationStatement, context);
   }
 
+  public R visitShowConfiguration(
+      ShowConfigurationStatement showConfigurationStatement, C context) {
+    return visitStatement(showConfigurationStatement, context);
+  }
+
   public R visitStartRepairData(StartRepairDataStatement startRepairDataStatement, C context) {
     return visitStatement(startRepairDataStatement, context);
   }
@@ -610,6 +617,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitRemoveConfigNode(RemoveConfigNodeStatement removeConfigNodeStatement, C context) {
     return visitStatement(removeConfigNodeStatement, context);
+  }
+
+  public R visitRemoveAINode(RemoveAINodeStatement removeAINodeStatement, C context) {
+    return visitStatement(removeAINodeStatement, context);
   }
 
   public R visitDeactivateTemplate(

@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot.client;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
+import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcherThreadMetrics;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
@@ -62,10 +63,10 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
     if (response.getStatuses().stream()
-        .anyMatch(status -> RetryUtils.needRetryForConsensus(status.getCode()))) {
+        .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode()))) {
       List<String> retryStatusMessages =
           response.getStatuses().stream()
-              .filter(status -> RetryUtils.needRetryForConsensus(status.getCode()))
+              .filter(status -> RetryUtils.needRetryForWrite(status.getCode()))
               .map(TSStatus::getMessage)
               .collect(Collectors.toList());
 
@@ -92,6 +93,10 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
         }
       }
       completeBatch(batch);
+    }
+    if (response.isSetReceiverMemSize()) {
+      LogDispatcher.getReceiverMemSizeSum().addAndGet(response.getReceiverMemSize());
+      LogDispatcher.getSenderMemSizeSum().addAndGet(batch.getMemorySize());
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
   }

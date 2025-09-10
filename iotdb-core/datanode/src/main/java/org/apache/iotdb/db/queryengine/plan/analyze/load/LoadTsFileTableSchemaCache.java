@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
-import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -59,7 +60,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -102,7 +102,7 @@ public class LoadTsFileTableSchemaCache {
   // tableName -> Pair<device column count, device column mapping>
   private Map<String, Pair<Integer, Map<Integer, Integer>>> tableIdColumnMapper = new HashMap<>();
 
-  private Collection<ModEntry> currentModifications;
+  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
   private ITimeIndex currentTimeIndex;
 
   private long batchTable2DevicesMemoryUsageSizeInBytes = 0;
@@ -121,7 +121,7 @@ public class LoadTsFileTableSchemaCache {
     this.metadata = metadata;
     this.context = context;
     this.currentBatchTable2Devices = new HashMap<>();
-    this.currentModifications = new ArrayList<>();
+    this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     this.needToCreateDatabase = needToCreateDatabase;
   }
 
@@ -302,6 +302,13 @@ public class LoadTsFileTableSchemaCache {
       return;
     }
 
+    if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+      throw new LoadAnalyzeException(
+          "The database "
+              + database
+              + " does not exist, please enable 'enable_auto_create_schema' to enable auto creation.");
+    }
+
     Coordinator.getInstance()
         .getAccessControl()
         .checkCanCreateDatabase(context.getSession().getUserName(), database);
@@ -356,14 +363,14 @@ public class LoadTsFileTableSchemaCache {
         }
       } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
         ColumnSchema realColumn = fieldColumnNameToSchema.get(fileColumn.getName());
-        if (realColumn == null || !fileColumn.getType().equals(realColumn.getType())) {
-          throw new LoadAnalyzeTypeMismatchException(
-              String.format(
-                  "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",
-                  realColumn.getName(),
-                  realSchema.getTableName(),
-                  fileColumn.getType(),
-                  realColumn.getType()));
+        if (LOGGER.isDebugEnabled()
+            && (realColumn == null || !fileColumn.getType().equals(realColumn.getType()))) {
+          LOGGER.debug(
+              "Data type mismatch for column {} in table {}, type in TsFile: {}, type in IoTDB: {}",
+              realColumn.getName(),
+              realSchema.getTableName(),
+              fileColumn.getType(),
+              realColumn.getType());
         }
       }
     }
@@ -386,10 +393,12 @@ public class LoadTsFileTableSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
-    currentModifications = ModificationFile.readAllModifications(resource.getTsFile(), false);
-    for (final ModEntry modification : currentModifications) {
-      currentModificationsMemoryUsageSizeInBytes += modification.serializedSize();
-    }
+    ModificationFile.readAllModifications(resource.getTsFile(), false)
+        .forEach(
+            modification ->
+                currentModifications.append(modification.keyOfPatternTree(), modification));
+
+    currentModificationsMemoryUsageSizeInBytes = currentModifications.ramBytesUsed();
 
     // If there are too many modifications, a larger memory block is needed to avoid frequent
     // flush.
@@ -439,7 +448,7 @@ public class LoadTsFileTableSchemaCache {
   }
 
   private void clearModificationsAndTimeIndex() {
-    currentModifications.clear();
+    currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     currentTimeIndex = null;
     block.reduceMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
     block.reduceMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);

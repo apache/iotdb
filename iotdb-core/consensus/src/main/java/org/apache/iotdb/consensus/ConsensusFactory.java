@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
+import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
 
@@ -55,7 +55,7 @@ public class ConsensusFactory {
       if (className.equals(IOT_CONSENSUS_V2)) {
         className = REAL_PIPE_CONSENSUS;
         // initialize iotConsensusV2's thrift component
-        PipeConsensusClientMgrContainer.build();
+        IoTV2GlobalComponentContainer.build();
         // initialize iotConsensusV2's metric component
         PipeConsensusSyncLagManager.build();
       }

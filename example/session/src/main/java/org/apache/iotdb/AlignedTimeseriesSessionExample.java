@@ -65,6 +65,7 @@ public class AlignedTimeseriesSessionExample {
 
     //    createTemplate();
     createAlignedTimeseries();
+    createAlignedTimeseriesWithNullPartical();
 
     insertAlignedRecord();
     //    insertAlignedRecords();
@@ -274,6 +275,50 @@ public class AlignedTimeseriesSessionExample {
     }
     session.createAlignedTimeseries(
         ROOT_SG1_D1, measurements, dataTypes, encodings, compressors, null, null, null);
+  }
+
+  private static void createAlignedTimeseriesWithNullPartical()
+      throws StatementExecutionException, IoTDBConnectionException {
+    List<String> measurements = new ArrayList<>();
+    for (int i = 3; i <= 4; i++) {
+      measurements.add("s" + i);
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.INT32);
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+    for (int i = 3; i <= 4; i++) {
+      encodings.add(TSEncoding.RLE);
+      compressors.add(CompressionType.SNAPPY);
+    }
+
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("unit", "kg");
+    tagsList.add(tags);
+    tagsList.add(null);
+
+    List<Map<String, String>> attributesList = new ArrayList<>();
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("minValue", "1");
+    attributes.put("maxValue", "100");
+    attributesList.add(attributes);
+    attributesList.add(null);
+
+    List<String> alias = new ArrayList<>();
+    alias.add("weight33");
+    alias.add(null);
+
+    session.createAlignedTimeseries(
+        ROOT_SG1_D1,
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        alias,
+        tagsList,
+        attributesList);
   }
 
   // be sure template is coordinate with tablet
@@ -558,6 +603,84 @@ public class AlignedTimeseriesSessionExample {
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 2; i++) {
         long value = new SecureRandom().nextLong();
+        tablet1.addValue(schemaList1.get(i).getMeasurementName(), row1, value);
+        tablet2.addValue(schemaList2.get(i).getMeasurementName(), row2, value);
+        tablet3.addValue(schemaList3.get(i).getMeasurementName(), row3, value);
+      }
+      if (tablet1.getRowSize() == tablet1.getMaxRowNumber()) {
+        session.insertAlignedTablets(tabletMap, true);
+        tablet1.reset();
+        tablet2.reset();
+        tablet3.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet1.getRowSize() != 0) {
+      session.insertAlignedTablets(tabletMap, true);
+      tablet1.reset();
+      tablet2.reset();
+      tablet3.reset();
+    }
+  }
+
+  private static void insertTabletsWithAlignedTimeseriesWithNullValue()
+      throws IoTDBConnectionException, StatementExecutionException {
+
+    List<IMeasurementSchema> schemaList1 = new ArrayList<>();
+    schemaList1.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList1.add(new MeasurementSchema("s2", TSDataType.INT64));
+
+    List<IMeasurementSchema> schemaList2 = new ArrayList<>();
+    schemaList2.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList2.add(new MeasurementSchema("s2", TSDataType.INT64));
+
+    List<IMeasurementSchema> schemaList3 = new ArrayList<>();
+    schemaList3.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList3.add(new MeasurementSchema("s2", TSDataType.INT64));
+
+    Tablet tablet1 = new Tablet(ROOT_SG2_D1_VECTOR6, schemaList1, 100);
+    Tablet tablet2 = new Tablet(ROOT_SG2_D1_VECTOR7, schemaList2, 100);
+    Tablet tablet3 = new Tablet(ROOT_SG2_D1_VECTOR8, schemaList3, 100);
+
+    Map<String, Tablet> tabletMap = new HashMap<>();
+    tabletMap.put(ROOT_SG2_D1_VECTOR6, tablet1);
+    tabletMap.put(ROOT_SG2_D1_VECTOR7, tablet2);
+    tabletMap.put(ROOT_SG2_D1_VECTOR8, tablet3);
+
+    // Method 1 to add tablet data
+    long timestamp = System.currentTimeMillis();
+    for (long row = 0; row < 90; row++) {
+      int row1 = tablet1.getRowSize();
+      int row2 = tablet2.getRowSize();
+      int row3 = tablet3.getRowSize();
+      tablet1.addTimestamp(row1, timestamp);
+      tablet2.addTimestamp(row2, timestamp);
+      tablet3.addTimestamp(row3, timestamp);
+      for (int i = 0; i < 2; i++) {
+        long value = new SecureRandom().nextLong();
+        tablet1.addValue(schemaList1.get(i).getMeasurementName(), row1, value);
+        tablet2.addValue(schemaList2.get(i).getMeasurementName(), row2, value);
+        tablet3.addValue(schemaList3.get(i).getMeasurementName(), row3, value);
+      }
+      if (tablet1.getRowSize() == tablet1.getMaxRowNumber()) {
+        session.insertAlignedTablets(tabletMap, true);
+        tablet1.reset();
+        tablet2.reset();
+        tablet3.reset();
+      }
+      timestamp++;
+    }
+
+    for (long row = 90; row < 100; row++) {
+      int row1 = tablet1.getRowSize();
+      int row2 = tablet2.getRowSize();
+      int row3 = tablet3.getRowSize();
+      tablet1.addTimestamp(row1, timestamp);
+      tablet2.addTimestamp(row2, timestamp);
+      tablet3.addTimestamp(row3, timestamp);
+      for (int i = 0; i < 2; i++) {
+        Object value = null;
         tablet1.addValue(schemaList1.get(i).getMeasurementName(), row1, value);
         tablet2.addValue(schemaList2.get(i).getMeasurementName(), row2, value);
         tablet3.addValue(schemaList3.get(i).getMeasurementName(), row3, value);

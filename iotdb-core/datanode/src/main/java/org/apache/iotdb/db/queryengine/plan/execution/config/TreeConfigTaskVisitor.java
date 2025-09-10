@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropTrigge
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveAINodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveConfigNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.SetTTLTask;
@@ -90,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.LoadConfigurati
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
@@ -108,6 +112,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Dr
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -125,6 +130,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -184,6 +190,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -193,6 +200,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 
 import org.apache.tsfile.exception.NotImplementedException;
 
@@ -292,7 +300,19 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitAuthor(AuthorStatement statement, MPPQueryContext context) {
+    if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
+      visitUpdateUser(statement);
+    }
     return new AuthorizerTask(statement);
+  }
+
+  private void visitUpdateUser(AuthorStatement statement) {
+    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
+    if (user == null) {
+      throw new SemanticException("User " + statement.getUserName() + " not found");
+    }
+    statement.setPassWord(user.getPassword());
+    DataNodeAuthUtils.verifyPasswordReuse(statement.getUserName(), statement.getNewPassword());
   }
 
   @Override
@@ -315,6 +335,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitSetConfiguration(
       SetConfigurationStatement setConfigurationStatement, MPPQueryContext context) {
     return new SetConfigurationTask(setConfigurationStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowConfiguration(
+      ShowConfigurationStatement showConfigurationStatement, MPPQueryContext context) {
+    return new ShowConfigurationTask(showConfigurationStatement);
   }
 
   @Override
@@ -714,6 +740,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
+  public IConfigTask visitRemoveAINode(
+      RemoveAINodeStatement removeAINodeStatement, MPPQueryContext context) {
+    return new RemoveAINodeTask(removeAINodeStatement);
+  }
+
+  @Override
   public IConfigTask visitCreateContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context) {
     return new CreateContinuousQueryTask(createContinuousQueryStatement, context);
@@ -765,26 +797,26 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateModel(
       CreateModelStatement createModelStatement, MPPQueryContext context) {
-    if (createModelStatement.getUri() != null && isUriTrusted(createModelStatement.getUri())) {
-      // 1. user specified uri and that uri is trusted
-      // 2. user doesn't specify uri
-      return new CreateModelTask(createModelStatement, context);
+    String uri = createModelStatement.getUri();
+    if (uri != null && isUriTrusted(uri)) {
+      // user specified uri and that uri is trusted
+      return new CreateModelTask(createModelStatement.getModelId(), uri);
     } else {
       // user specified uri and that uri is not trusted
-      throw new SemanticException(getUnTrustedUriErrorMsg(createModelStatement.getUri()));
+      throw new SemanticException(getUnTrustedUriErrorMsg(uri));
     }
   }
 
   @Override
   public IConfigTask visitDropModel(
       DropModelStatement dropModelStatement, MPPQueryContext context) {
-    return new DropModelTask(dropModelStatement.getModelName());
+    return new DropModelTask(dropModelStatement.getModelId());
   }
 
   @Override
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
-    return new ShowModelsTask(showModelsStatement.getModelName());
+    return new ShowModelsTask(showModelsStatement.getModelId());
   }
 
   @Override
@@ -808,9 +840,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     }
     return new CreateTrainingTask(
         createTrainingStatement.getModelId(),
-        createTrainingStatement.getModelType(),
         createTrainingStatement.getParameters(),
-        false,
         createTrainingStatement.getTargetTimeRanges(),
         createTrainingStatement.getExistingModelId(),
         targetPathPatterns);

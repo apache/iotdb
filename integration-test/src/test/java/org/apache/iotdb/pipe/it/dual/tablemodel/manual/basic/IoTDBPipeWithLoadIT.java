@@ -69,17 +69,21 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         // Disable sender compaction to test mods
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setEnforceStrongPassword(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setEnforceStrongPassword(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -204,15 +208,13 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       }
 
       Set<String> expectedResSet = new java.util.HashSet<>();
-      expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,null,null,null,null,");
-      expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,null,null,null,null,");
-      expectedResSet.add("1970-01-01T00:00:00.002Z,null,null,null,null,d1,d2,blue,2,");
-      expectedResSet.add("1970-01-01T00:00:00.001Z,null,null,null,null,d1,d2,red,1,");
+      expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,");
+      expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,");
       // make sure data are not transferred
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from t1",
-          "time,tag3,tag4,s3,s4,tag1,tag2,s1,s2,",
+          "time,tag3,tag4,s3,s4,",
           expectedResSet,
           "db",
           handleFailure);
@@ -375,7 +377,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           "select * from t1",
           "time,tag1,tag2,tag3,s3,s4,s1,s2,",
           expectedResSet,
-          10,
           "db",
           handleFailure);
     }
@@ -448,13 +449,13 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     connectorAttributes.put("connector.ip", receiverIp);
     connectorAttributes.put("connector.port", Integer.toString(receiverPort));
     connectorAttributes.put("connector.user", "user01");
-    connectorAttributes.put("connector.password", "1234");
+    connectorAttributes.put("connector.password", "1234123456789");
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
-        statement.execute("create user user01 '1234'");
+        statement.execute("create user user01 '1234123456789'");
         statement.execute("grant create on any to user user01");
       } catch (final Exception e) {
         fail(e.getMessage());

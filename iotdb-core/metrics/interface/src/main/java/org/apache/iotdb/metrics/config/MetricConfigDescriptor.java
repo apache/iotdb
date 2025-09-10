@@ -124,6 +124,19 @@ public class MetricConfigDescriptor {
             loadConfig.getPrometheusReporterPassword(),
             properties));
 
+    loadConfig.setKeyStorePath(
+        getPropertyWithoutPrefix("key_store_path", loadConfig.getKeyStorePath(), properties));
+
+    loadConfig.setKeyStorePassword(
+        getPropertyWithoutPrefix("key_store_pwd", loadConfig.getKeyStorePassword(), properties));
+
+    loadConfig.setTrustStorePath(
+        getPropertyWithoutPrefix("trust_store_path", loadConfig.getTrustStorePath(), properties));
+
+    loadConfig.setTrustStorePassword(
+        getPropertyWithoutPrefix(
+            "trust_store_pwd", loadConfig.getTrustStorePassword(), properties));
+
     IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
     reporterConfig.setHost(
         getProperty(

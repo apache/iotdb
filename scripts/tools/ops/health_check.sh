@@ -372,6 +372,7 @@ system_settings_check() {
   fi
 }
 
+
 if [ -n "$operate" ]; then
     if [ "$operate" == "local" ]; then
         system_settings_pre_check

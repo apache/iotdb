@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
@@ -171,7 +172,10 @@ class NormalSchemaFetcher {
     }
 
     // [Step 5] Auto Create and process the missing schema
-    if (config.isAutoCreateSchemaEnabled()) {
+    if (config.isAutoCreateSchemaEnabled()
+        || schemaComputationWithAutoCreation
+            .getDevicePath()
+            .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
       // Check the isAligned value. If the input value is different from the actual value of the
       // existing device, throw exception.
       PartialPath devicePath = schemaComputationWithAutoCreation.getDevicePath();
@@ -197,13 +201,10 @@ class NormalSchemaFetcher {
       List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
       MPPQueryContext context) {
     // [Step 0] Record the input value.
-    List<Boolean> isAlignedPutInList = null;
-    if (config.isAutoCreateSchemaEnabled()) {
-      isAlignedPutInList =
-          schemaComputationWithAutoCreationList.stream()
-              .map(ISchemaComputationWithAutoCreation::isAligned)
-              .collect(Collectors.toList());
-    }
+    List<Boolean> isAlignedPutInList =
+        schemaComputationWithAutoCreationList.stream()
+            .map(ISchemaComputationWithAutoCreation::isAligned)
+            .collect(Collectors.toList());
 
     // [Step 1] Cache 1. compute measurements and record logical views.
     List<Integer> indexOfDevicesWithMissingMeasurements = new ArrayList<>();
@@ -323,8 +324,20 @@ class NormalSchemaFetcher {
       return;
     }
 
+    List<Integer> copyOfIndexOfDevicesNeedAutoCreateSchema =
+        new ArrayList<>(indexOfDevicesNeedAutoCreateSchema);
+    if (!config.isAutoCreateSchemaEnabled()) {
+      // keep auto-creation for system series
+      indexOfDevicesNeedAutoCreateSchema.removeIf(
+          i ->
+              !schemaComputationWithAutoCreationList
+                  .get(i)
+                  .getDevicePath()
+                  .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
+    }
+
     // [Step 5] Auto Create and process the missing schema
-    if (config.isAutoCreateSchemaEnabled()) {
+    if (!indexOfMeasurementsNeedAutoCreate.isEmpty()) {
       List<PartialPath> devicePathList =
           schemaComputationWithAutoCreationList.stream()
               .map(ISchemaComputationWithAutoCreation::getDevicePath)
@@ -360,14 +373,16 @@ class NormalSchemaFetcher {
           context);
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();
-      for (int i = 0; i < indexOfDevicesNeedAutoCreateSchema.size(); i++) {
+      for (int i = 0; i < copyOfIndexOfDevicesNeedAutoCreateSchema.size(); i++) {
         schemaComputationWithAutoCreation =
-            schemaComputationWithAutoCreationList.get(indexOfDevicesNeedAutoCreateSchema.get(i));
+            schemaComputationWithAutoCreationList.get(
+                copyOfIndexOfDevicesNeedAutoCreateSchema.get(i));
         indexOfMissingMeasurements =
             schemaTree.compute(
                 schemaComputationWithAutoCreation, indexOfMeasurementsNeedAutoCreate.get(i));
         if (!indexOfMissingMeasurements.isEmpty()) {
-          indexOfDevicesWithMissingMeasurements.add(indexOfDevicesNeedAutoCreateSchema.get(i));
+          indexOfDevicesWithMissingMeasurements.add(
+              copyOfIndexOfDevicesNeedAutoCreateSchema.get(i));
           indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
         }
       }

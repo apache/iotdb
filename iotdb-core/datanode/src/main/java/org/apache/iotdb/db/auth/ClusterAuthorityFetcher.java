@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
@@ -377,8 +378,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
               : configNodeClient.operatePermission(
                   statementToAuthorizerReq((AuthorStatement) plan));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        future.setException(new IoTDBException(tsStatus));
       } else {
+        onOperatePermissionSuccess(plan);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (AuthException e) {
@@ -388,6 +390,16 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       future.setException(e);
     }
     return future;
+  }
+
+  private void onOperatePermissionSuccess(Object plan) {
+    if (plan instanceof RelationalAuthorStatement) {
+      RelationalAuthorStatement stmt = (RelationalAuthorStatement) plan;
+      stmt.onSuccess();
+    } else if (plan instanceof AuthorStatement) {
+      AuthorStatement stmt = (AuthorStatement) plan;
+      stmt.onSuccess();
+    }
   }
 
   @Override
@@ -425,8 +437,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       LOGGER.error(CONNECTERROR);
       authorizerResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
-      future.setException(
-          new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
+      future.setException(new IoTDBException(authorizerResp.getStatus()));
     }
     return future;
   }
@@ -481,6 +492,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (password != null
+          && AuthUtils.validatePassword(
+              password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
         return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
@@ -509,6 +524,32 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         return status.getStatus();
       }
     }
+  }
+
+  public User getUser(String userName) {
+    checkCacheAvailable();
+    User user = iAuthorCache.getUserCache(userName);
+    if (user != null) {
+      return user;
+    } else {
+      TPermissionInfoResp permissionInfoResp = null;
+      try (ConfigNodeClient configNodeClient =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        permissionInfoResp = configNodeClient.getUser(userName);
+      } catch (ClientManagerException | TException e) {
+        LOGGER.error(CONNECTERROR);
+      }
+      if (permissionInfoResp != null
+          && permissionInfoResp.getStatus().getCode()
+              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        user = cacheUser(permissionInfoResp);
+        if (acceptCache) {
+          iAuthorCache.putUserCache(userName, user);
+        }
+      }
+    }
+    return user;
   }
 
   @Override

@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -52,6 +52,8 @@ public class PipeTableResp implements DataSet {
 
   private final TSStatus status;
   private final List<PipeMeta> allPipeMeta;
+
+  private static final String CONFIG_REGION_ID = "CONFIG_REGION";
 
   public PipeTableResp(final TSStatus status, final List<PipeMeta> allPipeMeta) {
     this.status = status;
@@ -77,7 +79,7 @@ public class PipeTableResp implements DataSet {
           allPipeMeta.stream()
               .filter(pipeMeta -> pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
               .findFirst()
-              .map(pipeMeta -> pipeMeta.getStaticMeta().getConnectorParameters().toString())
+              .map(pipeMeta -> pipeMeta.getStaticMeta().getSinkParameters().toString())
               .orElse(null);
 
       return new PipeTableResp(
@@ -87,7 +89,7 @@ public class PipeTableResp implements DataSet {
                   pipeMeta ->
                       pipeMeta
                           .getStaticMeta()
-                          .getConnectorParameters()
+                          .getSinkParameters()
                           .toString()
                           .equals(sortedConnectorParametersString))
               .collect(Collectors.toList()));
@@ -164,7 +166,17 @@ public class PipeTableResp implements DataSet {
         final Set<Integer> regionIds = entry.getValue();
         exceptionMessageBuilder
             .append("regionIds: ")
-            .append(regionIds)
+            .append(
+                regionIds.stream()
+                    .map(
+                        id -> {
+                          if (Objects.equals(Integer.MIN_VALUE, id)) {
+                            // handle config region id for user experience
+                            return CONFIG_REGION_ID;
+                          }
+                          return id.toString();
+                        })
+                    .collect(Collectors.toSet()))
             .append(", ")
             .append(exceptionMessage);
         if (++count < size) {
@@ -177,10 +189,9 @@ public class PipeTableResp implements DataSet {
               staticMeta.getPipeName(),
               staticMeta.getCreationTime(),
               runtimeMeta.getStatus().get().name(),
-              SystemConstant.addSystemKeysIfNecessary(staticMeta.getExtractorParameters())
-                  .toString(),
+              SystemConstant.addSystemKeysIfNecessary(staticMeta.getSourceParameters()).toString(),
               staticMeta.getProcessorParameters().toString(),
-              staticMeta.getConnectorParameters().toString(),
+              staticMeta.getSinkParameters().toString(),
               exceptionMessageBuilder.toString());
       final PipeTemporaryMetaInCoordinator temporaryMeta =
           (PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta();
@@ -206,7 +217,7 @@ public class PipeTableResp implements DataSet {
                   .getRegisteredDataNodeCount()
               == 1
           && ConfigRegionListeningFilter.parseListeningPlanTypeSet(
-                  pipeMeta.getStaticMeta().getExtractorParameters())
+                  pipeMeta.getStaticMeta().getSourceParameters())
               .isEmpty();
     } catch (final IllegalPathException e) {
       return false;

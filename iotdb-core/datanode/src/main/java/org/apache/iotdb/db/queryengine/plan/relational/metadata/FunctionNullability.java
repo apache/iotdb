@@ -51,6 +51,10 @@ public class FunctionNullability {
     return new FunctionNullability(true, Collections.nCopies(argumentsNumber, true));
   }
 
+  public static FunctionNullability getWindowFunctionNullability(int argumentsNumber) {
+    return new FunctionNullability(true, Collections.nCopies(argumentsNumber, true));
+  }
+
   public boolean isReturnNullable() {
     return returnNullable;
   }

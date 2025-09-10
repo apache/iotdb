@@ -62,6 +62,7 @@ public class IoTDBClusterAuthorityIT {
   @Before
   public void setUp() throws Exception {
     // Init 1C1D environment
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
@@ -145,7 +146,7 @@ public class IoTDBClusterAuthorityIT {
               AuthorType.CREATE_USER.ordinal(),
               "tempuser0",
               "",
-              "passwd",
+              "passwd123456",
               "",
               new HashSet<>(),
               false,
@@ -257,7 +258,7 @@ public class IoTDBClusterAuthorityIT {
               "tempuser0",
               "",
               "",
-              "newpwd",
+              "newpwd123456",
               new HashSet<>(),
               false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));

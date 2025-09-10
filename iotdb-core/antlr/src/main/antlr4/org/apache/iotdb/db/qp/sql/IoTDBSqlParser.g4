@@ -63,7 +63,7 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
-    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
@@ -541,11 +541,11 @@ reconstructRegion
     ;
 
 extendRegion
-    : EXTEND REGION regionId=INTEGER_LITERAL TO targetDataNodeId=INTEGER_LITERAL
+    : EXTEND REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* TO targetDataNodeId=INTEGER_LITERAL
     ;
 
 removeRegion
-    : REMOVE REGION regionId=INTEGER_LITERAL FROM targetDataNodeId=INTEGER_LITERAL
+    : REMOVE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM targetDataNodeId=INTEGER_LITERAL
     ;
 
 verifyConnection
@@ -560,6 +560,11 @@ removeDataNode
 // ---- Remove ConfigNode
 removeConfigNode
     : REMOVE CONFIGNODE configNodeId=INTEGER_LITERAL
+    ;
+
+// ---- Remove AINode
+removeAINode
+    : REMOVE AINODE (aiNodeId=INTEGER_LITERAL)?
     ;
 
 // Pipe Task =========================================================================================
@@ -698,8 +703,8 @@ dropSubscription
 // AI Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE MODEL modelName=identifier uriClause
-    | CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? (FROM MODEL existingModelId=identifier)? ON DATASET LR_BRACKET trainingData RR_BRACKET
+    : CREATE MODEL modelId=identifier uriClause
+    | CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? FROM MODEL existingModelId=identifier ON DATASET LR_BRACKET trainingData RR_BRACKET
     ;
 
 trainingData

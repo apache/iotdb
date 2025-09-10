@@ -17,6 +17,7 @@
  * under the License.
  */
 include "common.thrift"
+include "client.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
 namespace py iotdb.thrift.datanode
 
@@ -310,17 +311,11 @@ struct TDataNodeHeartbeatResp {
   14: optional list<bool> pipeCompletedList
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
+  17: optional map<i32, i64> dataRegionRawDataSize
 }
 
 struct TPipeHeartbeatReq {
   1: required i64 heartbeatId
-}
-
-struct TPipeHeartbeatResp {
-  1: required list<binary> pipeMetaList
-  2: optional list<bool> pipeCompletedList
-  3: optional list<i64> pipeRemainingEventCountList
-  4: optional list<double> pipeRemainingTimeList
 }
 
 enum TSchemaLimitLevel{
@@ -341,6 +336,7 @@ struct TUpdateTemplateReq {
 struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
+  3: optional string oldName
 }
 
 struct TInvalidateTableCacheReq {
@@ -396,7 +392,7 @@ struct TLoadCommandReq {
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
-    4: optional binary progressIndex
+    4: optional map<common.TTimePartitionSlot, binary> timePartition2ProgressIndex
 }
 
 struct TAttributeUpdateReq {
@@ -741,6 +737,7 @@ struct TFetchFragmentInstanceStatisticsResp {
   14: optional i64 blockQueuedTime
   15: optional string ip
   16: optional string state
+  17: optional i32 initDataQuerySourceRetryCount
 }
 
 /**
@@ -992,6 +989,8 @@ service IDataNodeRPCService {
 
   common.TShowConfigurationResp showConfiguration()
 
+  common.TShowAppliedConfigurationsResp showAppliedConfigurations()
+
   common.TSStatus setConfiguration(common.TSetConfigurationReq req)
 
   common.TSStatus loadConfiguration()
@@ -1117,7 +1116,7 @@ service IDataNodeRPCService {
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds
   **/
-  TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
+  common.TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
 
  /**
   * Execute CQ on DataNode
@@ -1207,6 +1206,9 @@ service IDataNodeRPCService {
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
+
+  /** to write audit log or other events as time series **/
+  common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
 }
 
 service MPPDataExchangeService {

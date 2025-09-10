@@ -207,9 +207,7 @@ public class ExportData extends AbstractDataTool {
       }
     } else {
       ioTPrinter.println(
-          String.format(
-              "Invalid args: Required values for option '%s' not provided",
-              Constants.FILE_TYPE_NAME));
+          String.format(Constants.REQUIRED_ARGS_ERROR_MSG, Constants.FILE_TYPE_NAME));
       System.exit(Constants.CODE_ERROR);
     }
     int exitCode = Constants.CODE_OK;
@@ -269,6 +267,10 @@ public class ExportData extends AbstractDataTool {
     String timeoutString = commandLine.getOptionValue(Constants.TIMEOUT_ARGS);
     if (timeoutString != null) {
       timeout = Long.parseLong(timeoutString);
+    }
+    String rpcMaxFrameSizeString = commandLine.getOptionValue(Constants.RPC_MAX_FRAME_SIZE_ARGS);
+    if (rpcMaxFrameSizeString != null) {
+      rpcMaxFrameSize = Integer.parseInt(rpcMaxFrameSizeString);
     }
     if (needDataTypePrinted == null) {
       needDataTypePrinted = true;

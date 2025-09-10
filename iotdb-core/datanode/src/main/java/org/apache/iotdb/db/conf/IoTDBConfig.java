@@ -24,12 +24,14 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -110,7 +112,7 @@ public class IoTDBConfig {
   private int mqttPort = 1883;
 
   /** The handler pool size for handing the mqtt messages. */
-  private int mqttHandlerPoolSize = 1;
+  private int mqttHandlerPoolSize = Math.max(1, Runtime.getRuntime().availableProcessors() >> 1);
 
   /** The mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
@@ -132,15 +134,6 @@ public class IoTDBConfig {
 
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
-
-  /** Enable the thrift rpcPort Service ssl. */
-  private boolean enableSSL = false;
-
-  /** ssl key Store Path. */
-  private String keyStorePath = "";
-
-  /** ssl key Store password. */
-  private String keyStorePwd = "";
 
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
@@ -279,6 +272,8 @@ public class IoTDBConfig {
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
+  private int pipeTaskThreadCount = 5;
+
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
@@ -399,6 +394,9 @@ public class IoTDBConfig {
    */
   private int tvListSortThreshold = 0;
 
+  /** Enable streaming query mem chunk */
+  private boolean streamingQueryMemChunk = true;
+
   /** Enable inner space compaction for sequence files */
   private volatile boolean enableSeqSpaceCompaction = true;
 
@@ -412,7 +410,10 @@ public class IoTDBConfig {
   private volatile boolean enableAutoRepairCompaction = true;
 
   /** The buffer for sort operation */
-  private long sortBufferSize = 1024 * 1024L;
+  private long sortBufferSize = 32 * 1024 * 1024L;
+
+  /** Mods cache size limit per fi */
+  private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -967,8 +968,9 @@ public class IoTDBConfig {
   private long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch = 600L;
   private int generalRegionAttributeSecurityServiceFailureTimesToFetch = 20;
   private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
+  private int schemaThreadCount = 5;
 
-  private String readConsistencyLevel = "strong";
+  private ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
 
   /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 200;
@@ -1032,6 +1034,8 @@ public class IoTDBConfig {
   private long dataRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
   private long schemaRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
 
+  private int ratisTransferLeaderTimeoutMs = 30 * 1000; // 30s
+
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
 
@@ -1082,8 +1086,9 @@ public class IoTDBConfig {
 
   private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
-  private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
+  private int loadTsFileTabletConversionThreadCount = 5;
 
+  private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
@@ -1098,6 +1103,10 @@ public class IoTDBConfig {
   private long loadTabletConversionThresholdBytes = -1;
 
   private boolean loadActiveListeningEnable = true;
+
+  private long loadTableSchemaCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
+
+  private long loadMeasurementIdCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
 
   private String[] loadActiveListeningDirs =
       new String[] {
@@ -1147,6 +1156,19 @@ public class IoTDBConfig {
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
+
+  private LastCacheLoadStrategy lastCacheLoadStrategy = LastCacheLoadStrategy.UPDATE;
+
+  /**
+   * Whether to cache last values when constructing TsFileResource during LOAD. When set to true,
+   * blob series will be forcibly ignored even if lastCacheLoadStrategy =
+   * LastCacheLoadStrategy.UPDATE.
+   */
+  private boolean cacheLastValuesForLoad = true;
+
+  private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
+
+  private boolean includeNullValueInWriteThroughputMetric = false;
 
   IoTDBConfig() {}
 
@@ -1245,30 +1267,6 @@ public class IoTDBConfig {
 
   public void setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
-  }
-
-  public boolean isEnableSSL() {
-    return enableSSL;
-  }
-
-  public void setEnableSSL(boolean enableSSL) {
-    this.enableSSL = enableSSL;
-  }
-
-  public String getKeyStorePath() {
-    return keyStorePath;
-  }
-
-  public void setKeyStorePath(String keyStorePath) {
-    this.keyStorePath = keyStorePath;
-  }
-
-  public String getKeyStorePwd() {
-    return keyStorePwd;
-  }
-
-  public void setKeyStorePwd(String keyStorePwd) {
-    this.keyStorePwd = keyStorePwd;
   }
 
   public int getUdfInitialByteArrayLengthForMemoryControl() {
@@ -2147,6 +2145,14 @@ public class IoTDBConfig {
 
   public void setTVListSortThreshold(int tvListSortThreshold) {
     this.tvListSortThreshold = tvListSortThreshold;
+  }
+
+  public boolean isStreamingQueryMemChunk() {
+    return streamingQueryMemChunk;
+  }
+
+  public void setStreamingQueryMemChunk(boolean streamingQueryMemChunk) {
+    this.streamingQueryMemChunk = streamingQueryMemChunk;
   }
 
   public boolean isRpcThriftCompressionEnable() {
@@ -3104,6 +3110,14 @@ public class IoTDBConfig {
     this.extPipeDir = extPipeDir;
   }
 
+  public int getPipeTaskThreadCount() {
+    return pipeTaskThreadCount;
+  }
+
+  public void setPipeTaskThreadCount(int pipeTaskThreadCount) {
+    this.pipeTaskThreadCount = pipeTaskThreadCount;
+  }
+
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
   }
@@ -3265,12 +3279,24 @@ public class IoTDBConfig {
     this.detailContainerMinDegradeMemoryInBytes = detailContainerMinDegradeMemoryInBytes;
   }
 
-  public String getReadConsistencyLevel() {
+  public int getSchemaThreadCount() {
+    return schemaThreadCount;
+  }
+
+  public void setSchemaThreadCount(int schemaThreadCount) {
+    this.schemaThreadCount = schemaThreadCount;
+  }
+
+  public ReadConsistencyLevel getReadConsistencyLevel() {
     return readConsistencyLevel;
   }
 
   public void setReadConsistencyLevel(String readConsistencyLevel) {
-    this.readConsistencyLevel = readConsistencyLevel;
+    if ("weak".equalsIgnoreCase(readConsistencyLevel)) {
+      this.readConsistencyLevel = ReadConsistencyLevel.WEAK;
+    } else {
+      this.readConsistencyLevel = ReadConsistencyLevel.STRONG;
+    }
   }
 
   public int getDriverTaskExecutionTimeSliceInMs() {
@@ -3780,6 +3806,14 @@ public class IoTDBConfig {
         loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
+  public int getLoadTsFileTabletConversionThreadCount() {
+    return loadTsFileTabletConversionThreadCount;
+  }
+
+  public void setLoadTsFileTabletConversionThreadCount(int loadTsFileTabletConversionThreadCount) {
+    this.loadTsFileTabletConversionThreadCount = loadTsFileTabletConversionThreadCount;
+  }
+
   public int getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex() {
     return loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
   }
@@ -3872,7 +3906,11 @@ public class IoTDBConfig {
   }
 
   public String getLoadDiskSelectStrategyForIoTV2AndPipe() {
-    return loadDiskSelectStrategyForIoTV2AndPipe;
+    return LoadDiskSelectorType.INHERIT_LOAD
+            .getValue()
+            .equals(loadDiskSelectStrategyForIoTV2AndPipe)
+        ? getLoadDiskSelectStrategy()
+        : loadDiskSelectStrategyForIoTV2AndPipe;
   }
 
   public void setLoadDiskSelectStrategyForIoTV2AndPipe(
@@ -3939,6 +3977,22 @@ public class IoTDBConfig {
     this.loadActiveListeningEnable = loadActiveListeningEnable;
   }
 
+  public long getLoadTableSchemaCacheSizeInBytes() {
+    return loadTableSchemaCacheSizeInBytes;
+  }
+
+  public void setLoadTableSchemaCacheSizeInBytes(long loadTableSchemaCacheSizeInBytes) {
+    this.loadTableSchemaCacheSizeInBytes = loadTableSchemaCacheSizeInBytes;
+  }
+
+  public long getLoadMeasurementIdCacheSizeInBytes() {
+    return loadMeasurementIdCacheSizeInBytes;
+  }
+
+  public void setLoadMeasurementIdCacheSizeInBytes(long loadMeasurementIdCacheSizeInBytes) {
+    this.loadMeasurementIdCacheSizeInBytes = loadMeasurementIdCacheSizeInBytes;
+  }
+
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
     this.pipeReceiverFileDirs = pipeReceiverFileDirs;
   }
@@ -3992,6 +4046,14 @@ public class IoTDBConfig {
     return sortBufferSize;
   }
 
+  public void setModsCacheSizeLimitPerFI(long modsCacheSizeLimitPerFI) {
+    this.modsCacheSizeLimitPerFI = modsCacheSizeLimitPerFI;
+  }
+
+  public long getModsCacheSizeLimitPerFI() {
+    return modsCacheSizeLimitPerFI;
+  }
+
   public void setSortTmpDir(String sortTmpDir) {
     this.sortTmpDir = sortTmpDir;
   }
@@ -4018,6 +4080,14 @@ public class IoTDBConfig {
 
   public void setSchemaRatisPeriodicSnapshotInterval(long schemaRatisPeriodicSnapshotInterval) {
     this.schemaRatisPeriodicSnapshotInterval = schemaRatisPeriodicSnapshotInterval;
+  }
+
+  public int getRatisTransferLeaderTimeoutMs() {
+    return ratisTransferLeaderTimeoutMs;
+  }
+
+  public void setRatisTransferLeaderTimeoutMs(int ratisTransferLeaderTimeoutMs) {
+    this.ratisTransferLeaderTimeoutMs = ratisTransferLeaderTimeoutMs;
   }
 
   public boolean isEnableTsFileValidation() {
@@ -4067,5 +4137,40 @@ public class IoTDBConfig {
 
   public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
     this.WALCompressionAlgorithm = WALCompressionAlgorithm;
+  }
+
+  public LastCacheLoadStrategy getLastCacheLoadStrategy() {
+    return lastCacheLoadStrategy;
+  }
+
+  public void setLastCacheLoadStrategy(LastCacheLoadStrategy lastCacheLoadStrategy) {
+    this.lastCacheLoadStrategy = lastCacheLoadStrategy;
+  }
+
+  public boolean isCacheLastValuesForLoad() {
+    return (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && cacheLastValuesForLoad;
+  }
+
+  public void setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    this.cacheLastValuesForLoad = cacheLastValuesForLoad;
+  }
+
+  public long getCacheLastValuesMemoryBudgetInByte() {
+    return cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
+    this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public boolean isIncludeNullValueInWriteThroughputMetric() {
+    return includeNullValueInWriteThroughputMetric;
+  }
+
+  public void setIncludeNullValueInWriteThroughputMetric(
+      boolean includeNullValueInWriteThroughputMetric) {
+    this.includeNullValueInWriteThroughputMetric = includeNullValueInWriteThroughputMetric;
   }
 }

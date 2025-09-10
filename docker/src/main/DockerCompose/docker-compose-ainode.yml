@@ -1,0 +1,53 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+volumes:
+  ainode-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /data/ainode
+      o: bind
+
+services:
+  iotdb-ainode:
+    image: apache/iotdb:<version>-ainode
+    container_name: iotdb-ainode
+    network_mode: host
+    environment:
+      - cluster_name=defaultCluster
+      - ain_seed_config_node=<iotdb-confignode>:10710
+      - ain_rpc_address=<iotdb-ainode>
+      - ain_rpc_port=10810
+      - ain_cluster_ingress_address=<iotdb-datanode>
+      - ain_cluster_ingress_port=6667
+      - ain_cluster_ingress_username=root
+      - ain_cluster_ingress_password=root
+      - ain_cluster_ingress_time_zone=UTC+8
+    volumes:
+      - ainode-data:/ainode/data
+      - ./logs/ainode:/ainode/logs
+      # - ./lib/ainode:/ainode/lib  # Uncomment for rolling upgrade
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576

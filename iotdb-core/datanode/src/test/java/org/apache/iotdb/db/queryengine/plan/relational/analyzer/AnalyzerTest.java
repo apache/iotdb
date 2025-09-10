@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -110,7 +111,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 
 public class AnalyzerTest {
@@ -204,7 +204,7 @@ public class AnalyzerTest {
     assertEquals(9, deviceTableScanNode.getOutputSymbols().size());
     assertEquals(9, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(5, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(5, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
 
     distributionPlanner =
@@ -244,7 +244,7 @@ public class AnalyzerTest {
         this.deviceTableScanNode.getOutputColumnNames());
     assertEquals(9, this.deviceTableScanNode.getAssignments().size());
     assertEquals(6, this.deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(5, this.deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(5, this.deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(
         "(\"time\" > 1)",
         this.deviceTableScanNode.getTimePredicate().map(Expression::toString).orElse(null));
@@ -293,8 +293,8 @@ public class AnalyzerTest {
     assertFalse(deviceTableScanNode.getTimePredicate().isPresent());
     assertTrue(
         Stream.of(Symbol.of("tag1"), Symbol.of("tag2"), Symbol.of("tag3"), Symbol.of("attr2"))
-            .allMatch(deviceTableScanNode.getIdAndAttributeIndexMap()::containsKey));
-    assertEquals(0, (int) deviceTableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("attr2")));
+            .allMatch(deviceTableScanNode.getTagAndAttributeIndexMap()::containsKey));
+    assertEquals(0, (int) deviceTableScanNode.getTagAndAttributeIndexMap().get(Symbol.of("attr2")));
     assertEquals(Arrays.asList("tag1", "attr2", "s2"), deviceTableScanNode.getOutputColumnNames());
     assertEquals(
         ImmutableSet.of("tag1", "attr2", "s1", "s2"),
@@ -602,7 +602,7 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0) instanceof DeviceTableScanNode);
     deviceTableScanNode = (DeviceTableScanNode) rootNode.getChildren().get(0);
     assertEquals(Arrays.asList("tag2", "attr2", "s2"), deviceTableScanNode.getOutputColumnNames());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
   }
 
   @Test
@@ -1217,7 +1217,9 @@ public class AnalyzerTest {
 
   public static Analysis analyzeSQL(String sql, Metadata metadata, final MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
-    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
+    Statement statement =
+        sqlParser.createStatement(
+            sql, ZoneId.systemDefault(), new InternalClientSession("testClient"));
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
@@ -1245,10 +1247,8 @@ public class AnalyzerTest {
               NOOP);
       return analyzer.analyze(statement);
     } catch (final Exception e) {
-      e.printStackTrace();
-      fail(statement + ", " + e.getMessage());
+      throw e;
     }
-    return null;
   }
 
   public static Analysis analyzeStatementWithException(

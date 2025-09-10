@@ -63,7 +63,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -73,11 +78,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setDataReplicationFactor(2)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment(3, 3);
@@ -97,10 +102,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         receiverEnv,
         Arrays.asList(
-            "create user `thulab` 'passwd'",
+            "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"))) {
+            "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"),
+        null)) {
       return;
     }
 
@@ -113,10 +119,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "create user user 'passwd'",
+              "create user user 'passwd123456'",
               "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
+              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"),
+          null)) {
         fail();
         return;
       }
@@ -132,7 +139,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.username", "thulab");
-      connectorAttributes.put("connector.password", "passwd");
+      connectorAttributes.put("connector.password", "passwd123456");
 
       final TSStatus status =
           client.createPipe(
@@ -156,14 +163,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           "root.ln.wf02.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show timeseries",
+          "show timeseries root.ln.**",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           expectedResSet);
       expectedResSet.clear();
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.ln.**",
           "Time,root.ln.wf02.wt01.temperature,root.ln.wf02.wt01.status,",
           Collections.singleton("1800000000000,23,true,"));
     }
@@ -174,10 +181,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         receiverEnv,
         Arrays.asList(
-            "create user `thulab` 'passwd'",
+            "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"))) {
+            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"),
+        null)) {
       return;
     }
 
@@ -192,7 +200,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           Arrays.asList(
               "create user someUser 'passwd'",
               "create database root.noPermission",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"))) {
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
+          null)) {
         fail();
         return;
       }
@@ -208,7 +217,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.username", "thulab");
-      connectorAttributes.put("connector.password", "passwd");
+      connectorAttributes.put("connector.password", "passwd123456");
 
       final TSStatus status =
           client.createPipe(

@@ -19,6 +19,7 @@
 
 #include "catch.hpp"
 #include "Session.h"
+#include "SessionBuilder.h"
 
 using namespace std;
 
@@ -62,6 +63,55 @@ TEST_CASE("Create timeseries success", "[createTimeseries]") {
     session->deleteTimeseries("root.test.d1.s1");
 }
 
+TEST_CASE("Login Test - Authentication failed with error code 801", "[Authentication]") {
+    CaseReporter cr("Login Test");
+
+    try {
+        Session session("127.0.0.1", 6667, "root", "wrong-password");
+        session.open(false);
+        FAIL("Expected authentication exception"); // Test fails if no exception
+    } catch (const std::exception& e) {
+        // Verify exception contains error code 801
+        REQUIRE(std::string(e.what()).find("801") != std::string::npos);
+    }
+}
+
+TEST_CASE("Test Session constructor with nodeUrls", "[SessionInitAndOperate]") {
+    CaseReporter cr("SessionInitWithNodeUrls");
+
+    std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
+    std::shared_ptr<Session> localSession = std::make_shared<Session>(nodeUrls, "root", "root");
+    localSession->open();
+    if (!localSession->checkTimeseriesExists("root.test.d1.s1")) {
+        localSession->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    }
+    REQUIRE(localSession->checkTimeseriesExists("root.test.d1.s1") == true);
+    localSession->deleteTimeseries("root.test.d1.s1");
+    localSession->close();
+}
+
+TEST_CASE("Test Session builder with nodeUrls", "[SessionBuilderInit]") {
+    CaseReporter cr("SessionInitWithNodeUrls");
+
+    std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
+    auto builder = std::unique_ptr<SessionBuilder>(new SessionBuilder());
+    std::shared_ptr<Session> session =
+        std::shared_ptr<Session>(
+            builder
+            ->username("root")
+            ->password("root")
+            ->nodeUrls(nodeUrls)
+            ->build()
+        );
+    session->open();
+    if (!session->checkTimeseriesExists("root.test.d1.s1")) {
+        session->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    }
+    REQUIRE(session->checkTimeseriesExists("root.test.d1.s1") == true);
+    session->deleteTimeseries("root.test.d1.s1");
+    session->close();
+}
+
 TEST_CASE("Delete timeseries success", "[deleteTimeseries]") {
     CaseReporter cr("deleteTimeseries");
     if (!session->checkTimeseriesExists("root.test.d1.s1")) {
@@ -91,8 +141,9 @@ TEST_CASE("Test insertRecord by string", "[testInsertRecord]") {
     while (sessionDataSet->hasNext()) {
         long index = 1;
         count++;
-        for (const Field &f: sessionDataSet->next()->fields) {
-            REQUIRE(f.longV == index);
+        auto fields = sessionDataSet->next()->fields;
+        for (const Field &f: fields) {
+            REQUIRE(f.longV.value() == index);
             index++;
         }
     }
@@ -136,8 +187,9 @@ TEST_CASE("Test insertRecords ", "[testInsertRecords]") {
     while (sessionDataSet->hasNext()) {
         long index = 1;
         count++;
-        for (const Field &f: sessionDataSet->next()->fields) {
-            REQUIRE(f.longV == index);
+        auto fields = sessionDataSet->next()->fields;
+        for (const Field &f: fields) {
+            REQUIRE(f.longV.value() == index);
             index++;
         }
     }
@@ -211,10 +263,10 @@ TEST_CASE("Test insertRecord with new datatypes ", "[testTypedInsertRecordNewDat
         for (int i = 0; i < 4; i++) {
             REQUIRE(types[i] == record->fields[i].dataType);
         }
-        REQUIRE(record->fields[0].longV == value1);
-        REQUIRE(record->fields[1].dateV == value2);
-        REQUIRE(record->fields[2].stringV == value3);
-        REQUIRE(record->fields[3].stringV == value4);
+        REQUIRE(record->fields[0].longV.value() == value1);
+        REQUIRE(record->fields[1].dateV.value() == value2);
+        REQUIRE(record->fields[2].stringV.value() == value3);
+        REQUIRE(record->fields[3].stringV.value() == value4);
         count++;
     }
     REQUIRE(count == 100);
@@ -336,8 +388,9 @@ TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
     while (sessionDataSet->hasNext()) {
         long index = 0;
         count++;
-        for (const Field& f: sessionDataSet->next()->fields) {
-            REQUIRE(f.longV == index);
+        auto fields = sessionDataSet->next()->fields;
+        for (const Field &f: fields) {
+            REQUIRE(f.longV.value() == index);
             index++;
         }
     }
@@ -386,15 +439,16 @@ TEST_CASE("Test insertTablets ", "[testInsertTablets]") {
     while (sessionDataSet->hasNext()) {
         long index = 0;
         count++;
-        for (const Field& f: sessionDataSet->next()->fields) {
-            REQUIRE(f.longV == index);
+        auto fields = sessionDataSet->next()->fields;
+        for (const Field &f: fields) {
+            REQUIRE(f.longV.value() == index);
             index++;
         }
     }
     REQUIRE(count == 100);
 }
 
-TEST_CASE("Test insertTablet new datatype", "[testInsertTabletNewDatatype]") {
+TEST_CASE("Test insertTablet multi datatype", "[testInsertTabletMultiDatatype]") {
     CaseReporter cr("testInsertTabletNewDatatype");
     string deviceId = "root.test.d2";
     vector<pair<string, TSDataType::TSDataType>> schemaList;
@@ -437,18 +491,14 @@ TEST_CASE("Test insertTablet new datatype", "[testInsertTabletNewDatatype]") {
         tablet.reset();
     }
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3,s4 from root.test.d2");
+    auto dataIter = sessionDataSet->getIterator();
     sessionDataSet->setFetchSize(1024);
     int count = 0;
-    while (sessionDataSet->hasNext()) {
-        auto record = sessionDataSet->next();
-        REQUIRE(record->fields.size() == 4);
-        for (int i = 0; i < 4; i++) {
-            REQUIRE(dataTypes[i] == record->fields[i].dataType);
-        }
-        REQUIRE(record->fields[0].longV == s1Value);
-        REQUIRE(record->fields[1].dateV == s2Value);
-        REQUIRE(record->fields[2].stringV == s3Value);
-        REQUIRE(record->fields[3].stringV == s4Value);
+    while (dataIter.next()) {
+        REQUIRE(dataIter.getLongByIndex(2).value() == s1Value);
+        REQUIRE(dataIter.getDateByIndex(3).value() == s2Value);
+        REQUIRE(dataIter.getStringByIndex(4).value() == s3Value);
+        REQUIRE(dataIter.getStringByIndex(5).value() == s4Value);
         count++;
     }
     REQUIRE(count == 100);
@@ -472,8 +522,8 @@ TEST_CASE("Test Last query ", "[testLastQuery]") {
     long index = 0;
     while (sessionDataSet->hasNext()) {
         vector<Field> fields = sessionDataSet->next()->fields;
-        REQUIRE("1" <= fields[1].stringV);
-        REQUIRE(fields[1].stringV <= "3");
+        REQUIRE("1" <= fields[1].stringV.value());
+        REQUIRE(fields[1].stringV.value() <= "3");
         index++;
     }
 }
@@ -509,9 +559,9 @@ TEST_CASE("Test Huge query ", "[testHugeQuery]") {
     while (sessionDataSet->hasNext()) {
         auto rowRecord = sessionDataSet->next();
         REQUIRE(rowRecord->timestamp == count);
-        REQUIRE(rowRecord->fields[0].longV== 1);
-        REQUIRE(rowRecord->fields[1].longV == 2);
-        REQUIRE(rowRecord->fields[2].longV == 3);
+        REQUIRE(rowRecord->fields[0].longV.value() == 1);
+        REQUIRE(rowRecord->fields[1].longV.value() == 2);
+        REQUIRE(rowRecord->fields[2].longV.value() == 3);
         count++;
         if (count % 1000 == 0) {
             std::cout << count << "\t" << std::flush;
@@ -568,10 +618,6 @@ TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
     sessionDataSet->setFetchSize(10);
     vector<string> columns = sessionDataSet->getColumnNames();
     columns = sessionDataSet->getColumnNames();
-    for (const string &column : columns) {
-        cout << column << " " ;
-    }
-    cout << endl;
     REQUIRE(columns[0] == "Time");
     REQUIRE(columns[1] == paths[0]);
     REQUIRE(columns[2] == paths[1]);
@@ -585,11 +631,11 @@ TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == ts);
         REQUIRE(fields[0].dataType == TSDataType::INT64);
-        REQUIRE(fields[0].longV == ts);
+        REQUIRE(fields[0].longV.value() == ts);
         REQUIRE(fields[1].dataType == TSDataType::INT64);
-        REQUIRE(fields[1].longV == ts * 2);
+        REQUIRE(fields[1].longV.value() == ts * 2);
         REQUIRE(fields[2].dataType == TSDataType::INT64);
-        REQUIRE(fields[2].longV == ts *3);
+        REQUIRE(fields[2].longV.value() == ts *3);
         ts++;
     }
 
@@ -617,10 +663,10 @@ TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == ts);
         REQUIRE(fields[0].dataType == TSDataType::INT64);
-        REQUIRE(fields[0].longV == 9);
+        REQUIRE(fields[0].longV.value() == 9);
         REQUIRE(fields[1].dataType == TSDataType::UNKNOWN);
         REQUIRE(fields[2].dataType == TSDataType::INT64);
-        REQUIRE(fields[2].longV == 999);
+        REQUIRE(fields[2].longV.value() == 999);
     }
 
     //== Test executeRawDataQuery() with empty data
@@ -686,9 +732,9 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
 
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == tsCheck[index]);
-        REQUIRE(fields[0].stringV == paths[index]);
-        REQUIRE(fields[1].stringV == valueCheck[index]);
-        REQUIRE(fields[2].stringV == "INT64");
+        REQUIRE(fields[0].stringV.value() == paths[index]);
+        REQUIRE(fields[1].stringV.value() == valueCheck[index]);
+        REQUIRE(fields[2].stringV.value() == "INT64");
         index++;
     }
 
@@ -708,9 +754,9 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
 
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == tsCheck[index]);
-        REQUIRE(fields[0].stringV == paths[index]);
-        REQUIRE(fields[1].stringV == valueCheck[index]);
-        REQUIRE(fields[2].stringV == "INT64");
+        REQUIRE(fields[0].stringV.value() == paths[index]);
+        REQUIRE(fields[1].stringV.value() == valueCheck[index]);
+        REQUIRE(fields[2].stringV.value() == "INT64");
         index++;
     }
 
@@ -718,4 +764,63 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
     sessionDataSet = session->executeLastDataQuery(paths, 100000);
     sessionDataSet->setFetchSize(1024);
     REQUIRE(sessionDataSet->hasNext() == false);
+}
+
+// Helper function for comparing TEndPoint with detailed error message
+void assertTEndPointEqual(const TEndPoint& actual,
+                         const std::string& expectedIp,
+                         int expectedPort,
+                         const char* file,
+                         int line) {
+    if (actual.ip != expectedIp || actual.port != expectedPort) {
+        std::stringstream ss;
+        ss << "\nTEndPoint mismatch:\nExpected: " << expectedIp << ":" << expectedPort
+           << "\nActual:   " << actual.ip << ":" << actual.port;
+        Catch::SourceLineInfo location(file, line);
+        Catch::AssertionHandler handler("TEndPoint comparison", location, ss.str(), Catch::ResultDisposition::Normal);
+        handler.handleMessage(Catch::ResultWas::ExplicitFailure, ss.str());
+        handler.complete();
+    }
+}
+
+// Macro to simplify test assertions
+#define REQUIRE_TENDPOINT(actual, expectedIp, expectedPort) \
+    assertTEndPointEqual(actual, expectedIp, expectedPort, __FILE__, __LINE__)
+
+TEST_CASE("UrlUtils - parseTEndPointIpv4AndIpv6Url", "[UrlUtils]") {
+    // Test valid IPv4 addresses
+    SECTION("Valid IPv4") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("192.168.1.1:8080"), "192.168.1.1", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("10.0.0.1:80"), "10.0.0.1", 80);
+    }
+
+    // Test valid IPv6 addresses
+    SECTION("Valid IPv6") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("[2001:db8::1]:8080"), "2001:db8::1", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("[::1]:80"), "::1", 80);
+    }
+
+    // Test hostnames
+    SECTION("Hostnames") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("localhost:8080"), "localhost", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("example.com:443"), "example.com", 443);
+    }
+
+    // Test edge cases
+    SECTION("Edge cases") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url(""), "", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("127.0.0.1"), "127.0.0.1", 0);
+    }
+
+    // Test invalid inputs
+    SECTION("Invalid inputs") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("192.168.1.1:abc"), "192.168.1.1:abc", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("]invalid[:80"), "]invalid[", 80);
+    }
+
+    // Test port ranges
+    SECTION("Port ranges") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("localhost:0"), "localhost", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("127.0.0.1:65535"), "127.0.0.1", 65535);
+    }
 }

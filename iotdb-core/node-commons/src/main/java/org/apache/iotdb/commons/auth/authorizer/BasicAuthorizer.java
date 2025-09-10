@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.auth.user.BasicUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -109,20 +110,46 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getEntity(username);
-    return user != null
-        && password != null
-        && AuthUtils.validatePassword(password, user.getPassword());
+    if (user == null || password == null) {
+      return false;
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
+      return true;
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
+      try {
+        forceUpdateUserPassword(username, password);
+      } catch (AuthException ignore) {
+      }
+      return true;
+    }
+    return false;
   }
 
   @Override
   public String login4Pipe(final String username, final String password) {
     final User user = userManager.getEntity(username);
-    return (user != null
-                && password != null
-                && AuthUtils.validatePassword(password, user.getPassword())
-            || Objects.isNull(password))
-        ? user.getPassword()
-        : null;
+    if (Objects.isNull(password)) {
+      return user.getPassword();
+    }
+    if (user == null) {
+      return null;
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
+      return user.getPassword();
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
+      try {
+        forceUpdateUserPassword(username, password);
+      } catch (AuthException ignore) {
+      }
+      return userManager.getEntity(username).getPassword();
+    }
+    return null;
   }
 
   @Override
@@ -287,7 +314,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void updateUserPassword(String userName, String newPassword) throws AuthException {
-    if (!userManager.updateUserPassword(userName, newPassword)) {
+    if (!userManager.updateUserPassword(userName, newPassword, false)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
+    }
+  }
+
+  private void forceUpdateUserPassword(String userName, String newPassword) throws AuthException {
+    if (!userManager.updateUserPassword(userName, newPassword, true)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
     }

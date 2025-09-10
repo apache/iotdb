@@ -24,10 +24,10 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -88,8 +88,8 @@ public class PipeRuntimeMeta {
    * <p>1. {@link PipeRuntimeCriticalException}, to record the failure of pushing {@link PipeMeta},
    * and will result in the halt of pipe execution.
    *
-   * <p>2. {@link PipeRuntimeConnectorCriticalException}, to record the exception reported by other
-   * pipes sharing the same connector, and will stop the pipe likewise.
+   * <p>2. {@link PipeRuntimeSinkCriticalException}, to record the exception reported by other pipes
+   * sharing the same connector, and will stop the pipe likewise.
    */
   private final ConcurrentMap<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();

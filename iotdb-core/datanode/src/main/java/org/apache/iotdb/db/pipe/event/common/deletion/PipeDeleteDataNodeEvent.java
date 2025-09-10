@@ -80,6 +80,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     this.deleteDataNode = deleteDataNode;
     Optional.ofNullable(deleteDataNode)
         .ifPresent(node -> this.progressIndex = deleteDataNode.getProgressIndex());
+    addOnCommittedHook(this::decreaseDeletionReference);
   }
 
   public AbstractDeleteDataNode getDeleteDataNode() {
@@ -104,9 +105,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     return true;
   }
 
-  @Override
-  public void onCommitted() {
-    super.onCommitted();
+  public void decreaseDeletionReference() {
     if (deletionResource != null) {
       deletionResource.decreaseReference();
     }

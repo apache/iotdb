@@ -22,8 +22,14 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.util.Version;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractSessionBuilder {
 
@@ -68,4 +74,28 @@ public abstract class AbstractSessionBuilder {
   public String sqlDialect = SessionConfig.SQL_DIALECT;
 
   public String database;
+
+  public Boolean isIoTDBRpcCompressionEnabled = true;
+
+  public Boolean isThriftRpcCompactionEnabled = false;
+
+  public CompressionType compressionType = CompressionType.UNCOMPRESSED;
+
+  public Map<TSDataType, TSEncoding> columnEncodersMap;
+
+  public int tabletCompressionMinRowSize = 10;
+
+  {
+    columnEncodersMap = new HashMap<>();
+    columnEncodersMap.put(TSDataType.TIMESTAMP, TSEncoding.TS_2DIFF);
+    columnEncodersMap.put(TSDataType.BOOLEAN, TSEncoding.RLE);
+    columnEncodersMap.put(TSDataType.INT32, TSEncoding.TS_2DIFF);
+    columnEncodersMap.put(TSDataType.INT64, TSEncoding.TS_2DIFF);
+    columnEncodersMap.put(TSDataType.FLOAT, TSEncoding.GORILLA);
+    columnEncodersMap.put(TSDataType.DOUBLE, TSEncoding.GORILLA);
+    columnEncodersMap.put(TSDataType.DATE, TSEncoding.TS_2DIFF);
+    columnEncodersMap.put(TSDataType.STRING, TSEncoding.PLAIN);
+    columnEncodersMap.put(TSDataType.TEXT, TSEncoding.PLAIN);
+    columnEncodersMap.put(TSDataType.BLOB, TSEncoding.PLAIN);
+  }
 }

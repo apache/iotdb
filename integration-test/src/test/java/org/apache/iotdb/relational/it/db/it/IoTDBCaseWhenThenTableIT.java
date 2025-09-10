@@ -159,6 +159,10 @@ public class IoTDBCaseWhenThenTableIT {
         "select case when s1<=0 then true else 22 end from table1",
         "701: All CASE results must be the same type or coercible to a common type. Cannot find common type between BOOLEAN and INT32, all types (without duplicates): [BOOLEAN, INT32]",
         DATABASE);
+    tableAssertTestFail(
+        "select case when s1<=0 then 0 when s1>1 then null end from table1",
+        "701: All result types must be the same:",
+        DATABASE);
 
     // TEXT and other types cannot exist at the same time
     retArray = new String[] {"good,", "bad,", "okok,", "okok,"};
@@ -671,6 +675,14 @@ public class IoTDBCaseWhenThenTableIT {
     String sql =
         "select case when s3 >= 0 and s3 < 20 and s4 >= 50 and s4 < 60 then 'just so so~~~' when s3 >= 20 and s3 < 40 and s4 >= 70 and s4 < 80 then 'very well~~~' end from table2";
     String[] retArray = new String[] {"null,", "just so so~~~,", "null,", "very well~~~,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
+  }
+
+  @Test
+  public void testThenWithBinarySameConstant() {
+    String sql = "SELECT CASE WHEN true THEN 200 + (s1 - 200) END AS result FROM table1";
+    String[] expectedHeader = new String[] {"result"};
+    String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
 }

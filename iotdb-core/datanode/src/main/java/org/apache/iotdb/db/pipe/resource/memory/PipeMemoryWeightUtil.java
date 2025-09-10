@@ -291,8 +291,8 @@ public class PipeMemoryWeightUtil {
     return totalSizeInBytes;
   }
 
-  public static int calculateBatchDataRamBytesUsed(BatchData batchData) {
-    int totalSizeInBytes = 0;
+  public static long calculateBatchDataRamBytesUsed(BatchData batchData) {
+    long totalSizeInBytes = 0;
 
     // timestamp
     totalSizeInBytes += 8;

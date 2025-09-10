@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -161,6 +162,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -174,6 +176,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -266,7 +269,7 @@ public class ProcedureManager {
             && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
           final Pair<Long, Boolean> procedureIdDuplicatePair =
               checkDuplicateTableTask(
-                  database, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
+                  database, null, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
           hasOverlappedTask = procedureIdDuplicatePair.getRight();
 
           if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
@@ -822,7 +825,7 @@ public class ProcedureManager {
       failMessage =
           String.format(
               "Target DataNode %s already contains region %s",
-              targetDataNode.getDataNodeId(), req.getRegionId());
+              targetDataNode.getDataNodeId(), regionId);
     }
 
     if (failMessage != null) {
@@ -837,15 +840,13 @@ public class ProcedureManager {
   private TSStatus checkRemoveRegion(
       TRemoveRegionReq req,
       TConsensusGroupId regionId,
-      TDataNodeLocation targetDataNode,
+      @Nullable TDataNodeLocation targetDataNode,
       TDataNodeLocation coordinator) {
     String failMessage =
         regionOperationCommonCheck(
             regionId,
             targetDataNode,
-            Arrays.asList(
-                new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)),
+            Arrays.asList(new Pair<>("Coordinator", coordinator)),
             req.getModel());
 
     if (configManager
@@ -855,11 +856,12 @@ public class ProcedureManager {
             .getDataNodeLocationsSize()
         == 1) {
       failMessage = String.format("%s only has 1 replica, it cannot be removed", regionId);
-    } else if (configManager
-        .getPartitionManager()
-        .getAllReplicaSets(targetDataNode.getDataNodeId())
-        .stream()
-        .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
+    } else if (targetDataNode != null
+        && configManager
+            .getPartitionManager()
+            .getAllReplicaSets(targetDataNode.getDataNodeId())
+            .stream()
+            .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
       failMessage =
           String.format(
               "Target DataNode %s doesn't contain Region %s", req.getDataNodeId(), regionId);
@@ -1124,14 +1126,60 @@ public class ProcedureManager {
     return RpcUtils.SUCCESS_STATUS;
   }
 
-  public TSStatus extendRegion(TExtendRegionReq req) {
+  public TSStatus extendRegions(TExtendRegionReq req) {
+    return processExtendOrRemoveRegions(
+        req.getRegionId(), req, this::extendOneRegion, TSStatusCode.EXTEND_REGION_ERROR);
+  }
+
+  public TSStatus removeRegions(TRemoveRegionReq req) {
+    return processExtendOrRemoveRegions(
+        req.getRegionId(), req, this::removeOneRegion, TSStatusCode.REMOVE_REGION_PEER_ERROR);
+  }
+
+  private <R> TSStatus processExtendOrRemoveRegions(
+      Iterable<Integer> regionIds,
+      R req,
+      BiFunction<Integer, R, TSStatus> regionAction,
+      TSStatusCode errorCode) {
+    TSStatus resp = new TSStatus();
+    StringBuilder messageBuilder = new StringBuilder();
+
+    int total = 0, success = 0;
+    for (int regionId : regionIds) {
+      total++;
+      TSStatus subStatus = regionAction.apply(regionId, req);
+      if (subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        messageBuilder.append("region ").append(regionId).append(": Successfully submitted\n");
+        success++;
+      } else {
+        messageBuilder
+            .append("region ")
+            .append(regionId)
+            .append(": ")
+            .append(subStatus.getMessage())
+            .append('\n');
+      }
+      resp.addToSubStatus(subStatus);
+    }
+
+    messageBuilder.insert(
+        0,
+        String.format(
+            "Total regions: %d, successfully submitted: %d, failed to submit: %d\n",
+            total, success, total - success));
+
+    resp.setCode(
+        total == success ? TSStatusCode.SUCCESS_STATUS.getStatusCode() : errorCode.getStatusCode());
+    resp.setMessage(messageBuilder.toString());
+    return resp;
+  }
+
+  private TSStatus extendOneRegion(int theRegionId, TExtendRegionReq req) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       TConsensusGroupId regionId;
       Optional<TConsensusGroupId> optional =
-          configManager
-              .getPartitionManager()
-              .generateTConsensusGroupIdByRegionId(req.getRegionId());
+          configManager.getPartitionManager().generateTConsensusGroupIdByRegionId(theRegionId);
       if (optional.isPresent()) {
         regionId = optional.get();
       } else {
@@ -1170,14 +1218,12 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus removeRegion(TRemoveRegionReq req) {
+  private TSStatus removeOneRegion(int theRegionId, TRemoveRegionReq req) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       TConsensusGroupId regionId;
       Optional<TConsensusGroupId> optional =
-          configManager
-              .getPartitionManager()
-              .generateTConsensusGroupIdByRegionId(req.getRegionId());
+          configManager.getPartitionManager().generateTConsensusGroupIdByRegionId(theRegionId);
       if (optional.isPresent()) {
         regionId = optional.get();
       } else {
@@ -1208,6 +1254,23 @@ public class ProcedureManager {
         return status;
       }
 
+      // SPECIAL CASE
+      if (targetDataNode == null) {
+        // If targetDataNode is null, it means the target DataNode does not exist in the
+        // NodeManager.
+        // In this case, simply clean up the partition table once and do nothing else.
+        LOGGER.warn(
+            "Remove region: Target DataNode {} not found, will simply clean up the partition table of region {} and do nothing else.",
+            req.getDataNodeId(),
+            req.getRegionId());
+        this.executor
+            .getEnvironment()
+            .getRegionMaintainHandler()
+            .removeRegionLocation(
+                regionId, buildFakeDataNodeLocation(req.getDataNodeId(), "FakeIpForRemoveRegion"));
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+
       // submit procedure
       RemoveRegionPeerProcedure procedure =
           new RemoveRegionPeerProcedure(regionId, coordinator, targetDataNode);
@@ -1217,6 +1280,12 @@ public class ProcedureManager {
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+  }
+
+  private static TDataNodeLocation buildFakeDataNodeLocation(int dataNodeId, String message) {
+    TEndPoint fakeEndPoint = new TEndPoint(message, -1);
+    return new TDataNodeLocation(
+        dataNodeId, fakeEndPoint, fakeEndPoint, fakeEndPoint, fakeEndPoint, fakeEndPoint);
   }
 
   // endregion
@@ -1936,25 +2005,17 @@ public class ProcedureManager {
 
   public TSStatus renameTable(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
+    final String newName = ReadWriteIOUtils.readString(req.updateInfo);
     return executeWithoutDuplicate(
         req.database,
         null,
         req.tableName,
+        newName,
         req.queryId,
         isView ? ProcedureType.RENAME_VIEW_PROCEDURE : ProcedureType.RENAME_TABLE_PROCEDURE,
         isView
-            ? new RenameViewProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false)
-            : new RenameTableProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false));
+            ? new RenameViewProcedure(req.database, req.tableName, req.queryId, newName, false)
+            : new RenameTableProcedure(req.database, req.tableName, req.queryId, newName, false));
   }
 
   public TDeleteTableDeviceResp deleteDevices(
@@ -1968,6 +2029,7 @@ public class ProcedureManager {
               req.database,
               null,
               req.tableName,
+              null,
               req.queryId,
               ProcedureType.DELETE_DEVICES_PROCEDURE);
       procedureId = procedureIdDuplicatePair.getLeft();
@@ -2012,10 +2074,21 @@ public class ProcedureManager {
       final String queryId,
       final ProcedureType thisType,
       final Procedure<ConfigNodeProcedureEnv> procedure) {
-    long procedureId;
+    return executeWithoutDuplicate(database, table, tableName, null, queryId, thisType, procedure);
+  }
+
+  public TSStatus executeWithoutDuplicate(
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final @Nullable String newName,
+      final String queryId,
+      final ProcedureType thisType,
+      final Procedure<ConfigNodeProcedureEnv> procedure) {
+    final long procedureId;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
-          checkDuplicateTableTask(database, table, tableName, queryId, thisType);
+          checkDuplicateTableTask(database, table, tableName, newName, queryId, thisType);
       procedureId = procedureIdDuplicatePair.getLeft();
 
       if (procedureId == -1) {
@@ -2036,6 +2109,7 @@ public class ProcedureManager {
       final @Nonnull String database,
       final TsTable table,
       final String tableName,
+      final String newName,
       final String queryId,
       final ProcedureType thisType) {
     ProcedureType type;
@@ -2056,7 +2130,9 @@ public class ProcedureManager {
           // tableName == null indicates delete database procedure
           if (database.equals(createTableProcedure.getDatabase())
               && (Objects.isNull(tableName)
-                  || Objects.equals(tableName, createTableProcedure.getTable().getTableName()))) {
+                  || Objects.equals(tableName, createTableProcedure.getTable().getTableName())
+                  || Objects.nonNull(newName)
+                      && Objects.equals(newName, createTableProcedure.getTable().getTableName()))) {
             return new Pair<>(-1L, true);
           }
           break;
@@ -2071,8 +2147,6 @@ public class ProcedureManager {
         case DROP_TABLE_PROCEDURE:
         case DROP_VIEW_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
-        case RENAME_TABLE_PROCEDURE:
-        case RENAME_VIEW_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
               (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
@@ -2081,7 +2155,26 @@ public class ProcedureManager {
           // tableName == null indicates delete database procedure
           if (database.equals(alterTableProcedure.getDatabase())
               && (Objects.isNull(tableName)
-                  || Objects.equals(tableName, alterTableProcedure.getTableName()))) {
+                  || Objects.equals(tableName, alterTableProcedure.getTableName())
+                  || Objects.nonNull(newName)
+                      && Objects.equals(newName, alterTableProcedure.getTableName()))) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case RENAME_TABLE_PROCEDURE:
+        case RENAME_VIEW_PROCEDURE:
+          final RenameTableProcedure renameTableProcedure = (RenameTableProcedure) procedure;
+          if (type == thisType && queryId.equals(renameTableProcedure.getQueryId())) {
+            return new Pair<>(procedure.getProcId(), false);
+          }
+          // tableName == null indicates delete database procedure
+          if (database.equals(renameTableProcedure.getDatabase())
+              && (Objects.isNull(tableName)
+                  || Objects.equals(tableName, renameTableProcedure.getTableName())
+                  || Objects.equals(tableName, renameTableProcedure.getNewName())
+                  || Objects.nonNull(newName)
+                      && (Objects.equals(newName, renameTableProcedure.getTableName())
+                          || Objects.equals(newName, renameTableProcedure.getNewName())))) {
             return new Pair<>(-1L, true);
           }
           break;
