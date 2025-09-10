@@ -2198,7 +2198,7 @@ public class DataRegion implements IDataRegionForQuery {
           return false;
         } catch (Throwable throwable) {
           clearAlreadyLockedList(needToUnLockList);
-          return false;
+          throw throwable;
         }
       }
     }
@@ -2244,7 +2244,7 @@ public class DataRegion implements IDataRegionForQuery {
           return false;
         } catch (Throwable throwable) {
           clearAlreadyLockedList(needToUnLockList);
-          return false;
+          throw throwable;
         }
       }
     }
