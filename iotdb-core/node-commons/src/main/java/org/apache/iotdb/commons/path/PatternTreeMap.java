@@ -61,6 +61,10 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
     this.serializer = serializer;
   }
 
+  public boolean isEmpty() {
+    return root.isLeaf() && root.getValues().isEmpty();
+  }
+
   /**
    * Append key and value to PatternTreeMap.
    *

@@ -142,21 +142,16 @@ public class FastCompactionPerformer
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device).get()));
+        Deletion ttlDeletion = null;
         if (ttl != Long.MAX_VALUE) {
-          Deletion ttlDeletion =
+          ttlDeletion =
               new Deletion(
                   new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
                   Long.MAX_VALUE,
                   Long.MIN_VALUE,
                   deviceIterator.getTimeLowerBoundForCurrentDevice());
-          for (TsFileResource sourceFile : sortedSourceFiles) {
-            modificationCache
-                .computeIfAbsent(
-                    sourceFile.getTsFile().getName(),
-                    k -> PatternTreeMapFactory.getModsPatternTreeMap())
-                .append(ttlDeletion.getPath(), ttlDeletion);
-          }
         }
+        compactionWriter.setTTLDeletion(ttlDeletion);
 
         if (sortedSourceFiles.isEmpty()) {
           // device is out of dated in all source files
