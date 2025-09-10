@@ -279,14 +279,15 @@ public class TableLogicalPlanner {
 
   // We should check if statement is PreparedStmt in enablePlanCache() method
   public boolean enablePlanCache(Statement statement) {
+    return false;
 
-    if (!(statement instanceof Query)) {
-      return false;
-    }
-
-    // PreparedStatement
-
-    return true;
+    //    if (!(statement instanceof Query)) {
+    //      return false;
+    //    }
+    //
+    //    // PreparedStatement
+    //
+    //    return true;
   }
 
   public LogicalQueryPlan plan(final Analysis analysis) {
@@ -394,23 +395,25 @@ public class TableLogicalPlanner {
       QueryPlanCostMetricSet.getInstance()
           .recordTablePlanCost(LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
 
-      CachedValue.ClonerContext clonerContext =
-          new CachedValue.ClonerContext(queryContext.getQueryId(), literalReference);
-      PlanNode clonedPlan = clonePlanWithNewLiterals(planNode, clonerContext);
-      List<DeviceTableScanNode> scanNodes = collectDeviceTableScanNodes(clonedPlan);
+      if (enablePlanCache(statement)) {
+        CachedValue.ClonerContext clonerContext =
+            new CachedValue.ClonerContext(queryContext.getQueryId(), literalReference);
+        PlanNode clonedPlan = clonePlanWithNewLiterals(planNode, clonerContext);
+        List<DeviceTableScanNode> scanNodes = collectDeviceTableScanNodes(clonedPlan);
 
-      PlanCacheManager.getInstance()
-          .cacheValue(
-              cachedKey,
-              clonedPlan,
-              scanNodes,
-              literalReference,
-              analysis.getRespDatasetHeader(),
-              symbolAllocator.cloneSymbolMap(),
-              symbolAllocator.getNextId(),
-              queryContext.getMetadataExpressionLists(),
-              queryContext.getAttributeColumnsLists(),
-              queryContext.getAssignmentsLists());
+        PlanCacheManager.getInstance()
+            .cacheValue(
+                cachedKey,
+                clonedPlan,
+                scanNodes,
+                literalReference,
+                analysis.getRespDatasetHeader(),
+                symbolAllocator.cloneSymbolMap(),
+                symbolAllocator.getNextId(),
+                queryContext.getMetadataExpressionLists(),
+                queryContext.getAttributeColumnsLists(),
+                queryContext.getAssignmentsLists());
+      }
     }
     logger.info(
         "Logical plan is generated, fetch schema cost time: {}",
