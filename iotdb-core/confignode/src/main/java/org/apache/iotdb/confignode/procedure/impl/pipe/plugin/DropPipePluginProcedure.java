@@ -122,7 +122,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
 
-    final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.lock();
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.lock().left;
     pipePluginCoordinator.lock();
     SubscriptionInfo subscriptionInfo = subscriptionCoordinator.getSubscriptionInfo();
 

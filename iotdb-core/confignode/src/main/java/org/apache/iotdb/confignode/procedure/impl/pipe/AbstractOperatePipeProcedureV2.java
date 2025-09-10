@@ -37,6 +37,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,17 +95,17 @@ public abstract class AbstractOperatePipeProcedureV2
   // This variable should not be serialized into procedure store,
   // putting it here is just for convenience
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
+  protected long lockSeqId;
 
   private static final String SKIP_PIPE_PROCEDURE_MESSAGE =
       "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
 
   protected AtomicReference<PipeTaskInfo> acquireLockInternal(
       ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    return configNodeProcedureEnv
-        .getConfigManager()
-        .getPipeManager()
-        .getPipeTaskCoordinator()
-        .lock();
+    Pair<AtomicReference<PipeTaskInfo>, Long> lockRes =
+        configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
+    lockSeqId = lockRes.right;
+    return lockRes.left;
   }
 
   @Override
@@ -186,6 +187,10 @@ public abstract class AbstractOperatePipeProcedureV2
       configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
       pipeTaskInfo = null;
     }
+  }
+
+  public long getLockSeqId() {
+    return lockSeqId;
   }
 
   protected abstract PipeTaskOperation getOperation();
@@ -612,11 +617,15 @@ public abstract class AbstractOperatePipeProcedureV2
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(isRollbackFromOperateOnDataNodesSuccessful, stream);
+    ReadWriteIOUtils.write(lockSeqId, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
+    if (byteBuffer.remaining() >= Long.BYTES) {
+      lockSeqId = ReadWriteIOUtils.readLong(byteBuffer);
+    }
   }
 }
