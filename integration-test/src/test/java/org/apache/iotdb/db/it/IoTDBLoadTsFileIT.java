@@ -84,10 +84,7 @@ public class IoTDBLoadTsFileIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setDatanodeMemoryProportion("100:1000:100:100:100:100");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("1:10:1:1:1:1");
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
