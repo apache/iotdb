@@ -216,7 +216,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
-    for (int i = 1; i < times.length; i++) { // times are sorted in session API.
+    for (int i = 1; i < rowCount; i++) { // times are sorted in session API.
       if (times[i] >= upperBoundOfTimePartition) {
         // a new range.
         ranges.add(startLoc); // included
@@ -231,7 +231,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     // the final range
     ranges.add(startLoc); // included
-    ranges.add(times.length); // excluded
+    ranges.add(rowCount); // excluded
     timePartitionSlots.add(timePartitionSlot);
 
     // data region for each time partition
