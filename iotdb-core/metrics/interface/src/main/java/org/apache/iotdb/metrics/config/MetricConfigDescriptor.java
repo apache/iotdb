@@ -124,11 +124,6 @@ public class MetricConfigDescriptor {
             loadConfig.getPrometheusReporterPassword(),
             properties));
 
-    loadConfig.setEnableSSL(
-        Boolean.parseBoolean(
-            getPropertyWithoutPrefix(
-                "metric_enable_ssl", String.valueOf(loadConfig.isEnableSSL()), properties)));
-
     loadConfig.setKeyStorePath(
         getPropertyWithoutPrefix("key_store_path", loadConfig.getKeyStorePath(), properties));
 
