@@ -50,12 +50,7 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
     LOGGER.info("ProcedureId {} try to acquire subscription and pipe lock.", getProcId());
 
     pipeTaskInfo =
-        configNodeProcedureEnv
-            .getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .lock()
-            .left;
+        configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
     if (pipeTaskInfo == null) {
       LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
     } else {
