@@ -297,7 +297,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       throws IllegalPathException {
     return ModificationUtils.isAllDeletedByMods(
         CompactionUtils.getMatchedModifications(
-            modifications, device, AlignedPath.VECTOR_PLACEHOLDER),
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, null),
         startTime,
         endTime);
   }
