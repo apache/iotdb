@@ -35,13 +35,15 @@ import org.apache.iotdb.db.service.metrics.DataNodeInternalRPCServiceMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class DataNodeInternalRPCService extends ThriftService
     implements DataNodeInternalRPCServiceMBean {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  private DataNodeInternalRPCServiceImpl impl;
+  private final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
 
   private DataNodeInternalRPCService() {}
 
@@ -51,11 +53,10 @@ public class DataNodeInternalRPCService extends ThriftService
   }
 
   @Override
-  public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    impl = new DataNodeInternalRPCServiceImpl();
+  public void initTProcessor() {
+    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl());
     initSyncedServiceImpl(null);
-    processor = new Processor<>(impl);
+    processor = new Processor<>(impl.get());
   }
 
   @Override
@@ -108,7 +109,8 @@ public class DataNodeInternalRPCService extends ThriftService
   }
 
   public DataNodeInternalRPCServiceImpl getImpl() {
-    return impl;
+    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl());
+    return impl.get();
   }
 
   private static class DataNodeInternalRPCServiceHolder {
