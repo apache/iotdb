@@ -37,7 +37,6 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,11 +68,10 @@ public class PipeTaskCoordinator {
    * @return the pipe task info holder, which can be used to get the pipe task info. The holder is
    *     null if the lock is not acquired.
    */
-  public Pair<AtomicReference<PipeTaskInfo>, Long> tryLock() {
-    long lockSeqId = pipeTaskCoordinatorLock.tryLock();
-    if (lockSeqId != -1) {
+  public AtomicReference<PipeTaskInfo> tryLock() {
+    if (pipeTaskCoordinatorLock.tryLock()) {
       pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
-      return new Pair<>(pipeTaskInfoHolder, lockSeqId);
+      return pipeTaskInfoHolder;
     }
 
     return null;
@@ -85,10 +83,10 @@ public class PipeTaskCoordinator {
    * @return the {@link PipeTaskInfo} holder, which can be used to get the {@link PipeTaskInfo}.
    *     Wait until lock is acquired
    */
-  public Pair<AtomicReference<PipeTaskInfo>, Long> lock() {
-    long lockSeqId = pipeTaskCoordinatorLock.lock();
+  public AtomicReference<PipeTaskInfo> lock() {
+    pipeTaskCoordinatorLock.lock();
     pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
-    return new Pair<>(pipeTaskInfoHolder, lockSeqId);
+    return pipeTaskInfoHolder;
   }
 
   /**

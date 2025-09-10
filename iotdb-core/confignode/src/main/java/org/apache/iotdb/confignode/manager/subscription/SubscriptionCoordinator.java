@@ -79,7 +79,7 @@ public class SubscriptionCoordinator {
   /////////////////////////////// Lock ///////////////////////////////
 
   public AtomicReference<SubscriptionInfo> tryLock() {
-    if (coordinatorLock.tryLock() != -1) {
+    if (coordinatorLock.tryLock()) {
       subscriptionInfoHolder = new AtomicReference<>(subscriptionInfo);
       return subscriptionInfoHolder;
     }

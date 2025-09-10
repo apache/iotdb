@@ -146,7 +146,7 @@ public class PipeMetaSyncer {
 
   private boolean autoRestartWithLock() {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
-        configManager.getPipeManager().getPipeTaskCoordinator().tryLock().left;
+        configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
       LOGGER.warn("Failed to acquire pipe lock for auto restart pipe task.");
       return false;
@@ -160,7 +160,7 @@ public class PipeMetaSyncer {
 
   private boolean handleSuccessfulRestartWithLock() {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
-        configManager.getPipeManager().getPipeTaskCoordinator().tryLock().left;
+        configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
       LOGGER.warn("Failed to acquire pipe lock for handling successful restart.");
       return false;

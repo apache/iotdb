@@ -39,7 +39,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,14 +73,11 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   @Override
   protected AtomicReference<PipeTaskInfo> acquireLockInternal(
       ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    Pair<AtomicReference<PipeTaskInfo>, Long> lockRes =
-        configNodeProcedureEnv
-            .getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .tryLock();
-    lockSeqId = lockRes.right;
-    return lockRes.left;
+    return configNodeProcedureEnv
+        .getConfigManager()
+        .getPipeManager()
+        .getPipeTaskCoordinator()
+        .tryLock();
   }
 
   @Override
