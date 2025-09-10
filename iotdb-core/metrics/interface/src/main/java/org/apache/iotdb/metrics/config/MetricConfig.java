@@ -79,11 +79,11 @@ public class MetricConfig {
   private long upTimeInNs = 0;
   private String internalDatabase = "root.__system";
 
-  private boolean enableSSL = true;
-  private String keyStorePath = "/Users/ht/.keystore";
-  private String keyStorePassword = "123456";
-  private String trustStorePath = "/Users/ht/.truststore";
-  private String trustStorePassword = "123456";
+  private boolean enableSSL = false;
+  private String keyStorePath = "";
+  private String keyStorePassword = "";
+  private String trustStorePath = "";
+  private String trustStorePassword = "";
 
   public MetricConfig() {
     // try to get pid of iotdb instance
@@ -269,6 +269,12 @@ public class MetricConfig {
     prometheusReporterUsername = newMetricConfig.getPrometheusReporterUsername();
     prometheusReporterPassword = newMetricConfig.getPrometheusReporterPassword();
     internalReporterType = newMetricConfig.getInternalReportType();
+
+    enableSSL = newMetricConfig.isEnableSSL();
+    keyStorePath = newMetricConfig.getKeyStorePath();
+    keyStorePassword = newMetricConfig.getKeyStorePassword();
+    trustStorePath = newMetricConfig.getTrustStorePath();
+    trustStorePassword = newMetricConfig.getTrustStorePassword();
 
     iotdbReporterConfig.copy(newMetricConfig.getIoTDBReporterConfig());
   }
