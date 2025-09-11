@@ -2404,6 +2404,12 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+
+    conf.setLoadTsFileSpiltPartitionMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_split_partition_max_size",
+                Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
