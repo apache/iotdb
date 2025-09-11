@@ -211,6 +211,16 @@ The following files include code modified from Apache HBase project.
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/impl/StateMachineProcedure.java
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/TimeoutExecutorThread.java
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/StoppableThread.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/CompletedProcedureRecycler.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/RootProcedureStack.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/scheduler/AbstractProcedureScheduler.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/scheduler/ProcedureScheduler.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/scheduler/SimpleProcedureScheduler.java
+./iotdb-core/consensus/src/main/java/org/apache/iotdb/consensus/ratis/metrics/RefCountingMap.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/DataNodeThrottleQuotaManager.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/DefaultOperationQuota.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/NoopOperationQuota.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/QuotaLimiter.java
 
 Project page: https://github.com/apache/hbase
 License: https://github.com/apache/hbase/blob/master/LICENSE.txt
