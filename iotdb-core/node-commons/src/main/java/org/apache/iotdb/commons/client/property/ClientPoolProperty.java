@@ -87,12 +87,19 @@ public class ClientPoolProperty<V> {
     public ClientPoolProperty<V> build() {
       GenericKeyedObjectPoolConfig<V> poolConfig = new GenericKeyedObjectPoolConfig<>();
       poolConfig.setMaxTotalPerKey(maxClientNumForEachNode);
-      poolConfig.setMaxIdlePerKey(maxClientNumForEachNode);
+      poolConfig.setMaxIdlePerKey(
+          maxClientNumForEachNode / 10); // Reserve 10% as the expected max idle clients
+      poolConfig.setMinIdlePerKey(
+          maxClientNumForEachNode / 20); // Reserve 5% as the min idle clients
+      poolConfig.setNumTestsPerEvictionRun(maxClientNumForEachNode / 10);
+      poolConfig.setSoftMinEvictableIdleTime(Duration.ofMillis(timeBetweenEvictionRuns));
       poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(timeBetweenEvictionRuns));
       poolConfig.setMinEvictableIdleTime(Duration.ofMillis(minIdleTimeForClient));
       poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMs));
       poolConfig.setTestOnReturn(true);
       poolConfig.setTestOnBorrow(true);
+      poolConfig.setTestWhileIdle(true);
+      poolConfig.setLifo(true);
       return new ClientPoolProperty<>(poolConfig);
     }
   }

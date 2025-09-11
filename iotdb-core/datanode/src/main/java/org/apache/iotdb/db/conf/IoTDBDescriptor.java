@@ -290,6 +290,12 @@ public class IoTDBDescriptor {
                 "dn_max_client_count_for_each_node_in_client_manager",
                 String.valueOf(conf.getMaxClientNumForEachNode()))));
 
+    conf.setMaxClientNumForConfigNode(
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_max_client_count_for_config_node_client_manager",
+                String.valueOf(conf.getMaxClientNumForConfigNode()))));
+
     conf.setSelectorNumOfClientManager(
         Integer.parseInt(
             properties.getProperty(

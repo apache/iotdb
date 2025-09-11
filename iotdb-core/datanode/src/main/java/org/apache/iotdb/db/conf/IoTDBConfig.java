@@ -917,6 +917,9 @@ public class IoTDBConfig {
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
+  /** The maximum number of clients that can be allocated for ConfigNodeClientManager. */
+  private int maxClientNumForConfigNode = 100;
+
   /**
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher}
@@ -3065,6 +3068,14 @@ public class IoTDBConfig {
 
   public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
+  }
+
+  public int getMaxClientNumForConfigNode() {
+    return maxClientNumForConfigNode;
+  }
+
+  public void setMaxClientNumForConfigNode(int maxClientNumForConfigNode) {
+    this.maxClientNumForConfigNode = maxClientNumForConfigNode;
   }
 
   public int getSelectorNumOfClientManager() {
