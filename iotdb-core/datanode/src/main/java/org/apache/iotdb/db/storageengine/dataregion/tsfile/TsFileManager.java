@@ -339,7 +339,7 @@ public class TsFileManager {
     }
 
     // Currently disable
-    if (false) {
+    if (true) {
       PipeDataNodeResourceManager.compaction()
           .emitResult(
               storageGroupName,

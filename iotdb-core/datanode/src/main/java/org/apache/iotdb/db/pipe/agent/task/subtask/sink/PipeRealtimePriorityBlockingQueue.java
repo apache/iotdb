@@ -212,8 +212,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
                     event instanceof PipeTsFileInsertionEvent
                         && ((PipeTsFileInsertionEvent) event).getRegionId() == regionId)
             .map(event -> (PipeTsFileInsertionEvent) event)
-            .filter(
-                e -> e.getTsFileResource() != null && sourceFiles.contains(e.getTsFileResource()))
+            .filter(e -> sourceFiles.contains(e.getTsFileResource()))
             .collect(
                 Collectors.groupingBy(
                     PipeTsFileInsertionEvent::getCommitterKey, Collectors.toSet()))
