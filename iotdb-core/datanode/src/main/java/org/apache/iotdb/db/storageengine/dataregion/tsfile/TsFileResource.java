@@ -836,6 +836,10 @@ public class TsFileResource implements PersistentResource {
    */
   public boolean remove() {
     forceMarkDeleted();
+    // To release the memory occupied by pipe if holding it
+    // Note that pipe can safely handle the case that the time index does not exist
+    isEmpty();
+    setTimeIndex(null);
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(

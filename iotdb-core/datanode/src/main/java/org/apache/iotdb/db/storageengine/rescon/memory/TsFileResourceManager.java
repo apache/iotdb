@@ -88,10 +88,6 @@ public class TsFileResourceManager {
         memoryBlock.release(tsFileResource.calculateRamSize());
       }
     }
-    // To release the memory occupied by pipe if holding it
-    // Note that pipe can safely handle the case that the time index does not exist
-    tsFileResource.isEmpty();
-    tsFileResource.setTimeIndex(null);
   }
 
   public void forceDegradeTsFileResource(TsFileResource resource) {
