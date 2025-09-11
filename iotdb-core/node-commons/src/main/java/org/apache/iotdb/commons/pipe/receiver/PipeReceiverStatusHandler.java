@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingI
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -122,7 +123,10 @@ public class PipeReceiverStatusHandler {
 
       case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
         {
-          LOGGER.info("Temporary unavailable exception: will retry forever. status: {}", status);
+          PipeLogger.log(
+              LOGGER::info,
+              "Temporary unavailable exception: will retry forever. status: %s",
+              status);
           throw new PipeRuntimeSinkCriticalException(exceptionMessage);
         }
 
