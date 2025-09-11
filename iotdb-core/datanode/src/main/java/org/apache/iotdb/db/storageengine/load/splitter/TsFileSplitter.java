@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -65,6 +67,8 @@ import java.util.TreeMap;
 public class TsFileSplitter {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSplitter.class);
 
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
   private final File tsFile;
   private final TsFileDataConsumer consumer;
   private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
@@ -75,6 +79,7 @@ public class TsFileSplitter {
   private IDeviceID curDevice = null;
   private boolean isAligned;
   private int timeChunkIndexOfCurrentValueColumn = 0;
+  private Set<TTimePartitionSlot> timePartitionSlots = new HashSet<>();
 
   // Maintain the number of times the chunk of each measurement appears.
   private Map<String, Integer> valueColumn2TimeChunkIndex = new HashMap<>();
@@ -454,6 +459,14 @@ public class TsFileSplitter {
       }
     }
     for (AlignedChunkData chunkData : chunkDataMap.keySet()) {
+      timePartitionSlots.add(chunkData.getTimePartitionSlot());
+      if (offset2Deletions.isEmpty()
+          && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
+        throw new LoadFileException(
+            String.format(
+                "Time partition slots size is greater than %s",
+                CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
+      }
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
@@ -466,6 +479,14 @@ public class TsFileSplitter {
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)
       throws LoadFileException {
+    timePartitionSlots.add(chunkData.getTimePartitionSlot());
+    if (offset2Deletions.isEmpty()
+        && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
+      throw new LoadFileException(
+          String.format(
+              "Time partition slots size is greater than %s",
+              CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
+    }
     if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
       throw new IllegalStateException(
           String.format(
