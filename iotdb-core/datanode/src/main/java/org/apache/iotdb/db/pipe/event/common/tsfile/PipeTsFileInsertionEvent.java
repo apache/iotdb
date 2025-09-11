@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -64,14 +65,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
 public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
-  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private final TsFileResource resource;
   private File tsFile;
@@ -513,6 +510,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return Objects.nonNull(deviceIsAlignedMap)
         ? deviceIsAlignedMap.keySet()
         : resource.getDevices();
+  }
+
+  public void removeTimeIndex() {
+    TsFileResourceManager.getInstance().removePipeTsFileResource(resource);
   }
 
   /////////////////////////// PipeInsertionEvent ///////////////////////////

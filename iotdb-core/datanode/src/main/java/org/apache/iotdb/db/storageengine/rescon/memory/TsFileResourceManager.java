@@ -90,6 +90,12 @@ public class TsFileResourceManager {
     }
   }
 
+  public synchronized void removePipeTsFileResource(final TsFileResource tsFileResource) {
+    if (!sealedTsFileResources.contains(tsFileResource)) {
+      tsFileResource.setTimeIndex(null);
+    }
+  }
+
   public void forceDegradeTsFileResource(TsFileResource resource) {
     if (TimeIndexLevel.valueOf(resource.getTimeIndexType()) == TimeIndexLevel.FILE_TIME_INDEX) {
       return;
