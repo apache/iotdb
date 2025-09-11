@@ -267,6 +267,17 @@ The following files include code modified from Trino project.
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceState.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceStateMachine.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/common/QueryId.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/FutureStateChange.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/QueryIdGenerator.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceFailureInfo.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentState.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/ExchangeOperator.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/queue/multilevelqueue/DriverTaskHandle.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/queue/multilevelqueue/MultilevelPriorityQueue.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/queue/multilevelqueue/Priority.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/utils/SetThreadName.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/utils/stats/CpuTimer.java
 
 Trino is open source software licensed under the Apache License 2.0 and supported by the Trino Software Foundation.
 Project page: https://github.com/trinodb/trino
