@@ -1121,13 +1121,18 @@ public class TsFileResource implements PersistentResource {
    * @return resource map size
    */
   public long calculateRamSize() {
+    final ProgressIndex progressIndex = maxProgressIndex.get();
     if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-      return INSTANCE_SIZE + timeIndex.calculateRamSize();
+      return INSTANCE_SIZE
+          + timeIndex.calculateRamSize()
+          + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
     }
     if (deviceTimeIndexRamSize == 0) {
       deviceTimeIndexRamSize = timeIndex.calculateRamSize();
     }
-    return INSTANCE_SIZE + deviceTimeIndexRamSize;
+    return INSTANCE_SIZE
+        + deviceTimeIndexRamSize
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 
   // used for compaction

@@ -88,9 +88,6 @@ public class TsFileResourceManager {
         memoryBlock.release(tsFileResource.calculateRamSize());
       }
     }
-    // Note that the tsFileResource may still be referenced by pipe, and pipe does not use the time
-    // index at all
-    tsFileResource.setTimeIndex(null);
   }
 
   public void forceDegradeTsFileResource(TsFileResource resource) {
