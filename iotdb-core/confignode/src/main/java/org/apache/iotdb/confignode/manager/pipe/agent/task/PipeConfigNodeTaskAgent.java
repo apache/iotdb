@@ -200,7 +200,6 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (isShutdown() || !PipeConfigNodeAgent.runtime().isLeaderReady()) {
-      resp.setPipeMetaList(Collections.emptyList());
       return;
     }
     final Optional<Logger> logger =

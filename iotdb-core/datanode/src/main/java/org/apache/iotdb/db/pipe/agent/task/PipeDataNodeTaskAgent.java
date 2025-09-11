@@ -476,7 +476,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     // If the heartbeatId == Long.MIN_VALUE then it's shutdown report and shall not be skipped
     if (PipeDataNodeAgent.runtime().isShutdown() && req.heartbeatId != Long.MIN_VALUE) {
-      resp.setPipeMetaList(Collections.emptyList());
       return;
     }
     final Optional<Logger> logger =
@@ -647,8 +646,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
+      final TPipeHeartbeatResp resp = new TPipeHeartbeatResp(new ArrayList<>());
       collectPipeMetaList(new TPipeHeartbeatReq(Long.MIN_VALUE), resp);
+      if (resp.getPipeMetaList().isEmpty()) {
+        return;
+      }
       final TSStatus result =
           configNodeClient.pushHeartbeat(
               IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);
