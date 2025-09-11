@@ -2080,6 +2080,9 @@ public class DataRegion implements IDataRegionForQuery {
           clearAlreadyLockedList(needToUnLockList);
           Thread.currentThread().interrupt();
           return false;
+        } catch (Throwable throwable) {
+          clearAlreadyLockedList(needToUnLockList);
+          throw throwable;
         }
       }
     }
@@ -2127,6 +2130,9 @@ public class DataRegion implements IDataRegionForQuery {
           clearAlreadyLockedList(needToUnLockList);
           Thread.currentThread().interrupt();
           return false;
+        } catch (Throwable throwable) {
+          clearAlreadyLockedList(needToUnLockList);
+          throw throwable;
         }
       }
     }
