@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
+
     Licensed to the Apache Software Foundation (ASF) under one
     or more contributor license agreements.  See the NOTICE file
     distributed with this work for additional information
@@ -16,6 +17,7 @@
     KIND, either express or implied.  See the License for the
     specific language governing permissions and limitations
     under the License.
+
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
@@ -30,12 +32,6 @@
         <!-- These dependencies are just added to ensure the other modules are built first -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>2.0.6-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
             <version>2.0.6-SNAPSHOT</version>
             <scope>provided</scope>
@@ -43,6 +39,12 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-confignode</artifactId>
+            <version>2.0.6-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
             <version>2.0.6-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
@@ -103,7 +105,11 @@
                 <artifactId>groovy-maven-plugin</artifactId>
                 <version>2.1.1</version>
                 <executions>
-                    <!-- keep: sync python version -->
+                    <!--
+                      The python versioning follows slightly different rules than Maven.
+                      This little script makes sure the python project file is always in
+                      sync with the maven module.
+                    -->
                     <execution>
                         <id>sync-python-version</id>
                         <phase>validate</phase>
@@ -112,23 +118,6 @@
                         </goals>
                         <configuration>
                             <source>${project.basedir}/resources/syncPythonVersion.groovy</source>
-                        </configuration>
-                    </execution>
-                    <!-- new: detect venv site-packages to copy conf into runtime package -->
-                    <execution>
-                        <id>detect-site-packages</id>
-                        <phase>process-resources</phase>
-                        <goals>
-                            <goal>execute</goal>
-                        </goals>
-                        <configuration>
-                            <properties>
-                                <property>
-                                    <name>ainode.sitepackages.dir</name>
-                                    <value/>
-                                </property>
-                            </properties>
-                            <source>def venv = new File(project.basedir, "venv") ;def sp = ""; def libDir = new File(venv, "lib"); if (libDir.exists()) { libDir.eachDirMatch(~/python.*/) { py -&gt; def p = new File(py, "site-packages"); if (p.exists() &amp;&amp; sp == "") sp = p.canonicalPath } } // Windows fallback def winSp = new File(venv, "Lib/site-packages") if (sp == "" &amp;&amp; winSp.exists()) sp = winSp.canonicalPath if (sp == "") { println "[WARN] site-packages not found under venv; will skip copy into venv." } else { project.properties.setProperty("ainode.sitepackages.dir", sp) println "[INFO] site-packages: ${sp}" }</source>
                         </configuration>
                     </execution>
                 </executions>
@@ -154,7 +143,7 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>copy-thrift-python-resources</id>
+                        <id>copy-python-dependencies</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
@@ -168,7 +157,10 @@
                             </resources>
                         </configuration>
                     </execution>
-                    <!-- Copy filtered pom.properties into package source tree -->
+                    <!--
+                        Copy the template pom.properties from the resources directory and replace the
+                        version variable with the real one from this module.
+                    -->
                     <execution>
                         <id>copy-pom-properties</id>
                         <phase>generate-sources</phase>
@@ -186,28 +178,6 @@
                             </resources>
                         </configuration>
                     </execution>
-                    <!-- new: copy conf into venv site-packages/iotdb/ainode/conf (if venv exists) -->
-                    <execution>
-                        <id>copy-conf-into-venv-sitepackages</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${ainode.sitepackages.dir}/iotdb/ainode/conf</outputDirectory>
-                            <overwrite>true</overwrite>
-                            <resources>
-                                <resource>
-                                    <directory>${basedir}/iotdb/ainode/conf/</directory>
-                                    <includes>
-                                        <include>git.properties</include>
-                                        <include>pom.properties</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                            <skip>${ainode.sitepackages.dir}${empty}</skip>
-                        </configuration>
-                    </execution>
                 </executions>
             </plugin>
             <!-- Generate a file called git.properties to provide git version info -->
@@ -223,7 +193,6 @@
                         </goals>
                         <configuration>
                             <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                            <!-- write into package source tree first -->
                             <generateGitPropertiesFilename>${project.basedir}/iotdb/ainode/conf/git.properties</generateGitPropertiesFilename>
                             <includeOnlyProperties>
                                 <includeOnlyProperty>^git.commit.id.abbrev$</includeOnlyProperty>
@@ -305,41 +274,38 @@
                             </arguments>
                         </configuration>
                     </execution>
-                    <!-- kept but commented tests/wheel steps -->
-                    <!--
-                    <execution>
-                      <id>python-test</id>
-                      <phase>test</phase>
-                      <goals>
-                        <goal>exec</goal>
-                      </goals>
-                      <configuration>
-                        <executable>${python.venv.bin}${python.exe.bin}</executable>
-                        <arguments>
-                          <argument>-m</argument>
-                          <argument>pytest</argument>
-                          <argument>tests</argument>
-                        </arguments>
-                      </configuration>
-                    </execution>
-                    <execution>
-                      <id>python-package</id>
-                      <phase>package</phase>
-                      <goals>
-                        <goal>exec</goal>
-                      </goals>
-                      <configuration>
-                        <executable>${python.venv.bin}pip3</executable>
-                        <arguments>
-                          <argument>wheel</argument>
-                          <argument>.</argument>
-                          <argument>-w</argument>
-                          <argument>dist</argument>
-                          <argument>- -no-deps</argument>
-                        </arguments>
-                      </configuration>
-                    </execution>
-                    -->
+                    <!--execution>
+                        <id>python-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.venv.bin}${python.exe.bin}</executable>
+                            <arguments>
+                                <argument>-m</argument>
+                                <argument>pytest</argument>
+                                <argument>tests</argument>
+                            </arguments>
+                        </configuration>
+                    </execution-->
+                    <!--execution>
+                        <id>python-package</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.venv.bin}pip3</executable>
+                            <arguments>
+                                <argument>wheel</argument>
+                                <argument>.</argument>
+                                <argument>-w</argument>
+                                <argument>dist</argument>
+                                <argument>- -no-deps</argument>
+                            </arguments>
+                        </configuration>
+                    </execution-->
                 </executions>
             </plugin>
             <plugin>
@@ -381,6 +347,9 @@
                                 <usedDependency>org.apache.iotdb:iotdb-thrift-confignode</usedDependency>
                                 <usedDependency>org.apache.iotdb:iotdb-thrift-ainode</usedDependency>
                             </usedDependencies>
+                            <ignoredUnusedDeclaredDependencies>
+                                <ignoredUnusedDeclaredDependency>org.apache.iotdb:iotdb-python-api</ignoredUnusedDeclaredDependency>
+                            </ignoredUnusedDeclaredDependencies>
                         </configuration>
                     </execution>
                 </executions>
