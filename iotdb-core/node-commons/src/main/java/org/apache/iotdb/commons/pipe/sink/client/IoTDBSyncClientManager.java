@@ -139,7 +139,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
     // Check whether any clients are available
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
-      if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getRight() != null) {
+      if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
         lastCheckClientStatusTimestamp = System.currentTimeMillis();
         return;
       }
