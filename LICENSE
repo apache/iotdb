@@ -295,3 +295,15 @@ The following files include code modified from Stream-Lib project.
 
 Project page: https://github.com/addthis/stream-lib
 License: https://github.com/addthis/stream-lib/blob/master/LICENSE.txt
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Dropwizard Metrics project.
+
+./iotdb-core/metrics/core/src/main/java/org/apache/iotdb/metrics/core/utils/IoTDBCachedGauge.java
+./iotdb-core/metrics/core/src/main/java/org/apache/iotdb/metrics/core/utils/IoTDBMetricObjNameFactory.java
+./iotdb-core/metrics/core/src/main/java/org/apache/iotdb/metrics/core/utils/IoTDBMovingAverage.java
+
+Copyright (c) 2010-2013 Coda Hale, Yammer.com, 2014-2021 Dropwizard Team
+Project page: https://github.com/dropwizard/metrics
+License: https://github.com/dropwizard/metrics/blob/release/4.2.x/LICENSE
