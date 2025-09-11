@@ -201,7 +201,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     return tsfileInsertEventDeque.peek();
   }
 
-  public synchronized void replace(
+  public void replace(
       String dataRegionId, Set<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
 
     final int regionId = Integer.parseInt(dataRegionId);
@@ -212,13 +212,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
                     event instanceof PipeTsFileInsertionEvent
                         && ((PipeTsFileInsertionEvent) event).getRegionId() == regionId)
             .map(event -> (PipeTsFileInsertionEvent) event)
+            .filter(
+                e -> e.getTsFileResource() != null && sourceFiles.contains(e.getTsFileResource()))
             .collect(
                 Collectors.groupingBy(
                     PipeTsFileInsertionEvent::getCommitterKey, Collectors.toSet()))
             .entrySet()
             .stream()
-            // Replace if all source files are present in the queue
-            .filter(entry -> entry.getValue().size() == sourceFiles.size())
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     if (eventsToBeRemovedGroupByCommitterKey.isEmpty()) {
       LOGGER.info(
@@ -300,7 +300,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> entry :
         eventsToBeRemovedGroupByCommitterKey.entrySet()) {
       for (final PipeTsFileInsertionEvent event : entry.getValue()) {
-        if (event != null) {
+        if (tsfileInsertEventDeque.removeIf(e -> Objects.equals(event, e))) {
           try {
             event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
           } catch (final Exception e) {
@@ -313,12 +313,6 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
         }
       }
     }
-    final Set<PipeTsFileInsertionEvent> eventsToRemove = new HashSet<>();
-    for (Set<PipeTsFileInsertionEvent> pipeTsFileInsertionEvents :
-        eventsToBeRemovedGroupByCommitterKey.values()) {
-      eventsToRemove.addAll(pipeTsFileInsertionEvents);
-    }
-    tsfileInsertEventDeque.removeIf(eventsToRemove::contains);
 
     LOGGER.info(
         "Region {}: Replaced TsFileInsertionEvents {} with {}",
