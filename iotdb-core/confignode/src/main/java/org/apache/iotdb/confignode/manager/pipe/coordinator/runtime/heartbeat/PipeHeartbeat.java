@@ -35,11 +35,11 @@ public class PipeHeartbeat {
   private final Map<PipeStaticMeta, Double> remainingTimeMap = new HashMap<>();
 
   public PipeHeartbeat(
-      /* @Nullable */ final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
+      final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
       /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
       /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent) {
-    // Pipe meta may be null for nodes shutting down, return empty heartbeat
+    // Shall not reach here, just in case
     if (Objects.isNull(pipeMetaByteBufferListFromAgent)) {
       return;
     }
