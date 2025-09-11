@@ -125,7 +125,9 @@ public class TsFileResource implements PersistentResource {
   protected TsFileResource next;
 
   /** time index */
-  private ITimeIndex timeIndex;
+  private volatile ITimeIndex timeIndex;
+
+  private final AtomicReference<Boolean> isEmpty = new AtomicReference<>();
 
   private Future<ModificationFile> exclusiveModFileFuture;
   // this future suggest when the async recovery ends
@@ -150,11 +152,11 @@ public class TsFileResource implements PersistentResource {
   /** used for check whether this file has internal unsorted data in compaction selection */
   private TsFileRepairStatus tsFileRepairStatus = TsFileRepairStatus.NORMAL;
 
-  private TsFileLock tsFileLock = new TsFileLock();
+  private final TsFileLock tsFileLock = new TsFileLock();
 
   private boolean isSeq;
 
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   private DataRegion.SettleTsFileCallBack settleTsFileCallBack;
 
@@ -1426,7 +1428,9 @@ public class TsFileResource implements PersistentResource {
   }
 
   public boolean isEmpty() {
-    return getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
+    isEmpty.compareAndSet(
+        null, getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE);
+    return isEmpty.get();
   }
 
   public String getDatabaseName() {

@@ -132,7 +132,6 @@ public class PipeEventCollector implements EventCollector {
 
     if (skipParsing || !forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
-      sourceEvent.removeTimeIndex();
       return;
     }
 

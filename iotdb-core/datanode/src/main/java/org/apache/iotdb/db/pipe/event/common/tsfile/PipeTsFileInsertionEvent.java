@@ -44,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -52,6 +52,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -92,6 +94,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
   protected volatile ProgressIndex overridingProgressIndex;
+  private Set<String> tableNames;
 
   public PipeTsFileInsertionEvent(
       final Boolean isTableModelEvent,
@@ -434,23 +437,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         LOGGER.info("Temporary tsFile {} detected, will skip its transfer.", tsFile);
         return;
       }
-      for (final IDeviceID deviceID : getDeviceSet()) {
+      for (final String table : tableNames) {
         if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
-            || !tablePattern.matchesTable(deviceID.getTableName())) {
+            || !tablePattern.matchesTable(table)) {
           continue;
         }
         if (!Coordinator.getInstance()
             .getAccessControl()
             .checkCanSelectFromTable4Pipe(
-                userName,
-                new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()))) {
+                userName, new QualifiedObjectName(getTableModelDatabaseName(), table))) {
           if (skipIfNoPrivileges) {
             shouldParse4Privilege = true;
           } else {
             throw new AccessDeniedException(
                 String.format(
                     "No privilege for SELECT for user %s at table %s.%s",
-                    userName, tableModelDatabaseName, deviceID.getTableName()));
+                    userName, tableModelDatabaseName, table));
           }
         }
       }
@@ -489,9 +491,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
 
     try {
-      return getDeviceSet().stream().anyMatch(treePattern::mayOverlapWithDevice);
+      final Set<IDeviceID> devices = getDeviceSet();
+      return Objects.isNull(devices)
+          || devices.stream().anyMatch(treePattern::mayOverlapWithDevice);
     } catch (final Exception e) {
-      LOGGER.warn(
+      LOGGER.debug(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
           pipeName,
           resource.getTsFilePath(),
@@ -500,20 +504,24 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  private Set<IDeviceID> getDeviceSet() throws IOException {
+  private @Nullable Set<IDeviceID> getDeviceSet() throws IOException {
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
         PipeDataNodeResourceManager.tsfile()
             .getDeviceIsAlignedMapFromCache(
                 PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
                     resource.getTsFile(), pipeName),
                 false);
-    return Objects.nonNull(deviceIsAlignedMap)
-        ? deviceIsAlignedMap.keySet()
-        : resource.getDevices();
+    if (Objects.nonNull(deviceIsAlignedMap)) {
+      return deviceIsAlignedMap.keySet();
+    }
+    final ITimeIndex index = resource.getTimeIndex();
+    return Objects.nonNull(index)
+        ? index.getDevices(resource.getTsFile().getPath(), resource)
+        : null;
   }
 
-  public void removeTimeIndex() {
-    TsFileResourceManager.getInstance().removePipeTsFileResource(resource);
+  public void setTableNames(final Set<String> tableNames) {
+    this.tableNames = tableNames;
   }
 
   /////////////////////////// PipeInsertionEvent ///////////////////////////
