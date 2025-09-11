@@ -82,7 +82,8 @@ class TimerXLStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **_):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
-            data = data.byteswap().newbyteorder()
+            np_data = data.byteswap()
+            data = np_data.view(np_data.dtype.newbyteorder())
         seqs = torch.tensor(data).unsqueeze(0).float()
         # TODO: unify model inference input
         output = self.model.generate(seqs, max_new_tokens=predict_length, revin=True)
@@ -94,7 +95,8 @@ class SundialStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **_):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
-            data = data.byteswap().newbyteorder()
+            np_data = data.byteswap()
+            data = np_data.view(np_data.dtype.newbyteorder())
         seqs = torch.tensor(data).unsqueeze(0).float()
         # TODO: unify model inference input
         output = self.model.generate(
@@ -249,7 +251,8 @@ class InferenceManager:
                 # TODO: TSBlock -> Tensor codes should be unified
                 data = full_data[1][0]
                 if data.dtype.byteorder not in ("=", "|"):
-                    data = data.byteswap().newbyteorder()
+                    np_data = data.byteswap()
+                    data = np_data.view(np_data.dtype.newbyteorder())
                 # the inputs should be on CPU before passing to the inference request
                 inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
                 if model_id == "sundial":
