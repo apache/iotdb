@@ -157,10 +157,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         if (deviceID instanceof PlainDeviceID
             || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
             || deviceID.getTableName().equals(PATH_ROOT)) {
-          event.markAsTreeModelEvent();
           matchTreeModelEvent(deviceID, entry.getValue(), matchedSources);
         } else {
-          event.markAsTableModelEvent();
           matchTableModelEvent(
               event.getEvent() instanceof PipeInsertionEvent
                   ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()

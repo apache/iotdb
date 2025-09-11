@@ -49,7 +49,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -488,27 +487,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
-    if (Objects.isNull(resource) || !resource.isClosed()) {
+    if (Objects.isNull(resource) || !resource.isClosed() || isTableModelEvent()) {
       return true;
     }
 
     try {
-      return getDeviceSet().stream()
-          .anyMatch(
-              deviceID -> {
-                // Tree model
-                if (Boolean.FALSE.equals(getRawIsTableModelEvent())
-                    || deviceID instanceof PlainDeviceID
-                    || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-                    || deviceID.getTableName().equals(PATH_ROOT)) {
-                  markAsTreeModelEvent();
-                  return treePattern.mayOverlapWithDevice(deviceID);
-                }
-
-                // Table model
-                markAsTableModelEvent();
-                return true;
-              });
+      return getDeviceSet().stream().anyMatch(treePattern::mayOverlapWithDevice);
     } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
@@ -538,25 +522,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     if (getRawIsTableModelEvent() == null) {
       if (getSourceDatabaseNameFromDataRegion() != null) {
         return super.isTableModelEvent();
-      }
-
-      try {
-        for (final IDeviceID deviceID : getDeviceSet()) {
-          if (deviceID instanceof PlainDeviceID
-              || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-              || deviceID.getTableName().equals(PATH_ROOT)) {
-            markAsTreeModelEvent();
-          } else {
-            markAsTableModelEvent();
-          }
-          break;
-        }
-      } catch (final Exception e) {
-        throw new PipeException(
-            String.format(
-                "Pipe %s: failed to judge whether TsFile %s is table model or tree model",
-                pipeName, resource.getTsFilePath()),
-            e);
       }
     }
 
