@@ -476,6 +476,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     // If the heartbeatId == Long.MIN_VALUE then it's shutdown report and shall not be skipped
     if (PipeDataNodeAgent.runtime().isShutdown() && req.heartbeatId != Long.MIN_VALUE) {
+      resp.setPipeMetaList(Collections.emptyList());
       return;
     }
     final Optional<Logger> logger =

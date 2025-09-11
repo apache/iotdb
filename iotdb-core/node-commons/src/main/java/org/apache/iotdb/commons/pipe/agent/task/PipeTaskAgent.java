@@ -1089,6 +1089,7 @@ public abstract class PipeTaskAgent {
       throws TException {
     if (!tryReadLockWithTimeOut(
         CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      resp.setPipeMetaList(Collections.emptyList());
       return;
     }
     try {
