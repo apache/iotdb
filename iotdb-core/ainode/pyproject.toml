@@ -55,10 +55,39 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <3.13"
-numpy = "^1.21.4"
-pandas = ">=2.2.0"
-torch = ">=2.7.1"
+python = ">=3.11,<=3.13.5"
+
+# Core scientific stack
+numpy = [
+    { version = "^2.3.2", python = ">=3.10" },
+    { version = "^1.26.4", python = ">=3.9,<3.10" }
+]
+scipy = [
+    { version = "^1.12.0", python = ">=3.10" },
+    { version = "^1.11.4", python = ">=3.9,<3.10" }
+]
+pandas = "^2.3.2"
+scikit-learn = [
+    { version = "^1.7.1", python = ">=3.10" },
+    { version = "^1.5.2", python = ">=3.9,<3.10" }
+]
+statsmodels = "^0.14.5"
+sktime = "0.38.5"
+
+# ---- DL / HF stack ----
+torch = ">=2.7.0"
+torchmetrics = "^1.8.0"
+transformers = "==4.40.1"
+tokenizers = ">=0.19,<0.20"
+huggingface_hub = "^0.34.4"
+safetensors = "^0.6.2"
+einops = "^0.8.1"
+
+# ---- Optimizers / utils ----
+optuna = "^4.4.0"
+psutil = "^7.0.0"
+requests = "^2.32.5"
+dynaconf = "^3.2.11"
 thrift = ">=0.14.0"
 dynaconf = "^3.1.11"
 requests = "^2.31.0"
