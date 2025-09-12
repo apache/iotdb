@@ -113,6 +113,7 @@ statement
     | showClusterStatement
     | showRegionsStatement
     | showDataNodesStatement
+    | showAvailableUrlsStatement
     | showConfigNodesStatement
     | showAINodesStatement
     | showClusterIdStatement
@@ -539,6 +540,10 @@ showRegionsStatement
 
 showDataNodesStatement
     : SHOW DATANODES
+    ;
+
+showAvailableUrlsStatement
+    : SHOW AVAILABLE URLS
     ;
 
 showConfigNodesStatement
@@ -1454,6 +1459,8 @@ DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';
 DATANODE: 'DATANODE';
 DATANODES: 'DATANODES';
+AVAILABLE: 'AVAILABLE';
+URLS: 'URLS';
 DATASET: 'DATASET';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';

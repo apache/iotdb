@@ -246,6 +246,14 @@ DATANODES
     : D A T A N O D E S
     ;
 
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
+    ;
+
 DATASET
     : D A T A S E T
     ;
