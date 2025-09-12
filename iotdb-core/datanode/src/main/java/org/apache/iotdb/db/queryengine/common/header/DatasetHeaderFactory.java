@@ -129,6 +129,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showDataNodesColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowAvailableUrlsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showAvailableUrlsColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowConfigNodesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showConfigNodesColumnHeaders, true);
   }
