@@ -165,6 +165,10 @@ statement
     | createModelStatement
     | dropModelStatement
     | showModelsStatement
+    | showLoadedModelsStatement
+    | showAIDevicesStatement
+    | loadModelStatement
+    | unloadModelStatement
 
     // View, Trigger, CQ, Quota are not supported yet
     ;
@@ -805,6 +809,23 @@ showModelsStatement
     | SHOW MODELS modelId=identifier
     ;
 
+showLoadedModelsStatement
+    : SHOW LOADED MODELS
+    | SHOW LOADED MODELS deviceIdList=string
+    ;
+
+showAIDevicesStatement
+    : SHOW AI_DEVICES
+    ;
+
+loadModelStatement
+    : LOAD MODEL existingModelId=identifier TO DEVICES deviceIdList=string
+    ;
+
+unloadModelStatement
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=string
+    ;
+
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
@@ -1380,6 +1401,7 @@ ADMIN: 'ADMIN';
 AFTER: 'AFTER';
 AINODE: 'AINODE';
 AINODES: 'AINODES';
+AI_DEVICES: 'AI_DEVICES';
 ALL: 'ALL';
 ALTER: 'ALTER';
 ANALYZE: 'ANALYZE';
@@ -1556,6 +1578,7 @@ LINEAR: 'LINEAR';
 LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
+LOADED: 'LOADED';
 LOCAL: 'LOCAL';
 LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
@@ -1735,6 +1758,7 @@ UNCONDITIONAL: 'UNCONDITIONAL';
 UNION: 'UNION';
 UNIQUE: 'UNIQUE';
 UNKNOWN: 'UNKNOWN';
+UNLOAD: 'UNLOAD';
 UNMATCHED: 'UNMATCHED';
 UNNEST: 'UNNEST';
 UNTIL: 'UNTIL';

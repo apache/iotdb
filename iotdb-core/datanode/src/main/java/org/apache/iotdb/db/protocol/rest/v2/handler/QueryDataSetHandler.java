@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -56,6 +58,8 @@ public class QueryDataSetHandler {
       throws IoTDBException {
     if (statement instanceof ShowStatement
         || statement instanceof ShowModelsStatement
+        || statement instanceof ShowAIDevicesStatement
+        || statement instanceof ShowLoadedModelsStatement
         || statement instanceof AuthorStatement
         || statement instanceof GetRegionIdStatement) {
       return fillShowPlanDataSet(queryExecution, actualRowSizeLimit);

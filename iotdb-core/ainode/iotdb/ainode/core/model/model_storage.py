@@ -281,7 +281,7 @@ class ModelStorage(object):
             and self._model_info_map[model_id].category == ModelCategory.BUILT_IN
         )
 
-    def _is_built_in_or_fine_tuned(self, model_id: str) -> bool:
+    def is_built_in_or_fine_tuned(self, model_id: str) -> bool:
         """
         Check if the model_id corresponds to a built-in or fine-tuned model.
 
@@ -306,7 +306,7 @@ class ModelStorage(object):
             model: The model instance corresponding to specific model_id
         """
         with self._lock_pool.get_lock(model_id).read_lock():
-            if self._is_built_in_or_fine_tuned(model_id):
+            if self.is_built_in_or_fine_tuned(model_id):
                 model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
                 return fetch_built_in_model(
                     get_built_in_model_type(self._model_info_map[model_id].model_type),
@@ -348,7 +348,7 @@ class ModelStorage(object):
             Whether saving succeeded
         """
         with self._lock_pool.get_lock(model_id).write_lock():
-            if self._is_built_in_or_fine_tuned(model_id):
+            if self.is_built_in_or_fine_tuned(model_id):
                 model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
                 model.save_pretrained(model_dir)
             else:

@@ -325,7 +325,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       ExecutionResult result;
       if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
         Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
-
         if (s instanceof SetSqlDialectStatement) {
           setSqlDialect = true;
         }
