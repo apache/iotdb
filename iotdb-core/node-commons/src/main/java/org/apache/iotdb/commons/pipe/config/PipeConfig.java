@@ -472,7 +472,7 @@ public class PipeConfig {
 
     LOGGER.info(
         "PipeRealTimeQueuePollTsFileThreshold: {}", getPipeRealTimeQueuePollTsFileThreshold());
-    LOGGER.info("PipeRealTimeCompactionEnabled: {}", isPipeRealTimeQueueCompactionEnabled());
+    LOGGER.info("PipeRealTimeQueueCompactionEnabled: {}", isPipeRealTimeQueueCompactionEnabled());
     LOGGER.info(
         "PipeRealTimeQueuePollHistoricalTsFileThreshold: {}",
         getPipeRealTimeQueuePollHistoricalTsFileThreshold());
