@@ -677,7 +677,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select id from pipes where creation_time > 0"),
           "id,",
-          Collections.singleton("a2b,"));
+          new HashSet<>(Arrays.asList("a2b,", "test,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
