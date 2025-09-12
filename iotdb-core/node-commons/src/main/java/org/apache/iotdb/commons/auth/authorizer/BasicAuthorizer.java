@@ -152,28 +152,28 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     return null;
   }
 
+  private void internalCreateUser(
+          String username, String password, boolean validCheck, boolean enableEncrypt)
+          throws AuthException {
+    if (!userManager.createUser(username, password, validCheck, enableEncrypt)) {
+      throw new AuthException(
+              TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
+    }
+  }
+
   @Override
   public void createUser(String username, String password) throws AuthException {
-    if (!userManager.createUser(username, password, true, true)) {
-      throw new AuthException(
-          TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
-    }
+    internalCreateUser(username, password, true, true);
   }
 
   @Override
   public void createUserWithoutCheck(String username, String password) throws AuthException {
-    if (!userManager.createUser(username, password, false, true)) {
-      throw new AuthException(
-          TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
-    }
+    internalCreateUser(username, password, false, true);
   }
 
   @Override
   public void createUserWithRawPassword(String username, String password) throws AuthException {
-    if (!userManager.createUser(username, password, true, false)) {
-      throw new AuthException(
-          TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
-    }
+    internalCreateUser(username, password, true, false);
   }
 
   @Override
@@ -312,19 +312,22 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     return privileges;
   }
 
-  @Override
-  public void updateUserPassword(String userName, String newPassword) throws AuthException {
-    if (!userManager.updateUserPassword(userName, newPassword, false)) {
+  private void internalUpdateUserPassword(
+          String userName, String newPassword, boolean bypassValidate) throws AuthException {
+    if (!userManager.updateUserPassword(userName, newPassword, bypassValidate)) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
+              TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
     }
   }
 
+
+  @Override
+  public void updateUserPassword(String userName, String newPassword) throws AuthException {
+    internalUpdateUserPassword(userName, newPassword, false);
+  }
+
   private void forceUpdateUserPassword(String userName, String newPassword) throws AuthException {
-    if (!userManager.updateUserPassword(userName, newPassword, true)) {
-      throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
-    }
+    internalUpdateUserPassword(userName, newPassword, true);
   }
 
   @Override
