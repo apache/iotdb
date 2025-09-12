@@ -2500,7 +2500,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tShowPipeReq.setWhereClause(true);
       }
       tShowPipeReq.setIsTableModel(showPipesStatement.isTableModel());
-      tShowPipeReq.setUserName(userName);
+      if (Objects.nonNull(userName)) {
+        tShowPipeReq.setUserName(userName);
+      }
       final List<TShowPipeInfo> tShowPipeInfoList =
           configNodeClient.showPipe(tShowPipeReq).getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);

@@ -81,7 +81,7 @@ public class PipeTableResp implements DataSet {
               .filter(pipeMeta -> pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
               .collect(Collectors.toList()));
     } else {
-      final String sortedConnectorParametersString =
+      final String sortedSinkParametersString =
           allPipeMeta.stream()
               .filter(pipeMeta -> pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
               .findFirst()
@@ -97,7 +97,7 @@ public class PipeTableResp implements DataSet {
                           .getStaticMeta()
                           .getSinkParameters()
                           .toString()
-                          .equals(sortedConnectorParametersString))
+                          .equals(sortedSinkParametersString))
               .collect(Collectors.toList()));
     }
   }
@@ -117,7 +117,8 @@ public class PipeTableResp implements DataSet {
 
   public boolean isVisible4User(final String userName, final PipeStaticMeta meta) {
     try {
-      return BasicAuthorizer.getInstance().isAdmin(userName)
+      return Objects.isNull(userName)
+          || BasicAuthorizer.getInstance().isAdmin(userName)
           || isVisible4SourceUser(userName, meta.getSourceParameters())
           || isVisible4SinkUser(userName, meta.getSourceParameters());
     } catch (final Exception e) {
