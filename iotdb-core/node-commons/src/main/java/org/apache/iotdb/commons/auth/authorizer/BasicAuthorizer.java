@@ -98,9 +98,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  /** Checks if a user has admin privileges */
-  protected abstract boolean isAdmin(String username);
-
   private void checkAdmin(String username, String errmsg) throws AuthException {
     if (isAdmin(username)) {
       throw new AuthException(TSStatusCode.NO_PERMISSION, errmsg);

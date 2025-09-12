@@ -540,11 +540,12 @@ public class InformationSchemaContentSupplierFactory {
 
     private PipeSupplier(final List<TSDataType> dataTypes, final String userName) throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
-            client.showPipe(new TShowPipeReq().setIsTableModel(true)).getPipeInfoListIterator();
+            client
+                .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName(userName))
+                .getPipeInfoListIterator();
       }
     }
 

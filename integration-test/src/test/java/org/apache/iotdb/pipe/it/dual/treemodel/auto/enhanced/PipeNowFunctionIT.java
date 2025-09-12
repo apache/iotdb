@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
@@ -116,7 +117,8 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -124,7 +126,8 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -144,7 +147,8 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
               .setConnectorAttributes(new HashMap<>())
               .setIsReplaceAllConnectorAttributes(false));
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -167,7 +171,8 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
     }

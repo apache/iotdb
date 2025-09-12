@@ -223,7 +223,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
-  SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement);
+  SettableFuture<ConfigTaskResult> showPipes(
+      ShowPipesStatement showPipesStatement, String userName);
 
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);

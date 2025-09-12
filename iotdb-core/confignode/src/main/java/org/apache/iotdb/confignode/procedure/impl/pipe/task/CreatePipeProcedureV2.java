@@ -153,14 +153,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   public static void checkAndEnrichSourceAuthentication(
-      final ConfigNodeProcedureEnv env, final Map<String, String> extractorAttributes) {
-    if (Objects.isNull(extractorAttributes)) {
+      final ConfigNodeProcedureEnv env, final Map<String, String> sourceAttributes) {
+    if (Objects.isNull(sourceAttributes)) {
       return;
     }
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
 
     final String pluginName =
-        extractorParameters
+        sourceParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
@@ -171,26 +171,26 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return;
     }
 
-    if (extractorParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY)
-        || extractorParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USER_KEY)
-        || extractorParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY)
-        || extractorParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
+    if (sourceParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USER_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
       final String hashedPassword =
           env.getConfigManager()
               .getPermissionManager()
               .login4Pipe(
-                  extractorParameters.getStringByKeys(
+                  sourceParameters.getStringByKeys(
                       PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
                       PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
                       PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
                       PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY),
-                  extractorParameters.getStringByKeys(
+                  sourceParameters.getStringByKeys(
                       PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
                       PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
       if (Objects.isNull(hashedPassword)) {
         throw new PipeException("Authentication failed.");
       }
-      extractorParameters.addOrReplaceEquivalentAttributes(
+      sourceParameters.addOrReplaceEquivalentAttributes(
           new PipeParameters(
               Collections.singletonMap(
                   PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
@@ -198,11 +198,11 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   public static void checkAndEnrichSinkAuthentication(
-      final ConfigNodeProcedureEnv env, final Map<String, String> connectorAttributes) {
-    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+      final ConfigNodeProcedureEnv env, final Map<String, String> sinkAttributes) {
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
 
     final String pluginName =
-        connectorParameters
+        sinkParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
@@ -213,26 +213,26 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return;
     }
 
-    if (connectorParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY)
-        || connectorParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USER_KEY)
-        || connectorParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY)
-        || connectorParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
+    if (sinkParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY)
+        || sinkParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USER_KEY)
+        || sinkParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY)
+        || sinkParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
       final String hashedPassword =
           env.getConfigManager()
               .getPermissionManager()
               .login4Pipe(
-                  connectorParameters.getStringByKeys(
+                  sinkParameters.getStringByKeys(
                       PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
                       PipeSinkConstant.SINK_IOTDB_USER_KEY,
                       PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
                       PipeSinkConstant.SINK_IOTDB_USERNAME_KEY),
-                  connectorParameters.getStringByKeys(
+                  sinkParameters.getStringByKeys(
                       PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
                       PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY));
       if (Objects.isNull(hashedPassword)) {
         throw new PipeException("Authentication failed.");
       }
-      connectorParameters.addOrReplaceEquivalentAttributes(
+      sinkParameters.addOrReplaceEquivalentAttributes(
           new PipeParameters(
               Collections.singletonMap(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, hashedPassword)));
     }

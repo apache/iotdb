@@ -241,7 +241,7 @@ public class PipeTaskCoordinator {
   public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
-          .filter(req.whereClause, req.pipeName, req.isTableModel)
+          .filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
