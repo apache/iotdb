@@ -427,6 +427,14 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showModels(String modelId);
 
+  SettableFuture<ConfigTaskResult> showLoadedModels(List<String> deviceIdList);
+
+  SettableFuture<ConfigTaskResult> showAIDevices();
+
+  SettableFuture<ConfigTaskResult> loadModel(String existingModelId, List<String> deviceIdList);
+
+  SettableFuture<ConfigTaskResult> unloadModel(String existingModelId, List<String> deviceIdList);
+
   SettableFuture<ConfigTaskResult> createTraining(
       String modelId,
       boolean isTableModel,

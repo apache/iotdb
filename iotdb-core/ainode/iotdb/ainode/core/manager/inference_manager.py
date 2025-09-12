@@ -47,21 +47,24 @@ from iotdb.ainode.core.inference.strategy.timerxl_inference_pipeline import (
 from iotdb.ainode.core.inference.utils import generate_req_id
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
-from iotdb.ainode.core.manager.utils import (
-    measure_model_memory,
-)
 from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
 from iotdb.ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
 from iotdb.ainode.core.model.timerxl.modeling_timer import TimerForPrediction
 from iotdb.ainode.core.rpc.status import get_status
+from iotdb.ainode.core.util.gpu_mapping import get_available_devices
 from iotdb.ainode.core.util.serde import convert_to_binary
 from iotdb.thrift.ainode.ttypes import (
     TForecastReq,
     TForecastResp,
     TInferenceReq,
     TInferenceResp,
+    TLoadModelReq,
+    TShowLoadedModelsReq,
+    TShowLoadedModelsResp,
+    TUnloadModelReq,
 )
+from iotdb.thrift.common.ttypes import TSStatus
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 logger = Logger()
@@ -145,10 +148,6 @@ class RegisteredStrategy(InferenceStrategy):
 
 
 class InferenceManager:
-    ACCELERATE_MODEL_ID = ["sundial", "timer_xl"]
-    DEFAULT_DEVICE = torch.device("cpu")
-    # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     WAITING_INTERVAL_IN_MS = (
         AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
     )  # How often to check for requests in the result queue
@@ -168,20 +167,60 @@ class InferenceManager:
         )
         self._result_handler_thread.start()
         self._pool_controller = PoolController(self._result_queue)
-        # self._preload_model_benchmarks()
 
-    def _preload_model_benchmarks(self):
-        if "cuda" in str(self.DEFAULT_DEVICE):
-            for model_id in self.ACCELERATE_MODEL_ID:
-                mem_usage = measure_model_memory(self.DEFAULT_DEVICE, model_id)
-                self._model_mem_usage_map[model_id] = mem_usage
-                logger.info(
-                    f"[Inference] Preloaded benchmark for {model_id}, mem_usage={mem_usage/1024**2:.2f} MB"
-                )
-        else:
-            logger.warning(
-                f"[Inference] Skipped preloading benchmarks for {self.DEFAULT_DEVICE}, only supports CUDA currently"
+    def load_model(self, req: TLoadModelReq) -> TSStatus:
+        devices_to_be_processed = []
+        devices_not_to_be_processed = []
+        for device_id in req.deviceIdList:
+            if self._pool_controller.has_request_pools(
+                model_id=req.existingModelId, device_id=device_id
+            ):
+                devices_not_to_be_processed.append(device_id)
+            else:
+                devices_to_be_processed.append(device_id)
+        if len(devices_to_be_processed) > 0:
+            self._pool_controller.load_model(
+                model_id=req.existingModelId, device_id_list=devices_to_be_processed
             )
+        logger.info(
+            f"[Inference] Start loading model [{req.existingModelId}] to devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they have already loaded this model."
+        )
+        return TSStatus(
+            code=TSStatusCode.SUCCESS_STATUS.value,
+            message='Successfully submitted load model task, please use "SHOW LOADED MODELS" to check progress.',
+        )
+
+    def unload_model(self, req: TUnloadModelReq) -> TSStatus:
+        devices_to_be_processed = []
+        devices_not_to_be_processed = []
+        for device_id in req.deviceIdList:
+            if self._pool_controller.has_request_pools(
+                model_id=req.modelId, device_id=device_id
+            ):
+                devices_to_be_processed.append(device_id)
+            else:
+                devices_not_to_be_processed.append(device_id)
+        if len(devices_to_be_processed) > 0:
+            self._pool_controller.unload_model(
+                model_id=req.modelId, device_id_list=req.deviceIdList
+            )
+        logger.info(
+            f"[Inference] Start unloading model [{req.modelId}] from devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they haven't loaded this model."
+        )
+        return TSStatus(
+            code=TSStatusCode.SUCCESS_STATUS.value,
+            message='Successfully submitted unload model task, please use "SHOW LOADED MODELS" to check progress.',
+        )
+
+    def show_loaded_models(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
+        return TShowLoadedModelsResp(
+            status=get_status(TSStatusCode.SUCCESS_STATUS),
+            deviceLoadedModelsMap=self._pool_controller.show_loaded_models(
+                req.deviceIdList
+                if req.deviceIdList is not None
+                else get_available_devices()
+            ),
+        )
 
     def _handle_results(self):
         while not self._stop_event.is_set():
@@ -194,24 +233,29 @@ class InferenceManager:
                     infer_req.get_final_output()
                 )
 
-    def process_request(self, req):
+    def _process_request(self, req):
         req_id = req.req_id
         infer_proxy = InferenceRequestProxy(req_id)
         with self._result_wrapper_lock:
             self._result_wrapper_map[req_id] = infer_proxy
-        # dispatch request to the pool
-        self._pool_controller.add_request(req.model_id, req)
-        outputs = infer_proxy.wait_for_completion()
-        with self._result_wrapper_lock:
-            del self._result_wrapper_map[req_id]
-        return outputs
+        try:
+            # dispatch request to the pool
+            self._pool_controller.add_request(req, infer_proxy)
+            outputs = infer_proxy.wait_for_result()
+            return outputs
+        except Exception as e:
+            logger.error(e)
+            raise InferenceModelInternalError(str(e))
+        finally:
+            with self._result_wrapper_lock:
+                del self._result_wrapper_map[req_id]
 
     def _get_strategy(self, model_id, model):
         if isinstance(model, TimerForPrediction):
             return TimerXLStrategy(model)
         if isinstance(model, SundialForPrediction):
             return SundialStrategy(model)
-        if self._model_manager.model_storage._is_built_in_or_fine_tuned(model_id):
+        if self._model_manager.model_storage.is_built_in_or_fine_tuned(model_id):
             return BuiltInStrategy(model)
         return RegisteredStrategy(model)
 
@@ -244,10 +288,8 @@ class InferenceManager:
                     predict_length,
                 )
 
-            if model_id in self.ACCELERATE_MODEL_ID and "cuda" in str(
-                self.DEFAULT_DEVICE
-            ):
-                # TODO: Logic in this branch shall handle all LTSM inferences
+            if self._pool_controller.has_request_pools(model_id):
+                # use request pool to accelerate inference when the model instance is already loaded.
                 # TODO: TSBlock -> Tensor codes should be unified
                 data = full_data[1][0]
                 if data.dtype.byteorder not in ("=", "|"):
@@ -270,7 +312,7 @@ class InferenceManager:
                     inference_pipeline=inference_pipeline,
                     max_new_tokens=predict_length,
                 )
-                outputs = self.process_request(infer_req)
+                outputs = self._process_request(infer_req)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
             else:
                 # load model
