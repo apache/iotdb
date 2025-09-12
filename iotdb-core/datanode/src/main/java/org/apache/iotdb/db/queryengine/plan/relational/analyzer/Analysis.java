@@ -70,7 +70,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -121,8 +120,6 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Parameter>, Expression> parameters;
 
   private String updateType;
-
-  private final Map<String, CteDataStore> cteDataStores = new LinkedHashMap<>();
 
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
 
@@ -283,18 +280,6 @@ public class Analysis implements IAnalysis {
 
   public Map<NodeRef<Table>, Query> getNamedQueries() {
     return namedQueries;
-  }
-
-  public void addCteDataStore(String cteName, CteDataStore dataStore) {
-    cteDataStores.put(cteName, dataStore);
-  }
-
-  public Map<String, CteDataStore> getCteDataStores() {
-    return cteDataStores;
-  }
-
-  public CteDataStore getCteDataStore(String cteName) {
-    return cteDataStores.get(cteName);
   }
 
   public boolean isAnalyzed(Expression expression) {
