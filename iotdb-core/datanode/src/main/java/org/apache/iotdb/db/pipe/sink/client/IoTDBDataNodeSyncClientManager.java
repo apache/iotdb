@@ -95,6 +95,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
             && endPoint != null
             && endPoint2ClientAndStatus.containsKey(endPoint)
             && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
+            && endPoint2ClientAndStatus.get(endPoint).getLeft() != null
         ? endPoint2ClientAndStatus.get(endPoint)
         : getClient();
   }
@@ -104,6 +105,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
             && endPoint != null
             && endPoint2ClientAndStatus.containsKey(endPoint)
             && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
+            && endPoint2ClientAndStatus.get(endPoint).getLeft() != null
         ? endPoint2ClientAndStatus.get(endPoint)
         : getClient();
   }
