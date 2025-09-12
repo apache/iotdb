@@ -34,12 +34,15 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -102,6 +105,8 @@ public class MPPQueryContext implements IAuditEntity {
   private LongConsumer reserveMemoryForSchemaTreeFunc = null;
 
   private boolean userQuery = false;
+
+  private final Map<String, CteDataStore> cteDataStores = new HashMap<>();
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -433,6 +438,18 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public void addCteDataStore(String cteName, CteDataStore dataStore) {
+    cteDataStores.put(cteName, dataStore);
+  }
+
+  public Map<String, CteDataStore> getCteDataStores() {
+    return cteDataStores;
+  }
+
+  public CteDataStore getCteDataStore(String cteName) {
+    return cteDataStores.get(cteName);
   }
 
   // ================= Authentication Interfaces =========================
