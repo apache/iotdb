@@ -342,13 +342,7 @@ public class TsFileManager {
     // Currently disable
     if (PipeConfig.getInstance().isPipeRealTimeQueueCompactionEnabled()) {
       PipeDataNodeResourceManager.compaction()
-          .emitResult(
-              storageGroupName,
-              dataRegionId,
-              timePartition,
-              seqFileResources,
-              unseqFileResources,
-              targetFileResources);
+          .emitResult(dataRegionId, seqFileResources, unseqFileResources, targetFileResources);
     }
   }
 
