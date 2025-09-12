@@ -21,7 +21,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSourceOperator;
@@ -35,55 +34,43 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class CteScanOperator extends AbstractSourceOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(CteScanOperator.class);
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CteScanOperator.class);
 
   private final CteDataStore dataStore;
-  private List<CteDataReader> dataReaders;
-  private int readerIndex;
+  private CteDataReader dataReader;
 
   public CteScanOperator(
       OperatorContext operatorContext, PlanNodeId sourceId, CteDataStore dataStore) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.dataStore = dataStore;
+    prepareReader();
   }
 
   @Override
   public TsBlock next() throws Exception {
-    if (dataReaders == null || readerIndex >= dataReaders.size()) {
+    if (dataReader == null) {
       return null;
     }
-    return dataReaders.get(readerIndex).next();
+    return dataReader.next();
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    if (dataReaders == null) {
-      prepareReaders();
+    if (dataReader == null) {
+      return false;
     }
-    while (readerIndex < dataReaders.size()) {
-      if (dataReaders.get(readerIndex).hasNext()) {
-        return true;
-      } else {
-        readerIndex++;
-      }
-    }
-    return false;
+    return dataReader.hasNext();
   }
 
   @Override
   public void close() throws Exception {
     try {
-      if (dataReaders != null) {
-        for (CteDataReader reader : dataReaders) {
-          reader.close();
-        }
+      if (dataReader != null) {
+        dataReader.close();
       }
     } catch (Exception e) {
       LOGGER.error("Fail to close fileChannel", e);
@@ -97,10 +84,10 @@ public class CteScanOperator extends AbstractSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    if (dataReaders == null || readerIndex >= dataReaders.size()) {
+    if (dataReader == null) {
       return 0;
     }
-    return dataReaders.get(readerIndex).bytesUsed();
+    return dataReader.bytesUsed();
   }
 
   @Override
@@ -120,14 +107,9 @@ public class CteScanOperator extends AbstractSourceOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 
-  private void prepareReaders() throws IoTDBException {
-    if (dataReaders != null) {
-      return;
-    }
-    dataReaders = new ArrayList<>();
-    dataReaders.addAll(dataStore.getDiskSpiller().getReaders());
+  private void prepareReader() {
     if (dataStore.getCachedBytes() != 0) {
-      dataReaders.add(new MemoryReader(dataStore.getCachedData()));
+      dataReader = new MemoryReader(dataStore.getCachedData());
     }
   }
 }

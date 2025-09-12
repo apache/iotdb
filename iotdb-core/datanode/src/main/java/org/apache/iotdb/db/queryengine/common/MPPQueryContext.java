@@ -446,12 +446,4 @@ public class MPPQueryContext {
   public CteDataStore getCteDataStore(String cteName) {
     return cteDataStores.get(cteName);
   }
-
-  public void setMayHaveTmpFile(boolean mayHaveTmpFile) {
-    this.mayHaveTmpFile = mayHaveTmpFile;
-  }
-
-  public boolean mayHaveTmpFile() {
-    return mayHaveTmpFile;
-  }
 }
