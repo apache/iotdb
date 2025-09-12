@@ -108,6 +108,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   private final Map<String, CteDataStore> cteDataStores = new HashMap<>();
 
+  /** check if there is tmp file to be deleted. */
+  private boolean mayHaveTmpFile = false;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = ConcurrentHashMap.newKeySet();
