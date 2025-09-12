@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -219,6 +220,24 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       return;
     }
 
+    Iterator<PipeTsFileInsertionEvent> iterator = eventsToBeRemoved.iterator();
+    while (iterator.hasNext()) {
+      PipeTsFileInsertionEvent event = iterator.next();
+      if (tsfileInsertEventDeque.removeIf(e -> Objects.equals(event, e))) {
+        try {
+          event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue",
+              event,
+              e);
+        }
+        eventCounter.decreaseEventCount(event);
+      } else {
+        iterator.remove();
+      }
+    }
+
     Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeRemovedGroupByCommitterKey =
         eventsToBeRemoved.stream()
             .collect(
@@ -284,6 +303,20 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
               e);
         }
       }
+
+      for (PipeTsFileInsertionEvent e : eventsToBeRemoved) {
+        try {
+          if (e.increaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
+            tsfileInsertEventDeque.add(e);
+            eventCounter.increaseEventCount(e);
+          }
+        } catch (final Exception ex) {
+          LOGGER.warn(
+              "Failed to increase reference count for event {} in PipeRealtimePriorityBlockingQueue",
+              e,
+              ex);
+        }
+      }
       return; // Exit early if any event failed to increase the reference count
     } else {
       // If all events successfully increased reference count,
@@ -291,21 +324,6 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
         tsfileInsertEventDeque.add(event);
         eventCounter.increaseEventCount(event);
-      }
-    }
-
-    // Handling old events
-    for (PipeTsFileInsertionEvent event : eventsToBeRemoved) {
-      if (tsfileInsertEventDeque.removeIf(e -> Objects.equals(event, e))) {
-        try {
-          event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue",
-              event,
-              e);
-        }
-        eventCounter.decreaseEventCount(event);
       }
     }
 
