@@ -200,7 +200,7 @@ public class CommonConfig {
   private boolean pipeFileReceiverFsyncEnabled = true;
 
   private int pipeRealTimeQueuePollTsFileThreshold = 10;
-  private boolean pipeRealTimeQueueCompactionEnabled = false;
+  private boolean pipeRealTimeQueueCompactionEnabled = true;
 
   // Sequentially poll the tsFile by default
   private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 1;
