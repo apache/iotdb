@@ -401,6 +401,19 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.singleton("2,"));
   }
 
+  @Test
+  public void testAlterColumnDataTypeIdempotent() throws Exception {
+    testIdempotent(
+        Arrays.asList(
+            "CREATE DATABASE root.test",
+            "CREATE TABLE t1 (time TIMESTAMP TIME,dId STRING TAG,s1 INT32 FIELD)"),
+        "ALTER TABLE t1 ALTER COLUMN s1 SET DATA TYPE INT64",
+        "CREATE DATABASE root.test1",
+        "count databases",
+        "count,",
+        Collections.singleton("2,"));
+  }
+
   // Table model
 
   private void testIdempotent(
