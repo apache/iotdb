@@ -223,7 +223,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     Iterator<PipeTsFileInsertionEvent> iterator = eventsToBeRemoved.iterator();
     while (iterator.hasNext()) {
       PipeTsFileInsertionEvent event = iterator.next();
-      if (tsfileInsertEventDeque.removeIf(e -> Objects.equals(event, e))) {
+      if (tsfileInsertEventDeque.remove(event)) {
         try {
           event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
         } catch (final Exception e) {
