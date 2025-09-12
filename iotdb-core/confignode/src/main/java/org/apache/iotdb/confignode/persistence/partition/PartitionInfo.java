@@ -193,6 +193,12 @@ public class PartitionInfo implements SnapshotProcessor {
     plan.getRegionGroupMap()
         .forEach(
             (database, regionReplicaSets) -> {
+              if (isDatabasePreDeleted(database)) {
+                LOGGER.warn(
+                    "[CreateRegionGroups] Database {} has been deleted, corresponding RegionGroups will not be created.",
+                    database);
+                return;
+              }
               databasePartitionTables.get(database).createRegionGroups(regionReplicaSets);
               regionReplicaSets.forEach(
                   regionReplicaSet ->
