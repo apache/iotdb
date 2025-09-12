@@ -622,7 +622,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(3, showPipeResult.size());
 
       showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true).setPipeName("p1")).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq()
+                      .setIsTableModel(true)
+                      .setPipeName("p1")
+                      .setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
