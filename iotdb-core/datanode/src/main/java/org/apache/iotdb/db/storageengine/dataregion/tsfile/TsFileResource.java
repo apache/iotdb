@@ -318,7 +318,8 @@ public class TsFileResource implements PersistentResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readByte(inputStream);
-      timeIndex = ITimeIndex.createTimeIndex(inputStream);
+      timeIndex =
+          ITimeIndex.createTimeIndex(inputStream, IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
@@ -674,7 +675,8 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex(IDeviceID.Deserializer deserializer)
+      throws IOException {
     readLock();
     try {
       if (!resourceFileExists()) {
@@ -684,7 +686,8 @@ public class TsFileResource implements PersistentResource {
           FSFactoryProducer.getFSFactory()
               .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
         ReadWriteIOUtils.readByte(inputStream);
-        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+        ITimeIndex timeIndexFromResourceFile =
+            ITimeIndex.createTimeIndex(inputStream, deserializer);
         if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
           throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
         }
@@ -696,6 +699,10 @@ public class TsFileResource implements PersistentResource {
     } finally {
       readUnlock();
     }
+  }
+
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+    return buildDeviceTimeIndex(IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /**
