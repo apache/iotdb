@@ -64,7 +64,7 @@ public class CteMaterializer {
                 String cteName = tableRef.getNode().getName().toString();
                 CteDataStore dataStore = fetchCteQueryResult(cteName, query, context);
                 if (dataStore != null) {
-                  analysis.addCteDataStore(cteName, dataStore);
+                  context.addCteDataStore(cteName, dataStore);
                   context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
                   materializedQueries.add(query);
                 }
@@ -73,7 +73,7 @@ public class CteMaterializer {
   }
 
   public static void cleanUpCTE(Analysis analysis, MPPQueryContext context) {
-    Map<String, CteDataStore> cteDataStores = analysis.getCteDataStores();
+    Map<String, CteDataStore> cteDataStores = context.getCteDataStores();
     cteDataStores
         .values()
         .forEach(

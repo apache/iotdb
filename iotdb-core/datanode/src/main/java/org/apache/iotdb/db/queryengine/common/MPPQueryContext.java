@@ -29,11 +29,14 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -95,6 +98,8 @@ public class MPPQueryContext {
   private LongConsumer reserveMemoryForSchemaTreeFunc = null;
 
   private boolean userQuery = false;
+
+  private final Map<String, CteDataStore> cteDataStores = new HashMap<>();
 
   /** check if there is tmp file to be deleted. */
   private boolean mayHaveTmpFile = false;
@@ -428,6 +433,18 @@ public class MPPQueryContext {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public void addCteDataStore(String cteName, CteDataStore dataStore) {
+    cteDataStores.put(cteName, dataStore);
+  }
+
+  public Map<String, CteDataStore> getCteDataStores() {
+    return cteDataStores;
+  }
+
+  public CteDataStore getCteDataStore(String cteName) {
+    return cteDataStores.get(cteName);
   }
 
   public void setMayHaveTmpFile(boolean mayHaveTmpFile) {
