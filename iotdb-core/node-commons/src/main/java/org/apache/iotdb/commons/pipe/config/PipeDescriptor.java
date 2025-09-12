@@ -268,6 +268,11 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_realtime_queue_poll_tsfile_threshold",
                         String.valueOf(config.getPipeRealTimeQueuePollTsFileThreshold())))));
+    config.setPipeRealTimeQueueCompactionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_realtime_queue_compaction_enabled",
+                String.valueOf(config.isPipeRealTimeQueueCompactionEnabled()))));
     config.setPipeRealTimeQueuePollHistoricalTsFileThreshold(
         Integer.parseInt(
             properties.getProperty(
