@@ -110,7 +110,9 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
