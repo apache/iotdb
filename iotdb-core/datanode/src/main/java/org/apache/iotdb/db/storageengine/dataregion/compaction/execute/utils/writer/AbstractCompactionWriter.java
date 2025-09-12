@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
@@ -99,9 +100,19 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected String[] measurementId = new String[subTaskNum];
 
+  protected ModEntry ttlDeletionForCurrentDevice;
+
   public abstract void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException;
 
   public abstract void endChunkGroup() throws IOException;
+
+  public void setTTLDeletion(ModEntry ttlDeletion) {
+    this.ttlDeletionForCurrentDevice = ttlDeletion;
+  }
+
+  public ModEntry getTTLLowerBoundForCurrentDevice() {
+    return ttlDeletionForCurrentDevice;
+  }
 
   public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
     lastCheckIndex = 0;

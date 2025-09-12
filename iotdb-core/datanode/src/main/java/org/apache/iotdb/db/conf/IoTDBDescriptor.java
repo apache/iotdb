@@ -528,7 +528,7 @@ public class IoTDBDescriptor {
                 "degree_of_query_parallelism", Integer.toString(conf.getDegreeOfParallelism()))));
 
     if (conf.getDegreeOfParallelism() <= 0) {
-      conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+      conf.setDegreeOfParallelism(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
     conf.setMergeThresholdOfExplainAnalyze(
@@ -2404,6 +2404,12 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+
+    conf.setLoadTsFileSpiltPartitionMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_split_partition_max_size",
+                Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2541,7 +2547,7 @@ public class IoTDBDescriptor {
                 "continuous_query_thread_num",
                 Integer.toString(conf.getContinuousQueryThreadNum()))));
     if (conf.getContinuousQueryThreadNum() <= 0) {
-      conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
+      conf.setContinuousQueryThreadNum(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
     conf.setContinuousQueryMinimumEveryInterval(

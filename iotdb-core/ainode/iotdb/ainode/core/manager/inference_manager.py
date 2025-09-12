@@ -82,7 +82,8 @@ class TimerXLStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **_):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
-            data = data.byteswap().newbyteorder()
+            np_data = data.byteswap()
+            data = np_data.view(np_data.dtype.newbyteorder())
         seqs = torch.tensor(data).unsqueeze(0).float()
         # TODO: unify model inference input
         output = self.model.generate(seqs, max_new_tokens=predict_length, revin=True)
@@ -94,7 +95,8 @@ class SundialStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **_):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
-            data = data.byteswap().newbyteorder()
+            np_data = data.byteswap()
+            data = np_data.view(np_data.dtype.newbyteorder())
         seqs = torch.tensor(data).unsqueeze(0).float()
         # TODO: unify model inference input
         output = self.model.generate(
@@ -228,7 +230,7 @@ class InferenceManager:
             full_data = deserializer(raw)
             inference_attrs = extract_attrs(req)
 
-            predict_length = int(inference_attrs.get("predict_length", 96))
+            predict_length = int(inference_attrs.pop("predict_length", 96))
             if (
                 predict_length
                 > AINodeDescriptor().get_config().get_ain_inference_max_predict_length()
@@ -249,7 +251,8 @@ class InferenceManager:
                 # TODO: TSBlock -> Tensor codes should be unified
                 data = full_data[1][0]
                 if data.dtype.byteorder not in ("=", "|"):
-                    data = data.byteswap().newbyteorder()
+                    np_data = data.byteswap()
+                    data = np_data.view(np_data.dtype.newbyteorder())
                 # the inputs should be on CPU before passing to the inference request
                 inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
                 if model_id == "sundial":
@@ -275,7 +278,9 @@ class InferenceManager:
                 model = self._model_manager.load_model(model_id, inference_attrs, accel)
                 # inference by strategy
                 strategy = self._get_strategy(model_id, model)
-                outputs = strategy.infer(full_data, **inference_attrs)
+                outputs = strategy.infer(
+                    full_data, predict_length=predict_length, **inference_attrs
+                )
 
             # construct response
             status = get_status(TSStatusCode.SUCCESS_STATUS)

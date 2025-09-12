@@ -62,16 +62,19 @@ public class LoadTsFileDataTypeConverter {
 
   private final SqlParser relationalSqlParser = new SqlParser();
   private final LoadTableStatementDataTypeConvertExecutionVisitor
-      tableStatementDataTypeConvertExecutionVisitor =
-          new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
+      tableStatementDataTypeConvertExecutionVisitor;
   private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor =
-          new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
+      treeStatementDataTypeConvertExecutionVisitor;
 
   public LoadTsFileDataTypeConverter(
       final MPPQueryContext context, final boolean isGeneratedByPipe) {
     this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
+
+    tableStatementDataTypeConvertExecutionVisitor =
+        new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
+    treeStatementDataTypeConvertExecutionVisitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
   }
 
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {

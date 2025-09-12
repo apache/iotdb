@@ -147,18 +147,13 @@ public class FastCompactionPerformer
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device).get()));
+        ModEntry ttlDeletion = null;
         if (ttl != Long.MAX_VALUE) {
-          ModEntry ttlDeletion =
+          ttlDeletion =
               CompactionUtils.convertTtlToDeletion(
                   device, deviceIterator.getTimeLowerBoundForCurrentDevice());
-          for (TsFileResource sourceFile : sortedSourceFiles) {
-            modificationCache
-                .computeIfAbsent(
-                    sourceFile.getTsFile().getName(),
-                    k -> PatternTreeMapFactory.getModsPatternTreeMap())
-                .append(ttlDeletion.keyOfPatternTree(), ttlDeletion);
-          }
         }
+        compactionWriter.setTTLDeletion(ttlDeletion);
 
         if (sortedSourceFiles.isEmpty()) {
           // device is out of dated in all source files
