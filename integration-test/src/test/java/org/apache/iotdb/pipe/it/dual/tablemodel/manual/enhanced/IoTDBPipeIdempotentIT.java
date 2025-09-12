@@ -61,7 +61,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testCreateTableViewIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.emptyList(), "create view test(s1 field int32) restrict as root.a.**");
+        Collections.emptyList(), "create view test(s1 int32 field) restrict as root.a.**");
   }
 
   @Test
@@ -73,7 +73,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAlterViewAddColumnIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create view test(s1 field int32) restrict as root.a.**"),
+        Collections.singletonList("create view test(s1 int32 field) restrict as root.a.**"),
         "alter view test add column a tag");
   }
 
@@ -87,7 +87,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAlterViewSetPropertiesIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create view test(s1 field int32) restrict as root.a.**"),
+        Collections.singletonList("create view test(s1 int32 field) restrict as root.a.**"),
         "alter view test set properties ttl=100");
   }
 
@@ -101,8 +101,8 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAlterViewDropColumnIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create view test(a tag, s1 field int32) restrict as root.a.**"),
-        "alter view test drop column a");
+        Collections.singletonList("create view test(a tag, s1 int32 field) restrict as root.a.**"),
+        "alter view test drop column s1");
   }
 
   @Test
@@ -113,21 +113,21 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testDropViewIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create view test(s1 field int32) restrict as root.a.**"),
+        Collections.singletonList("create view test(s1 int32 field) restrict as root.a.**"),
         "drop view test");
   }
 
   @Test
   public void testRenameViewColumnIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create view test(a tag, s1 field int32) restrict as root.a.**"),
+        Collections.singletonList("create view test(a tag, s1 int32 field) restrict as root.a.**"),
         "alter view test rename column a to b");
   }
 
   @Test
   public void testRenameViewIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create view test(s1 field int32) restrict as root.a.**"),
+        Collections.singletonList("create view test(s1 int32 field) restrict as root.a.**"),
         "alter view test rename to test1");
   }
 
@@ -242,21 +242,13 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList, null)) {
-      return;
-    }
+    TestUtils.executeNonQueries(
+        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList, null);
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql, null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql, null);
 
     // Create an idempotent conflict
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql, null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql, null);
 
     TableModelUtils.createDatabase(senderEnv, "test2");
 

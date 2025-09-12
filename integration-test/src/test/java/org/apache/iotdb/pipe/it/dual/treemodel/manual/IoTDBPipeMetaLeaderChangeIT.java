@@ -101,10 +101,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 0; i < 10; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("create database root.ln%s", i), null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, String.format("create database root.ln%s", i), null);
     }
 
     try {
@@ -115,10 +112,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 10; i < 20; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("create database root.ln%s", i), null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, String.format("create database root.ln%s", i), null);
     }
 
     TestUtils.assertDataEventuallyOnEnv(
@@ -160,14 +154,12 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 0; i < 10; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      TestUtils.executeNonQuery(
           senderEnv,
           String.format(
               "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i),
-          null)) {
-        return;
-      }
+          null);
     }
 
     final int index;
@@ -181,22 +173,18 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
 
     // Include "alter" in historical transfer for new leader as possible
     // in order to test the "withMerge" creation in receiver side
-    if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+    TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
         senderEnv,
         senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
-        "ALTER timeSeries root.ln.wf01.GPS.status0 UPSERT ALIAS=newAlias TAGS(tag3=v3) ATTRIBUTES(attr4=v4)")) {
-      return;
-    }
+        "ALTER timeSeries root.ln.wf01.GPS.status0 UPSERT ALIAS=newAlias TAGS(tag3=v3) ATTRIBUTES(attr4=v4)");
 
     for (int i = 10; i < 20; ++i) {
-      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+      TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
           senderEnv,
           senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
           String.format(
               "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
-              i))) {
-        return;
-      }
+              i));
     }
 
     TestUtils.assertDataEventuallyOnEnv(
