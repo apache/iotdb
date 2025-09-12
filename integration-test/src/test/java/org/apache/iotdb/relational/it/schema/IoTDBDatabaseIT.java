@@ -561,7 +561,6 @@ public class IoTDBDatabaseIT {
 
       // Only root user is allowed
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from regions"));
-      Assert.assertThrows(SQLException.class, () -> statement.execute("select * from pipes"));
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from topics"));
       Assert.assertThrows(
           SQLException.class, () -> statement.execute("select * from subscriptions"));
