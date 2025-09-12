@@ -64,6 +64,7 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.service.external.ServiceStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -126,6 +127,7 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.ServiceInfo;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -160,6 +162,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
@@ -205,6 +208,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetServiceTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
@@ -236,6 +240,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowServiceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -343,6 +348,9 @@ public class ConfigManager implements IManager {
   /** TTL */
   private final TTLManager ttlManager;
 
+  /** Service */
+  private final ServiceManager serviceManager;
+
   /** Subscription */
   private final SubscriptionManager subscriptionManager;
 
@@ -370,6 +378,7 @@ public class ConfigManager implements IManager {
     QuotaInfo quotaInfo = new QuotaInfo();
     TTLInfo ttlInfo = new TTLInfo();
     SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    ServiceInfo serviceInfo = new ServiceInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -387,7 +396,8 @@ public class ConfigManager implements IManager {
             pipeInfo,
             subscriptionInfo,
             quotaInfo,
-            ttlInfo);
+            ttlInfo,
+            serviceInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -408,6 +418,7 @@ public class ConfigManager implements IManager {
     this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
     this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
+    this.serviceManager = new ServiceManager(this, serviceInfo);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
     // LoadManager will register PipeManager as a listener.
@@ -1272,6 +1283,11 @@ public class ConfigManager implements IManager {
   @Override
   public SubscriptionManager getSubscriptionManager() {
     return subscriptionManager;
+  }
+
+  @Override
+  public ServiceManager getServiceManager() {
+    return serviceManager;
   }
 
   @Override
@@ -2972,6 +2988,59 @@ public class ConfigManager implements IManager {
             resp.getPipeRemainingEventCountList(),
             resp.getPipeRemainingTimeList());
     return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus createService(TCreateServiceReq createServiceReq) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? serviceManager.createService(createServiceReq)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropService(String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? serviceManager.dropService(serviceName)
+        : status;
+  }
+
+  @Override
+  public TSStatus startService(String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? serviceManager.updateServiceState(serviceName, ServiceStatus.ACTIVE)
+        : status;
+  }
+
+  @Override
+  public TSStatus stopService(String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? serviceManager.updateServiceState(serviceName, ServiceStatus.INACTIVE)
+        : status;
+  }
+
+  @Override
+  public TShowServiceResp showService(String serviceName) {
+    return serviceManager.showService(serviceName);
+  }
+
+  @Override
+  public TGetServiceTableResp getServiceTable() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? serviceManager.getServiceTable()
+        : new TGetServiceTableResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TGetJarInListResp getServiceJar(TGetJarInListReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? serviceManager.getServiceJarList(req)
+        : new TGetJarInListResp(status, Collections.emptyList());
   }
 
   @Override

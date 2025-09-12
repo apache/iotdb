@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
@@ -85,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowServices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
@@ -92,7 +95,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
@@ -1745,6 +1750,50 @@ public final class SqlFormatter {
                 append(indent, formatOrderBy(orderBy));
               });
 
+      return null;
+    }
+
+    @Override
+    public Void visitCreateService(CreateService node, Integer context) {
+      builder.append("CREATE SERVICE ");
+      builder.append(node.getServiceName());
+      builder.append(" AS ");
+      builder.append(node.getClassName());
+      if (node.getUriString() != null) {
+        builder.append(" USING URI ").append(node.getUriString());
+      }
+      return null;
+    }
+
+    @Override
+    public Void visitDropService(DropService node, Integer context) {
+      builder.append("DROP SERVICE ");
+      builder.append(node.getServiceName());
+      return null;
+    }
+
+    @Override
+    public Void visitShowServices(ShowServices node, Integer context) {
+      if (node.getServiceName() != null) {
+        builder.append("SHOW SERVICE");
+        builder.append(" ").append(node.getServiceName());
+      } else {
+        builder.append("SHOW SERVICES");
+      }
+      return null;
+    }
+
+    @Override
+    public Void visitStartService(StartService node, Integer context) {
+      builder.append("START SERVICE ");
+      builder.append(node.getServiceName());
+      return null;
+    }
+
+    @Override
+    public Void visitStopService(StopService node, Integer context) {
+      builder.append("STOP SERVICE ");
+      builder.append(node.getServiceName());
       return null;
     }
   }

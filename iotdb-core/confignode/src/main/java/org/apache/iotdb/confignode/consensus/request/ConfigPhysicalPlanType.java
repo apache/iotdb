@@ -311,6 +311,13 @@ public enum ConfigPhysicalPlanType {
 
   ShowSubscription((short) 2000),
 
+  /** Service */
+  CreateService((short) 2100),
+  DropService((short) 2101),
+  UpdateService((short) 2102),
+  GetServiceTable((short) 2103),
+  GetServiceJar((short) 2104),
+
   /** Test Only. */
   TestOnly((short) 30000),
   ;

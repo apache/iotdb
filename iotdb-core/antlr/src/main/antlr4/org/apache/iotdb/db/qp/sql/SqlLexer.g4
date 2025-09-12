@@ -758,6 +758,14 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
+    ;
+
 SESSION
     : S E S S I O N
     ;
@@ -1072,6 +1080,7 @@ PRIVILEGE_VALUE
     | EXTEND_TEMPLATE
     | MANAGE_DATABASE
     | MAINTAIN
+    | USE_SERVICE
     ;
 
 READ_DATA
@@ -1116,6 +1125,10 @@ USE_CQ
 
 USE_PIPE
     : U S E '_' P I P E
+    ;
+
+USE_SERVICE
+    : U S E '_' S E R V I C E
     ;
 
 EXTEND_TEMPLATE

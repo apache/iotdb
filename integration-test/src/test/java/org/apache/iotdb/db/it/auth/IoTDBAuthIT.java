@@ -179,6 +179,7 @@ public class IoTDBAuthIT {
                     ",,USE_CQ,true,",
                     ",,USE_PIPE,true,",
                     ",,USE_MODEL,true,",
+                    ",,USE_SERVICE,true,",
                     ",,EXTEND_TEMPLATE,true,",
                     ",,MANAGE_DATABASE,true,",
                     ",,MAINTAIN,true,",
@@ -654,6 +655,7 @@ public class IoTDBAuthIT {
                 + ",,USE_CQ,true,\n"
                 + ",,USE_PIPE,true,\n"
                 + ",,USE_MODEL,true,\n"
+                + ",,USE_SERVICE,true,\n"
                 + ",,EXTEND_TEMPLATE,true,\n"
                 + ",,MANAGE_DATABASE,true,\n"
                 + ",,MAINTAIN,true,\n"
@@ -1009,6 +1011,7 @@ public class IoTDBAuthIT {
             + ",,USE_CQ,false,\n"
             + ",,USE_PIPE,false,\n"
             + ",,USE_MODEL,false,\n"
+            + ",,USE_SERVICE,false,\n"
             + ",,EXTEND_TEMPLATE,false,\n"
             + ",,MANAGE_DATABASE,false,\n"
             + ",,MAINTAIN,false,\n"
@@ -1035,6 +1038,7 @@ public class IoTDBAuthIT {
             + ",,USE_CQ,true,\n"
             + ",,USE_PIPE,true,\n"
             + ",,USE_MODEL,true,\n"
+            + ",,USE_SERVICE,true,\n"
             + ",,EXTEND_TEMPLATE,true,\n"
             + ",,MANAGE_DATABASE,true,\n"
             + ",,MAINTAIN,true,\n"
@@ -1061,6 +1065,7 @@ public class IoTDBAuthIT {
                 + ",,USE_CQ,false,\n"
                 + ",,USE_PIPE,false,\n"
                 + ",,USE_MODEL,false,\n"
+                + ",,USE_SERVICE,false,\n"
                 + ",,EXTEND_TEMPLATE,false,\n"
                 + ",,MANAGE_DATABASE,false,\n"
                 + ",,MAINTAIN,false,\n"
@@ -1099,6 +1104,7 @@ public class IoTDBAuthIT {
                 + ",,USE_CQ,false,\n"
                 + ",,USE_PIPE,false,\n"
                 + ",,USE_MODEL,false,\n"
+                + ",,USE_SERVICE,false,\n"
                 + ",,EXTEND_TEMPLATE,false,\n"
                 + ",,MANAGE_DATABASE,false,\n"
                 + ",,MAINTAIN,false,\n"

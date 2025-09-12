@@ -262,4 +262,12 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowCurrentSqlDialectHeader() {
     return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_SQL_DIALECT_COLUMN_HEADERS, true);
   }
+
+  public static DatasetHeader getShowServiceHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showServiceWithNameColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowAllServicesHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showAllServicesColumnHeaders, true);
+  }
 }

@@ -68,6 +68,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.service.external.ServiceExecutableManager;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
@@ -89,6 +90,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
@@ -122,6 +124,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetServiceTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
@@ -146,6 +149,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowServiceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -214,6 +218,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.service.ShowServicesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -298,6 +303,7 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.service.DataNodeInternalRPCService;
+import org.apache.iotdb.db.service.external.ExternalServiceClassLoader;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
@@ -309,6 +315,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.service.api.IExternalService;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -3525,6 +3532,205 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createService(
+      String serviceName, String uriString, String className) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      String libRoot = ServiceExecutableManager.getInstance().getLibRoot();
+      String jarFileName;
+      ByteBuffer jarFile;
+      String jarMd5;
+      TCreateServiceReq tCreateServiceReq =
+          new TCreateServiceReq(serviceName, className, uriString != null);
+      if (uriString != null) {
+        jarFileName = new File(uriString).getName();
+        try {
+          URI uri = new URI(uriString);
+          if (uri.getScheme() == null) {
+            future.setException(
+                new IoTDBException(
+                    "The scheme of URI is not set, please specify the scheme of URI.",
+                    TSStatusCode.SERVICE_DOWNLOAD_ERROR.getStatusCode()));
+            return future;
+          }
+          if (!uri.getScheme().equals("file")) {
+            // Download executable
+            ExecutableResource resource =
+                ServiceExecutableManager.getInstance()
+                    .request(Collections.singletonList(uriString));
+            String jarFilePathUnderTempDir =
+                ServiceExecutableManager.getInstance()
+                        .getDirStringUnderTempRootByRequestId(resource.getRequestId())
+                    + jarFileName;
+            // libRoot should be the path of the specified jar
+            libRoot = jarFilePathUnderTempDir;
+            jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
+            jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
+          } else {
+            // libRoot should be the path of the specified jar
+            libRoot = new File(new URI(uriString)).getAbsolutePath();
+            // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+            // ConfigNode.
+            jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+            // Set md5 of the jar file
+            jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
+          }
+        } catch (IOException | URISyntaxException e) {
+          LOGGER.warn(
+              "Failed to get executable for Service({}) using URI: {}.", serviceName, uriString, e);
+          future.setException(
+              new IoTDBException(
+                  "Failed to get executable for Service '"
+                      + serviceName
+                      + "', please check the URI.",
+                  TSStatusCode.SERVICE_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
+        }
+        // modify req
+        tCreateServiceReq.setJarFile(jarFile);
+        tCreateServiceReq.setJarMD5(jarMd5);
+        int index = jarFileName.lastIndexOf(".");
+        if (index < 0) {
+          tCreateServiceReq.setJarName(String.format("%s-%s", jarFileName, jarMd5));
+        } else {
+          tCreateServiceReq.setJarName(
+              String.format(
+                  "%s-%s.%s",
+                  jarFileName.substring(0, index), jarMd5, jarFileName.substring(index + 1)));
+        }
+      }
+
+      // try to create instance, this request will fail if creation is not successful
+      try (ExternalServiceClassLoader classLoader = new ExternalServiceClassLoader(libRoot)) {
+        // ensure that jar file contains the class and the class is an IExternalService
+        Class<?> clazz = Class.forName(className, true, classLoader);
+        IExternalService o = (IExternalService) clazz.getDeclaredConstructor().newInstance();
+      } catch (ClassNotFoundException
+          | NoSuchMethodException
+          | InstantiationException
+          | IllegalAccessException
+          | InvocationTargetException
+          | ClassCastException e) {
+        LOGGER.warn(
+            "Failed to create service when try to create {}({}) instance first.",
+            IExternalService.class.getSimpleName(),
+            serviceName,
+            e);
+        future.setException(
+            new IoTDBException(
+                "Failed to load class '"
+                    + className
+                    + "', because it's not found in jar file or is invalid: "
+                    + (uriString == null ? e.getMessage() : uriString),
+                TSStatusCode.SERVICE_LOAD_CLASS_ERROR.getStatusCode()));
+        return future;
+      }
+
+      final TSStatus executionStatus = client.createService(tCreateServiceReq);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to create service {}({}) because {}",
+            serviceName,
+            className,
+            executionStatus.getMessage());
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | IOException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropService(String serviceName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus executionStatus = client.dropService(serviceName);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn("[{}] Failed to drop service {}.", executionStatus, serviceName);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showServices(String serviceName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      boolean usingServiceName = serviceName != null && !serviceName.isEmpty();
+      if (usingServiceName) {
+        TShowServiceResp showServiceResp = client.showService(serviceName);
+        if (showServiceResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          future.setException(
+              new IoTDBException(
+                  showServiceResp.getStatus().message, showServiceResp.getStatus().code));
+          return future;
+        }
+        // convert serviceInfo and buildTsBlock
+        ShowServicesTask.buildTsBlockForService(showServiceResp.getServiceInfoList(), future);
+      } else {
+        TGetServiceTableResp getServiceTableResp = client.getServiceTable();
+        if (getServiceTableResp.getStatus().getCode()
+            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          future.setException(
+              new IoTDBException(
+                  getServiceTableResp.getStatus().message, getServiceTableResp.getStatus().code));
+          return future;
+        }
+        ShowServicesTask.buildTsBlockForAllServices(
+            getServiceTableResp.getAllServiceInformation(), future);
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> startService(String serviceName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus tsStatus = configNodeClient.startService(serviceName);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> stopService(String serviceName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus tsStatus = configNodeClient.stopService(serviceName);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;

@@ -40,6 +40,7 @@
         <module>session</module>
         <module>trigger</module>
         <module>udf</module>
+        <module>service</module>
     </modules>
     <build>
         <pluginManagement>

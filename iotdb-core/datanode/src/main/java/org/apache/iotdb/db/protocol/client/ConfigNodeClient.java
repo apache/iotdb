@@ -76,6 +76,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
@@ -129,6 +130,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetServiceTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
@@ -167,6 +169,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowServiceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -1445,6 +1448,48 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus createTableView(TCreateTableViewReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus createService(TCreateServiceReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createService(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus startService(String serviceName) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.startService(serviceName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus stopService(String serviceName) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.stopService(serviceName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus dropService(String serviceName) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropService(serviceName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TShowServiceResp showService(String serviceName) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showService(serviceName), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetServiceTableResp getServiceTable() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getServiceTable(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetJarInListResp getServiceJar(TGetJarInListReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getServiceJar(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

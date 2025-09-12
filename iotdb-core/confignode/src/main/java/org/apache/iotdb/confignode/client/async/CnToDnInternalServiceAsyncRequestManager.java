@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.ShowServiceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewFieldDetectionHandler;
@@ -60,6 +61,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateServiceInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
@@ -70,6 +72,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropServiceInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
@@ -468,6 +471,28 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.STOP_AND_CLEAR_DATA_NODE,
         (req, client, handler) ->
             client.stopAndClearDataNode((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.CREATE_SERVICE,
+        (req, client, handler) ->
+            client.createServiceInstance(
+                (TCreateServiceInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.DROP_SERVICE,
+        (req, client, handler) ->
+            client.dropServiceInstance(
+                (TDropServiceInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.ACTIVE_SERVICE,
+        (req, client, handler) ->
+            client.activeServiceInstance((String) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INACTIVE_SERVICE,
+        (req, client, handler) ->
+            client.inactiveServiceInstance((String) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.SHOW_SERVICE,
+        (req, client, handler) ->
+            client.showServiceInstance((String) req, (ShowServiceRPCHandler) handler));
   }
 
   @Override

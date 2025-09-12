@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
@@ -83,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
@@ -192,6 +194,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowServices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -205,9 +208,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
@@ -3682,6 +3687,40 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return new TypeParameter((DataType) visit(ctx.type()));
+  }
+
+  @Override
+  public Node visitCreateServiceStatement(RelationalSqlParser.CreateServiceStatementContext ctx) {
+    final String serviceName = ((Identifier) visit(ctx.serviceName)).getValue();
+    final String className = ((Identifier) visit(ctx.className)).getValue();
+    final String uriString = parseAndValidateURI(ctx.uriClause());
+    return new CreateService(getLocation(ctx), serviceName, className, uriString);
+  }
+
+  @Override
+  public Node visitDropServiceStatement(RelationalSqlParser.DropServiceStatementContext ctx) {
+    String serviceName = ((Identifier) visit(ctx.serviceName)).getValue();
+    return new DropService(getLocation(ctx), serviceName);
+  }
+
+  @Override
+  public Node visitShowServicesStatement(RelationalSqlParser.ShowServicesStatementContext ctx) {
+    if (ctx.serviceName == null) {
+      return new ShowServices(getLocation(ctx));
+    }
+    return new ShowServices(getLocation(ctx), ((Identifier) visit(ctx.serviceName)).getValue());
+  }
+
+  @Override
+  public Node visitStartServiceStatement(RelationalSqlParser.StartServiceStatementContext ctx) {
+    String serviceName = ((Identifier) visit(ctx.serviceName)).getValue();
+    return new StartService(getLocation(ctx), serviceName);
+  }
+
+  @Override
+  public Node visitStopServiceStatement(RelationalSqlParser.StopServiceStatementContext ctx) {
+    String serviceName = ((Identifier) visit(ctx.serviceName)).getValue();
+    return new StopService(getLocation(ctx), serviceName);
   }
 
   // ***************** helpers *****************

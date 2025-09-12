@@ -26,14 +26,18 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.external.ServiceInformation;
+import org.apache.iotdb.commons.service.external.ServiceStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
+import org.apache.iotdb.confignode.consensus.response.service.ServiceTableResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetServiceTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
@@ -153,5 +157,32 @@ public class ConvertToThriftRespTest {
     Assert.assertEquals(
         functionTableResp.getUdfInformation().get(1),
         UDFInformation.deserialize(tGetUDFTableResp.allUDFInformation.get(1)));
+  }
+
+  @Test
+  public void convertServiceRespTest() throws IOException {
+    ServiceTableResp serviceTableResp =
+        new ServiceTableResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            ImmutableList.of(
+                new ServiceInformation(
+                    "testService1",
+                    "TestServiceClass1",
+                    true,
+                    "testService1.jar",
+                    "md5checksum1",
+                    ServiceStatus.INACTIVE),
+                new ServiceInformation(
+                    "testService2",
+                    "TestServiceClass2",
+                    false,
+                    "testService2.jar",
+                    "md5checksum2",
+                    ServiceStatus.ACTIVE)));
+    TGetServiceTableResp tGetServiceTableResp = serviceTableResp.convertToThriftResponse();
+    Assert.assertEquals(serviceTableResp.getStatus(), tGetServiceTableResp.status);
+    Assert.assertEquals(
+        serviceTableResp.getServiceInfoList().get(0),
+        ServiceInformation.deserialize(tGetServiceTableResp.getAllServiceInformation().get(0)));
   }
 }
