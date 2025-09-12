@@ -353,6 +353,7 @@ public class IoTDBDatabaseIT {
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("create user test 'password123456'");
+      adminStmt.execute("create pipe test ('sink'='do-nothing-sink')");
     }
 
     try (final Connection connection =
@@ -570,6 +571,12 @@ public class IoTDBDatabaseIT {
       Assert.assertThrows(
           SQLException.class, () -> statement.execute("select * from config_nodes"));
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from data_nodes"));
+
+      // Filter out not self-created pipes
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from pipes"),
+          "id,creation_time,state,pipe_source,pipe_processor,pipe_sink,exception_message,remaining_event_count,estimated_remaining_seconds,",
+          Collections.emptySet());
 
       // No auth needed
       TestUtils.assertResultSetEqual(
