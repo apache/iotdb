@@ -140,7 +140,7 @@ public class PipeMetaDeSerTest {
     pipeRuntimeMeta
         .getConsensusGroupId2TaskMetaMap()
         .get(456)
-        .trackExceptionMessage(new PipeRuntimeSinkCriticalException("test456"));
+        .trackException(new PipeRuntimeSinkCriticalException("test456"));
 
     runtimeByteBuffer = pipeRuntimeMeta.serialize();
     pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
