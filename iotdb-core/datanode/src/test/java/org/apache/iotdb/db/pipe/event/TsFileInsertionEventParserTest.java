@@ -568,6 +568,7 @@ public class TsFileInsertionEventParserTest {
             false,
             false,
             null,
+            null,
             0,
             null,
             null,

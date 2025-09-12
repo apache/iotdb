@@ -49,7 +49,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,14 +64,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
 public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
-  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private final TsFileResource resource;
   private File tsFile;
@@ -96,6 +91,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
   protected volatile ProgressIndex overridingProgressIndex;
+  private Set<String> tableNames;
 
   public PipeTsFileInsertionEvent(
       final Boolean isTableModelEvent,
@@ -111,6 +107,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         true,
         isLoaded,
         false,
+        null,
         null,
         0,
         null,
@@ -130,6 +127,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByHistoricalExtractor,
+      final Set<String> tableNames,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -170,6 +168,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
+    this.tableNames = tableNames;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -412,6 +411,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isWithMod,
         isLoaded,
         isGeneratedByHistoricalExtractor,
+        tableNames,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -438,23 +438,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         LOGGER.info("Temporary tsFile {} detected, will skip its transfer.", tsFile);
         return;
       }
-      for (final IDeviceID deviceID : getDeviceSet()) {
+      for (final String table : tableNames) {
         if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
-            || !tablePattern.matchesTable(deviceID.getTableName())) {
+            || !tablePattern.matchesTable(table)) {
           continue;
         }
         if (!Coordinator.getInstance()
             .getAccessControl()
             .checkCanSelectFromTable4Pipe(
-                userName,
-                new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()))) {
+                userName, new QualifiedObjectName(getTableModelDatabaseName(), table))) {
           if (skipIfNoPrivileges) {
             shouldParse4Privilege = true;
           } else {
             throw new AccessDeniedException(
                 String.format(
                     "No privilege for SELECT for user %s at table %s.%s",
-                    userName, tableModelDatabaseName, deviceID.getTableName()));
+                    userName, tableModelDatabaseName, table));
           }
         }
       }
@@ -488,29 +487,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
-    if (Objects.isNull(resource) || !resource.isClosed()) {
+    if (Objects.isNull(resource) || !resource.isClosed() || isTableModelEvent()) {
       return true;
     }
 
     try {
-      return getDeviceSet().stream()
-          .anyMatch(
-              deviceID -> {
-                // Tree model
-                if (Boolean.FALSE.equals(getRawIsTableModelEvent())
-                    || deviceID instanceof PlainDeviceID
-                    || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-                    || deviceID.getTableName().equals(PATH_ROOT)) {
-                  markAsTreeModelEvent();
-                  return treePattern.mayOverlapWithDevice(deviceID);
-                }
-
-                // Table model
-                markAsTableModelEvent();
-                return true;
-              });
+      return getDeviceSet().stream().anyMatch(treePattern::mayOverlapWithDevice);
     } catch (final Exception e) {
-      LOGGER.warn(
+      LOGGER.info(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
           pipeName,
           resource.getTsFilePath(),
@@ -526,9 +510,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                 PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
                     resource.getTsFile(), pipeName),
                 false);
-    return Objects.nonNull(deviceIsAlignedMap)
-        ? deviceIsAlignedMap.keySet()
-        : resource.getDevices();
+    if (Objects.nonNull(deviceIsAlignedMap)) {
+      return deviceIsAlignedMap.keySet();
+    }
+    return resource.getDevices();
+  }
+
+  public void setTableNames(final Set<String> tableNames) {
+    this.tableNames = tableNames;
   }
 
   /////////////////////////// PipeInsertionEvent ///////////////////////////
@@ -538,25 +527,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     if (getRawIsTableModelEvent() == null) {
       if (getSourceDatabaseNameFromDataRegion() != null) {
         return super.isTableModelEvent();
-      }
-
-      try {
-        for (final IDeviceID deviceID : getDeviceSet()) {
-          if (deviceID instanceof PlainDeviceID
-              || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-              || deviceID.getTableName().equals(PATH_ROOT)) {
-            markAsTreeModelEvent();
-          } else {
-            markAsTableModelEvent();
-          }
-          break;
-        }
-      } catch (final Exception e) {
-        throw new PipeException(
-            String.format(
-                "Pipe %s: failed to judge whether TsFile %s is table model or tree model",
-                pipeName, resource.getTsFilePath()),
-            e);
       }
     }
 
