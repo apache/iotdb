@@ -872,6 +872,7 @@ struct TShowPipeReq {
   1: optional string pipeName
   2: optional bool whereClause
   3: optional bool isTableModel
+  4: optional string userName
 }
 
 struct TShowPipeResp {

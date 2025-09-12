@@ -757,7 +757,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   public static void validateDatabaseName(final String dbName) throws SemanticException {
     // Check database length here
     if (dbName.contains(PATH_SEPARATOR)
-        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
+        || !IoTDBConfig.DATABASE_PATTERN.matcher(dbName).matches()
         || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
       throw new SemanticException(
           new IllegalPathException(

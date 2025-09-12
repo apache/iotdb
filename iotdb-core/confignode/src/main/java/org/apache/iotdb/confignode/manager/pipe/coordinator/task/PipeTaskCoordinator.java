@@ -240,9 +240,13 @@ public class PipeTaskCoordinator {
 
   public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
-      return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
-          .filter(req.whereClause, req.pipeName, req.isTableModel)
-          .convertToTShowPipeResp();
+      return req.isSetUserName()
+          ? ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
+              .filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
+              .convertToTShowPipeResp()
+          : new TShowPipeResp(
+              new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+                  .setMessage("The user name must be set when showing pipes"));
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
