@@ -115,12 +115,12 @@ public class CteScanNode extends SourceNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
-
-  public static CteScanNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    throw new UnsupportedOperationException();
   }
 }
