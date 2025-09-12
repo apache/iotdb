@@ -119,7 +119,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       // Check whether any clients are available, if any client is available, return directly
       for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus :
           endPoint2ClientAndStatus.values()) {
-        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
           return;
         }
       }
@@ -128,7 +128,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     // Reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
-      if (Boolean.TRUE.equals(entry.getValue().getRight())) {
+      if (Boolean.TRUE.equals(entry.getValue().getRight()) && entry.getValue().getLeft() != null) {
         continue;
       }
 
@@ -137,7 +137,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
     // Check whether any clients are available
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
-      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+      if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
         lastCheckClientStatusTimestamp = System.currentTimeMillis();
         return;
       }
@@ -304,7 +304,6 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       try {
         if (clientAndStatus.getLeft() != null) {
           clientAndStatus.getLeft().close();
-          clientAndStatus.setLeft(null);
         }
         LOGGER.info("Client {}:{} closed.", endPoint.getIp(), endPoint.getPort());
       } catch (Exception e) {
@@ -335,7 +334,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         final int clientIndex = (int) (currentClientIndex++ % clientSize);
         final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
             endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
-        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
           return clientAndStatus;
         }
       }
@@ -352,7 +351,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       final int clientIndex = (int) (Math.random() * clientSize);
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
           endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
-      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+      if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
         return clientAndStatus;
       }
 
@@ -361,7 +360,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         final int nextClientIndex = (clientIndex + tryCount + 1) % clientSize;
         final Pair<IoTDBSyncClient, Boolean> nextClientAndStatus =
             endPoint2ClientAndStatus.get(endPointList.get(nextClientIndex));
-        if (Boolean.TRUE.equals(nextClientAndStatus.getRight())) {
+        if (Boolean.TRUE.equals(nextClientAndStatus.getRight())
+            && clientAndStatus.getLeft() != null) {
           return nextClientAndStatus;
         }
       }
@@ -378,7 +378,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       for (final TEndPoint endPoint : endPointList) {
         final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
             endPoint2ClientAndStatus.get(endPoint);
-        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
           return clientAndStatus;
         }
       }
