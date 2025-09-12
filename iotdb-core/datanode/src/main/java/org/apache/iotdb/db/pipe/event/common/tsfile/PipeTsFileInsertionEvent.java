@@ -44,7 +44,6 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -52,8 +51,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -491,11 +488,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
 
     try {
-      final Set<IDeviceID> devices = getDeviceSet();
-      return Objects.isNull(devices)
-          || devices.stream().anyMatch(treePattern::mayOverlapWithDevice);
+      return getDeviceSet().stream().anyMatch(treePattern::mayOverlapWithDevice);
     } catch (final Exception e) {
-      LOGGER.debug(
+      LOGGER.info(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
           pipeName,
           resource.getTsFilePath(),
@@ -504,7 +499,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  private @Nullable Set<IDeviceID> getDeviceSet() throws IOException {
+  private Set<IDeviceID> getDeviceSet() throws IOException {
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
         PipeDataNodeResourceManager.tsfile()
             .getDeviceIsAlignedMapFromCache(
@@ -514,10 +509,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     if (Objects.nonNull(deviceIsAlignedMap)) {
       return deviceIsAlignedMap.keySet();
     }
-    final ITimeIndex index = resource.getTimeIndex();
-    return Objects.nonNull(index)
-        ? index.getDevices(resource.getTsFile().getPath(), resource)
-        : null;
+    return resource.getDevices();
   }
 
   public void setTableNames(final Set<String> tableNames) {
