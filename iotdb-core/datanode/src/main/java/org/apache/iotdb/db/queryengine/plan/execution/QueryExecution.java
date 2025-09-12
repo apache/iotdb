@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
@@ -62,7 +61,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -380,15 +378,6 @@ public class QueryExecution implements IQueryExecution {
   public void stopAndCleanup(Throwable t) {
     stop(t);
     releaseResource(t);
-
-    try {
-      // delete cte tmp file if exists
-      deleteTmpFile();
-    } catch (Throwable err) {
-      LOGGER.error(
-          "Errors occurred while attempting to delete tmp files, potentially leading to resource leakage.",
-          err);
-    }
   }
 
   /** Release the resources that current QueryExecution hold with a specified exception */
@@ -730,19 +719,5 @@ public class QueryExecution implements IQueryExecution {
 
   public ScheduledExecutorService getScheduledExecutor() {
     return planner.getScheduledExecutorService();
-  }
-
-  private void deleteTmpFile() {
-    if (context.mayHaveTmpFile()) {
-      String tmpFilePath =
-          IoTDBDescriptor.getInstance().getConfig().getCteTmpDir()
-              + File.separator
-              + context.getQueryId()
-              + File.separator;
-      File tmpFile = new File(tmpFilePath);
-      if (tmpFile.exists()) {
-        FileUtils.deleteFileOrDirectory(tmpFile, true);
-      }
-    }
   }
 }
