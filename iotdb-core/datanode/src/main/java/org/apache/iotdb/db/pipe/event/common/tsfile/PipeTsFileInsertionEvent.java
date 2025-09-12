@@ -108,6 +108,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isLoaded,
         false,
         null,
+        null,
         0,
         null,
         null,
@@ -126,6 +127,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByHistoricalExtractor,
+      final Set<String> tableNames,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -166,6 +168,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
+    this.tableNames = tableNames;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -408,6 +411,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isWithMod,
         isLoaded,
         isGeneratedByHistoricalExtractor,
+        tableNames,
         pipeName,
         creationTime,
         pipeTaskMeta,
