@@ -30,6 +30,7 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -48,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -376,13 +378,23 @@ public class CompactionUtils {
   public static List<Modification> getMatchedModifications(
       PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> patternTreeMap,
       IDeviceID deviceID,
-      String measurement)
+      String measurement,
+      Deletion ttlDeletion)
       throws IllegalPathException {
-    if (patternTreeMap == null) {
-      return Collections.emptyList();
+    if ((patternTreeMap == null) || patternTreeMap.isEmpty()) {
+      return ttlDeletion == null ? Collections.emptyList() : Collections.singletonList(ttlDeletion);
     }
     PartialPath path = CompactionPathUtils.getPath(deviceID, measurement);
-    return ModificationFile.sortAndMerge(patternTreeMap.getOverlapped(path));
+    List<Modification> modifications = patternTreeMap.getOverlapped(path);
+    if (ttlDeletion != null) {
+      if (!(modifications instanceof ArrayList)) {
+        List<Modification> newModEntries = new ArrayList<>(modifications.size() + 1);
+        newModEntries.addAll(modifications);
+        modifications = newModEntries;
+      }
+      modifications.add(ttlDeletion);
+    }
+    return ModificationFile.sortAndMerge(modifications);
   }
 
   public static boolean isDiskHasSpace() {

@@ -451,10 +451,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       List<Modification> modificationList =
           CompactionUtils.getMatchedModifications(
-              modifications, device, valueChunkMetadata.getMeasurementUid());
-      if (ttlDeletion != null) {
-        modificationList.add(ttlDeletion);
-      }
+              modifications, device, valueChunkMetadata.getMeasurementUid(), ttlDeletion);
       modificationForCurDevice.add(
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
@@ -666,11 +663,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           // collect the modifications for current series
           List<Modification> modificationForCurrentSeries =
               CompactionUtils.getMatchedModifications(
-                  modificationsInThisResource, device, currentCompactingSeries);
-          // add ttl deletion for current series
-          if (ttlDeletion != null) {
-            modificationForCurrentSeries.add(ttlDeletion);
-          }
+                  modificationsInThisResource, device, currentCompactingSeries, ttlDeletion);
 
           // if there are modifications of current series, apply them to the chunk metadata
           if (!modificationForCurrentSeries.isEmpty()) {

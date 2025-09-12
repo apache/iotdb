@@ -288,7 +288,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       throws IllegalPathException {
     List<Modification> deviceModifications =
         CompactionUtils.getMatchedModifications(
-            modifications, device, AlignedPath.VECTOR_PLACEHOLDER);
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, null);
     for (Modification modification : deviceModifications) {
       if (((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
         return true;
