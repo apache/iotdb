@@ -56,6 +56,8 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         bindIsWithMod(originalEvents),
         bindIsLoaded(originalEvents),
         bindIsGeneratedByHistoricalExtractor(originalEvents),
+        // The table name shall not be used anymore after compaction
+        null,
         committerKey.getPipeName(),
         committerKey.getCreationTime(),
         anyOfOriginalEvents.getPipeTaskMeta(),
