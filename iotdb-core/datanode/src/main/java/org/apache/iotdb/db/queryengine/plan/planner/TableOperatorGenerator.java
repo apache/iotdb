@@ -279,6 +279,7 @@ import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -3126,18 +3127,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       // LAST_VALUES optimize
       lastValuesCacheResults = new ArrayList<>();
       int measurementSize = parameter.getMeasurementColumnNames().size();
+      // We don't init time if the last cache will not be updated in process of operator
+      boolean needInitTime =
+          parameter.getTableAggregators().stream()
+              .anyMatch(
+                  aggregator ->
+                      aggregator.getAccumulator() instanceof LastDescAccumulator
+                          && !((LastDescAccumulator) aggregator.getAccumulator())
+                              .isMeasurementColumn());
       // When we need last cache of Time column if:
       // 1. query is group by (we need last cache of Time to help judge if there is no data in
       // device)
       // 2. last(time), last(device) or last(attribute) occurs
-      boolean needTime =
-          !node.getGroupingKeys().isEmpty()
-              || parameter.getTableAggregators().stream()
-                  .anyMatch(
-                      aggregator ->
-                          aggregator.getAccumulator() instanceof LastDescAccumulator
-                              && !((LastDescAccumulator) aggregator.getAccumulator())
-                                  .isMeasurementColumn());
+      boolean needTime = !node.getGroupingKeys().isEmpty() || needInitTime;
       String[] targetColumns;
 
       if (needTime) {
@@ -3198,7 +3200,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .initOrInvalidateLastCache(
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
-                  targetColumns,
+                  needInitTime
+                      ? targetColumns
+                      : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
                   false);
         } else {
           hitCachesIndexes.add(i);
