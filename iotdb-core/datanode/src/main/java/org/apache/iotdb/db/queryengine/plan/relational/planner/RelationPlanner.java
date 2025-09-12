@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
@@ -123,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -240,14 +242,30 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     // Common Table Expression
     final Query namedQuery = analysis.getNamedQuery(table);
     if (namedQuery != null) {
-      RelationPlan subPlan;
       if (analysis.isExpandableQuery(namedQuery)) {
         // recursive cte
         throw new SemanticException("unexpected recursive cte");
-      } else {
-        subPlan = process(namedQuery, null);
       }
 
+      if (namedQuery.isMaterialized()) {
+        CteDataStore dataStore = analysis.getCteDataStore(table.getName().toString());
+        if (dataStore != null) {
+          List<Symbol> outputSymbols =
+              analysis.getOutputDescriptor(table).getAllFields().stream()
+                  .map(symbolAllocator::newSymbol)
+                  .collect(toImmutableList());
+
+          // CTE Scan Node
+          return new RelationPlan(
+              new CteScanNode(
+                  idAllocator.genPlanNodeId(), table.getName(), outputSymbols, dataStore),
+              scope,
+              outputSymbols,
+              outerContext);
+        }
+      }
+
+      RelationPlan subPlan = process(namedQuery, null);
       // Add implicit coercions if view query produces types that don't match the declared output
       // types of the view (e.g., if the underlying tables referenced by the view changed)
       List<Type> types =
