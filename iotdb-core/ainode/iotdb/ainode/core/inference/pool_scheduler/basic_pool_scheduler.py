@@ -90,7 +90,7 @@ def _estimate_shared_pool_size_by_total_mem(
         pool_num = int(per_model_share // mem_usages[model_id])
         if pool_num <= 0:
             logger.warning(
-                f"[Inference][Device-{device}] Not enough TOTAL memory to guarantee at least 1 pool for model {model_id}, not pool will be scheduled for this model. "
+                f"[Inference][Device-{device}] Not enough TOTAL memory to guarantee at least 1 pool for model {model_id}, no pool will be scheduled for this model. "
                 f"Per-model share={per_model_share / 1024 ** 2:.2f} MB, need>={mem_usages[model_id] / 1024 ** 2:.2f} MB"
             )
         allocation[model_id] = pool_num

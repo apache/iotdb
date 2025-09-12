@@ -288,7 +288,7 @@ class InferenceManager:
                     predict_length,
                 )
 
-            if self._pool_controller.has_request_pools(model_id=model_id):
+            if self._pool_controller.has_request_pools(model_id):
                 # use request pool to accelerate inference when the model instance is already loaded.
                 # TODO: TSBlock -> Tensor codes should be unified
                 data = full_data[1][0]
