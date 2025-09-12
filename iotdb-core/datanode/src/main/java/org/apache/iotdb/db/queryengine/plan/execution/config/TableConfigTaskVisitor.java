@@ -1178,7 +1178,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    return new ShowPipeTask(node);
+    return new ShowPipeTask(node, context.getSession().getUserName());
   }
 
   @Override

@@ -2487,7 +2487,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showPipes(final ShowPipesStatement showPipesStatement) {
+  public SettableFuture<ConfigTaskResult> showPipes(
+      final ShowPipesStatement showPipesStatement, final String userName) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -2499,6 +2500,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tShowPipeReq.setWhereClause(true);
       }
       tShowPipeReq.setIsTableModel(showPipesStatement.isTableModel());
+      tShowPipeReq.setUserName(userName);
       final List<TShowPipeInfo> tShowPipeInfoList =
           configNodeClient.showPipe(tShowPipeReq).getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
