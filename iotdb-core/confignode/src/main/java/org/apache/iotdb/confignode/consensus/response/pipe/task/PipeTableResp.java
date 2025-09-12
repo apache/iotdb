@@ -120,7 +120,7 @@ public class PipeTableResp implements DataSet {
       return Objects.isNull(userName)
           || BasicAuthorizer.getInstance().isAdmin(userName)
           || isVisible4SourceUser(userName, meta.getSourceParameters())
-          || isVisible4SinkUser(userName, meta.getSourceParameters());
+          || isVisible4SinkUser(userName, meta.getSinkParameters());
     } catch (final Exception e) {
       return false;
     }
