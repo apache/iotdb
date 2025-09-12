@@ -847,6 +847,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             shouldTransferModFile,
             false,
             true,
+            filteredTsFileResources2TableNames.get(resource),
             pipeName,
             creationTime,
             pipeTaskMeta,
@@ -856,7 +857,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             skipIfNoPrivileges,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
-    event.setTableNames(filteredTsFileResources2TableNames.get(resource));
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
