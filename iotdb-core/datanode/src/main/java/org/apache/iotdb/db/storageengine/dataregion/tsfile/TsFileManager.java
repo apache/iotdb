@@ -340,7 +340,7 @@ public class TsFileManager {
     }
 
     // Currently disable
-    if (PipeConfig.getInstance().isPipeRealTimeCompactionEnabled()) {
+    if (PipeConfig.getInstance().isPipeRealTimeQueueCompactionEnabled()) {
       PipeDataNodeResourceManager.compaction()
           .emitResult(
               storageGroupName,

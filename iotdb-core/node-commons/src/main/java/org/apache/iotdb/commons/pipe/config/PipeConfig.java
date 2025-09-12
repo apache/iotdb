@@ -111,7 +111,7 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRealTimeQueuePollTsFileThreshold();
   }
 
-  public boolean isPipeRealTimeCompactionEnabled() {
+  public boolean isPipeRealTimeQueueCompactionEnabled() {
     return COMMON_CONFIG.isPipeRealTimeQueueCompactionEnabled();
   }
 
@@ -472,7 +472,7 @@ public class PipeConfig {
 
     LOGGER.info(
         "PipeRealTimeQueuePollTsFileThreshold: {}", getPipeRealTimeQueuePollTsFileThreshold());
-    LOGGER.info("PipeRealTimeCompactionEnabled: {}", isPipeRealTimeCompactionEnabled());
+    LOGGER.info("PipeRealTimeCompactionEnabled: {}", isPipeRealTimeQueueCompactionEnabled());
     LOGGER.info(
         "PipeRealTimeQueuePollHistoricalTsFileThreshold: {}",
         getPipeRealTimeQueuePollHistoricalTsFileThreshold());
