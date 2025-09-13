@@ -44,7 +44,6 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.websocket.WebSock
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.writeback.WriteBackSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.donothing.DoNothingSource;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.iotdb.IoTDBSource;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.mqtt.MQTTSource;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,11 +55,9 @@ public enum BuiltinPipePlugin {
   // extractors
   DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingSource.class),
   IOTDB_EXTRACTOR("iotdb-extractor", IoTDBSource.class),
-  MQTT_EXTRACTOR("mqtt-extractor", MQTTSource.class),
 
   DO_NOTHING_SOURCE("do-nothing-source", DoNothingSource.class),
   IOTDB_SOURCE("iotdb-source", IoTDBSource.class),
-  MQTT_SOURCE("mqtt-source", MQTTSource.class),
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
