@@ -112,7 +112,7 @@ struct TShowModelsResp {
 }
 
 struct TShowLoadedModelsReq {
-  1: optional list<string> deviceIdList
+  1: required list<string> deviceIdList
 }
 
 struct TShowLoadedModelsResp {
