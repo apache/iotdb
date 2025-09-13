@@ -3397,6 +3397,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TShowLoadedModelReq req = new TShowLoadedModelReq();
       if (deviceIdList != null) {
         req.setDeviceIdList(deviceIdList);
+      } else {
+        req.setDeviceIdList(new ArrayList<>());
       }
       final TShowLoadedModelResp resp = client.showLoadedModel(req);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
