@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -497,11 +498,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   private void logOnClientException(
       final AsyncPipeDataTransferServiceClient client, final Exception e) {
     if (client == null) {
-      LOGGER.warn(THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT);
+      PipeLogger.log(LOGGER::warn, THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT);
     } else {
       client.resetMethodStateIfStopped();
-      LOGGER.warn(
-          String.format(THRIFT_ERROR_FORMATTER_WITH_ENDPOINT, client.getIp(), client.getPort()), e);
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          String.format(THRIFT_ERROR_FORMATTER_WITH_ENDPOINT, client.getIp(), client.getPort()));
     }
   }
 
