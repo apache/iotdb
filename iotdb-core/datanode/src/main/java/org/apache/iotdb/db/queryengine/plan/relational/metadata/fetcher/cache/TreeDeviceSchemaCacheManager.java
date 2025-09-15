@@ -374,7 +374,7 @@ public class TreeDeviceSchemaCacheManager {
 
   /**
    * Update the {@link TableDeviceLastCache} in writing for tree model. If a measurement is with all
-   * {@code null}s or is an id/attribute column, its {@link TimeValuePair[]} shall be {@code null}.
+   * {@code null}s or is an id/attribute column, its {@link TimeValuePair}[] shall be {@code null}.
    * For correctness, this will put the {@link TableDeviceCacheEntry} lazily and only update the
    * existing {@link TableDeviceLastCache}s of measurements.
    *
