@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorS
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -367,6 +368,9 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName) && !(statement instanceof AuthorStatement)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
     return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userName));
   }
 }
