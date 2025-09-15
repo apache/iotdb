@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentMap;
 public class TreeDeviceNormalSchema implements IDeviceSchema {
 
   static final int INSTANCE_SIZE =
-      (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class)
+      (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceNormalSchema.class)
           + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
   private final String database;
   private final boolean isAligned;
