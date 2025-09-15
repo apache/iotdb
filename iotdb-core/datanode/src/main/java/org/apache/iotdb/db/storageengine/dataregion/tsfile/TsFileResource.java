@@ -107,7 +107,9 @@ public class TsFileResource {
   protected TsFileResource next;
 
   /** time index */
-  private ITimeIndex timeIndex;
+  private volatile ITimeIndex timeIndex;
+
+  private final AtomicReference<Boolean> isEmpty = new AtomicReference<>();
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile modFile;
@@ -121,11 +123,11 @@ public class TsFileResource {
   /** used for check whether this file has internal unsorted data in compaction selection */
   private TsFileRepairStatus tsFileRepairStatus = TsFileRepairStatus.NORMAL;
 
-  private TsFileLock tsFileLock = new TsFileLock();
+  private final TsFileLock tsFileLock = new TsFileLock();
 
   private boolean isSeq;
 
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   private DataRegion.SettleTsFileCallBack settleTsFileCallBack;
 
@@ -647,6 +649,10 @@ public class TsFileResource {
    */
   public boolean remove() {
     forceMarkDeleted();
+    // To release the memory occupied by pipe if held by it
+    // Note that pipe can safely handle the case that the time index does not exist
+    isEmpty();
+    degradeTimeIndex();
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -935,13 +941,18 @@ public class TsFileResource {
    * @return resource map size
    */
   public long calculateRamSize() {
+    final ProgressIndex progressIndex = maxProgressIndex.get();
     if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-      return INSTANCE_SIZE + timeIndex.calculateRamSize();
+      return INSTANCE_SIZE
+          + timeIndex.calculateRamSize()
+          + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
     }
     if (deviceTimeIndexRamSize == 0) {
       deviceTimeIndexRamSize = timeIndex.calculateRamSize();
     }
-    return INSTANCE_SIZE + deviceTimeIndexRamSize;
+    return INSTANCE_SIZE
+        + deviceTimeIndexRamSize
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 
   // used for compaction
@@ -1219,7 +1230,9 @@ public class TsFileResource {
   }
 
   public boolean isEmpty() {
-    return getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
+    isEmpty.compareAndSet(
+        null, getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE);
+    return isEmpty.get();
   }
 
   public String getDatabaseName() {

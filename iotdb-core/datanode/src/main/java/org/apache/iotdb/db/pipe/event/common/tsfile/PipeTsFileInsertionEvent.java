@@ -86,6 +86,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   protected long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
   protected volatile ProgressIndex overridingProgressIndex;
+  private Set<String> tableNames;
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
@@ -122,6 +123,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
+    this.tableNames = tableNames;
 
     this.dataContainer = new AtomicReference<>(null);
 
@@ -394,7 +396,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
               deviceID ->
                   pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
     } catch (final Exception e) {
-      LOGGER.warn(
+      LOGGER.info(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
           pipeName,
           resource.getTsFilePath(),
