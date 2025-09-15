@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
@@ -55,6 +56,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
@@ -154,7 +156,18 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + getSatisfyAnyNeededPrivilegeString(
+                        AuthUtils.getAllPrivilegesContainingCurrentPrivilege(neededPrivilege)));
+  }
+
+  private static String getSatisfyAnyNeededPrivilegeString(List<PrivilegeType> privileges) {
+    StringJoiner sj = new StringJoiner("/");
+    for (PrivilegeType privilege : privileges) {
+      sj.add(privilege.toString());
+    }
+    return sj.toString();
   }
 
   public static TSStatus getGrantOptTSStatus(
