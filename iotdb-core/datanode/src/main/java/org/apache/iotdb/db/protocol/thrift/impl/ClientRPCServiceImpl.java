@@ -830,7 +830,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // 2.DATA_NODE_SCHEMA_CACHE.getLastCache()
-      if (!DataNodeSchemaCache.getInstance().getLastCache(resultMap)) {
+      if (!DataNodeSchemaCache.getInstance().getDeviceSchemaCache().getLastCache(resultMap)) {
         // 2.1 any sensor miss cache, construct last query sql, then return
         return executeLastDataQueryInternal(convert(req), SELECT_RESULT);
       }

@@ -82,8 +82,7 @@ public class DeviceLastCache {
   // Time is seen as "" as a measurement
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
 
-  int initOrInvalidate(
-      final String tableName, final String[] measurements, final boolean isInvalidate) {
+  int initOrInvalidate(final String[] measurements, final boolean isInvalidate) {
     final AtomicInteger diff = new AtomicInteger(0);
 
     for (final String measurement : measurements) {
@@ -98,13 +97,12 @@ public class DeviceLastCache {
           (measurementKey, tvPair) -> {
             if (Objects.isNull(newPair)) {
               diff.addAndGet(
-                  -((false ? 0 : (int) RamUsageEstimator.sizeOf(measurement))
-                      + getTVPairEntrySize(tvPair)));
+                  -((int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(tvPair)));
               return null;
             }
             if (Objects.isNull(tvPair)) {
               diff.addAndGet(
-                  (false ? 0 : (int) RamUsageEstimator.sizeOf(measurement))
+                  (int) RamUsageEstimator.sizeOf(measurement)
                       + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
               return newPair;
             }

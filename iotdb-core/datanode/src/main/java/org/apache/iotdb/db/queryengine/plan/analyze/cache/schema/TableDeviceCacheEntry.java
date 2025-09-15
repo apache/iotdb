@@ -107,13 +107,11 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Last Cache ///////////////////////////////
 
-  int initOrInvalidateLastCache(
-      final String tableName, final String[] measurements, final boolean isInvalidate) {
+  int initOrInvalidateLastCache(final String[] measurements, final boolean isInvalidate) {
     int result =
         lastCache.compareAndSet(null, new DeviceLastCache()) ? DeviceLastCache.INSTANCE_SIZE : 0;
     final DeviceLastCache cache = lastCache.get();
-    result +=
-        Objects.nonNull(cache) ? cache.initOrInvalidate(tableName, measurements, isInvalidate) : 0;
+    result += Objects.nonNull(cache) ? cache.initOrInvalidate(measurements, isInvalidate) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 

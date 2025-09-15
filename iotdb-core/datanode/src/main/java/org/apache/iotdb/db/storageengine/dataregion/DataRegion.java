@@ -3255,32 +3255,26 @@ public class DataRegion implements IDataRegionForQuery {
           // The inner cache is shared by TreeDeviceSchemaCacheManager and
           // TableDeviceSchemaCacheManager,
           // so cleaning either of them is enough
-          DataNodeSchemaCache.getInstance().invalidateAll();
+          DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
           break;
         case CLEAN_DEVICE:
           ITimeIndex timeIndex = newTsFileResource.getTimeIndex();
           if (timeIndex instanceof DeviceTimeIndex) {
             DeviceTimeIndex deviceTimeIndex = (DeviceTimeIndex) timeIndex;
             for (IDeviceID deviceID : deviceTimeIndex.getDevices()) {
-              try {
-                DataNodeSchemaCache.getInstance()
-                    .invalidateLastCache(new PartialPath(deviceID, "**"));
-              } catch (IllegalPathException e) {
-                logger.error(
-                    "Failed to construct path for invalidating last cache of {}", deviceID, e);
-                DataNodeSchemaCache.getInstance().invalidateAll();
-                return;
-              }
+              DataNodeSchemaCache.getInstance()
+                  .getDeviceSchemaCache()
+                  .invalidateDeviceLastCache(((PlainDeviceID) deviceID).toStringID());
             }
           } else {
-            DataNodeSchemaCache.getInstance().invalidateAll();
+            DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
           }
           break;
         default:
           logger.warn(
               "Unrecognized LastCacheLoadStrategy: {}, fall back to CLEAN_ALL",
               IoTDBDescriptor.getInstance().getConfig().getLastCacheLoadStrategy());
-          DataNodeSchemaCache.getInstance().invalidateAll();
+          DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
           break;
       }
     }
@@ -3312,7 +3306,7 @@ public class DataRegion implements IDataRegionForQuery {
                   0L);
         } catch (IllegalPathException e) {
           logger.error("Failed to construct path for invalidating last cache of {}", deviceID, e);
-          DataNodeSchemaCache.getInstance().invalidateAll();
+          DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
           return;
         }
       }
@@ -3342,12 +3336,12 @@ public class DataRegion implements IDataRegionForQuery {
                   0L);
         } catch (IllegalPathException e) {
           logger.error("Failed to construct path for invalidating last cache of {}", deviceID, e);
-          DataNodeSchemaCache.getInstance().invalidateAll();
+          DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
           return;
         }
       }
     } else {
-      DataNodeSchemaCache.getInstance().invalidateAll();
+      DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
     }
   }
 

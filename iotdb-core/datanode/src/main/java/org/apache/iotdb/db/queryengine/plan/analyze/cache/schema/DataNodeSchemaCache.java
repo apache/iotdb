@@ -32,7 +32,6 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
@@ -42,7 +41,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +100,7 @@ public class DataNodeSchemaCache {
    */
   public ClusterSchemaTree get(final PartialPath devicePath, final String[] measurements) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
-    final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath.getNodes());
+    final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath.getFullPath());
     if (!(schema instanceof DeviceNormalSchema)) {
       return tree;
     }
@@ -131,7 +129,7 @@ public class DataNodeSchemaCache {
    */
   public ClusterSchemaTree getMatchedSchemaWithTemplate(final PartialPath devicePath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
-    final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath.getNodes());
+    final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath.getFullPath());
     if (!(schema instanceof DeviceTemplateSchema)) {
       return tree;
     }
@@ -150,9 +148,7 @@ public class DataNodeSchemaCache {
    */
   public ClusterSchemaTree getMatchedSchemaWithoutTemplate(final PartialPath fullPath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
-    final IDeviceSchema schema =
-        deviceSchemaCache.getDeviceSchema(
-            Arrays.copyOf(fullPath.getNodes(), fullPath.getNodeLength() - 1));
+    final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(fullPath.getDevice());
     if (!(schema instanceof DeviceNormalSchema)) {
       return tree;
     }
@@ -172,7 +168,7 @@ public class DataNodeSchemaCache {
     final String[] measurements = schemaComputation.getMeasurements();
 
     final IDeviceSchema schema =
-        deviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
+        deviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getFullPath());
     if (!(schema instanceof DeviceNormalSchema)) {
       return IntStream.range(0, schemaComputation.getMeasurements().length)
           .boxed()
@@ -229,8 +225,7 @@ public class DataNodeSchemaCache {
       }
 
       final PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
-      final IDeviceSchema schema =
-          deviceSchemaCache.getDeviceSchema(fullPath.getDevicePath().getNodes());
+      final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(fullPath.getDevice());
       if (!(schema instanceof DeviceNormalSchema)) {
         indexOfMissingMeasurements.add(i);
         continue;
@@ -266,7 +261,7 @@ public class DataNodeSchemaCache {
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     final String[] measurements = computation.getMeasurements();
     final IDeviceSchema deviceSchema =
-        deviceSchemaCache.getDeviceSchema(computation.getDevicePath().getNodes());
+        deviceSchemaCache.getDeviceSchema(computation.getDevicePath().getFullPath());
 
     if (!(deviceSchema instanceof DeviceTemplateSchema)) {
       return IntStream.range(0, measurements.length).boxed().collect(Collectors.toList());
@@ -354,17 +349,11 @@ public class DataNodeSchemaCache {
                     tree.getBelongedDatabase(deviceSchemaInfo.getDevicePath()), deviceSchemaInfo));
   }
 
-  public boolean getLastCache(
-      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> inputMap) {
-    return deviceSchemaCache.getLastCache(inputMap);
-  }
-
   public TimeValuePair getLastCache(final PartialPath seriesPath) {
-    return deviceSchemaCache.getLastEntry(
-        null, seriesPath.getIDeviceID(), seriesPath.getMeasurement());
+    return deviceSchemaCache.getLastEntry(seriesPath.getDevice(), seriesPath.getMeasurement());
   }
 
-  public void invalidateLastCache(final MeasurementPath path) {
+  public void invalidateLastCache(final PartialPath path) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
@@ -391,7 +380,7 @@ public class DataNodeSchemaCache {
    */
   public void updateLastCacheIfExists(
       final String database,
-      final IDeviceID deviceID,
+      final String deviceID,
       final String[] measurements,
       final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean isAligned,
@@ -411,7 +400,7 @@ public class DataNodeSchemaCache {
    * stale value is written, but it won't affect the eventual consistency.
    *
    * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
-   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
+   * #updateLastCacheIfExists(String, String, String[], TimeValuePair[], boolean,
    * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
    * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
    * DeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
@@ -429,7 +418,7 @@ public class DataNodeSchemaCache {
       final String database, final MeasurementPath measurementPath, final boolean isInvalidate) {
     deviceSchemaCache.updateLastCache(
         database,
-        measurementPath.getIDeviceID(),
+        measurementPath.getDevice(),
         new String[] {measurementPath.getMeasurement()},
         isInvalidate ? new TimeValuePair[] {null} : null,
         measurementPath.isUnderAlignedEntity(),
