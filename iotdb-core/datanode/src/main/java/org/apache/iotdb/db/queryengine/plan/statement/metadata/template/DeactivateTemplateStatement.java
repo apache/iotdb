@@ -54,6 +54,13 @@ public class DeactivateTemplateStatement extends Statement implements IConfigSta
 
   @Override
   public List<PartialPath> getPaths() {
+    if (templateName == null) {
+      // When the template name is not specified, we cannot obtain the specific path, so we use *
+      // for concatenation and it just works
+      return pathPatternList.stream()
+          .map(path -> path.concatAsMeasurementPath(ONE_LEVEL_PATH_WILDCARD))
+          .collect(Collectors.toList());
+    }
     ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
 
     Template template;

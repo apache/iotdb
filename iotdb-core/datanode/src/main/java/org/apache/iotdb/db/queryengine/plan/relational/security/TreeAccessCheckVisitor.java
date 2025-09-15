@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -40,7 +39,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
@@ -62,17 +64,23 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
@@ -102,12 +110,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.RenameLogicalViewStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
@@ -134,6 +144,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitNode(StatementNode node, TreeAccessCheckContext context) {
     return AuthorityChecker.getTSStatus(false, "Only the admin user can perform this operation");
+  }
+
+  @Override
+  public TSStatus visitAuthorityInformation(
+      AuthorityInformationStatement statement, TreeAccessCheckContext context) {
+    try {
+      statement.setAuthorityScope(
+          AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA));
+    } catch (AuthException e) {
+      return new TSStatus(e.getCode().getStatusCode());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   // ====================== template related =================================
@@ -203,6 +225,69 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
+  public TSStatus visitShowPathsUsingTemplate(
+      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement,
+      TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showPathsUsingTemplateStatement, context);
+  }
+
+  // ============================= timeseries view related ===============
+  @Override
+  public TSStatus visitCreateLogicalView(
+      CreateLogicalViewStatement statement, TreeAccessCheckContext context) {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<PartialPath> sourcePathList = statement.getSourcePaths().fullPathList;
+    if (sourcePathList != null) {
+      status =
+          AuthorityChecker.getTSStatus(
+              AuthorityChecker.checkFullPathOrPatternListPermission(
+                  context.userName, sourcePathList, PrivilegeType.READ_SCHEMA),
+              sourcePathList,
+              PrivilegeType.READ_SCHEMA);
+    }
+    QueryStatement queryStatement = statement.getQueryStatement();
+    if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      sourcePathList = queryStatement.getPaths();
+      status =
+          AuthorityChecker.getTSStatus(
+              AuthorityChecker.checkFullPathOrPatternListPermission(
+                  context.userName, sourcePathList, PrivilegeType.READ_SCHEMA),
+              sourcePathList,
+              PrivilegeType.READ_SCHEMA);
+    }
+
+    final List<PartialPath> paths =
+        Objects.nonNull(statement.getTargetPathList())
+            ? statement.getTargetPathList()
+            : Collections.singletonList(
+                statement
+                    .getBatchGenerationItem()
+                    .getIntoDevice()
+                    .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return AuthorityChecker.getTSStatus(
+          AuthorityChecker.checkFullPathOrPatternListPermission(
+              context.userName, paths, PrivilegeType.WRITE_SCHEMA),
+          paths,
+          PrivilegeType.WRITE_SCHEMA);
+    }
+    return status;
+  }
+
+  @Override
+  public TSStatus visitDeleteLogicalView(
+      DeleteLogicalViewStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitShowLogicalView(
+      ShowLogicalViewStatement showLogicalViewStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showLogicalViewStatement, context);
+  }
+
+  @Override
   public TSStatus visitAlterLogicalView(
       AlterLogicalViewStatement statement, TreeAccessCheckContext context) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -237,14 +322,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitAlterTimeSeries(
-      AlterTimeSeriesStatement statement, TreeAccessCheckContext context) {
+  public TSStatus visitRenameLogicalView(
+      RenameLogicalViewStatement statement, TreeAccessCheckContext context) {
+    List<PartialPath> checkedPaths =
+        ImmutableList.of(statement.getOldName(), statement.getNewName());
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternPermission(
-            context.userName, statement.getPath(), PrivilegeType.WRITE_SCHEMA),
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
         PrivilegeType.WRITE_SCHEMA);
   }
 
+  // ===================================== security related ===============================
   @Override
   public TSStatus visitAuthor(AuthorStatement statement, TreeAccessCheckContext context) {
     AuthorType authorType = statement.getAuthorType();
@@ -382,71 +471,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     }
   }
 
-  @Override
-  public TSStatus visitAuthorityInformation(
-      AuthorityInformationStatement statement, TreeAccessCheckContext context) {
-    try {
-      statement.setAuthorityScope(
-          AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA));
-    } catch (AuthException e) {
-      return new TSStatus(e.getCode().getStatusCode());
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  @Override
-  public TSStatus visitCountDevices(
-      CountDevicesStatement statement, TreeAccessCheckContext context) {
-    if (statement.hasTimeCondition()) {
-      try {
-        statement.setAuthorityScope(
-            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA),
-                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA)));
-      } catch (AuthException e) {
-        return new TSStatus(e.getCode().getStatusCode());
-      }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      return visitAuthorityInformation(statement, context);
-    }
-  }
-
-  @Override
-  public TSStatus visitCountTimeSeries(
-      CountTimeSeriesStatement statement, TreeAccessCheckContext context) {
-    if (statement.hasTimeCondition()) {
-      try {
-        statement.setAuthorityScope(
-            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA),
-                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA)));
-      } catch (AuthException e) {
-        return new TSStatus(e.getCode().getStatusCode());
-      }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      return visitAuthorityInformation(statement, context);
-    }
-  }
-
-  @Override
-  public TSStatus visitCountTimeSlotList(
-      CountTimeSlotListStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
-  }
-
-  @Override
-  public TSStatus visitCreateAlignedTimeseries(
-      CreateAlignedTimeSeriesStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths = statement.getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
-  }
-
   // =================================== CQ related ====================================
   @Override
   public TSStatus visitCreateContinuousQuery(
@@ -499,7 +523,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         PrivilegeType.USE_UDF);
   }
 
-  // =================================== UDF related ====================================
+  // =================================== model related ====================================
   @Override
   public TSStatus visitCreateModel(CreateModelStatement statement, TreeAccessCheckContext context) {
     return checkModelManagement(context.userName);
@@ -520,59 +544,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
         PrivilegeType.USE_MODEL);
-  }
-
-  @Override
-  public TSStatus visitCreateLogicalView(
-      CreateLogicalViewStatement statement, TreeAccessCheckContext context) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    List<PartialPath> sourcePathList = statement.getSourcePaths().fullPathList;
-    if (sourcePathList != null) {
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  context.userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
-    }
-    QueryStatement queryStatement = statement.getQueryStatement();
-    if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      sourcePathList = queryStatement.getPaths();
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  context.userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
-    }
-
-    final List<PartialPath> paths =
-        Objects.nonNull(statement.getTargetPathList())
-            ? statement.getTargetPathList()
-            : Collections.singletonList(
-                statement
-                    .getBatchGenerationItem()
-                    .getIntoDevice()
-                    .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathOrPatternListPermission(
-              context.userName, paths, PrivilegeType.WRITE_SCHEMA),
-          paths,
-          PrivilegeType.WRITE_SCHEMA);
-    }
-    return status;
-  }
-
-  @Override
-  public TSStatus visitCreateMultiTimeSeries(
-      CreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {
-    List<MeasurementPath> checkedPaths = statement.getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
   }
 
   // ================================ pipe plugin related ==================================
@@ -687,6 +658,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         PrivilegeType.USE_TRIGGER);
   }
 
+  // ============================== database related ===========================
   @Override
   public TSStatus visitSetDatabase(
       DatabaseSchemaStatement statement, TreeAccessCheckContext context) {
@@ -699,10 +671,49 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return checkCreateOrAlterDatabasePermission(context.userName);
   }
 
+  @Override
+  public TSStatus visitShowStorageGroup(
+      ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showDatabaseStatement, context);
+  }
+
+  @Override
+  public TSStatus visitCountStorageGroup(
+      CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(countDatabaseStatement, context);
+  }
+
+  @Override
+  public TSStatus visitDeleteStorageGroup(
+      DeleteDatabaseStatement statement, TreeAccessCheckContext context) {
+    return checkCreateOrAlterDatabasePermission(context.userName);
+  }
+
   private TSStatus checkCreateOrAlterDatabasePermission(String userName) {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
         PrivilegeType.MANAGE_DATABASE);
+  }
+
+  // ==================================== data related ========================================
+  @Override
+  public TSStatus visitInsertBase(InsertBaseStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName,
+        statement.getPaths().stream().distinct().collect(Collectors.toList()),
+        PrivilegeType.WRITE_DATA);
+  }
+
+  @Override
+  public TSStatus visitInsert(InsertStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_DATA);
+  }
+
+  @Override
+  public TSStatus visitLoadFile(LoadTsFileStatement statement, TreeAccessCheckContext context) {
+    // no need to check here, it will be checked in process phase
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -712,18 +723,23 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitDeleteStorageGroup(
-      DeleteDatabaseStatement statement, TreeAccessCheckContext context) {
-    return checkCreateOrAlterDatabasePermission(context.userName);
+  public TSStatus visitQuery(QueryStatement statement, TreeAccessCheckContext context) {
+    try {
+      statement.setAuthorityScope(
+          AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA));
+    } catch (AuthException e) {
+      return new TSStatus(e.getCode().getStatusCode());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  public TSStatus visitDeleteLogicalView(
-      DeleteLogicalViewStatement statement, TreeAccessCheckContext context) {
-    return checkTimeSeriesPermission(
-        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  public TSStatus visitExplainAnalyze(
+      ExplainAnalyzeStatement statement, TreeAccessCheckContext context) {
+    return statement.getQueryStatement().accept(this, context);
   }
 
+  // ============================= timeseries related =================================
   private TSStatus checkTimeSeriesPermission(
       String userName, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
     return AuthorityChecker.getTSStatus(
@@ -740,18 +756,112 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
+  public TSStatus visitCreateAlignedTimeseries(
+      CreateAlignedTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    List<PartialPath> checkedPaths = statement.getPaths();
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitCreateMultiTimeSeries(
+      CreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitInternalCreateTimeseries(
+      InternalCreateTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitShowTimeSeries(
+      ShowTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    if (statement.hasTimeCondition()) {
+      try {
+        statement.setAuthorityScope(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA),
+                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA)));
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return visitAuthorityInformation(statement, context);
+    }
+  }
+
+  @Override
+  public TSStatus visitCountTimeSeries(
+      CountTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    if (statement.hasTimeCondition()) {
+      try {
+        statement.setAuthorityScope(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA),
+                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA)));
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return visitAuthorityInformation(statement, context);
+    }
+  }
+
+  @Override
+  public TSStatus visitCountLevelTimeSeries(
+      CountLevelTimeSeriesStatement countStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(countStatement, context);
+  }
+
+  @Override
+  public TSStatus visitCountNodes(
+      CountNodesStatement countStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(countStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowChildNodes(
+      ShowChildNodesStatement showChildNodesStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showChildNodesStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowChildPaths(
+      ShowChildPathsStatement showChildPathsStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showChildPathsStatement, context);
+  }
+
+  @Override
+  public TSStatus visitAlterTimeSeries(
+      AlterTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
   public TSStatus visitDeleteTimeSeries(
       DeleteTimeSeriesStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
 
-  @Override
-  public TSStatus visitExplainAnalyze(
-      ExplainAnalyzeStatement statement, TreeAccessCheckContext context) {
-    return statement.getQueryStatement().accept(this, context);
-  }
-
+  // ================================== maintain related =============================
   @Override
   public TSStatus visitExtendRegion(
       ExtendRegionStatement statement, TreeAccessCheckContext context) {
@@ -776,39 +886,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitInsertBase(InsertBaseStatement statement, TreeAccessCheckContext context) {
-    return checkTimeSeriesPermission(
-        context.userName,
-        statement.getPaths().stream().distinct().collect(Collectors.toList()),
-        PrivilegeType.WRITE_DATA);
-  }
-
-  @Override
-  public TSStatus visitInsert(InsertStatement statement, TreeAccessCheckContext context) {
-    return checkTimeSeriesPermission(
-        context.userName, statement.getPaths(), PrivilegeType.WRITE_DATA);
-  }
-
-  @Override
-  public TSStatus visitInternalCreateMultiTimeSeries(
-      InternalCreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths = statement.getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
-  }
-
-  @Override
-  public TSStatus visitInternalCreateTimeseries(
-      InternalCreateTimeSeriesStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths = statement.getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
+  public TSStatus visitCountTimeSlotList(
+      CountTimeSlotListStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
   }
 
   @Override
@@ -817,26 +897,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitLoadFile(LoadTsFileStatement statement, TreeAccessCheckContext context) {
-    // no need to check here, it will be checked in process phase
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  @Override
   public TSStatus visitMigrateRegion(
       MigrateRegionStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
-  }
-
-  @Override
-  public TSStatus visitQuery(QueryStatement statement, TreeAccessCheckContext context) {
-    try {
-      statement.setAuthorityScope(
-          AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA));
-    } catch (AuthException e) {
-      return new TSStatus(e.getCode().getStatusCode());
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -870,31 +933,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitRenameLogicalView(
-      RenameLogicalViewStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths =
-        ImmutableList.of(statement.getOldName(), statement.getNewName());
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
-  }
-
-  @Override
   public TSStatus visitSetSqlDialect(
       SetSqlDialectStatement statement, TreeAccessCheckContext context) {
     return SUCCEED;
-  }
-
-  @Override
-  public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths = statement.getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -938,23 +979,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowDevices(ShowDevicesStatement statement, TreeAccessCheckContext context) {
-    if (statement.hasTimeCondition()) {
-      try {
-        statement.setAuthorityScope(
-            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA),
-                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA)));
-      } catch (AuthException e) {
-        return new TSStatus(e.getCode().getStatusCode());
-      }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      return visitAuthorityInformation(statement, context);
-    }
-  }
-
-  @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
   }
@@ -962,24 +986,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowRegion(ShowRegionStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
-  }
-
-  @Override
-  public TSStatus visitShowTimeSeries(
-      ShowTimeSeriesStatement statement, TreeAccessCheckContext context) {
-    if (statement.hasTimeCondition()) {
-      try {
-        statement.setAuthorityScope(
-            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA),
-                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA)));
-      } catch (AuthException e) {
-        return new TSStatus(e.getCode().getStatusCode());
-      }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      return visitAuthorityInformation(statement, context);
-    }
   }
 
   @Override
@@ -997,5 +1003,69 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitTestConnection(
       TestConnectionStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowCurrentTimestamp(
+      ShowCurrentTimestampStatement showCurrentTimestampStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showCurrentTimestampStatement, context);
+  }
+
+  // ======================== TTL related ===========================
+  @Override
+  public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
+    List<PartialPath> checkedPaths = statement.getPaths();
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitShowTTL(ShowTTLStatement showTTLStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showTTLStatement, context);
+  }
+
+  @Override
+  public TSStatus visitUnSetTTL(
+      UnSetTTLStatement unSetTTLStatement, TreeAccessCheckContext context) {
+    return visitSetTTL(unSetTTLStatement, context);
+  }
+
+  // ================================= device related =============================
+  @Override
+  public TSStatus visitShowDevices(ShowDevicesStatement statement, TreeAccessCheckContext context) {
+    if (statement.hasTimeCondition()) {
+      try {
+        statement.setAuthorityScope(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA),
+                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA)));
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return visitAuthorityInformation(statement, context);
+    }
+  }
+
+  @Override
+  public TSStatus visitCountDevices(
+      CountDevicesStatement statement, TreeAccessCheckContext context) {
+    if (statement.hasTimeCondition()) {
+      try {
+        statement.setAuthorityScope(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA),
+                AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA)));
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return visitAuthorityInformation(statement, context);
+    }
   }
 }
