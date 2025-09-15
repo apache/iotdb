@@ -111,7 +111,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   private PipePattern pipePattern;
   private boolean isDbNameCoveredByPattern = false;
 
-  private boolean isHistoricalExtractorEnabled = false;
+  private boolean isHistoricalSourceEnabled = false;
   private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
@@ -174,7 +174,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
         EXTRACTOR_START_TIME_KEY,
         SOURCE_END_TIME_KEY,
         EXTRACTOR_END_TIME_KEY)) {
-      isHistoricalExtractorEnabled = true;
+      isHistoricalSourceEnabled = true;
 
       try {
         historicalDataExtractionStartTime =
@@ -214,7 +214,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
     // enabled, the pipe will lose some historical data.
     // 2. User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
     // enabling the historical data extraction, which may affect the realtime data extraction.
-    isHistoricalExtractorEnabled =
+    isHistoricalSourceEnabled =
         parameters.getBooleanOrDefault(
                 SystemConstant.RESTART_KEY, SystemConstant.RESTART_DEFAULT_VALUE)
             || parameters.getBooleanOrDefault(
@@ -382,7 +382,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
                 .peek(originalResourceList::add)
                 .filter(
                     resource ->
-                        isHistoricalExtractorEnabled
+                        isHistoricalSourceEnabled
                             &&
                             // Some resource is marked as deleted but not removed from the list.
                             !resource.isDeleted()
@@ -408,7 +408,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
                 .peek(originalResourceList::add)
                 .filter(
                     resource ->
-                        isHistoricalExtractorEnabled
+                        isHistoricalSourceEnabled
                             &&
                             // Some resource is marked as deleted but not removed from the list.
                             !resource.isDeleted()
