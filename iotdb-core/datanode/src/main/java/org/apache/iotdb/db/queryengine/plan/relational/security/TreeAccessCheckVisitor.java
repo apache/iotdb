@@ -96,8 +96,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.Drop
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
@@ -130,11 +136,70 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return AuthorityChecker.getTSStatus(false, "Only the admin user can perform this operation");
   }
 
+  // ====================== template related =================================
+
+  @Override
+  public TSStatus visitCreateSchemaTemplate(
+      CreateSchemaTemplateStatement createTemplateStatement, TreeAccessCheckContext context) {
+    return visitNode(createTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitSetSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement, TreeAccessCheckContext context) {
+    return visitNode(setSchemaTemplateStatement, context);
+  }
+
   @Override
   public TSStatus visitActivateTemplate(
       ActivateTemplateStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitBatchActivateTemplate(
+      BatchActivateTemplateStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitInternalBatchActivateTemplate(
+      InternalBatchActivateTemplateStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitShowSchemaTemplate(
+      ShowSchemaTemplateStatement showSchemaTemplateStatement, TreeAccessCheckContext context) {
+    return visitNode(showSchemaTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitDeactivateTemplate(
+      DeactivateTemplateStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitUnsetSchemaTemplate(
+      UnsetSchemaTemplateStatement unsetSchemaTemplateStatement, TreeAccessCheckContext context) {
+    return visitNode(unsetSchemaTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitDropSchemaTemplate(
+      DropSchemaTemplateStatement dropSchemaTemplateStatement, TreeAccessCheckContext context) {
+    return visitNode(dropSchemaTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitAlterSchemaTemplate(
+      AlterSchemaTemplateStatement alterSchemaTemplateStatement, TreeAccessCheckContext context) {
+    return visitNode(alterSchemaTemplateStatement, context);
   }
 
   @Override
@@ -169,13 +234,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           PrivilegeType.WRITE_SCHEMA);
     }
     return status;
-  }
-
-  @Override
-  public TSStatus visitAlterPipe(AlterPipeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
   }
 
   @Override
@@ -337,17 +395,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitBatchActivateTemplate(
-      BatchActivateTemplateStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths = statement.getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
-  }
-
-  @Override
   public TSStatus visitCountDevices(
       CountDevicesStatement statement, TreeAccessCheckContext context) {
     if (statement.hasTimeCondition()) {
@@ -400,20 +447,79 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         PrivilegeType.WRITE_SCHEMA);
   }
 
+  // =================================== CQ related ====================================
   @Override
   public TSStatus visitCreateContinuousQuery(
       CreateContinuousQueryStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_CQ),
-        PrivilegeType.USE_CQ);
+    return checkCQManagement(context.userName);
   }
 
   @Override
+  public TSStatus visitDropContinuousQuery(
+      DropContinuousQueryStatement statement, TreeAccessCheckContext context) {
+    return checkCQManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowContinuousQueries(
+      ShowContinuousQueriesStatement statement, TreeAccessCheckContext context) {
+    return checkCQManagement(context.userName);
+  }
+
+  private TSStatus checkCQManagement(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
+            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
+        PrivilegeType.USE_CQ);
+  }
+
+  // =================================== UDF related ====================================
+  @Override
   public TSStatus visitCreateFunction(
       CreateFunctionStatement statement, TreeAccessCheckContext context) {
+    return checkUDFManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitDropFunction(
+      DropFunctionStatement statement, TreeAccessCheckContext context) {
+    return checkUDFManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowFunctions(
+      ShowFunctionsStatement statement, TreeAccessCheckContext context) {
+    return checkUDFManagement(context.userName);
+  }
+
+  private TSStatus checkUDFManagement(String userName) {
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_UDF),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
+            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF),
         PrivilegeType.USE_UDF);
+  }
+
+  // =================================== UDF related ====================================
+  @Override
+  public TSStatus visitCreateModel(CreateModelStatement statement, TreeAccessCheckContext context) {
+    return checkModelManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitDropModel(DropModelStatement statement, TreeAccessCheckContext context) {
+    return checkModelManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowModels(ShowModelsStatement statement, TreeAccessCheckContext context) {
+    return checkModelManagement(context.userName);
+  }
+
+  private TSStatus checkModelManagement(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
+            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
+        PrivilegeType.USE_MODEL);
   }
 
   @Override
@@ -459,13 +565,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitCreateModel(CreateModelStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_MODEL),
-        PrivilegeType.USE_MODEL);
-  }
-
-  @Override
   public TSStatus visitCreateMultiTimeSeries(
       CreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {
     List<MeasurementPath> checkedPaths = statement.getPaths();
@@ -476,42 +575,115 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         PrivilegeType.WRITE_SCHEMA);
   }
 
+  // ================================ pipe plugin related ==================================
   @Override
   public TSStatus visitCreatePipePlugin(
       CreatePipePluginStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
+    return checkPipeManagement(context.userName);
   }
+
+  @Override
+  public TSStatus visitDropPipePlugin(
+      DropPipePluginStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowPipePlugins(
+      ShowPipePluginsStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  // =============================== pipe related ========================================
 
   @Override
   public TSStatus visitCreatePipe(CreatePipeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
+    return checkPipeManagement(context.userName);
   }
 
   @Override
-  public TSStatus visitCreateTimeseries(
-      CreateTimeSeriesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternPermission(
-            context.userName, statement.getPath(), PrivilegeType.WRITE_SCHEMA),
-        PrivilegeType.WRITE_SCHEMA);
+  public TSStatus visitShowPipes(ShowPipesStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
   }
+
+  @Override
+  public TSStatus visitDropPipe(DropPipeStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitAlterPipe(AlterPipeStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitStartPipe(StartPipeStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitStopPipe(StopPipeStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  private TSStatus checkPipeManagement(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
+            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
+  }
+
+  // =============================== subscription related ========================================
 
   @Override
   public TSStatus visitCreateTopic(CreateTopicStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
+    return checkPipeManagement(context.userName);
   }
 
   @Override
+  public TSStatus visitShowTopics(ShowTopicsStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitDropTopic(DropTopicStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowSubscriptions(
+      ShowSubscriptionsStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitDropSubscription(
+      DropSubscriptionStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(context.userName);
+  }
+
+  // ======================= trigger related ================================
+  @Override
   public TSStatus visitCreateTrigger(
       CreateTriggerStatement statement, TreeAccessCheckContext context) {
+    return checkTriggerManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitDropTrigger(DropTriggerStatement statement, TreeAccessCheckContext context) {
+    return checkTriggerManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowTriggers(
+      ShowTriggersStatement statement, TreeAccessCheckContext context) {
+    return checkTriggerManagement(context.userName);
+  }
+
+  private TSStatus checkTriggerManagement(String userName) {
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_TRIGGER),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
+            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER),
         PrivilegeType.USE_TRIGGER);
   }
 
@@ -531,13 +703,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
         PrivilegeType.MANAGE_DATABASE);
-  }
-
-  @Override
-  public TSStatus visitDeactivateTemplate(
-      DeactivateTemplateStatement statement, TreeAccessCheckContext context) {
-    return checkTimeSeriesPermission(
-        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -568,70 +733,17 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitDeleteTimeSeries(
-      DeleteTimeSeriesStatement statement, TreeAccessCheckContext context) {
+  public TSStatus visitCreateTimeseries(
+      CreateTimeSeriesStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
-  public TSStatus visitDropContinuousQuery(
-      DropContinuousQueryStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_CQ),
-        PrivilegeType.USE_CQ);
-  }
-
-  @Override
-  public TSStatus visitDropFunction(
-      DropFunctionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_UDF),
-        PrivilegeType.USE_UDF);
-  }
-
-  @Override
-  public TSStatus visitDropModel(DropModelStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_MODEL),
-        PrivilegeType.USE_MODEL);
-  }
-
-  @Override
-  public TSStatus visitDropPipePlugin(
-      DropPipePluginStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
-  }
-
-  @Override
-  public TSStatus visitDropPipe(DropPipeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
-  }
-
-  @Override
-  public TSStatus visitDropSubscription(
-      DropSubscriptionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
-  }
-
-  @Override
-  public TSStatus visitDropTopic(DropTopicStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
-  }
-
-  @Override
-  public TSStatus visitDropTrigger(DropTriggerStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_TRIGGER),
-        PrivilegeType.USE_TRIGGER);
+  public TSStatus visitDeleteTimeSeries(
+      DeleteTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -675,17 +787,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitInsert(InsertStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_DATA);
-  }
-
-  @Override
-  public TSStatus visitInternalBatchActivateTemplate(
-      InternalBatchActivateTemplateStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths = statement.getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -819,14 +920,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowContinuousQueries(
-      ShowContinuousQueriesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_CQ),
-        PrivilegeType.USE_CQ);
-  }
-
-  @Override
   public TSStatus visitShowCurrentSqlDialect(
       ShowCurrentSqlDialectStatement statement, TreeAccessCheckContext context) {
     return SUCCEED;
@@ -862,36 +955,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowFunctions(
-      ShowFunctionsStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_UDF),
-        PrivilegeType.USE_UDF);
-  }
-
-  @Override
-  public TSStatus visitShowModels(ShowModelsStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_MODEL),
-        PrivilegeType.USE_MODEL);
-  }
-
-  @Override
-  public TSStatus visitShowPipePlugins(
-      ShowPipePluginsStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
-  }
-
-  @Override
-  public TSStatus visitShowPipes(ShowPipesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
-  }
-
-  @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
   }
@@ -899,14 +962,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowRegion(ShowRegionStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
-  }
-
-  @Override
-  public TSStatus visitShowSubscriptions(
-      ShowSubscriptionsStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
   }
 
   @Override
@@ -928,21 +983,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowTopics(ShowTopicsStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
-  }
-
-  @Override
-  public TSStatus visitShowTriggers(
-      ShowTriggersStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_TRIGGER),
-        PrivilegeType.USE_TRIGGER);
-  }
-
-  @Override
   public TSStatus visitShowVariables(
       ShowVariablesStatement statement, TreeAccessCheckContext context) {
     return SUCCEED;
@@ -951,20 +991,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowVersion(ShowVersionStatement statement, TreeAccessCheckContext context) {
     return SUCCEED;
-  }
-
-  @Override
-  public TSStatus visitStartPipe(StartPipeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
-  }
-
-  @Override
-  public TSStatus visitStopPipe(StopPipeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
   }
 
   @Override
