@@ -40,7 +40,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
@@ -62,14 +65,19 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
@@ -99,10 +107,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.Show
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.RenameLogicalViewStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
@@ -978,5 +988,65 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitTestConnection(
       TestConnectionStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowStorageGroup(
+      ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showDatabaseStatement, context);
+  }
+
+  @Override
+  public TSStatus visitCountStorageGroup(
+      CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(countDatabaseStatement, context);
+  }
+
+  @Override
+  public TSStatus visitCountLevelTimeSeries(
+      CountLevelTimeSeriesStatement countStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(countStatement, context);
+  }
+
+  @Override
+  public TSStatus visitCountNodes(
+      CountNodesStatement countStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(countStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowChildNodes(
+      ShowChildNodesStatement showChildNodesStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showChildNodesStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowChildPaths(
+      ShowChildPathsStatement showChildPathsStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showChildPathsStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowCurrentTimestamp(
+      ShowCurrentTimestampStatement showCurrentTimestampStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showCurrentTimestampStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowLogicalView(
+      ShowLogicalViewStatement showLogicalViewStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showLogicalViewStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowPathsUsingTemplate(
+      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement,
+      TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showPathsUsingTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowTTL(ShowTTLStatement showTTLStatement, TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showTTLStatement, context);
   }
 }
