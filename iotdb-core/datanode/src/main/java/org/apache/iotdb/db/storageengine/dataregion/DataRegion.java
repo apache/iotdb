@@ -3262,9 +3262,16 @@ public class DataRegion implements IDataRegionForQuery {
           if (timeIndex instanceof DeviceTimeIndex) {
             DeviceTimeIndex deviceTimeIndex = (DeviceTimeIndex) timeIndex;
             for (IDeviceID deviceID : deviceTimeIndex.getDevices()) {
-              DataNodeSchemaCache.getInstance()
-                  .getDeviceSchemaCache()
-                  .invalidateDeviceLastCache(((PlainDeviceID) deviceID).toStringID());
+              try {
+                DataNodeSchemaCache.getInstance()
+                    .getDeviceSchemaCache()
+                    .invalidateDeviceLastCache(new PartialPath(deviceID));
+              } catch (IllegalPathException e) {
+                logger.error(
+                    "Failed to construct path for invalidating last cache of {}", deviceID, e);
+                DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
+                return;
+              }
             }
           } else {
             DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();

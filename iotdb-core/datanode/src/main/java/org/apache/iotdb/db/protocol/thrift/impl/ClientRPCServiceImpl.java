@@ -817,7 +817,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards."));
       }
 
-      final Map<PartialPath, Map<String, TimeValuePair>> resultMap = new HashMap<>();
+      final Map<String, Map<String, Map<String, TimeValuePair>>> resultMap = new HashMap<>();
       int sensorNum = 0;
 
       final String prefixString = prefixPath.toString();
@@ -838,18 +838,24 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // 2.2 all sensors hit cache, return response ~= 20ms
       final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
 
-      for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> result : resultMap.entrySet()) {
-        final String deviceWithPrefix = result.getKey() + TsFileConstant.PATH_SEPARATOR;
-        for (final Map.Entry<String, TimeValuePair> measurementLastEntry :
+      for (final Map.Entry<String, Map<String, Map<String, TimeValuePair>>> result :
+          resultMap.entrySet()) {
+        for (final Map.Entry<String, Map<String, TimeValuePair>> device2MeasurementLastEntry :
             result.getValue().entrySet()) {
-          final TimeValuePair tvPair = measurementLastEntry.getValue();
-          LastQueryUtil.appendLastValue(
-              builder,
-              tvPair.getTimestamp(),
-              new Binary(
-                  deviceWithPrefix + measurementLastEntry.getKey(), TSFileConfig.STRING_CHARSET),
-              tvPair.getValue().getStringValue(),
-              tvPair.getValue().getDataType().name());
+          final String deviceWithSeparator =
+              device2MeasurementLastEntry.getKey() + TsFileConstant.PATH_SEPARATOR;
+          for (final Map.Entry<String, TimeValuePair> measurementLastEntry :
+              result.getValue().entrySet()) {
+            final TimeValuePair tvPair = measurementLastEntry.getValue();
+            LastQueryUtil.appendLastValue(
+                builder,
+                tvPair.getTimestamp(),
+                new Binary(
+                    deviceWithSeparator + measurementLastEntry.getKey(),
+                    TSFileConfig.STRING_CHARSET),
+                tvPair.getValue().getStringValue(),
+                tvPair.getValue().getDataType().name());
+          }
         }
       }
 
