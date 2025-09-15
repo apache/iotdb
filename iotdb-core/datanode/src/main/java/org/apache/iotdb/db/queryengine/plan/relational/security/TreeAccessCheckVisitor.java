@@ -556,7 +556,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowModels(ShowModelsStatement statement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.SUPER_USER.equals(contextuserName)) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
