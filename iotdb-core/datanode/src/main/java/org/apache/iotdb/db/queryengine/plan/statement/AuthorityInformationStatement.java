@@ -50,4 +50,8 @@ public abstract class AuthorityInformationStatement extends Statement {
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAuthorityInformation(this, context);
   }
+
+  public void setAuthorityScope(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
+  }
 }

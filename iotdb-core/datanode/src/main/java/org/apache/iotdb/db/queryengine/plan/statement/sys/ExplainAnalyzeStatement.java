@@ -40,9 +40,7 @@ public class ExplainAnalyzeStatement extends Statement {
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    return queryStatement.checkPermissionBeforeProcess(userName);
-  }
+  public TSStatus checkPermissionBeforeProcess(String userName) {}
 
   public QueryStatement getQueryStatement() {
     return queryStatement;

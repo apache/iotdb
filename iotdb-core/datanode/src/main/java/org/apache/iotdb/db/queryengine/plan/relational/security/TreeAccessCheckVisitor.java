@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorityInformationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -107,6 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAccessCheckContext> {
 
@@ -137,7 +141,17 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitAuthorityInformation(
-      AuthorityInformationStatement statement, TreeAccessCheckContext context) {}
+      AuthorityInformationStatement statement, TreeAccessCheckContext context) {
+    try {
+      if (!AuthorityChecker.SUPER_USER.equals(context.userName)) {
+        statement.setAuthorityScope(
+            AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA));
+      }
+    } catch (AuthException e) {
+      return new TSStatus(e.getCode().getStatusCode());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
 
   @Override
   public TSStatus visitBatchActivateTemplate(
@@ -145,11 +159,47 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitCountDevices(
-      CountDevicesStatement statement, TreeAccessCheckContext context) {}
+      CountDevicesStatement statement, TreeAccessCheckContext context) {
+    if (statement.hasTimeCondition()) {
+      try {
+        if (!AuthorityChecker.SUPER_USER.equals(context.userName)) {
+          statement.setAuthorityScope(
+              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                  AuthorityChecker.getAuthorizedPathTree(
+                      context.userName, PrivilegeType.READ_SCHEMA),
+                  AuthorityChecker.getAuthorizedPathTree(
+                      context.userName, PrivilegeType.READ_DATA)));
+        }
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return visitAuthorityInformation(statement, context);
+    }
+  }
 
   @Override
   public TSStatus visitCountTimeSeries(
-      CountTimeSeriesStatement statement, TreeAccessCheckContext context) {}
+      CountTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    if (statement.hasTimeCondition()) {
+      try {
+        if (!AuthorityChecker.SUPER_USER.equals(context.userName)) {
+          statement.setAuthorityScope(
+              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                  AuthorityChecker.getAuthorizedPathTree(
+                      context.userName, PrivilegeType.READ_SCHEMA),
+                  AuthorityChecker.getAuthorizedPathTree(
+                      context.userName, PrivilegeType.READ_DATA)));
+        }
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return visitAuthorityInformation(statement, context);
+    }
+  }
 
   @Override
   public TSStatus visitCountTimeSlotList(
@@ -252,7 +302,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitExplainAnalyze(
-      ExplainAnalyzeStatement statement, TreeAccessCheckContext context) {}
+      ExplainAnalyzeStatement statement, TreeAccessCheckContext context) {
+    statement.getQueryStatement().accept(this, context);
+  }
 
   @Override
   public TSStatus visitExtendRegion(
@@ -366,8 +418,25 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       ShowDataNodesStatement statement, TreeAccessCheckContext context) {}
 
   @Override
-  public TSStatus visitShowDevices(
-      ShowDevicesStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowDevices(ShowDevicesStatement statement, TreeAccessCheckContext context) {
+    if (statement.hasTimeCondition()) {
+      try {
+        if (!AuthorityChecker.SUPER_USER.equals(context.userName)) {
+          statement.setAuthorityScope(
+              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                  AuthorityChecker.getAuthorizedPathTree(
+                      context.userName, PrivilegeType.READ_SCHEMA),
+                  AuthorityChecker.getAuthorizedPathTree(
+                      context.userName, PrivilegeType.READ_DATA)));
+        }
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return visitAuthorityInformation(statement, context);
+    }
+  }
 
   @Override
   public TSStatus visitShowFunctions(
@@ -408,7 +477,25 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowTimeSeries(
-      ShowTimeSeriesStatement statement, TreeAccessCheckContext context) {}
+      ShowTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    if (statement.hasTimeCondition()) {
+      try {
+        if (!AuthorityChecker.SUPER_USER.equals(context.userName)) {
+          statement.setAuthorityScope(
+              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                  AuthorityChecker.getAuthorizedPathTree(
+                      context.userName, PrivilegeType.READ_SCHEMA),
+                  AuthorityChecker.getAuthorizedPathTree(
+                      context.userName, PrivilegeType.READ_DATA)));
+        }
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return visitAuthorityInformation(statement, context);
+    }
+  }
 
   @Override
   public TSStatus visitShowTopics(ShowTopicsStatement statement, TreeAccessCheckContext context) {}

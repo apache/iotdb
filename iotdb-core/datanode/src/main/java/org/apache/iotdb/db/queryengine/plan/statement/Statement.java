@@ -62,12 +62,6 @@ public abstract class Statement extends StatementNode {
 
   public abstract List<? extends PartialPath> getPaths();
 
-  public TSStatus checkPermissionBeforeProcess(final String userName) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.SUPER_USER.equals(userName),
-        "Only the admin user can perform this operation");
-  }
-
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       final MPPQueryContext context) {
     throw new UnsupportedOperationException("Method not implemented yet");
