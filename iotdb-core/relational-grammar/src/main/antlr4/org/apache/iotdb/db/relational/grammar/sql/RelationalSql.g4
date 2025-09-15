@@ -765,9 +765,6 @@ objectScope
 systemPrivilege
     : MANAGE_USER
     | MANAGE_ROLE
-    | SYSTEM
-    | SECURITY
-    | AUDIT
     ;
 
 objectPrivilege

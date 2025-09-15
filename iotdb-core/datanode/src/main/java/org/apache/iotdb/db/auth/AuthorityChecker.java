@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
@@ -174,10 +173,7 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(
-                NO_PERMISSION_PROMOTION
-                    + getSatisfyAnyNeededPrivilegeString(
-                        AuthUtils.getAllPrivilegesContainingCurrentPrivilege(neededPrivilege)));
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
   }
 
   private static String getSatisfyAnyNeededPrivilegeString(List<PrivilegeType> privileges) {
