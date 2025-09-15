@@ -255,7 +255,7 @@ public class DataRegion implements IDataRegionForQuery {
   // Cache TableSchema to prevent OOM
   private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
       Caffeine.newBuilder()
-          .maximumWeight(1 << 20)
+          .maximumWeight(config.getDataNodeTableSchemaCacheSize())
           .weigher(
               (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
                   (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))

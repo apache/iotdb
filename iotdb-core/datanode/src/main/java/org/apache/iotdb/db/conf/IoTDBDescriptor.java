@@ -2127,6 +2127,12 @@ public class IoTDBDescriptor {
                   "include_null_value_in_write_throughput_metric",
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "include_null_value_in_write_throughput_metric"))));
+
+      conf.setDataNodeTableSchemaCacheSize(
+          Long.parseLong(
+              properties.getProperty(
+                  "data_node_table_schema_cache_max_size",
+                  String.valueOf(conf.getDataNodeTableSchemaCacheSize()))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
