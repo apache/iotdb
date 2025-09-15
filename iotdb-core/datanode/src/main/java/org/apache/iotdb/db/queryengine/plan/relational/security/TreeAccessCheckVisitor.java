@@ -110,6 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
@@ -229,6 +230,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement,
       TreeAccessCheckContext context) {
     return visitAuthorityInformation(showPathsUsingTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement, TreeAccessCheckContext context) {
+    return visitNode(showPathSetTemplateStatement, context);
   }
 
   // ============================= timeseries view related ===============
