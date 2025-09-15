@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pla
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
@@ -204,7 +205,8 @@ public class Coordinator {
             dispatchThreadNum,
             dispatchThreadNum,
             new ThreadPoolExecutor.CallerRunsPolicy());
-    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
+    this.accessControl =
+        new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
     this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(

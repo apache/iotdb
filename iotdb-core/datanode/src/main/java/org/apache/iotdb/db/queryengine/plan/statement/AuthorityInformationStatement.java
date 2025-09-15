@@ -45,4 +45,9 @@ public abstract class AuthorityInformationStatement extends Statement {
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitAuthorityInformation(this, context);
+  }
 }

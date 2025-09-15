@@ -721,4 +721,8 @@ public abstract class StatementVisitor<R, C> {
   public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {
     return visitStatement(createTrainingStatement, context);
   }
+
+  public R visitAuthorityInformation(AuthorityInformationStatement statement, C context) {
+    return visitStatement(statement, context);
+  }
 }

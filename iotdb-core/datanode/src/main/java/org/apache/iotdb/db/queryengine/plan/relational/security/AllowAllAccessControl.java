@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+
+import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 
 public class AllowAllAccessControl implements AccessControl {
   @Override
@@ -103,5 +107,10 @@ public class AllowAllAccessControl implements AccessControl {
   @Override
   public void checkUserIsAdmin(String userName) {
     // allow anything
+  }
+
+  @Override
+  public TSStatus check(Statement statement) {
+    return SUCCEED;
   }
 }
