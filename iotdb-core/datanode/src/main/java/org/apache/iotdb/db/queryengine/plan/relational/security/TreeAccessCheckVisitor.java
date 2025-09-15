@@ -707,6 +707,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitTestConnection(
       TestConnectionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(userName);
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
   }
 }
