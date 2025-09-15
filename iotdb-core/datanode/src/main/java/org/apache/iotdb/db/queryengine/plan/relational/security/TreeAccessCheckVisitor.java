@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorityInformationStatement;
@@ -111,6 +112,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import com.google.common.collect.ImmutableList;
+
+import java.util.List;
+
+import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 
 public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAccessCheckContext> {
 
@@ -328,94 +335,192 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitInsert(InsertStatement statement, TreeAccessCheckContext context) {}
 
-  // -------- sww -----
   @Override
   public TSStatus visitInternalBatchActivateTemplate(
-      InternalBatchActivateTemplateStatement statement, TreeAccessCheckContext context) {}
+      InternalBatchActivateTemplateStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    List<PartialPath> checkedPaths = statement.getPaths();
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
+  }
 
   @Override
   public TSStatus visitInternalCreateMultiTimeSeries(
-      InternalCreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {}
+      InternalCreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    List<PartialPath> checkedPaths = statement.getPaths();
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
+  }
 
   @Override
-  public TSStatus visitInternalCreateTimeSeries(
-      InternalCreateTimeSeriesStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitInternalCreateTimeseries(
+      InternalCreateTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    List<PartialPath> checkedPaths = statement.getPaths();
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
+  }
 
   @Override
-  public TSStatus visitKillQuery(KillQueryStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitKillQuery(KillQueryStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
-  public TSStatus visitLoadTsFile(LoadTsFileStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitLoadFile(LoadTsFileStatement statement, TreeAccessCheckContext context) {
+    // no need to check here, it will be checked in process phase
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
 
   @Override
   public TSStatus visitMigrateRegion(
-      MigrateRegionStatement statement, TreeAccessCheckContext context) {}
+      MigrateRegionStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
-  public TSStatus visitQuery(QueryStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitQuery(QueryStatement statement, TreeAccessCheckContext context) {
+    try {
+      if (!AuthorityChecker.SUPER_USER.equals(context.userName)) {
+        statement.setAuthorityScope(
+            AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA));
+      }
+    } catch (AuthException e) {
+      return new TSStatus(e.getCode().getStatusCode());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
 
   @Override
   public TSStatus visitReconstructRegion(
-      ReconstructRegionStatement statement, TreeAccessCheckContext context) {}
+      ReconstructRegionStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitRemoveAINode(
-      RemoveAINodeStatement statement, TreeAccessCheckContext context) {}
+      RemoveAINodeStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitRemoveConfigNode(
-      RemoveConfigNodeStatement statement, TreeAccessCheckContext context) {}
+      RemoveConfigNodeStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitRemoveDataNode(
-      RemoveDataNodeStatement statement, TreeAccessCheckContext context) {}
+      RemoveDataNodeStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitRemoveRegion(
-      RemoveRegionStatement statement, TreeAccessCheckContext context) {}
+      RemoveRegionStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitRenameLogicalView(
-      RenameLogicalViewStatement statement, TreeAccessCheckContext context) {}
+      RenameLogicalViewStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    List<PartialPath> checkedPaths =
+        ImmutableList.of(statement.getOldName(), statement.getNewName());
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
+  }
 
   @Override
   public TSStatus visitSetSqlDialect(
-      SetSqlDialectStatement statement, TreeAccessCheckContext context) {}
+      SetSqlDialectStatement statement, TreeAccessCheckContext context) {
+    return SUCCEED;
+  }
 
   @Override
-  public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    List<PartialPath> checkedPaths = statement.getPaths();
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
+  }
 
   @Override
-  public TSStatus visitShowAINodes(
-      ShowAINodesStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowAINodes(ShowAINodesStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitShowClusterId(
-      ShowClusterIdStatement statement, TreeAccessCheckContext context) {}
+      ShowClusterIdStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
-  public TSStatus visitShowCluster(
-      ShowClusterStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowCluster(ShowClusterStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitShowConfigNodes(
-      ShowConfigNodesStatement statement, TreeAccessCheckContext context) {}
+      ShowConfigNodesStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitShowContinuousQueries(
-      ShowContinuousQueriesStatement statement, TreeAccessCheckContext context) {}
+      ShowContinuousQueriesStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_CQ),
+        PrivilegeType.USE_CQ);
+  }
 
   @Override
   public TSStatus visitShowCurrentSqlDialect(
-      ShowCurrentSqlDialectStatement statement, TreeAccessCheckContext context) {}
+      ShowCurrentSqlDialectStatement statement, TreeAccessCheckContext context) {
+    return SUCCEED;
+  }
 
   @Override
   public TSStatus visitShowCurrentUser(
-      ShowCurrentUserStatement statement, TreeAccessCheckContext context) {}
+      ShowCurrentUserStatement statement, TreeAccessCheckContext context) {
+    return SUCCEED;
+  }
 
   @Override
   public TSStatus visitShowDataNodes(
-      ShowDataNodesStatement statement, TreeAccessCheckContext context) {}
+      ShowDataNodesStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitShowDevices(ShowDevicesStatement statement, TreeAccessCheckContext context) {
@@ -440,40 +545,90 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowFunctions(
-      ShowFunctionsStatement statement, TreeAccessCheckContext context) {}
+      ShowFunctionsStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_UDF),
+        PrivilegeType.USE_UDF);
+  }
 
   @Override
-  public TSStatus visitShowModels(ShowModelsStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowModels(ShowModelsStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(contextuserName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_MODEL),
+        PrivilegeType.USE_MODEL);
+  }
 
   @Override
   public TSStatus visitShowNodesInSchemaTemplate(
-      ShowNodesInSchemaTemplateStatement statement, TreeAccessCheckContext context) {}
+      ShowNodesInSchemaTemplateStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.SUPER_USER.equals(context.userName),
+        "Only the admin user can perform this operation");
+  }
 
   @Override
   public TSStatus visitShowPathSetTemplate(
-      ShowPathSetTemplateStatement statement, TreeAccessCheckContext context) {}
+      ShowPathSetTemplateStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.SUPER_USER.equals(context.userName),
+        "Only the admin user can perform this operation");
+  }
 
   @Override
   public TSStatus visitShowPipePlugins(
-      ShowPipePluginsStatement statement, TreeAccessCheckContext context) {}
+      ShowPipePluginsStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
+  }
 
   @Override
-  public TSStatus visitShowPipes(ShowPipesStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowPipes(ShowPipesStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
+  }
 
   @Override
-  public TSStatus visitShowQueries(
-      ShowQueriesStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
-  public TSStatus visitShowRegion(ShowRegionStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowRegion(ShowRegionStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
 
   @Override
   public TSStatus visitShowSchemaTemplate(
-      ShowSchemaTemplateStatement statement, TreeAccessCheckContext context) {}
+      ShowSchemaTemplateStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.SUPER_USER.equals(context.userName),
+        "Only the admin user can perform this operation");
+  }
 
   @Override
   public TSStatus visitShowSubscriptions(
-      ShowSubscriptionsStatement statement, TreeAccessCheckContext context) {}
+      ShowSubscriptionsStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
+  }
 
   @Override
   public TSStatus visitShowTimeSeries(
@@ -498,27 +653,60 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowTopics(ShowTopicsStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowTopics(ShowTopicsStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
+  }
 
   @Override
   public TSStatus visitShowTriggers(
-      ShowTriggersStatement statement, TreeAccessCheckContext context) {}
+      ShowTriggersStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_TRIGGER),
+        PrivilegeType.USE_TRIGGER);
+  }
 
   @Override
   public TSStatus visitShowVariables(
-      ShowVariablesStatement statement, TreeAccessCheckContext context) {}
+      ShowVariablesStatement statement, TreeAccessCheckContext context) {
+    return SUCCEED;
+  }
 
   @Override
-  public TSStatus visitShowVersion(
-      ShowVersionStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitShowVersion(ShowVersionStatement statement, TreeAccessCheckContext context) {
+    return SUCCEED;
+  }
 
   @Override
-  public TSStatus visitStartPipe(StartPipeStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitStartPipe(StartPipeStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
+  }
 
   @Override
-  public TSStatus visitStopPipe(StopPipeStatement statement, TreeAccessCheckContext context) {}
+  public TSStatus visitStopPipe(StopPipeStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
+  }
 
   @Override
   public TSStatus visitTestConnection(
-      TestConnectionStatement statement, TreeAccessCheckContext context) {}
+      TestConnectionStatement statement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrMaintain(userName);
+  }
 }

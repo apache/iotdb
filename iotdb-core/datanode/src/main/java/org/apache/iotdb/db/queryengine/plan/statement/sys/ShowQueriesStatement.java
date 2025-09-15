@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
@@ -54,11 +52,6 @@ public class ShowQueriesStatement extends ShowStatement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowQueries(this, context);
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkSuperUserOrMaintain(userName);
   }
 
   public void setWhereCondition(WhereCondition whereCondition) {
