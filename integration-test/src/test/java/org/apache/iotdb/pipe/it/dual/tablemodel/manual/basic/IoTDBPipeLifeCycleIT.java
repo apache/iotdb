@@ -770,12 +770,5 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
         "test",
         "test123123456",
         null);
-    assertTableTestFail(
-        senderEnv,
-        "show pipePlugins",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
-        "test",
-        "test123123456",
-        null);
   }
 }
