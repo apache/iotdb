@@ -39,6 +39,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -357,7 +359,7 @@ public class DataNodeSchemaCache {
     return deviceSchemaCache.getLastCache(inputMap);
   }
 
-  public TimeValuePair getLastCache(final MeasurementPath seriesPath) {
+  public TimeValuePair getLastCache(final PartialPath seriesPath) {
     return deviceSchemaCache.getLastEntry(
         null, seriesPath.getIDeviceID(), seriesPath.getMeasurement());
   }
@@ -374,6 +376,28 @@ public class DataNodeSchemaCache {
       return;
     }
     deviceSchemaCache.invalidateLastCache(database);
+  }
+
+  /**
+   * Update the {@link TableDeviceLastCache} in writing for tree model. If a measurement is with all
+   * {@code null}s or is an id/attribute column, its {@link TimeValuePair[]} shall be {@code null}.
+   * For correctness, this will put the {@link TableDeviceCacheEntry} lazily and only update the
+   * existing {@link TableDeviceLastCache}s of measurements.
+   *
+   * @param database the device's database, WITH "root"
+   * @param deviceID {@link IDeviceID}
+   * @param measurements the fetched measurements
+   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
+   */
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceID,
+      final String[] measurements,
+      final @Nonnull TimeValuePair[] timeValuePairs,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    deviceSchemaCache.updateLastCache(
+        database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
 
   /**
