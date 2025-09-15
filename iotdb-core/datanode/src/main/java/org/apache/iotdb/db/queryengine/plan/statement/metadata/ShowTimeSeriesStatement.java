@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -77,9 +76,6 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   public boolean hasTimeCondition() {
     return timeCondition != null;
   }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {}
 
   @Override
   public List<PartialPath> getPaths() {

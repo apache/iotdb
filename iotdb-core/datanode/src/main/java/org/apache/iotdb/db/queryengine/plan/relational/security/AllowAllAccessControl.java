@@ -110,7 +110,7 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
-  public TSStatus check(Statement statement) {
+  public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
     return SUCCEED;
   }
 }
