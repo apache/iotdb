@@ -30,17 +30,17 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class TreeDeviceNormalSchema implements IDeviceSchema {
+public class DeviceNormalSchema implements IDeviceSchema {
 
   static final int INSTANCE_SIZE =
-      (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class)
+      (int) RamUsageEstimator.shallowSizeOfInstance(DeviceNormalSchema.class)
           + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
   private final String database;
   private final boolean isAligned;
 
   private final ConcurrentMap<String, SchemaCacheEntry> measurementMap = new ConcurrentHashMap<>();
 
-  public TreeDeviceNormalSchema(final String database, final boolean isAligned) {
+  public DeviceNormalSchema(final String database, final boolean isAligned) {
     this.database = database;
     this.isAligned = isAligned;
   }

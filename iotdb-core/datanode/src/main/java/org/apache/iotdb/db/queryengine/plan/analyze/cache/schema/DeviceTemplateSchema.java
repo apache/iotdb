@@ -21,14 +21,14 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-public class TreeDeviceTemplateSchema implements IDeviceSchema {
+public class DeviceTemplateSchema implements IDeviceSchema {
   static final int INSTANCE_SIZE =
-      (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class);
+      (int) RamUsageEstimator.shallowSizeOfInstance(DeviceTemplateSchema.class);
 
   private final String database;
   private final int templateId;
 
-  TreeDeviceTemplateSchema(final String database, final int templateId) {
+  DeviceTemplateSchema(final String database, final int templateId) {
     this.database = database;
     this.templateId = templateId;
   }

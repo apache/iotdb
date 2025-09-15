@@ -103,10 +103,10 @@ public class DataNodeSchemaCache {
   public ClusterSchemaTree get(final PartialPath devicePath, final String[] measurements) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath.getNodes());
-    if (!(schema instanceof TreeDeviceNormalSchema)) {
+    if (!(schema instanceof DeviceNormalSchema)) {
       return tree;
     }
-    final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+    final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
     for (final String measurement : measurements) {
       final SchemaCacheEntry entry = treeSchema.getSchemaCacheEntry(measurement);
       if (Objects.nonNull(entry)) {
@@ -132,10 +132,10 @@ public class DataNodeSchemaCache {
   public ClusterSchemaTree getMatchedSchemaWithTemplate(final PartialPath devicePath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath.getNodes());
-    if (!(schema instanceof TreeDeviceTemplateSchema)) {
+    if (!(schema instanceof DeviceTemplateSchema)) {
       return tree;
     }
-    final TreeDeviceTemplateSchema treeSchema = (TreeDeviceTemplateSchema) schema;
+    final DeviceTemplateSchema treeSchema = (DeviceTemplateSchema) schema;
     Template template = templateManager.getTemplate(treeSchema.getTemplateId());
     tree.appendTemplateDevice(devicePath, template.isDirectAligned(), template.getId(), template);
     tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
@@ -153,10 +153,10 @@ public class DataNodeSchemaCache {
     final IDeviceSchema schema =
         deviceSchemaCache.getDeviceSchema(
             Arrays.copyOf(fullPath.getNodes(), fullPath.getNodeLength() - 1));
-    if (!(schema instanceof TreeDeviceNormalSchema)) {
+    if (!(schema instanceof DeviceNormalSchema)) {
       return tree;
     }
-    final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+    final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
     final SchemaCacheEntry entry = treeSchema.getSchemaCacheEntry(fullPath.getMeasurement());
     if (Objects.isNull(entry)) {
       return tree;
@@ -173,12 +173,12 @@ public class DataNodeSchemaCache {
 
     final IDeviceSchema schema =
         deviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
-    if (!(schema instanceof TreeDeviceNormalSchema)) {
+    if (!(schema instanceof DeviceNormalSchema)) {
       return IntStream.range(0, schemaComputation.getMeasurements().length)
           .boxed()
           .collect(Collectors.toList());
     }
-    final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+    final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
 
     for (int i = 0; i < schemaComputation.getMeasurements().length; i++) {
       final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[i]);
@@ -231,12 +231,12 @@ public class DataNodeSchemaCache {
       final PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       final IDeviceSchema schema =
           deviceSchemaCache.getDeviceSchema(fullPath.getDevicePath().getNodes());
-      if (!(schema instanceof TreeDeviceNormalSchema)) {
+      if (!(schema instanceof DeviceNormalSchema)) {
         indexOfMissingMeasurements.add(i);
         continue;
       }
 
-      final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+      final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
       final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(fullPath.getMeasurement());
       if (Objects.isNull(value)) {
         indexOfMissingMeasurements.add(i);
@@ -268,11 +268,11 @@ public class DataNodeSchemaCache {
     final IDeviceSchema deviceSchema =
         deviceSchemaCache.getDeviceSchema(computation.getDevicePath().getNodes());
 
-    if (!(deviceSchema instanceof TreeDeviceTemplateSchema)) {
+    if (!(deviceSchema instanceof DeviceTemplateSchema)) {
       return IntStream.range(0, measurements.length).boxed().collect(Collectors.toList());
     }
 
-    final TreeDeviceTemplateSchema deviceTemplateSchema = (TreeDeviceTemplateSchema) deviceSchema;
+    final DeviceTemplateSchema deviceTemplateSchema = (DeviceTemplateSchema) deviceSchema;
 
     computation.computeDevice(
         templateManager.getTemplate(deviceTemplateSchema.getTemplateId()).isDirectAligned());
@@ -343,8 +343,8 @@ public class DataNodeSchemaCache {
   }
 
   /**
-   * Store the fetched schema in either the {@link TreeDeviceNormalSchema} or {@link
-   * TreeDeviceTemplateSchema}, depending on its associated device.
+   * Store the fetched schema in either the {@link DeviceNormalSchema} or {@link
+   * DeviceTemplateSchema}, depending on its associated device.
    */
   public void put(final ClusterSchemaTree tree) {
     tree.getAllDevices()
@@ -447,6 +447,10 @@ public class DataNodeSchemaCache {
               isMultiLevelWildcardMeasurement ? measurementPath : measurementPath.getDevicePath(),
               isMultiLevelWildcardMeasurement);
         });
+  }
+
+  public DeviceSchemaCache getDeviceSchemaCache() {
+    return deviceSchemaCache;
   }
 
   public void cleanUp() {

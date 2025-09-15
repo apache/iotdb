@@ -25,17 +25,13 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -56,53 +52,23 @@ public class TableDeviceCacheEntry {
   private final AtomicReference<IDeviceSchema> deviceSchema = new AtomicReference<>();
   private final AtomicReference<DeviceLastCache> lastCache = new AtomicReference<>();
 
-  /////////////////////////////// Attribute ///////////////////////////////
-
-  int invalidateAttribute() {
-    final AtomicInteger size = new AtomicInteger(0);
-    deviceSchema.updateAndGet(
-        schema -> {
-          if (schema instanceof TableAttributeSchema) {
-            size.set(schema.estimateSize());
-            return null;
-          }
-          return schema;
-        });
-    return size.get();
-  }
-
-  int invalidateAttributeColumn(final String attribute) {
-    final AtomicInteger size = new AtomicInteger(0);
-    deviceSchema.updateAndGet(
-        schema -> {
-          if (schema instanceof TableAttributeSchema) {
-            size.set(((TableAttributeSchema) schema).removeAttribute(attribute));
-            return schema;
-          }
-          return schema;
-        });
-    return size.get();
-  }
-
-  /////////////////////////////// Tree model ///////////////////////////////
-
   int setDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     // Safe here because tree schema is invalidated by the whole entry
     if (deviceSchemaInfo.getTemplateId() == NON_TEMPLATE) {
       final int result =
           (deviceSchema.compareAndSet(
-                  null, new TreeDeviceNormalSchema(database, deviceSchemaInfo.isAligned()))
-              ? TreeDeviceNormalSchema.INSTANCE_SIZE
+                  null, new DeviceNormalSchema(database, deviceSchemaInfo.isAligned()))
+              ? DeviceNormalSchema.INSTANCE_SIZE
               : 0);
-      return deviceSchema.get() instanceof TreeDeviceNormalSchema
+      return deviceSchema.get() instanceof DeviceNormalSchema
           ? result
-              + ((TreeDeviceNormalSchema) deviceSchema.get())
+              + ((DeviceNormalSchema) deviceSchema.get())
                   .update(deviceSchemaInfo.getMeasurementSchemaInfoList())
           : 0;
     } else {
       return deviceSchema.compareAndSet(
-              null, new TreeDeviceTemplateSchema(database, deviceSchemaInfo.getTemplateId()))
-          ? TreeDeviceTemplateSchema.INSTANCE_SIZE
+              null, new DeviceTemplateSchema(database, deviceSchemaInfo.getTemplateId()))
+          ? DeviceTemplateSchema.INSTANCE_SIZE
           : 0;
     }
   }
@@ -115,13 +81,13 @@ public class TableDeviceCacheEntry {
     if (schemas == null) {
       return 0;
     }
-    // Safe here because tree schema is invalidated by the whole entry
+    // Safe here because schema is invalidated by the whole entry
     final int result =
-        (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database, isAligned))
-            ? TreeDeviceNormalSchema.INSTANCE_SIZE
+        (deviceSchema.compareAndSet(null, new DeviceNormalSchema(database, isAligned))
+            ? DeviceNormalSchema.INSTANCE_SIZE
             : 0);
-    return deviceSchema.get() instanceof TreeDeviceNormalSchema
-        ? result + ((TreeDeviceNormalSchema) deviceSchema.get()).update(measurements, schemas)
+    return deviceSchema.get() instanceof DeviceNormalSchema
+        ? result + ((DeviceNormalSchema) deviceSchema.get()).update(measurements, schemas)
         : 0;
   }
 
@@ -129,15 +95,11 @@ public class TableDeviceCacheEntry {
     return deviceSchema.get();
   }
 
-  int invalidateTreeSchema() {
+  int invalidateSchema() {
     final AtomicInteger size = new AtomicInteger(0);
     deviceSchema.updateAndGet(
         schema -> {
-          if (schema instanceof TreeDeviceNormalSchema
-              || schema instanceof TreeDeviceTemplateSchema) {
-            size.set(schema.estimateSize());
-            return null;
-          }
+          size.set(schema.estimateSize());
           return schema;
         });
     return size.get();
@@ -167,9 +129,9 @@ public class TableDeviceCacheEntry {
     return tryUpdateLastCache(measurements, timeValuePairs, false);
   }
 
-  int invalidateLastCache(final String measurement, final boolean isTableModel) {
+  int invalidateLastCache(final String measurement) {
     final DeviceLastCache cache = lastCache.get();
-    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement, isTableModel) : 0;
+    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
@@ -188,15 +150,6 @@ public class TableDeviceCacheEntry {
       updateMap.get(measurement).setRight(result);
     }
     return true;
-  }
-
-  // Shall pass in "" if last by time
-  Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
-      final String sourceMeasurement, final List<String> targetMeasurements) {
-    final DeviceLastCache cache = lastCache.get();
-    return Objects.nonNull(cache)
-        ? cache.getLastRow(sourceMeasurement, targetMeasurements)
-        : Optional.empty();
   }
 
   int invalidateLastCache() {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
@@ -30,11 +29,8 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -78,8 +74,6 @@ public class DeviceLastCache {
         }
       };
 
-  private static final Optional<Pair<OptionalLong, TsPrimitiveType[]>> HIT_AND_ALL_NULL =
-      Optional.of(new Pair<>(OptionalLong.empty(), null));
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
   private static final TimeValuePair PLACEHOLDER_TIME_VALUE_PAIR =
@@ -165,15 +159,13 @@ public class DeviceLastCache {
   }
 
   @GuardedBy("DataRegionInsertLock#writeLock")
-  int invalidate(final String measurement, final boolean isTableModel) {
+  int invalidate(final String measurement) {
     final AtomicInteger diff = new AtomicInteger();
     final AtomicLong time = new AtomicLong();
     measurement2CachedLastMap.computeIfPresent(
         measurement,
         (s, timeValuePair) -> {
-          diff.set(
-              (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(s))
-                  + getTVPairEntrySize(timeValuePair));
+          diff.set((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
           time.set(timeValuePair.getTimestamp());
           return null;
         });
@@ -206,41 +198,6 @@ public class DeviceLastCache {
   TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
     final TimeValuePair result = measurement2CachedLastMap.get(measurement);
     return result != PLACEHOLDER_TIME_VALUE_PAIR ? result : null;
-  }
-
-  // Shall pass in "" if last by time
-  Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
-      final @Nonnull String sourceMeasurement, final List<String> targetMeasurements) {
-    final TimeValuePair pair = measurement2CachedLastMap.get(sourceMeasurement);
-    if (Objects.isNull(pair) || pair == PLACEHOLDER_TIME_VALUE_PAIR) {
-      return Optional.empty();
-    }
-
-    if (pair == EMPTY_TIME_VALUE_PAIR) {
-      return HIT_AND_ALL_NULL;
-    }
-    final long alignTime = pair.getTimestamp();
-
-    return Optional.of(
-        new Pair<>(
-            OptionalLong.of(alignTime),
-            targetMeasurements.stream()
-                .map(
-                    targetMeasurement -> {
-                      if (!targetMeasurement.isEmpty()) {
-                        final TimeValuePair tvPair =
-                            measurement2CachedLastMap.get(targetMeasurement);
-                        if (Objects.isNull(tvPair)) {
-                          return null;
-                        }
-                        return tvPair.getTimestamp() == alignTime
-                            ? tvPair.getValue()
-                            : EMPTY_PRIMITIVE_TYPE;
-                      } else {
-                        return new TsPrimitiveType.TsLong(alignTime);
-                      }
-                    })
-                .toArray(TsPrimitiveType[]::new)));
   }
 
   int estimateSize() {
