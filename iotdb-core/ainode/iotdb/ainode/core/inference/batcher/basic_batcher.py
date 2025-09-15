@@ -20,8 +20,8 @@ from typing import List
 
 import torch
 
-from ainode.core.inference.batcher.abstract_batcher import AbstractBatcher
-from ainode.core.inference.inference_request import InferenceRequest
+from iotdb.ainode.core.inference.batcher.abstract_batcher import AbstractBatcher
+from iotdb.ainode.core.inference.inference_request import InferenceRequest
 
 
 class BasicBatcher(AbstractBatcher):
@@ -37,7 +37,7 @@ class BasicBatcher(AbstractBatcher):
 
     def batch_request(self, reqs: List[InferenceRequest]) -> torch.Tensor:
         """
-        Batch given requests by concatenating their inputs.
+        Batch given requests by simply concatenating their inputs, only requests with uniformed output length can be batched.
 
         - Considering the current implementation of AINode, we might merely be piecing together the input for now.
 
@@ -46,12 +46,12 @@ class BasicBatcher(AbstractBatcher):
 
         Returns:
             torch.Tensor: Concatenated input tensor of shape
-                          [sum(num_var), length].
+                          [sum(req.batch_size), length].
         """
         if not reqs:
             raise ValueError("No requests provided to batch_request.")
 
-        # 确保 length 一致
+        # Ensure length consistency
         length_set = {req.inputs.shape[1] for req in reqs}
         if len(length_set) != 1:
             raise ValueError(

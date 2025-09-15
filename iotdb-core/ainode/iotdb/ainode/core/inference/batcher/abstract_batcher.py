@@ -19,7 +19,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from ainode.core.inference.inference_request import InferenceRequest
+from iotdb.ainode.core.inference.inference_request import InferenceRequest
 
 
 class AbstractBatcher(ABC):
@@ -32,10 +32,11 @@ class AbstractBatcher(ABC):
         Args:
 
         """
+        pass
 
     @abstractmethod
     def batch_request(self, reqs: List[InferenceRequest]):
         """
-        batch given requests.
+        batch given requests, such that they can be delivered to the model and be executed concurrently.
         """
         pass

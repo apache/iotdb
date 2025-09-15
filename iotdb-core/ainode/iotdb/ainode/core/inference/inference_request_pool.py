@@ -122,7 +122,7 @@ class InferenceRequestPool(mp.Process):
         for requests in grouped_requests:
             batch_inputs = self._batcher.batch_request(requests).to(self.device)
             if self.model_id == "sundial":
-                batch_output = self.model.generate(
+                batch_output = self._model.generate(
                     batch_inputs,
                     max_new_tokens=requests[0].max_new_tokens,
                     num_samples=10,
@@ -132,11 +132,11 @@ class InferenceRequestPool(mp.Process):
                 offset = 0
                 for request in requests:
                     request.output_tensor = request.output_tensor.to(self.device)
-                    b = request.batch_size
-                    output_i = batch_output[offset : offset + b]
-                    offset += b
-                    # ! Here we only considered the case where batchsize=1 in one request. If multi-variable adaptation is required in the future, modifications may be needed here
-                    request.write_step_output(output_i[0].mean(dim=0))
+                    cur_batch_size = request.batch_size
+                    cur_output = batch_output[offset : offset + cur_batch_size]
+                    offset += cur_batch_size
+                    # TODO Here we only considered the case where batchsize=1 in one request. If multi-variable adaptation is required in the future, modifications may be needed here, such as: `cur_output[0]` maybe not true in multi-variable scene
+                    request.write_step_output(cur_output[0].mean(dim=0))
 
                     request.inference_pipeline.post_decode()
                     if request.is_finished():
@@ -154,7 +154,7 @@ class InferenceRequestPool(mp.Process):
                         self._waiting_queue.put(request)
 
             elif self.model_id == "timer_xl":
-                batch_output = self.model.generate(
+                batch_output = self._model.generate(
                     batch_inputs,
                     max_new_tokens=requests[0].max_new_tokens,
                     revin=True,
@@ -163,10 +163,10 @@ class InferenceRequestPool(mp.Process):
                 offset = 0
                 for request in requests:
                     request.output_tensor = request.output_tensor.to(self.device)
-                    b = request.batch_size
-                    output_i = batch_output[offset : offset + b]
-                    offset += b
-                    request.write_step_output(output_i)
+                    cur_batch_size = request.batch_size
+                    cur_output = batch_output[offset : offset + cur_batch_size]
+                    offset += cur_batch_size
+                    request.write_step_output(cur_output)
 
                     request.inference_pipeline.post_decode()
                     if request.is_finished():
