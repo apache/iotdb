@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -50,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Optional;
 
@@ -144,13 +146,13 @@ public class DataNodeAuthUtils {
         currentTimeMillis);
   }
 
-  public static TSStatus recordPassword(
+  public static TSStatus recordPasswordHistory(
       String username, String password, String oldPassword, long timeToRecord) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     try {
       insertRowStatement.setDevicePath(
           new PartialPath(SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`"));
-      insertRowStatement.setTime(CommonDateTimeUtils.currentTime());
+      insertRowStatement.setTime(timeToRecord);
       insertRowStatement.setMeasurements(new String[] {"password", "oldPassword"});
       insertRowStatement.setValues(
           new Object[] {
@@ -189,6 +191,54 @@ public class DataNodeAuthUtils {
       LOGGER.error("Cannot create password history for {} because {}", username, e.getMessage());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage("The server is not ready for login, please check the server log for details");
+    } finally {
+      if (queryId != -1) {
+        Coordinator.getInstance().cleanupQueryExecution(queryId);
+      }
+    }
+  }
+
+  public static TSStatus deletePasswordHistory(String username) {
+    DeleteTimeSeriesStatement deleteTimeSeriesStatement = new DeleteTimeSeriesStatement();
+    try {
+      PartialPath devicePath =
+          new PartialPath(SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`");
+      deleteTimeSeriesStatement.setPathPatternList(
+          Arrays.asList(
+              devicePath.concatAsMeasurementPath("password"),
+              devicePath.concatAsMeasurementPath("oldPassword")));
+    } catch (IllegalPathException ignored) {
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(
+              "Cannot delete password history for "
+                  + username
+                  + " because the path will be illegal");
+    }
+
+    long queryId = -1;
+    try {
+      SessionInfo sessionInfo =
+          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+
+      queryId = SessionManager.getInstance().requestQueryId();
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .executeForTreeModel(
+                  deleteTimeSeriesStatement,
+                  queryId,
+                  sessionInfo,
+                  "",
+                  ClusterPartitionFetcher.getInstance(),
+                  ClusterSchemaFetcher.getInstance());
+      return result.status;
+    } catch (Exception e) {
+      if (CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException()) {
+        return StatusUtils.OK;
+      }
+      LOGGER.error("Cannot delete password history for {} because {}", username, e.getMessage());
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(
+              "The server is not ready for this operation, please check the server log for details");
     } finally {
       if (queryId != -1) {
         Coordinator.getInstance().cleanupQueryExecution(queryId);
