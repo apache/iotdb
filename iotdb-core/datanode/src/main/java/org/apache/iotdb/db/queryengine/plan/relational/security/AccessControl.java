@@ -167,6 +167,14 @@ public interface AccessControl {
    */
   void checkUserIsAdmin(String userName);
 
+  /**
+   * Check if user has global SYSTEM privilege
+   *
+   * @param userName name of user
+   * @throws AccessDeniedException if not allowed
+   */
+  void checkUserGlobalSysPrivilege(String userName);
+
   // ====================================== TREE =============================================
 
   TSStatus checkPermissionBeforeProcess(Statement statement, String userName);

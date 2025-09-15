@@ -110,6 +110,11 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
+  public void checkUserGlobalSysPrivilege(String userName) {
+    // allow anything
+  }
+
+  @Override
   public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
     return SUCCEED;
   }

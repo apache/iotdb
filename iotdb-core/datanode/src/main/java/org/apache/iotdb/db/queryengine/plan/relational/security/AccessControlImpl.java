@@ -367,6 +367,13 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  public void checkUserGlobalSysPrivilege(String userName) {
+    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+      authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.SYSTEM);
+    }
+  }
+
+  @Override
   public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName) && !(statement instanceof AuthorStatement)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
