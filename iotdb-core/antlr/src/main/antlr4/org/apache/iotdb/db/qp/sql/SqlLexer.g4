@@ -1080,6 +1080,9 @@ PRIVILEGE_VALUE
     | EXTEND_TEMPLATE
     | MANAGE_DATABASE
     | MAINTAIN
+    | SYSTEM
+    | SECURITY
+    | AUDIT
     ;
 
 READ_DATA
@@ -1136,6 +1139,14 @@ MANAGE_DATABASE
 
 MAINTAIN
     : M A I N T A I N
+    ;
+
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
     ;
 
 REPAIR
