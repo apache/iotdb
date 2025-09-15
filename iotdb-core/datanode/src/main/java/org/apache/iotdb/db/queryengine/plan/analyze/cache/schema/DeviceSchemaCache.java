@@ -227,19 +227,10 @@ public class DeviceSchemaCache {
               return true;
             }
           },
-          cachedDeviceID -> {
-            try {
-              return isMultiLevelWildcardMeasurement
+          cachedDeviceID ->
+              isMultiLevelWildcardMeasurement
                   ? devicePath.matchPrefixPath(cachedDeviceID)
-                  : devicePath.matchFullPath(cachedDeviceID);
-            } catch (final IllegalPathException e) {
-              logger.warn(
-                  "Illegal device {} found in cache when invalidating by path {}, invalidate it anyway",
-                  cachedDeviceID,
-                  devicePath);
-              return true;
-            }
-          });
+                  : devicePath.matchFullPath(cachedDeviceID));
     }
   }
 
