@@ -836,8 +836,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return isReferenceCountIncreased ? progressReportEvent : null;
     }
 
-    filteredTsFileResources2TableNames.remove(resource);
-
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             isModelDetected ? isTableModel : null,
@@ -857,6 +855,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             skipIfNoPrivileges,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
+
+    filteredTsFileResources2TableNames.remove(resource);
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
