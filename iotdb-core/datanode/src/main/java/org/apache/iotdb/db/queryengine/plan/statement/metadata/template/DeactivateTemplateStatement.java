@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -31,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -75,19 +71,6 @@ public class DeactivateTemplateStatement extends Statement implements IConfigSta
         .flatMap(
             path -> template.getSchemaMap().keySet().stream().map(path::concatAsMeasurementPath))
         .collect(Collectors.toList());
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    List<PartialPath> checkedPaths = getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
   }
 
   public String getTemplateName() {

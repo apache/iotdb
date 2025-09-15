@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -54,9 +53,6 @@ public class CountTimeSeriesStatement extends CountStatement {
   public WhereCondition getTimeCondition() {
     return timeCondition;
   }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {}
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

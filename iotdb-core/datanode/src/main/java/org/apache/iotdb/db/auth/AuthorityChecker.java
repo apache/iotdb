@@ -68,7 +68,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_U
 // It checks permission in local. DCL statement will send to configNode.
 public class AuthorityChecker {
 
-  public static final String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
+  public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
@@ -100,6 +100,10 @@ public class AuthorityChecker {
 
   public static void setAccessControl(AccessControlImpl accessControl) {
     AuthorityChecker.accessControl = accessControl;
+  }
+
+  public static void setSuperUser(String superUser) {
+    SUPER_USER = superUser;
   }
 
   public static IAuthorityFetcher getAuthorityFetcher() {

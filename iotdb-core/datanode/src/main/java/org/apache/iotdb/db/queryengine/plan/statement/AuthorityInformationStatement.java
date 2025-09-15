@@ -18,32 +18,14 @@
  */
 package org.apache.iotdb.db.queryengine.plan.statement;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 public abstract class AuthorityInformationStatement extends Statement {
   protected PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
 
   public PathPatternTree getAuthorityScope() {
     return authorityScope;
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    try {
-      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        this.authorityScope =
-            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA);
-      }
-    } catch (AuthException e) {
-      return new TSStatus(e.getCode().getStatusCode());
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
