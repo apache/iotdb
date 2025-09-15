@@ -106,7 +106,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
             .toArray(String[]::new));
     setDataTypes(
         tablet.getSchemas().stream().map(IMeasurementSchema::getType).toArray(TSDataType[]::new));
-    setDevicePath(DataNodeDevicePathCache.getInstance().getPartialPath(tablet.getDeviceId()));
+    if (Objects.nonNull(databaseName)) {
+      setDevicePath(new PartialPath(tablet.getTableName(), false));
+    } else {
+      setDevicePath(DataNodeDevicePathCache.getInstance().getPartialPath(tablet.getDeviceId()));
+    }
     setAligned(isAligned);
     setTimes(tablet.getTimestamps());
     setColumns(Arrays.stream(tablet.getValues()).map(this::convertTableColumn).toArray());

@@ -18,6 +18,7 @@
 package org.apache.iotdb.db.protocol.rest.table.v1.handler;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.protocol.rest.table.v1.model.InsertTabletRequest;
@@ -45,7 +46,7 @@ public class StatementConstructionHandler {
       InsertTabletRequest insertTabletReq)
       throws IllegalPathException, WriteProcessRejectException {
     InsertTabletStatement insertStatement = new InsertTabletStatement();
-    insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getTable()));
+    insertStatement.setDevicePath(new PartialPath(insertTabletReq.getTable(), false));
     insertStatement.setMeasurements(insertTabletReq.getColumnNames().toArray(new String[0]));
     long[] timestamps =
         insertTabletReq.getTimestamps().stream().mapToLong(Long::longValue).toArray();
