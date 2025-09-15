@@ -19,8 +19,8 @@
 import random
 import threading
 import time
-from enum import Enum
 from collections import defaultdict
+from enum import Enum
 
 import numpy as np
 import torch
@@ -29,13 +29,13 @@ from transformers import PretrainedConfig
 
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
+from iotdb.ainode.core.inference.batcher.basic_batcher import BasicBatcher
+from iotdb.ainode.core.inference.inference_request import InferenceRequest
 from iotdb.ainode.core.inference.request_scheduler.basic_request_scheduler import (
     BasicRequestScheduler,
 )
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.inference.inference_request import InferenceRequest
 from iotdb.ainode.core.manager.model_manager import ModelManager
-from iotdb.ainode.core.inference.batcher.basic_batcher import BasicBatcher
 from iotdb.ainode.core.util.gpu_mapping import convert_device_id_to_torch_device
 
 
@@ -112,13 +112,13 @@ class InferenceRequestPool(mp.Process):
 
     def _step(self):
         all_requests: list[InferenceRequest] = self._request_scheduler.schedule_step()
-        
+
         grouped_requests = defaultdict(list)
         for req in all_requests:
             key = (req.inputs.shape[1], req.max_new_tokens)
             grouped_requests[key].append(req)
         grouped_requests = list(grouped_requests.values())
-        
+
         for requests in grouped_requests:
             batch_inputs = self._batcher.batch_request(requests).to(self.device)
             if self.model_id == "sundial":
@@ -128,7 +128,7 @@ class InferenceRequestPool(mp.Process):
                     num_samples=10,
                     revin=True,
                 )
-                
+
                 offset = 0
                 for request in requests:
                     request.output_tensor = request.output_tensor.to(self.device)
@@ -137,7 +137,7 @@ class InferenceRequestPool(mp.Process):
                     offset += b
                     # ! Here we only considered the case where batchsize=1 in one request. If multi-variable adaptation is required in the future, modifications may be needed here
                     request.write_step_output(output_i[0].mean(dim=0))
-                    
+
                     request.inference_pipeline.post_decode()
                     if request.is_finished():
                         request.inference_pipeline.post_inference()
@@ -152,14 +152,14 @@ class InferenceRequestPool(mp.Process):
                             f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
                         )
                         self._waiting_queue.put(request)
-                        
+
             elif self.model_id == "timer_xl":
                 batch_output = self.model.generate(
                     batch_inputs,
                     max_new_tokens=requests[0].max_new_tokens,
                     revin=True,
                 )
-                
+
                 offset = 0
                 for request in requests:
                     request.output_tensor = request.output_tensor.to(self.device)
@@ -167,7 +167,7 @@ class InferenceRequestPool(mp.Process):
                     output_i = batch_output[offset : offset + b]
                     offset += b
                     request.write_step_output(output_i)
-                    
+
                     request.inference_pipeline.post_decode()
                     if request.is_finished():
                         request.inference_pipeline.post_inference()

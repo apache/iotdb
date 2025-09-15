@@ -21,6 +21,7 @@ from typing import List
 
 from ainode.core.inference.inference_request import InferenceRequest
 
+
 class AbstractBatcher(ABC):
     """
     Abstract base class for batchers that batch inference requests.
@@ -29,9 +30,8 @@ class AbstractBatcher(ABC):
     def __init__(self):
         """
         Args:
-            
+
         """
-        
 
     @abstractmethod
     def batch_request(self, reqs: List[InferenceRequest]):

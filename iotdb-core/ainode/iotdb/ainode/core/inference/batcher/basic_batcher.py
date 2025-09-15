@@ -17,25 +17,28 @@
 #
 
 from typing import List
+
 import torch
 
-from ainode.core.inference.inference_request import InferenceRequest
 from ainode.core.inference.batcher.abstract_batcher import AbstractBatcher
+from ainode.core.inference.inference_request import InferenceRequest
+
 
 class BasicBatcher(AbstractBatcher):
     """
     Basic batcher for inference requests.
     """
+
     def __init__(self):
         """
         Args:
-            
+
         """
-        
+
     def batch_request(self, reqs: List[InferenceRequest]) -> torch.Tensor:
         """
         Batch given requests by concatenating their inputs.
-        
+
         - Considering the current implementation of AINode, we might merely be piecing together the input for now.
 
         Args:
@@ -51,8 +54,9 @@ class BasicBatcher(AbstractBatcher):
         # 确保 length 一致
         length_set = {req.inputs.shape[1] for req in reqs}
         if len(length_set) != 1:
-            raise ValueError(f"All requests must have the same length, "
-                             f"but got {length_set}")
+            raise ValueError(
+                f"All requests must have the same length, " f"but got {length_set}"
+            )
 
         batch_inputs = torch.cat([req.inputs for req in reqs], dim=0)
 
