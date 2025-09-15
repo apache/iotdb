@@ -73,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStateme
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
@@ -794,6 +795,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
         checkedPaths,
         PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitUnSetTTL(
+      UnSetTTLStatement unSetTTLStatement, TreeAccessCheckContext context) {
+    return visitSetTTL(unSetTTLStatement, context);
   }
 
   @Override

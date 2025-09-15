@@ -68,6 +68,10 @@ public enum PrivilegeType {
     return this.modelType == PrivilegeModelType.RELATIONAL;
   }
 
+  public boolean isAdminPrivilege() {
+    return this == SYSTEM || this == SECURITY || this == AUDIT;
+  }
+
   public static int getPrivilegeCount(PrivilegeModelType type) {
     int size = 0;
     for (PrivilegeType item : PrivilegeType.values()) {
