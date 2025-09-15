@@ -1550,7 +1550,7 @@ public class IoTDBAuthIT {
   public void testPasswordHistory() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      testPasswordHistoryCreate(statement);
+      testPasswordHistoryCreateAndDrop(statement);
       testPasswordHistoryAlter(statement);
     } catch (SQLException e) {
       e.printStackTrace();
@@ -1558,7 +1558,7 @@ public class IoTDBAuthIT {
     }
   }
 
-  public void testPasswordHistoryCreate(Statement statement) throws SQLException {
+  public void testPasswordHistoryCreateAndDrop(Statement statement) throws SQLException {
     statement.execute("create user userA 'abcdef123456'");
 
     try (ResultSet resultSet =
@@ -1569,9 +1569,33 @@ public class IoTDBAuthIT {
       }
       assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
     }
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last oldPassword from root.__system.password_history.`_userA`")) {
+      if (!resultSet.next()) {
+        fail("Password history not found");
+      }
+      assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
+    }
+
+    statement.execute("drop user userA");
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last password from root.__system.password_history.`_userA`")) {
+      assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last oldPassword from root.__system.password_history.`_userA`")) {
+      assertFalse(resultSet.next());
+    }
   }
 
   public void testPasswordHistoryAlter(Statement statement) throws SQLException {
+    statement.execute("create user userA 'abcdef123456'");
     statement.execute("alter user userA set password 'abcdef654321'");
 
     try (ResultSet resultSet =

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.sys;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -360,14 +361,21 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       return onCreateUserSuccess();
     } else if (authorType == AuthorType.UPDATE_USER) {
       return onUpdateUserSuccess();
+    } else if (authorType == AuthorType.DROP_USER) {
+      return onDropUserSuccess();
     }
     return null;
   }
 
   private TSStatus onCreateUserSuccess() {
+    // the old password is expected to be encrypted during updates, so we also encrypt it here to
+    // keep consistency
     TSStatus tsStatus =
-        DataNodeAuthUtils.recordPassword(
-            userName, password, null, CommonDateTimeUtils.currentTime());
+        DataNodeAuthUtils.recordPasswordHistory(
+            userName,
+            password,
+            AuthUtils.encryptPassword(password),
+            CommonDateTimeUtils.currentTime());
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -378,8 +386,18 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   private TSStatus onUpdateUserSuccess() {
     TSStatus tsStatus =
-        DataNodeAuthUtils.recordPassword(
+        DataNodeAuthUtils.recordPasswordHistory(
             userName, newPassword, password, CommonDateTimeUtils.currentTime());
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  private TSStatus onDropUserSuccess() {
+    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(userName);
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
