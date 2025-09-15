@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -150,6 +151,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         return new Pair<>(matchedSources, findUnmatchedSources(matchedSources));
       }
 
+      final Set<String> tableNames = new HashSet<>();
       for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
         final IDeviceID deviceID = entry.getKey();
 
@@ -157,10 +159,9 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         if (deviceID instanceof PlainDeviceID
             || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
             || deviceID.getTableName().equals(PATH_ROOT)) {
-          event.markAsTreeModelEvent();
           matchTreeModelEvent(deviceID, entry.getValue(), matchedSources);
         } else {
-          event.markAsTableModelEvent();
+          tableNames.add(deviceID.getTableName());
           matchTableModelEvent(
               event.getEvent() instanceof PipeInsertionEvent
                   ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
@@ -172,6 +173,10 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         if (matchedSources.size() == sources.size()) {
           break;
         }
+      }
+
+      if (event.getEvent() instanceof PipeTsFileInsertionEvent) {
+        ((PipeTsFileInsertionEvent) event.getEvent()).setTableNames(tableNames);
       }
 
       return new Pair<>(matchedSources, findUnmatchedSources(matchedSources));

@@ -71,15 +71,14 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_END_TIME_KEY;
@@ -126,8 +125,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileAndDeletionSource.class);
 
-  private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
-
   private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private String pipeName;
@@ -145,7 +142,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private boolean isTableModel;
   private boolean isDbNameCoveredByPattern = false;
 
-  private boolean isHistoricalExtractorEnabled = false;
+  private boolean isHistoricalSourceEnabled = false;
   private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
@@ -166,7 +163,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private volatile boolean hasBeenStarted = false;
 
   private Queue<PersistentResource> pendingQueue;
-  private final Set<TsFileResource> filteredTsFileResources = new HashSet<>();
+  private final Map<TsFileResource, Set<String>> filteredTsFileResources2TableNames =
+      new HashMap<>();
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -221,7 +219,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         EXTRACTOR_START_TIME_KEY,
         SOURCE_END_TIME_KEY,
         EXTRACTOR_END_TIME_KEY)) {
-      isHistoricalExtractorEnabled = true;
+      isHistoricalSourceEnabled = true;
 
       try {
         historicalDataExtractionStartTime =
@@ -261,7 +259,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     // enabled, the pipe will lose some historical data.
     // 2. User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
     // enabling the historical data extraction, which may affect the realtime data extraction.
-    isHistoricalExtractorEnabled =
+    isHistoricalSourceEnabled =
         parameters.getBooleanOrDefault(
                 SystemConstant.RESTART_KEY, SystemConstant.RESTART_DEFAULT_VALUE)
             || parameters.getBooleanOrDefault(
@@ -324,9 +322,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
 
     dataRegionId = environment.getRegionId();
-    synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-      DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
-    }
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
@@ -545,22 +540,22 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     tsFileManager.readLock();
     try {
       final int originalSequenceTsFileCount = tsFileManager.size(true);
-      final int originalUnsequenceTsFileCount = tsFileManager.size(false);
+      final int originalUnSequenceTsFileCount = tsFileManager.size(false);
       LOGGER.info(
           "Pipe {}@{}: start to extract historical TsFile, original sequence file count {}, "
-              + "original unsequence file count {}, start progress index {}",
+              + "original unSequence file count {}, start progress index {}",
           pipeName,
           dataRegionId,
           originalSequenceTsFileCount,
-          originalUnsequenceTsFileCount,
+          originalUnSequenceTsFileCount,
           startIndex);
 
-      final Collection<TsFileResource> sequenceTsFileResources =
+      final Map<TsFileResource, Set<String>> sequenceTsFileResources2TableNames =
           tsFileManager.getTsFileList(true).stream()
               .peek(originalResourceList::add)
               .filter(
                   resource ->
-                      isHistoricalExtractorEnabled
+                      isHistoricalSourceEnabled
                           &&
                           // Some resource is marked as deleted but not removed from the list.
                           !resource.isDeleted()
@@ -577,15 +572,21 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
                                   && mayTsFileResourceOverlappedWithPattern(resource)))
-              .collect(Collectors.toList());
-      filteredTsFileResources.addAll(sequenceTsFileResources);
+              .collect(
+                  Collectors.toMap(
+                      Function.identity(),
+                      resource ->
+                          resource.getDevices().stream()
+                              .map(IDeviceID::getTableName)
+                              .collect(Collectors.toSet())));
+      filteredTsFileResources2TableNames.putAll(sequenceTsFileResources2TableNames);
 
-      final Collection<TsFileResource> unsequenceTsFileResources =
+      final Map<TsFileResource, Set<String>> unSequenceTsFileResources2TableNames =
           tsFileManager.getTsFileList(false).stream()
               .peek(originalResourceList::add)
               .filter(
                   resource ->
-                      isHistoricalExtractorEnabled
+                      isHistoricalSourceEnabled
                           &&
                           // Some resource is marked as deleted but not removed from the list.
                           !resource.isDeleted()
@@ -602,34 +603,42 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
                                   && mayTsFileResourceOverlappedWithPattern(resource)))
-              .collect(Collectors.toList());
-      filteredTsFileResources.addAll(unsequenceTsFileResources);
+              .collect(
+                  Collectors.toMap(
+                      Function.identity(),
+                      resource ->
+                          resource.getDevices().stream()
+                              .map(IDeviceID::getTableName)
+                              .collect(Collectors.toSet())));
+      filteredTsFileResources2TableNames.putAll(unSequenceTsFileResources2TableNames);
 
-      filteredTsFileResources.removeIf(
-          resource -> {
-            // Pin the resource, in case the file is removed by compaction or anything.
-            // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
-            try {
-              PipeDataNodeResourceManager.tsfile()
-                  .pinTsFileResource(resource, shouldTransferModFile, pipeName);
-              return false;
-            } catch (final IOException e) {
-              LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
-              return true;
-            }
-          });
+      filteredTsFileResources2TableNames
+          .keySet()
+          .removeIf(
+              resource -> {
+                // Pin the resource, in case the file is removed by compaction or anything.
+                // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
+                try {
+                  PipeDataNodeResourceManager.tsfile()
+                      .pinTsFileResource(resource, shouldTransferModFile, pipeName);
+                  return false;
+                } catch (final IOException e) {
+                  LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
+                  return true;
+                }
+              });
 
       LOGGER.info(
           "Pipe {}@{}: finish to extract historical TsFile, extracted sequence file count {}/{}, "
               + "extracted unsequence file count {}/{}, extracted file count {}/{}, took {} ms",
           pipeName,
           dataRegionId,
-          sequenceTsFileResources.size(),
+          sequenceTsFileResources2TableNames.size(),
           originalSequenceTsFileCount,
-          unsequenceTsFileResources.size(),
-          originalUnsequenceTsFileCount,
-          filteredTsFileResources.size(),
-          originalSequenceTsFileCount + originalUnsequenceTsFileCount,
+          unSequenceTsFileResources2TableNames.size(),
+          originalUnSequenceTsFileCount,
+          filteredTsFileResources2TableNames.size(),
+          originalSequenceTsFileCount + originalUnSequenceTsFileCount,
           System.currentTimeMillis() - startHistoricalExtractionTime);
     } finally {
       tsFileManager.readUnlock();
@@ -812,7 +821,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private Event supplyTsFileEvent(final TsFileResource resource) {
-    if (!filteredTsFileResources.contains(resource)) {
+    if (!filteredTsFileResources2TableNames.containsKey(resource)) {
       final ProgressReportEvent progressReportEvent =
           new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
       progressReportEvent.bindProgressIndex(resource.getMaxProgressIndex());
@@ -827,8 +836,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return isReferenceCountIncreased ? progressReportEvent : null;
     }
 
-    filteredTsFileResources.remove(resource);
-
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             isModelDetected ? isTableModel : null,
@@ -838,6 +845,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             shouldTransferModFile,
             false,
             true,
+            filteredTsFileResources2TableNames.get(resource),
             pipeName,
             creationTime,
             pipeTaskMeta,
@@ -847,6 +855,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             skipIfNoPrivileges,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
+
+    filteredTsFileResources2TableNames.remove(resource);
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
