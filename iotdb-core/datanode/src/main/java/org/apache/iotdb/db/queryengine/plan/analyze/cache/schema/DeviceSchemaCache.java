@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -39,7 +38,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,8 +50,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.ToIntFunction;
@@ -83,8 +79,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 public class DeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig memoryConfig =
-      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final Logger logger = LoggerFactory.getLogger(DeviceSchemaCache.class);
 
   /**
@@ -97,7 +91,7 @@ public class DeviceSchemaCache {
    */
   private final IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
 
-  private final Map<String, String> treeModelDatabasePool = new ConcurrentHashMap<>();
+  private final Map<String, String> databasePool = new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
@@ -117,52 +111,6 @@ public class DeviceSchemaCache {
   /////////////////////////////// Last Cache ///////////////////////////////
 
   /**
-   * Update the last cache in writing or the second push of last cache query. If a measurement is
-   * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
-   * {@code null}. For correctness, this will put the cache lazily and only update the existing last
-   * caches of measurements.
-   *
-   * @param database the device's database, without "root"
-   * @param deviceId {@link IDeviceID}
-   * @param measurements the fetched measurements
-   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
-   * @param invalidateNull when true invalidate cache entries where timeValuePairs[i] == null; when
-   *     false ignore cache entries where timeValuePairs[i] == null
-   */
-  public void updateLastCacheIfExists(
-      final String database,
-      final IDeviceID deviceId,
-      final String[] measurements,
-      final TimeValuePair[] timeValuePairs,
-      boolean invalidateNull) {
-    dualKeyCache.update(
-        new TableId(database, deviceId.getTableName()),
-        deviceId,
-        null,
-        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs, invalidateNull),
-        false);
-  }
-
-  /**
-   * Update the last cache in writing or the second push of last cache query. If a measurement is
-   * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
-   * {@code null}. For correctness, this will put the cache lazily and only update the existing last
-   * caches of measurements.
-   *
-   * @param database the device's database, without "root"
-   * @param deviceId {@link IDeviceID}
-   * @param measurements the fetched measurements
-   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
-   */
-  public void updateLastCacheIfExists(
-      final String database,
-      final IDeviceID deviceId,
-      final String[] measurements,
-      final TimeValuePair[] timeValuePairs) {
-    updateLastCacheIfExists(database, deviceId, measurements, timeValuePairs, false);
-  }
-
-  /**
    * Get the last {@link TimeValuePair} of a measurement, the measurement shall never be "time".
    *
    * @param database the device's database, without "root", {@code null} for tree model
@@ -176,52 +124,6 @@ public class DeviceSchemaCache {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
-  }
-
-  /**
-   * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
-   * "time". If you want to get the last of "time", use "" to represent.
-   *
-   * @param database the device's database, without "root", {@code null} for tree model
-   * @param deviceId {@link IDeviceID}
-   * @param measurements the measurements to get
-   * @return {@code null} iff cache miss, {@link DeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff cache
-   *     hit but result is {@code null}, and the result value otherwise.
-   */
-  public TimeValuePair[] getLastEntries(
-      final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {
-    final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
-    return Objects.nonNull(entry)
-        ? Arrays.stream(measurements).map(entry::getTimeValuePair).toArray(TimeValuePair[]::new)
-        : null;
-  }
-
-  /**
-   * Get the last value of measurements last by a target measurement. If the caller wants to last by
-   * time or get the time last by another source measurement, the measurement shall be "" to
-   * indicate the time column.
-   *
-   * @param database the device's database, without "root"
-   * @param deviceId {@link IDeviceID}
-   * @param sourceMeasurement the measurement to get
-   * @return {@code Optional.empty()} iff the last cache is miss at all; Or the optional of a pair,
-   *     the {@link Pair#left} will be the source measurement's last time, (OptionalLong.empty() iff
-   *     the source measurement is all {@code null}); {@link Pair#right} will be an {@link
-   *     TsPrimitiveType} array, whose element will be {@code null} if cache miss, {@link
-   *     DeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the measurement is without any
-   *     values when last by the source measurement's time, and the result value otherwise.
-   */
-  public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
-      final String database,
-      final IDeviceID deviceId,
-      final String sourceMeasurement,
-      final List<String> targetMeasurements) {
-    final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
-    return Objects.nonNull(entry)
-        ? entry.getLastRow(sourceMeasurement, targetMeasurements)
-        : Optional.empty();
   }
 
   /**
@@ -255,7 +157,7 @@ public class DeviceSchemaCache {
   public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
     final IDeviceID deviceID = devicePath.getIDeviceID();
-    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
+    final String previousDatabase = databasePool.putIfAbsent(database, database);
 
     dualKeyCache.update(
         new TableId(null, deviceID.getTableName()),
@@ -287,7 +189,7 @@ public class DeviceSchemaCache {
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas,
       final boolean initOrInvalidate) {
-    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
+    final String previousDatabase = databasePool.putIfAbsent(database, database);
     final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
 
     dualKeyCache.update(

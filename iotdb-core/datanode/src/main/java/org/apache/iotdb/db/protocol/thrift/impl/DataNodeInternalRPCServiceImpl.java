@@ -537,7 +537,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateLastCache(final String database) {
-    DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(database);
+    DataNodeSchemaCache.getInstance().invalidateDatabaseLastCache(database);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

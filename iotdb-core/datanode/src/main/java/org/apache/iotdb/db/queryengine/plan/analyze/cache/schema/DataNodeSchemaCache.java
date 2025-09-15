@@ -32,13 +32,12 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-
-import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,11 +67,11 @@ public class DataNodeSchemaCache {
   }
 
   public static DataNodeSchemaCache getInstance() {
-    return TreeDeviceSchemaCacheManagerHolder.INSTANCE;
+    return DataNodeSchemaCacheHolder.INSTANCE;
   }
 
   /** singleton pattern. */
-  private static class TreeDeviceSchemaCacheManagerHolder {
+  private static class DataNodeSchemaCacheHolder {
     private static final DataNodeSchemaCache INSTANCE = new DataNodeSchemaCache();
   }
 
@@ -288,14 +287,14 @@ public class DataNodeSchemaCache {
           new IMeasurementSchemaInfo() {
             @Override
             public String getName() {
-              return schema.getMeasurementName();
+              return schema.getMeasurementId();
             }
 
             @Override
             public IMeasurementSchema getSchema() {
               if (isLogicalView()) {
                 return new LogicalViewSchema(
-                    schema.getMeasurementName(), ((LogicalViewSchema) schema).getExpression());
+                    schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
               } else {
                 return this.getSchemaAsMeasurementSchema();
               }
@@ -304,7 +303,7 @@ public class DataNodeSchemaCache {
             @Override
             public MeasurementSchema getSchemaAsMeasurementSchema() {
               return new MeasurementSchema(
-                  schema.getMeasurementName(),
+                  schema.getMeasurementId(),
                   schema.getType(),
                   schema.getEncodingType(),
                   schema.getCompressor());
@@ -353,6 +352,11 @@ public class DataNodeSchemaCache {
                     tree.getBelongedDatabase(deviceSchemaInfo.getDevicePath()), deviceSchemaInfo));
   }
 
+  public boolean getLastCache(
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> inputMap) {
+    return deviceSchemaCache.getLastCache(inputMap);
+  }
+
   public TimeValuePair getLastCache(final MeasurementPath seriesPath) {
     return deviceSchemaCache.getLastEntry(
         null, seriesPath.getIDeviceID(), seriesPath.getMeasurement());
@@ -370,28 +374,6 @@ public class DataNodeSchemaCache {
       return;
     }
     deviceSchemaCache.invalidateLastCache(database);
-  }
-
-  /**
-   * Update the {@link DeviceLastCache} in writing for tree model. If a measurement is with all
-   * {@code null}s or is an id/attribute column, its {@link TimeValuePair[]} shall be {@code null}.
-   * For correctness, this will put the {@link TableDeviceCacheEntry} lazily and only update the
-   * existing {@link DeviceLastCache}s of measurements.
-   *
-   * @param database the device's database, WITH "root"
-   * @param deviceID {@link IDeviceID}
-   * @param measurements the fetched measurements
-   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
-   */
-  public void updateLastCacheIfExists(
-      final String database,
-      final IDeviceID deviceID,
-      final String[] measurements,
-      final @Nonnull TimeValuePair[] timeValuePairs,
-      final boolean isAligned,
-      final IMeasurementSchema[] measurementSchemas) {
-    deviceSchemaCache.updateLastCache(
-        database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
 
   /**
