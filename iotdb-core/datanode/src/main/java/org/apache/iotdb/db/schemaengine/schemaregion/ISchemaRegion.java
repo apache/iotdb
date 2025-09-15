@@ -315,7 +315,7 @@ public interface ISchemaRegion {
 
   int fillLastQueryMap(
       final PartialPath pattern,
-      final Map<String, Map<String, Map<String, TimeValuePair>>> mapToFill)
+      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> mapToFill)
       throws MetadataException;
 
   // endregion

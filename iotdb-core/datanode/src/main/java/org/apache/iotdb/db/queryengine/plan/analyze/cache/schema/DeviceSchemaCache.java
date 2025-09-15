@@ -314,7 +314,7 @@ public class DeviceSchemaCache {
 
   // Utils of leading segment
 
-  private static String getLeadingSegment(final PartialPath device) {
+  public static String getLeadingSegment(final PartialPath device) {
     final String segment;
     int lastSeparatorPos = -1;
     int separatorNum = 0;
