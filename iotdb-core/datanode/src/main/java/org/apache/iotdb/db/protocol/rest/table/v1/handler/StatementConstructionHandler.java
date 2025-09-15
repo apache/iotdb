@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.protocol.rest.table.v1.model.InsertTabletRequest;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -36,9 +35,6 @@ import java.util.List;
 import java.util.Locale;
 
 public class StatementConstructionHandler {
-
-  private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
-      DataNodeDevicePathCache.getInstance();
 
   private StatementConstructionHandler() {}
 
