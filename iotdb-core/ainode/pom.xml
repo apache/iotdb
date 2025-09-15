@@ -168,7 +168,7 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${basedir}/ainode/conf/</outputDirectory>
+                            <outputDirectory>${basedir}/iotdb/ainode/conf/</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${basedir}/resources/</directory>
@@ -193,7 +193,7 @@
                         </goals>
                         <configuration>
                             <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                            <generateGitPropertiesFilename>${project.basedir}/ainode/conf/git.properties</generateGitPropertiesFilename>
+                            <generateGitPropertiesFilename>${project.basedir}/iotdb/ainode/conf/git.properties</generateGitPropertiesFilename>
                             <includeOnlyProperties>
                                 <includeOnlyProperty>^git.commit.id.abbrev$</includeOnlyProperty>
                                 <includeOnlyProperty>^git.dirty$</includeOnlyProperty>

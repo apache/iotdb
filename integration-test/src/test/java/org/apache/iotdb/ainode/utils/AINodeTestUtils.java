@@ -25,6 +25,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -56,6 +57,37 @@ public class AINodeTestUtils {
       fail("There should be an exception");
     } catch (SQLException e) {
       assertEquals(errorMessage, e.getMessage());
+    }
+  }
+
+  public static void concurrentInference(Statement statement, String sql, int threadCnt, int loop)
+      throws InterruptedException {
+    Thread[] threads = new Thread[threadCnt];
+    for (int i = 0; i < threadCnt; i++) {
+      threads[i] =
+          new Thread(
+              () -> {
+                try {
+                  for (int j = 0; j < loop; j++) {
+                    try (ResultSet resultSet = statement.executeQuery(sql)) {
+                      while (resultSet.next()) {
+                        // do nothing
+                      }
+                    } catch (SQLException e) {
+                      fail(e.getMessage());
+                    }
+                  }
+                } catch (Exception e) {
+                  fail(e.getMessage());
+                }
+              });
+      threads[i].start();
+    }
+    for (Thread thread : threads) {
+      thread.join(TimeUnit.MINUTES.toMillis(10));
+      if (thread.isAlive()) {
+        fail("Thread timeout after 10 minutes");
+      }
     }
   }
 

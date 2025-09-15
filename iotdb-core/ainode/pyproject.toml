@@ -78,8 +78,8 @@ sktime = "0.38.5"
 # ---- DL / HF stack ----
 torch = ">=2.7.0"
 torchmetrics = "^1.8.0"
-transformers = "==4.56.0"
-tokenizers = "==0.22.0"
+transformers = "==4.40.1"
+tokenizers = ">=0.19,<0.20"
 huggingface_hub = "^0.34.4"
 safetensors = "^0.6.2"
 einops = "^0.8.1"
@@ -90,9 +90,6 @@ psutil = "^7.0.0"
 requests = "^2.32.5"
 dynaconf = "^3.2.11"
 thrift = ">=0.14.0"
-
-# ---- IoTDB ----
-apache-iotdb = ">=2.0.5"
 tzlocal = "^5.3.1"
 
 # ---- HF acceleration ----

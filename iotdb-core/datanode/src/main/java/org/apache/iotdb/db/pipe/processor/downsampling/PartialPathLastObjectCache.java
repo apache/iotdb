@@ -26,7 +26,6 @@ import org.apache.iotdb.db.utils.MemUtils;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
-import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,35 +34,11 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PartialPathLastObjectCache.class);
 
   private final PipeMemoryBlock allocatedMemoryBlock;
-  // Used to adjust the memory usage of the cache
-  private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
   private final Cache<String, T> partialPath2ObjectCache;
 
   protected PartialPathLastObjectCache(final long memoryLimitInBytes) {
-    allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .tryAllocate(memoryLimitInBytes)
-            .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
-            .setShrinkCallback(
-                (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.updateAndGet(
-                      factor -> factor * ((double) oldMemory / newMemory));
-                  LOGGER.info(
-                      "PartialPathLastObjectCache.allocatedMemoryBlock has shrunk from {} to {}.",
-                      oldMemory,
-                      newMemory);
-                })
-            .setExpandMethod(oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, memoryLimitInBytes))
-            .setExpandCallback(
-                (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.updateAndGet(
-                      factor -> factor / ((double) newMemory / oldMemory));
-                  LOGGER.info(
-                      "PartialPathLastObjectCache.allocatedMemoryBlock has expanded from {} to {}.",
-                      oldMemory,
-                      newMemory);
-                });
+    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().tryAllocate(memoryLimitInBytes);
 
     // Currently disable the metric here because it's not a constant cache and the number may
     // fluctuate. In the future all the "processorCache"s may be recorded in single metric entry
@@ -75,16 +50,37 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
                 (Weigher<String, T>)
                     (partialPath, object) -> {
                       final long weightInLong =
-                          (long)
-                              ((MemUtils.getStringMem(partialPath) + calculateMemoryUsage(object))
-                                  * memoryUsageCheatFactor.get());
-                      if (weightInLong <= 0) {
-                        return Integer.MAX_VALUE;
-                      }
+                          MemUtils.getStringMem(partialPath) + calculateMemoryUsage(object);
                       final int weightInInt = (int) weightInLong;
                       return weightInInt != weightInLong ? Integer.MAX_VALUE : weightInInt;
                     })
             .build();
+
+    allocatedMemoryBlock
+        .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
+        .setShrinkCallback(
+            (oldMemory, newMemory) -> {
+              partialPath2ObjectCache
+                  .policy()
+                  .eviction()
+                  .ifPresent(eviction -> eviction.setMaximum(newMemory));
+              LOGGER.info(
+                  "PartialPathLastObjectCache.allocatedMemoryBlock has shrunk from {} to {}.",
+                  oldMemory,
+                  newMemory);
+            })
+        .setExpandMethod(oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, memoryLimitInBytes))
+        .setExpandCallback(
+            (oldMemory, newMemory) -> {
+              partialPath2ObjectCache
+                  .policy()
+                  .eviction()
+                  .ifPresent(eviction -> eviction.setMaximum(newMemory));
+              LOGGER.info(
+                  "PartialPathLastObjectCache.allocatedMemoryBlock has expanded from {} to {}.",
+                  oldMemory,
+                  newMemory);
+            });
   }
 
   protected abstract long calculateMemoryUsage(final T object);

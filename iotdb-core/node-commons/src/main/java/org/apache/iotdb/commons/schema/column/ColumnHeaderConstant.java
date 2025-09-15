@@ -35,6 +35,7 @@ public class ColumnHeaderConstant {
   public static final String ENDTIME = "__endTime";
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
+  public static final String DEVICE_ID = "DeviceID";
   public static final String EXPLAIN_ANALYZE = "Explain Analyze";
 
   // column names for schema statement
@@ -80,6 +81,7 @@ public class ColumnHeaderConstant {
   public static final String COUNT_NODES = "count(nodes)";
   public static final String COUNT_TIMESERIES = "count(timeseries)";
   public static final String COUNT_DATABASE = "count(database)";
+  public static final String COUNT_INSTANCES = "Count(instances)";
 
   // column names for show cluster and show cluster details statements
   public static final String NODE_ID = "NodeID";
@@ -626,6 +628,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showLoadedModelsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DEVICE_ID, TSDataType.TEXT),
+          new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COUNT_INSTANCES, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showAIDevicesColumnHeaders =
+      ImmutableList.of(new ColumnHeader(DEVICE_ID, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showLogicalViewColumnHeaders =
       ImmutableList.of(

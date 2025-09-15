@@ -17,18 +17,22 @@
 #
 from typing import Dict, Tuple
 
-import torch
 import torch.multiprocessing as mp
 
 from iotdb.ainode.core.exception import (
     InferenceModelInternalError,
 )
 from iotdb.ainode.core.inference.dispatcher.basic_dispatcher import BasicDispatcher
+from iotdb.ainode.core.inference.inference_request import (
+    InferenceRequest,
+    InferenceRequestProxy,
+)
 from iotdb.ainode.core.inference.inference_request_pool import (
     InferenceRequestPool,
     PoolState,
 )
 from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.util.atmoic_int import AtomicInt
 
 logger = Logger()
 
@@ -38,14 +42,13 @@ class PoolGroup:
     A group of inference request pools for a specific model.
     """
 
-    DEFAULT_DEVICE = torch.device("cpu")
-    # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     def __init__(self, model_id):
-        # structure: {pool_id: (InferenceRequestPool, mp.Queue)}
+        # structure: {pool_id: (InferenceRequestPool, waitingQueue)}
         self.pool_group: Dict[int, Tuple[InferenceRequestPool, mp.Queue]] = {}
         # structure: {pool_id: PoolState}
         self.pool_states: Dict[int, PoolState] = {}
+        # structure: {pool_id: remaining_reqs_cnt}
+        self.pool_remaining_reqs: Dict[int, AtomicInt] = {}
         self.model_id = model_id
         self.request_dispatcher = BasicDispatcher(self.pool_states)
 
@@ -56,33 +59,42 @@ class PoolGroup:
         self, pool_id: int, request_pool: InferenceRequestPool, request_queue: mp.Queue
     ):
         self.pool_group[pool_id] = (request_pool, request_queue)
+        self.pool_remaining_reqs[pool_id] = AtomicInt()
 
     def remove_pool(self, pool_id: int):
         self.pool_group.pop(pool_id, None)
         self.pool_states.pop(pool_id, None)
+        self.pool_remaining_reqs.pop(pool_id, None)
 
     def get_pool_ids(self) -> list[int]:
         return list(self.pool_group.keys())
 
-    def dispatch_request(self, req):
-        pool_idx = self.request_dispatcher.dispatch_request(req, self.get_pool_ids())
-        req_q = self.pool_group[pool_idx][1]
+    def get_pool_count(self) -> int:
+        return len(self.pool_group)
+
+    def dispatch_request(
+        self, req: InferenceRequest, infer_proxy: InferenceRequestProxy
+    ):
+        pool_id = self.request_dispatcher.dispatch_request(req, self.get_pool_ids())
+        req_q = self.pool_group[pool_id][1]
+        self.pool_remaining_reqs[pool_id].increment_and_get()
+        infer_proxy.set_counter(self.pool_remaining_reqs[pool_id])
         req_q.put(req)
         logger.debug(
-            f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_idx}][ID-{req.req_id}] Request is queued for inference"
+            f"[Inference][Pool-{pool_id}][Req-{req.req_id}] Request is queued for inference"
         )
 
     def get_request_pool(self, pool_id) -> InferenceRequestPool:
         if pool_id not in self.pool_group:
             raise InferenceModelInternalError(
-                f"Pool ID {pool_id} not found for model {self.model_id}"
+                f"[Inference][Pool-{pool_id}] Pool not found for model {self.model_id}"
             )
         return self.pool_group[pool_id][0]
 
     def get_request_queue(self, pool_id) -> mp.Queue:
         if pool_id not in self.pool_group:
             raise InferenceModelInternalError(
-                f"Pool ID {pool_id} not found for model {self.model_id}"
+                f"[Inference][Pool-{pool_id}] Pool not found for model {self.model_id}"
             )
         return self.pool_group[pool_id][1]
 
@@ -93,4 +105,13 @@ class PoolGroup:
         self.pool_states[pool_id] = state
 
     def get_load(self, pool_id) -> int:
-        pass
+        """
+        Currently, we use the number of remaining requests in the pool as the load estimation.
+        TODO: we will implement better load estimation in the future.
+        """
+        return self.pool_remaining_reqs[pool_id].get()
+
+    def shutdown(self):
+        for pool_id, (request_pool, _) in self.pool_group.items():
+            logger.info(f"[Inference][Pool-{pool_id}] Shutting down the pool...")
+            request_pool.stop()
