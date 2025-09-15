@@ -130,12 +130,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (skipParsing) {
-      collectEvent(sourceEvent);
-      return;
-    }
-
-    if (!forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
+    if (skipParsing || !forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }

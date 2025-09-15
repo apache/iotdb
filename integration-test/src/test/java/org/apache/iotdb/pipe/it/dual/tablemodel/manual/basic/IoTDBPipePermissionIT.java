@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -95,7 +96,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
-  public void testSourcePermission() {
+  public void testSourcePermission() throws Exception {
     if (!TestUtils.tryExecuteNonQueryWithRetry(
         senderEnv, "create user `thulab` 'passwD@123456'", null)) {
       return;
@@ -244,6 +245,36 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         });
+
+    // test showing pipe
+    // Create another pipe, user is root
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe a2c"
+                  + " with source ("
+                  + "'inclusion'='all',"
+                  + "'capture.tree'='true',"
+                  + "'capture.table'='true')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail("Create pipe without user shall succeed if use the current session");
+    }
+
+    // A user shall only see its own pipe
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Assert.assertEquals(
+          1,
+          client
+              .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName("thulab"))
+              .pipeInfoList
+              .size());
+    }
   }
 
   @Test
@@ -260,28 +291,28 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         return;
       }
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
       final String dbName = "test";
       final String tbName = "test";
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.capture.tree", "false");
-      extractorAttributes.put("extractor.capture.table", "true");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("extractor.inclusion", "all");
+      sourceAttributes.put("extractor.capture.tree", "false");
+      sourceAttributes.put("extractor.capture.table", "true");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.user", "testUser");
-      connectorAttributes.put("connector.password", "passwD@123456");
+      sinkAttributes.put("connector", "iotdb-thrift-connector");
+      sinkAttributes.put("connector.ip", receiverIp);
+      sinkAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("connector.user", "testUser");
+      sinkAttributes.put("connector.password", "passwD@123456");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

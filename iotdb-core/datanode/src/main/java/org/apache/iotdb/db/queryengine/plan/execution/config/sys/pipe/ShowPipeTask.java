@@ -47,22 +47,24 @@ import java.util.stream.Collectors;
 public class ShowPipeTask implements IConfigTask {
 
   private final ShowPipesStatement showPipesStatement;
+  private String userName;
 
   public ShowPipeTask(final ShowPipesStatement showPipesStatement) {
     this.showPipesStatement = showPipesStatement;
   }
 
-  public ShowPipeTask(final ShowPipes node) {
+  public ShowPipeTask(final ShowPipes node, final String userName) {
     showPipesStatement = new ShowPipesStatement();
     showPipesStatement.setPipeName(node.getPipeName());
     showPipesStatement.setWhereClause(node.hasWhereClause());
     showPipesStatement.setTableModel(true);
+    this.userName = userName;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showPipes(showPipesStatement);
+    return configTaskExecutor.showPipes(showPipesStatement, userName);
   }
 
   public static void buildTSBlock(

@@ -44,7 +44,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.assertTableTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
 
@@ -741,13 +740,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
         "test",
         "test123123456",
         null);
-    assertTableTestFail(
-        senderEnv,
-        "show pipes",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
-        "test",
-        "test123123456",
-        null);
     assertTableNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
@@ -773,13 +765,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipePlugin TestProcessor",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
-        "test",
-        "test123123456",
-        null);
-    assertTableTestFail(
-        senderEnv,
-        "show pipe plugins",
         "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
         "test123123456",
