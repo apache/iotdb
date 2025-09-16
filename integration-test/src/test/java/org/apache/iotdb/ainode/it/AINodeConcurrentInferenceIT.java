@@ -81,61 +81,103 @@ public class AINodeConcurrentInferenceIT {
 
   @Test
   public void concurrentCPUCallInferenceTest() throws SQLException, InterruptedException {
+    concurrentCPUCallInferenceTest("timer_xl");
+    concurrentCPUCallInferenceTest("sundial");
+  }
+
+  private void concurrentCPUCallInferenceTest(String modelId)
+      throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("LOAD MODEL sundial TO DEVICES \"cpu\"");
-      concurrentInference(statement, "CALL INFERENCE(sundial, \"SELECT s FROM root.AI\")", 4, 10);
+      final int threadCnt = 4;
+      final int loop = 10;
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"cpu\"", modelId));
+      concurrentInference(
+          statement,
+          String.format("CALL INFERENCE(%s, \"SELECT s FROM root.AI\")", modelId),
+          threadCnt,
+          loop);
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"cpu\"", modelId));
     }
   }
 
   @Test
   public void concurrentGPUCallInferenceTest() throws SQLException, InterruptedException {
+    concurrentGPUCallInferenceTest("timer_xl");
+    concurrentGPUCallInferenceTest("sundial");
+  }
+
+  private void concurrentGPUCallInferenceTest(String modelId)
+      throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("LOAD MODEL sundial TO DEVICES \"0,1\"");
-      concurrentInference(statement, "CALL INFERENCE(sundial, \"SELECT s FROM root.AI\")", 10, 100);
+      final int threadCnt = 4;
+      final int loop = 10;
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"0,1\"", modelId));
+      concurrentInference(
+          statement,
+          String.format("CALL INFERENCE(%s, \"SELECT s FROM root.AI\")", modelId),
+          threadCnt,
+          loop);
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"0,1\"", modelId));
     }
   }
 
   @Test
   public void concurrentCPUForecastTest() throws SQLException, InterruptedException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+    concurrentCPUForecastTest("timer_xl");
+    concurrentCPUForecastTest("sundial");
+  }
+
+  private void concurrentCPUForecastTest(String modelId) throws SQLException, InterruptedException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       final int threadCnt = 4;
       final int loop = 10;
-      statement.execute("LOAD MODEL sundial TO DEVICES \"cpu\"");
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"cpu\"", modelId));
       long startTime = System.currentTimeMillis();
       concurrentInference(
           statement,
-          "SELECT * FROM FORECAST(model_id=>'sundial', input=>(SELECT time,s FROM root.AI) ORDER BY time)",
+          String.format(
+              "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time,s FROM root.AI) ORDER BY time)",
+              modelId),
           threadCnt,
           loop);
       long endTime = System.currentTimeMillis();
       LOGGER.info(
           String.format(
-              "Timer-Sundial concurrent inference %d reqs (%d threads, %d loops) in CPU takes time: %dms",
-              threadCnt * loop, threadCnt, loop, endTime - startTime));
+              "Model %s concurrent inference %d reqs (%d threads, %d loops) in CPU takes time: %dms",
+              modelId, threadCnt * loop, threadCnt, loop, endTime - startTime));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"cpu\"", modelId));
     }
   }
 
   @Test
   public void concurrentGPUForecastTest() throws SQLException, InterruptedException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+    concurrentGPUForecastTest("timer_xl");
+    concurrentGPUForecastTest("sundial");
+  }
+
+  public void concurrentGPUForecastTest(String modelId) throws SQLException, InterruptedException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       final int threadCnt = 10;
       final int loop = 100;
-      statement.execute("LOAD MODEL sundial TO DEVICES \"0,1\"");
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"0,1\"", modelId));
       long startTime = System.currentTimeMillis();
       concurrentInference(
           statement,
-          "SELECT * FROM FORECAST(model_id=>'sundial', input=>(SELECT time,s FROM root.AI) ORDER BY time)",
+          String.format(
+              "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time,s FROM root.AI) ORDER BY time)",
+              modelId),
           threadCnt,
           loop);
       long endTime = System.currentTimeMillis();
       LOGGER.info(
           String.format(
-              "Timer-Sundial concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
-              threadCnt * loop, threadCnt, loop, endTime - startTime));
+              "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
+              modelId, threadCnt * loop, threadCnt, loop, endTime - startTime));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"0,1\"", modelId));
     }
   }
 }

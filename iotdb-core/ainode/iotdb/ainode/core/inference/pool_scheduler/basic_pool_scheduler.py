@@ -20,9 +20,7 @@ from typing import Dict, List, Optional
 
 import torch
 
-from iotdb.ainode.core.exception import (
-    InferenceModelInternalError,
-)
+from iotdb.ainode.core.exception import InferenceModelInternalError
 from iotdb.ainode.core.inference.pool_group import PoolGroup
 from iotdb.ainode.core.inference.pool_scheduler.abstract_pool_scheduler import (
     AbstractPoolScheduler,
