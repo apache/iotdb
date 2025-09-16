@@ -86,7 +86,6 @@ public class DeviceLastCache {
     final AtomicInteger diff = new AtomicInteger(0);
 
     for (final String measurement : measurements) {
-      // Removing table measurement, do not put cache
       if (Objects.isNull(measurement)) {
         continue;
       }

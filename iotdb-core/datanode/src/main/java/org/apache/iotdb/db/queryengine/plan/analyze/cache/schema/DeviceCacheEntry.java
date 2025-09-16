@@ -137,7 +137,6 @@ public class DeviceCacheEntry {
   }
 
   boolean updateInputMap(final @Nonnull Map<String, TimeValuePair> updateMap) {
-    // Shall only call this for original table device
     for (final String measurement : updateMap.keySet()) {
       final TimeValuePair result = getTimeValuePair(measurement);
       if (result == null) {
