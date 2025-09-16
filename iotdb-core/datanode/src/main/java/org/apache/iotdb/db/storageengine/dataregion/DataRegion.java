@@ -138,7 +138,6 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.TsFileLastReader;
 import org.apache.tsfile.utils.FSUtils;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1282,29 +1281,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
-    long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-    String[] measurements = node.getMeasurements();
-    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
-        // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-      } else {
-        rawMeasurements[i] = measurements[i];
-      }
-    }
-    DataNodeSchemaCache.getInstance()
-        .updateLastCache(
-            getDatabaseName(),
-            node.getDevicePath(),
-            rawMeasurements,
-            node.getMeasurementSchemas(),
-            node.isAligned(),
-            node::composeLastTimeValuePair,
-            index -> node.getColumns()[index] != null,
-            true,
-            latestFlushedTime);
+    node.updateLastCache(getDatabaseName());
   }
 
   private TsFileProcessor insertToTsFileProcessor(
@@ -1394,35 +1371,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
-    DataNodeSchemaCache.getInstance().takeReadLock();
-    try {
-      for (InsertRowNode node : nodeList) {
-        long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-        String[] measurements = node.getMeasurements();
-        MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-        String[] rawMeasurements = new String[measurements.length];
-        for (int i = 0; i < measurements.length; i++) {
-          if (measurementSchemas[i] != null) {
-            // get raw measurement rather than alias
-            rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-          } else {
-            rawMeasurements[i] = measurements[i];
-          }
-        }
-        DataNodeSchemaCache.getInstance()
-            .updateLastCacheWithoutLock(
-                getDatabaseName(),
-                node.getDevicePath(),
-                rawMeasurements,
-                node.getMeasurementSchemas(),
-                node.isAligned(),
-                node::composeTimeValuePair,
-                index -> node.getValues()[index] != null,
-                true,
-                latestFlushedTime);
-      }
-    } finally {
-      DataNodeSchemaCache.getInstance().releaseReadLock();
+    for (InsertRowNode node : nodeList) {
+      node.updateLastCache(databaseName);
     }
   }
 
@@ -3279,16 +3229,13 @@ public class DataRegion implements IDataRegionForQuery {
         try {
           // we do not update schema here, so aligned is not relevant
           DataNodeSchemaCache.getInstance()
-              .updateLastCache(
+              .updateLastCacheIfExists(
                   databaseName,
                   new PartialPath(deviceID),
                   measurements,
-                  null,
+                  timeValuePairs,
                   false,
-                  value -> timeValuePairs[value],
-                  i -> true,
-                  true,
-                  0L);
+                  null);
         } catch (IllegalPathException e) {
           logger.error("Failed to construct path for invalidating last cache of {}", deviceID, e);
           DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
@@ -3309,16 +3256,13 @@ public class DataRegion implements IDataRegionForQuery {
         try {
           // we do not update schema here, so aligned is not relevant
           DataNodeSchemaCache.getInstance()
-              .updateLastCache(
+              .updateLastCacheIfExists(
                   databaseName,
                   new PartialPath(deviceID),
                   measurements,
-                  null,
+                  timeValuePairs,
                   false,
-                  value -> timeValuePairs[value],
-                  i -> true,
-                  true,
-                  0L);
+                  null);
         } catch (IllegalPathException e) {
           logger.error("Failed to construct path for invalidating last cache of {}", deviceID, e);
           DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();

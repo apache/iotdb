@@ -2774,6 +2774,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 UpdateLastCacheOperator.class.getSimpleName());
 
+    final boolean isNeedUpdateLastCache = context.isNeedUpdateLastCache();
+    if (isNeedUpdateLastCache) {
+      DataNodeSchemaCache.getInstance()
+          .updateLastCache(
+              ((DataDriverContext) operatorContext.getDriverContext())
+                  .getDataRegion()
+                  .getDatabaseName(),
+              fullPath,
+              false);
+    }
+
     return Objects.isNull(node.getOutputViewPath())
         ? new UpdateLastCacheOperator(
             operatorContext,
@@ -2810,6 +2821,27 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 planNodeId,
                 AlignedUpdateLastCacheOperator.class.getSimpleName());
+
+    final boolean isNeedUpdateLastCache = context.isNeedUpdateLastCache();
+    if (isNeedUpdateLastCache) {
+      final int size = unCachedPath.getColumnNum();
+      final PartialPath devicePath = unCachedPath.getDevicePath();
+      final String databaseName =
+          ((DataDriverContext) operatorContext.getDriverContext())
+              .getDataRegion()
+              .getDatabaseName();
+
+      for (int i = 0; i < size; ++i) {
+        DataNodeSchemaCache.getInstance()
+            .updateLastCache(
+                databaseName,
+                new MeasurementPath(
+                    devicePath.concatNode(unCachedPath.getMeasurementList().get(i)),
+                    unCachedPath.getSchemaList().get(i),
+                    true),
+                false);
+      }
+    }
 
     return Objects.isNull(outputViewPath)
         ? new AlignedUpdateLastCacheOperator(

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceLastCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -35,9 +36,11 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nullable;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator {
@@ -117,8 +120,17 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       }
 
       if (!deviceInMultiRegion) {
-        lastCache.updateLastCache(
-            getDatabaseName(), fullPath, new TimeValuePair(time, value), false, Long.MIN_VALUE);
+        lastCache.updateLastCacheIfExists(
+            getDatabaseName(),
+            fullPath.getDevicePath(),
+            new String[] {fullPath.getMeasurement()},
+            new TimeValuePair[] {
+              Objects.nonNull(value)
+                  ? new TimeValuePair(time, value)
+                  : needUpdateNullEntry ? DeviceLastCache.EMPTY_TIME_VALUE_PAIR : null
+            },
+            fullPath.isUnderAlignedEntity(),
+            new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
         return;
       }
       // update cache in DataNodeQueryContext
@@ -127,8 +139,13 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       }
 
       if (seriesScanInfo.left.decrementAndGet() == 0) {
-        lastCache.updateLastCache(
-            getDatabaseName(), fullPath, seriesScanInfo.right, false, Long.MIN_VALUE);
+        lastCache.updateLastCacheIfExists(
+            getDatabaseName(),
+            fullPath.getDevicePath(),
+            new String[] {fullPath.getMeasurement()},
+            new TimeValuePair[] {seriesScanInfo.right},
+            fullPath.isUnderAlignedEntity(),
+            new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
       }
     } finally {
       dataNodeQueryContext.unLock(deviceInMultiRegion);
