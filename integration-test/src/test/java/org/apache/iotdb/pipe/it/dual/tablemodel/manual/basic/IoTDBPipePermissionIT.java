@@ -355,19 +355,17 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       // Write some data
       TableModelUtils.insertData(dbName2, tbName, 0, 100, senderEnv);
 
-      final TSStatus drop =
-              client.dropPipe("testPipe");
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), drop.getCode());
+      final TSStatus drop = client.dropPipe("testPipe");
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), drop.getCode());
 
-        sinkAttributes.put("skipif", "no-privileges");
+      sinkAttributes.put("skipif", "no-privileges");
       final TSStatus create =
-              client.createPipe(
-                      new TCreatePipeReq("testPipe", sinkAttributes)
-                              .setExtractorAttributes(sourceAttributes)
-                              .setProcessorAttributes(processorAttributes));
+          client.createPipe(
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), create.getCode());
-
 
       // Shall not be transferred
       TestUtils.assertDataAlwaysOnEnv(
