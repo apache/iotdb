@@ -62,7 +62,10 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onError(final Exception exception) {
-    ThriftClient.resolveException(exception, client);
+    if (client != null) {
+      ThriftClient.resolveException(exception, client);
+    }
+
     if (connector.isClosed()) {
       clearEventsReferenceCount();
       connector.eliminateHandler(this, true);
