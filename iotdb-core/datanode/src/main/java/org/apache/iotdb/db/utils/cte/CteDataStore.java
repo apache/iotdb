@@ -23,6 +23,8 @@ package org.apache.iotdb.db.utils.cte;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -30,11 +32,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CteDataStore {
+  private final Query query;
+  private final TableSchema tableSchema;
+
   private final List<TsBlock> cachedData;
   private long cachedBytes;
   private int cachedRows;
 
-  public CteDataStore() {
+  public CteDataStore(Query query, TableSchema tableSchema) {
+    this.query = query;
+    this.tableSchema = tableSchema;
     this.cachedData = new ArrayList<>();
     this.cachedBytes = 0L;
     this.cachedRows = 0;
@@ -68,5 +75,13 @@ public class CteDataStore {
 
   public long getCachedBytes() {
     return cachedBytes;
+  }
+
+  public TableSchema getTableSchema() {
+    return tableSchema;
+  }
+
+  public Query getQuery() {
+    return query;
   }
 }
