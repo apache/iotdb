@@ -31,7 +31,6 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -211,8 +210,7 @@ public class DataNodeSchemaCacheTest {
     // Simulate "s1" revert when the query has failed in calculation
     dataNodeSchemaCache.updateLastCacheIfExists(
         database,
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        device,
         new String[] {"s1"},
         new TimeValuePair[] {
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
@@ -225,8 +223,7 @@ public class DataNodeSchemaCacheTest {
     // "s2" shall be null since the "null" timeValuePair has not been put
     dataNodeSchemaCache.updateLastCacheIfExists(
         database,
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        device,
         new String[] {"s2"},
         new TimeValuePair[] {tv1},
         false,
@@ -234,8 +231,7 @@ public class DataNodeSchemaCacheTest {
 
     dataNodeSchemaCache.updateLastCacheIfExists(
         database,
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        device,
         new String[] {"s3"},
         new TimeValuePair[] {tv1},
         false,
@@ -249,8 +245,7 @@ public class DataNodeSchemaCacheTest {
 
     dataNodeSchemaCache.updateLastCacheIfExists(
         database,
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        device,
         measurements,
         new TimeValuePair[] {
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
