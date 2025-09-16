@@ -17,20 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.metadata;
+package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+public class TreeAccessCheckContext {
 
-public class ShowClusterIdStatement extends ShowStatement implements IConfigStatement {
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
-  }
+  final String userName;
 
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowClusterId(this, context);
+  public TreeAccessCheckContext(String userName) {
+    this.userName = userName;
   }
 }

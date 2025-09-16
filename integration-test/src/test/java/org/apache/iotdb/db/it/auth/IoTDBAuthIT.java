@@ -993,7 +993,7 @@ public class IoTDBAuthIT {
 
     // 2. USER1 has all privileges on root.**
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege()) {
+      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1";
@@ -1020,7 +1020,7 @@ public class IoTDBAuthIT {
 
     // 4. USER2 has all privilegs on root.** with grant option;
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege()) {
+      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user2 with grant option";
@@ -1150,7 +1150,7 @@ public class IoTDBAuthIT {
     //    user2 has all privileges without grant option on root.**
     //    user2 has all privileges without grant option on root.t1.**
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege()) {
+      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1 WITH GRANT OPTION";
@@ -1168,7 +1168,7 @@ public class IoTDBAuthIT {
     try {
       // revoke privileges on root.** and root.t1.**
       for (PrivilegeType item : PrivilegeType.values()) {
-        if (item.isRelationalPrivilege()) {
+        if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
           continue;
         }
         user1Stmt.execute(String.format("REVOKE %s ON root.** FROM USER user2", item));

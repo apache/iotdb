@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -344,8 +345,12 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(insertStatement, context);
   }
 
+  public R visitInsertBase(InsertBaseStatement insertStatement, C context) {
+    return visitStatement(insertStatement, context);
+  }
+
   public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
-    return visitStatement(insertTabletStatement, context);
+    return visitInsertBase(insertTabletStatement, context);
   }
 
   public R visitLoadFile(LoadTsFileStatement loadTsFileStatement, C context) {
@@ -353,21 +358,21 @@ public abstract class StatementVisitor<R, C> {
   }
 
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
-    return visitStatement(insertRowStatement, context);
+    return visitInsertBase(insertRowStatement, context);
   }
 
   public R visitInsertRows(InsertRowsStatement insertRowsStatement, C context) {
-    return visitStatement(insertRowsStatement, context);
+    return visitInsertBase(insertRowsStatement, context);
   }
 
   public R visitInsertMultiTablets(
       InsertMultiTabletsStatement insertMultiTabletsStatement, C context) {
-    return visitStatement(insertMultiTabletsStatement, context);
+    return visitInsertBase(insertMultiTabletsStatement, context);
   }
 
   public R visitInsertRowsOfOneDevice(
       InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, C context) {
-    return visitStatement(insertRowsOfOneDeviceStatement, context);
+    return visitInsertBase(insertRowsOfOneDeviceStatement, context);
   }
 
   public R visitPipeEnrichedStatement(PipeEnrichedStatement pipeEnrichedStatement, C context) {
@@ -720,5 +725,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {
     return visitStatement(createTrainingStatement, context);
+  }
+
+  public R visitAuthorityInformation(AuthorityInformationStatement statement, C context) {
+    return visitStatement(statement, context);
   }
 }

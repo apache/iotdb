@@ -41,6 +41,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -508,6 +510,12 @@ public class AuthUtils {
         return PrivilegeType.MAINTAIN;
       case 9:
         return PrivilegeType.USE_MODEL;
+      case 10:
+        return PrivilegeType.SYSTEM;
+      case 11:
+        return PrivilegeType.SECURITY;
+      case 12:
+        return PrivilegeType.AUDIT;
       default:
         // Not reach here.
         LOGGER.warn("Not support position");
@@ -537,8 +545,33 @@ public class AuthUtils {
         return 8;
       case USE_MODEL:
         return 9;
+      case SYSTEM:
+        return 10;
+      case SECURITY:
+        return 11;
+      case AUDIT:
+        return 12;
       default:
         return -1;
+    }
+  }
+
+  public static List<PrivilegeType> getAllPrivilegesContainingCurrentPrivilege(PrivilegeType priv) {
+    switch (priv) {
+      case MANAGE_USER:
+      case MANAGE_ROLE:
+        return Arrays.asList(priv, PrivilegeType.SECURITY);
+      case MAINTAIN:
+      case USE_UDF:
+      case USE_MODEL:
+      case USE_TRIGGER:
+      case USE_CQ:
+      case USE_PIPE:
+      case MANAGE_DATABASE:
+      case EXTEND_TEMPLATE:
+        return Arrays.asList(priv, PrivilegeType.SYSTEM);
+      default:
+        return Collections.singletonList(priv);
     }
   }
 
