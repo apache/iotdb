@@ -1298,6 +1298,7 @@ public class IoTDBAuthIT {
             "show clusterid",
             "show regions",
             "show data regionid where database=root.**",
+            "show procedures",
 
             // remove node
             "remove datanode 0",
@@ -1340,6 +1341,7 @@ public class IoTDBAuthIT {
             "show cluster",
             "show clusterid",
             "show regions",
+            "show procedures",
 
             // remove node
             "remove datanode 0",
