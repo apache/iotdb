@@ -135,8 +135,7 @@ class InferenceRequestPool(mp.Process):
                     cur_batch_size = request.batch_size
                     cur_output = batch_output[offset : offset + cur_batch_size]
                     offset += cur_batch_size
-                    # TODO Here we only considered the case where batchsize=1 in one request. If multi-variable adaptation is required in the future, modifications may be needed here, such as: `cur_output[0]` maybe not true in multi-variable scene
-                    request.write_step_output(cur_output[0].mean(dim=0))
+                    request.write_step_output(cur_output.mean(dim=1))
 
                     request.inference_pipeline.post_decode()
                     if request.is_finished():
