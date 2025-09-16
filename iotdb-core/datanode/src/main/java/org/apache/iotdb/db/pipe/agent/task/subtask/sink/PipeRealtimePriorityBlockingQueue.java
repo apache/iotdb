@@ -243,6 +243,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
         }
       }
 
+      if (copyOfEventsToBeRemoved.isEmpty()) {
+        // All events to be removed are not in the deque, skip this replacement
+        continue;
+      }
+
       final PipeTsFileInsertionEvent anyEvent = entry.getValue().stream().findFirst().orElse(null);
       final Set<PipeTsFileInsertionEvent> newEvents = new HashSet<>();
       for (int i = 0; i < targetFiles.size(); i++) {
