@@ -1420,30 +1420,30 @@ public class ColumnTransformerBuilder
     } else if (TableBuiltinScalarFunction.CRC32.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       return new CRC32Transformer(INT64, first);
-    } else if (TableBuiltinScalarFunction.SPOOKY_HASH_V2_32.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SPOOKY_HASH_V2_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
-      return new GenericCodecColumnTransformer(BLOB,
-        first,
-        CodecStrategiesFactory.spooky_hash_v2_32,
-        functionName,
-        first.getType());
-    }else if (TableBuiltinScalarFunction.SPOOKY_HASH_V2_64.getFunctionName().equalsIgnoreCase(functionName)) {
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.spooky_hash_v2_32, functionName, first.getType());
+    } else if (TableBuiltinScalarFunction.SPOOKY_HASH_V2_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
-      return new GenericCodecColumnTransformer(BLOB,
-        first,
-        CodecStrategiesFactory.spooky_hash_v2_64,
-        functionName,
-        first.getType());
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.spooky_hash_v2_64, functionName, first.getType());
     } else if (TableBuiltinScalarFunction.LPAD.getFunctionName().equalsIgnoreCase(functionName)) {
-      return new LpadColumnTransformer(BLOB,
-        this.process(children.get(0), context),
-        this.process(children.get(1), context),
-        this.process(children.get(2), context));
-    }else if (TableBuiltinScalarFunction.RPAD.getFunctionName().equalsIgnoreCase(functionName)) {
-      return new RpadColumnTransformer(BLOB,
-        this.process(children.get(0), context),
-        this.process(children.get(1), context),
-        this.process(children.get(2), context));
+      return new LpadColumnTransformer(
+          BLOB,
+          this.process(children.get(0), context),
+          this.process(children.get(1), context),
+          this.process(children.get(2), context));
+    } else if (TableBuiltinScalarFunction.RPAD.getFunctionName().equalsIgnoreCase(functionName)) {
+      return new RpadColumnTransformer(
+          BLOB,
+          this.process(children.get(0), context),
+          this.process(children.get(1), context),
+          this.process(children.get(2), context));
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {
