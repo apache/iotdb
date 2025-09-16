@@ -584,7 +584,7 @@ public class RegionWriteExecutor {
 
         for (final Map.Entry<Integer, MetadataException> failingMeasurement :
             failingMeasurementMap.entrySet()) {
-          LOGGER.warn(METADATA_ERROR_MSG, failingMeasurement.getValue());
+          LOGGER.info(METADATA_ERROR_MSG, failingMeasurement.getValue());
           failingStatus.add(
               RpcUtils.getStatus(
                   failingMeasurement.getValue().getErrorCode(),
