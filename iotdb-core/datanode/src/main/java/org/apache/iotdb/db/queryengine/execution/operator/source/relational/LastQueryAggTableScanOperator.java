@@ -546,7 +546,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               LastByDescAccumulator lastByAccumulator =
                   (LastByDescAccumulator) tableAggregator.getAccumulator();
               if (lastByAccumulator.hasInitResult() && !lastByAccumulator.isXNull()) {
-                updateMeasurementList.add("");
                 updateTimeValuePairList.add(
                     new TimeValuePair(
                         lastByAccumulator.getLastTimeOfY(),

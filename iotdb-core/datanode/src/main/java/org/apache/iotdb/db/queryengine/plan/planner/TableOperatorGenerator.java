@@ -3244,7 +3244,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       context.dataNodeQueryContext.addUnCachedDeviceIfAbsent(
           node.getQualifiedObjectName(),
           deviceEntry,
-          node.getDeviceScanSumMap().getOrDefault(deviceEntry, 1));
+          node.getDeviceScanSumMap() == null
+              ? 1
+              : node.getDeviceScanSumMap().getOrDefault(deviceEntry, 1));
     } finally {
       context.dataNodeQueryContext.unLock(deviceInMultiRegion);
     }
