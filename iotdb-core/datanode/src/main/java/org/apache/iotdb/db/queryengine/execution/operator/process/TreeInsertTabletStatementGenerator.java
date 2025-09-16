@@ -59,7 +59,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
     for (String measurement : measurements) {
       writtenCounter.put(measurement, new AtomicLong(0));
     }
-    this.initialize();
+    this.reset();
   }
 
   public int processTsBlock(TsBlock tsBlock, int lastReadIndex) {

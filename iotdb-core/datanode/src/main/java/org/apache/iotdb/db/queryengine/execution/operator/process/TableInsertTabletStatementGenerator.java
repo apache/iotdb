@@ -71,7 +71,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
     this.columnCategories = tsTableColumnCategories.toArray(new TsTableColumnCategory[0]);
     this.timeColumnIndex =
         measurementToInputLocationMap.get(TIME_COLUMN_NAME).getValueColumnIndex();
-    this.initialize();
+    this.reset();
   }
 
   public int processTsBlock(TsBlock tsBlock, int lastReadIndex) {
