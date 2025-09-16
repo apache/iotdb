@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
 import java.net.SocketException;
+import java.nio.channels.ClosedChannelException;
 import java.util.Optional;
 
 /**
@@ -113,7 +114,8 @@ public interface ThriftClient {
         || (cause instanceof IOException
             && (hasExpectedMessage(cause, "Connection reset by peer")
                 || hasExpectedMessage(cause, "Broken pipe")))
-        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused"));
+        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused")
+            || (cause instanceof ClosedChannelException));
   }
 
   static boolean hasExpectedMessage(Throwable cause, String expectedMessage) {

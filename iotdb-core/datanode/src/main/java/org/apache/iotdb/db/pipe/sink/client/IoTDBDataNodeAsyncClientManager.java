@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -259,6 +260,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
           @Override
           public void onError(final Exception e) {
+            ThriftClient.resolveException(e, client);
             PipeLogger.log(
                 LOGGER::warn,
                 e,
