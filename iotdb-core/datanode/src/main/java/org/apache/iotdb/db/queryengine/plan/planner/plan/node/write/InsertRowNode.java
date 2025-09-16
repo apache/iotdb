@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -859,5 +860,21 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
     Object value = values[columnIndex];
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+  }
+
+  public void updateLastCache(String databaseName) {
+    String[] rawMeasurements = getRawMeasurements();
+    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+    for (int i = 0; i < rawMeasurements.length; i++) {
+      timeValuePairs[i] = composeTimeValuePair(i);
+    }
+    DataNodeSchemaCache.getInstance()
+        .updateLastCacheIfExists(
+            databaseName,
+            devicePath,
+            rawMeasurements,
+            timeValuePairs,
+            isAligned,
+            measurementSchemas);
   }
 }

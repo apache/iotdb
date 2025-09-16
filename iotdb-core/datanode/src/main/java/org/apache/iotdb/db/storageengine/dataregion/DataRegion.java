@@ -1324,29 +1324,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
-    long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-    String[] measurements = node.getMeasurements();
-    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
-        // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-      } else {
-        rawMeasurements[i] = measurements[i];
-      }
-    }
-    DataNodeSchemaCache.getInstance()
-        .updateLastCache(
-            getDatabaseName(),
-            node.getDevicePath(),
-            rawMeasurements,
-            node.getMeasurementSchemas(),
-            node.isAligned(),
-            node::composeTimeValuePair,
-            index -> node.getValues()[index] != null,
-            true,
-            latestFlushedTime);
+    node.updateLastCache(databaseName);
   }
 
   private List<InsertRowNode> insertToTsFileProcessors(
@@ -2487,7 +2465,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(getDatabaseName());
+      DataNodeSchemaCache.getInstance().invalidateDatabaseLastCache(getDatabaseName());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
