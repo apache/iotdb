@@ -19,9 +19,7 @@ from typing import Dict, Tuple
 
 import torch.multiprocessing as mp
 
-from iotdb.ainode.core.exception import (
-    InferenceModelInternalError,
-)
+from iotdb.ainode.core.exception import InferenceModelInternalError
 from iotdb.ainode.core.inference.dispatcher.basic_dispatcher import BasicDispatcher
 from iotdb.ainode.core.inference.inference_request import (
     InferenceRequest,
