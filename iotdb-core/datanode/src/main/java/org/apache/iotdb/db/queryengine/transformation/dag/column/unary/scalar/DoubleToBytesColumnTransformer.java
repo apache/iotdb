@@ -22,22 +22,21 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
-import org.apache.tsfile.read.common.type.Type;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
-/**
- * Transformer for double to bytes conversion using a specified numeric codec strategy.
- */
+/** Transformer for double to bytes conversion using a specified numeric codec strategy. */
 public class DoubleToBytesColumnTransformer extends UnaryColumnTransformer {
 
   private final NumericCodecStrategiesFactory.DoubleToBytesStrategy doubleToBytesStrategy;
 
   public DoubleToBytesColumnTransformer(
-    Type returnType,
-    ColumnTransformer childColumnTransformer,
-    NumericCodecStrategiesFactory.DoubleToBytesStrategy doubleToBytesStrategy) {
+      Type returnType,
+      ColumnTransformer childColumnTransformer,
+      NumericCodecStrategiesFactory.DoubleToBytesStrategy doubleToBytesStrategy) {
     super(returnType, childColumnTransformer);
     this.doubleToBytesStrategy = doubleToBytesStrategy;
   }

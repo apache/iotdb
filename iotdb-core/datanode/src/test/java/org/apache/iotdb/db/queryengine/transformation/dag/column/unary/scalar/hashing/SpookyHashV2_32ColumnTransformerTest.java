@@ -19,21 +19,23 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.h
  * under the License.
  */
 
-import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
-import static org.apache.tsfile.read.common.type.BlobType.BLOB;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Optional;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 
 public class SpookyHashV2_32ColumnTransformerTest {
 

@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBlobType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
-
 import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBlobType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 
 /**
  * A utility class for generating user-friendly debug information during the execution of

@@ -17,12 +17,12 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.strategies.HmacStrategy;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
@@ -33,38 +33,36 @@ public class HmacConstantKeyColumnTransformer extends UnaryColumnTransformer {
   private final HmacStrategy optimizedHmacStrategy;
 
   public HmacConstantKeyColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, HmacStrategy optimizedHmacStrategy) {
+      Type returnType,
+      ColumnTransformer childColumnTransformer,
+      HmacStrategy optimizedHmacStrategy) {
     super(returnType, childColumnTransformer);
     this.optimizedHmacStrategy = optimizedHmacStrategy;
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-    for(int i=0, n=column.getPositionCount(); i < n; i++){
-      if(!column.isNull(i)){
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (!column.isNull(i)) {
         byte[] values = column.getBinary(i).getValues();
         byte[] hmacResult = optimizedHmacStrategy.hmacTransform(values, null);
         columnBuilder.writeBinary(new Binary(hmacResult));
-      }
-      else{
+      } else {
         columnBuilder.appendNull();
       }
     }
-
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
-    for(int i=0, n=column.getPositionCount(); i < n; i++){
-      if(selection[i] && !column.isNull(i)){
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
         byte[] values = column.getBinary(i).getValues();
         byte[] hmacResult = optimizedHmacStrategy.hmacTransform(values, null);
         columnBuilder.writeBinary(new Binary(hmacResult));
-      }
-      else{
+      } else {
         columnBuilder.appendNull();
       }
     }
-
   }
 }

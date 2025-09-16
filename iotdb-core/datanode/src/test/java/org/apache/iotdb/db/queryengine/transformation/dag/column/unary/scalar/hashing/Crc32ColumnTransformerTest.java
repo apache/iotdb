@@ -21,10 +21,9 @@
 // Note: The actual package may vary, adjust if CRC32Transformer is in a different location.
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.hashing;
 
-import java.util.Optional;
-import java.util.zip.CRC32;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CRC32Transformer;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -33,6 +32,9 @@ import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.Optional;
+import java.util.zip.CRC32;
 
 public class Crc32ColumnTransformerTest {
 

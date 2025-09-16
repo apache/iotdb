@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.zip.CRC32;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 
 /**
  * A factory for strategies that convert numeric types to/from byte arrays using various encoding

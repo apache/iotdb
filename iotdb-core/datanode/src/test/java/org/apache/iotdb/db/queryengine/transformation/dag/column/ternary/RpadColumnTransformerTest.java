@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary;
 
-import java.util.Optional;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
@@ -29,6 +29,8 @@ import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.Optional;
 
 // This unit test is for a hypothetical RpadColumnTransformer class.
 // It assumes the class exists and follows a similar structure to other transformers.
@@ -43,7 +45,7 @@ public class RpadColumnTransformerTest {
     Mockito.doNothing().when(mockTransformer).clearCache();
     Mockito.doNothing().when(mockTransformer).evaluateWithSelection(Mockito.any());
     Mockito.when(mockTransformer.getColumnCachePositionCount())
-      .thenReturn(column.getPositionCount());
+        .thenReturn(column.getPositionCount());
     return mockTransformer;
   }
 

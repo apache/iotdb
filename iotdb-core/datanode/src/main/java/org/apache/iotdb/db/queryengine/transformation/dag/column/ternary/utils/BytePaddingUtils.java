@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.utils;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;

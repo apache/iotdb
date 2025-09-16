@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntegerEncoding;
 
-import static org.apache.tsfile.read.common.type.BlobType.BLOB;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Optional;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LongToBytesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 
 public class ToLittleEndian64ColumnTransformerTest {
 
@@ -59,8 +61,8 @@ public class ToLittleEndian64ColumnTransformerTest {
 
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(longColumn);
     LongToBytesColumnTransformer transformer =
-      new LongToBytesColumnTransformer(
-        BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
+        new LongToBytesColumnTransformer(
+            BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -79,8 +81,8 @@ public class ToLittleEndian64ColumnTransformerTest {
 
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(longColumn);
     LongToBytesColumnTransformer transformer =
-      new LongToBytesColumnTransformer(
-        BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
+        new LongToBytesColumnTransformer(
+            BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -99,8 +101,8 @@ public class ToLittleEndian64ColumnTransformerTest {
 
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(longColumn);
     LongToBytesColumnTransformer transformer =
-      new LongToBytesColumnTransformer(
-        BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
+        new LongToBytesColumnTransformer(
+            BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -119,8 +121,8 @@ public class ToLittleEndian64ColumnTransformerTest {
 
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(longColumn);
     LongToBytesColumnTransformer transformer =
-      new LongToBytesColumnTransformer(
-        BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
+        new LongToBytesColumnTransformer(
+            BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -139,8 +141,8 @@ public class ToLittleEndian64ColumnTransformerTest {
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(longColumn);
 
     LongToBytesColumnTransformer transformer =
-      new LongToBytesColumnTransformer(
-        BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
+        new LongToBytesColumnTransformer(
+            BLOB, childColumnTransformer, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -164,8 +166,8 @@ public class ToLittleEndian64ColumnTransformerTest {
     ColumnTransformer child = mockChildColumnTransformer(longColumn);
 
     LongToBytesColumnTransformer transformer =
-      new LongToBytesColumnTransformer(
-        BLOB, child, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
+        new LongToBytesColumnTransformer(
+            BLOB, child, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
     transformer.addReferenceCount();
 
     // Select and process only the first and third rows.

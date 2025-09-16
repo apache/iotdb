@@ -19,19 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util.TransformerDebugUtils.generateOriginalValue;
-
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
-/**
- * A transformer that converts byte array representations to long values
- */
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util.TransformerDebugUtils.generateOriginalValue;
+
+/** A transformer that converts byte array representations to long values */
 public class BytesToLongColumnTransformer extends UnaryColumnTransformer {
 
   private final NumericCodecStrategiesFactory.BytesToLongStrategy bytesToLongStrategy;

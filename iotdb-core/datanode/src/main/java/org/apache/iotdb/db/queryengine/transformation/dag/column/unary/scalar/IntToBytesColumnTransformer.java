@@ -22,14 +22,13 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
-/**
- *  Transformer for int to bytes conversion using a specified numeric codec strategy.
- */
+/** Transformer for int to bytes conversion using a specified numeric codec strategy. */
 public class IntToBytesColumnTransformer extends UnaryColumnTransformer {
 
   private final NumericCodecStrategiesFactory.IntToBytesStrategy intToBytesStrategy;

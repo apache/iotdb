@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.base64Encoding;
 
-import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
-import static org.apache.tsfile.read.common.type.BlobType.BLOB;
-import static org.apache.tsfile.read.common.type.StringType.STRING;
-
-import java.util.Base64;
-import java.util.Optional;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -36,6 +31,13 @@ import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.Base64;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class FromBase64ColumnTransformerTest {
 
@@ -76,7 +78,7 @@ public class FromBase64ColumnTransformerTest {
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
     GenericCodecColumnTransformer transformer =
         new GenericCodecColumnTransformer(
-          BLOB, childColumnTransformer, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
+            BLOB, childColumnTransformer, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -99,7 +101,7 @@ public class FromBase64ColumnTransformerTest {
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
     GenericCodecColumnTransformer transformer =
         new GenericCodecColumnTransformer(
-          BLOB,
+            BLOB,
             childColumnTransformer,
             CodecStrategiesFactory.FROM_BASE64,
             "from_base64",
@@ -134,7 +136,7 @@ public class FromBase64ColumnTransformerTest {
 
     GenericCodecColumnTransformer transformer =
         new GenericCodecColumnTransformer(
-          BLOB, childColumnTransformer, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
+            BLOB, childColumnTransformer, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -170,7 +172,7 @@ public class FromBase64ColumnTransformerTest {
 
     GenericCodecColumnTransformer transformer =
         new GenericCodecColumnTransformer(
-          BLOB, child, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
+            BLOB, child, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
     transformer.addReferenceCount();
 
     // Select only the first and third rows for processing.
@@ -196,7 +198,7 @@ public class FromBase64ColumnTransformerTest {
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
     GenericCodecColumnTransformer transformer =
         new GenericCodecColumnTransformer(
-          BLOB, childColumnTransformer, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
+            BLOB, childColumnTransformer, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -217,7 +219,7 @@ public class FromBase64ColumnTransformerTest {
     // The inputType is TEXT, so the error message should show the original string.
     GenericCodecColumnTransformer transformer =
         new GenericCodecColumnTransformer(
-          BLOB, childColumnTransformer, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
+            BLOB, childColumnTransformer, CodecStrategiesFactory.FROM_BASE64, "from_base64", TEXT);
     transformer.addReferenceCount();
 
     try {
@@ -247,7 +249,7 @@ public class FromBase64ColumnTransformerTest {
     // The inputType is BLOB, so the error message should show a hex string.
     GenericCodecColumnTransformer transformer =
         new GenericCodecColumnTransformer(
-          BLOB,
+            BLOB,
             childColumnTransformer,
             CodecStrategiesFactory.FROM_BASE64,
             "from_base64",

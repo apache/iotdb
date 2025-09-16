@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.utils.BytePaddingUtils;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
@@ -50,7 +51,8 @@ public class RpadColumnTransformer extends TernaryColumnTransformer {
                 inputData.getBinary(i).getValues(),
                 targetLength.getLong(i),
                 paddingData.getBinary(i).getValues(),
-                inputData.getBinary(i).getValues().length, "Rpad");
+                inputData.getBinary(i).getValues().length,
+                "Rpad");
         builder.writeBinary(new Binary(bytes));
       } else {
         builder.appendNull();
@@ -68,23 +70,21 @@ public class RpadColumnTransformer extends TernaryColumnTransformer {
       boolean[] selection) {
     for (int i = 0; i < positionCount; i++) {
       if (selection[i]
-        && !inputData.isNull(i)
-        && !targetLength.isNull(i)
-        && !paddingData.isNull(i)) {
+          && !inputData.isNull(i)
+          && !targetLength.isNull(i)
+          && !paddingData.isNull(i)) {
         byte[] bytes =
-          BytePaddingUtils.padBytes(
-            inputData.getBinary(i).getValues(),
-            targetLength.getLong(i),
-            paddingData.getBinary(i).getValues(),
-            inputData.getBinary(i).getValues().length, "Rpad");
+            BytePaddingUtils.padBytes(
+                inputData.getBinary(i).getValues(),
+                targetLength.getLong(i),
+                paddingData.getBinary(i).getValues(),
+                inputData.getBinary(i).getValues().length,
+                "Rpad");
         builder.writeBinary(new Binary(bytes));
       } else {
         builder.appendNull();
       }
     }
-
-
-
   }
 
   @Override

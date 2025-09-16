@@ -19,22 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntegerEncoding;
 
-import static org.apache.tsfile.read.common.type.BlobType.BLOB;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Optional;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToIntColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class FromLittleEndian32ColumnTransformerTest {
 
@@ -62,12 +64,12 @@ public class FromLittleEndian32ColumnTransformerTest {
 
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
     BytesToIntColumnTransformer transformer =
-      new BytesToIntColumnTransformer(
-        INT32,
-        childColumnTransformer,
-        NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
-        "from_little_endian_32",
-        BLOB);
+        new BytesToIntColumnTransformer(
+            INT32,
+            childColumnTransformer,
+            NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
+            "from_little_endian_32",
+            BLOB);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -85,12 +87,12 @@ public class FromLittleEndian32ColumnTransformerTest {
 
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
     BytesToIntColumnTransformer transformer =
-      new BytesToIntColumnTransformer(
-        INT32,
-        childColumnTransformer,
-        NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
-        "from_little_endian_32",
-        BLOB);
+        new BytesToIntColumnTransformer(
+            INT32,
+            childColumnTransformer,
+            NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
+            "from_little_endian_32",
+            BLOB);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -103,20 +105,20 @@ public class FromLittleEndian32ColumnTransformerTest {
   @Test
   public void testFromLittleEndian32MultiRowsWithNull() {
     Binary[] values =
-      new Binary[] {
-        new Binary(intToLittleEndianBytes(100)), null, new Binary(intToLittleEndianBytes(-200))
-      };
+        new Binary[] {
+          new Binary(intToLittleEndianBytes(100)), null, new Binary(intToLittleEndianBytes(-200))
+        };
     boolean[] valueIsNull = new boolean[] {false, true, false};
     Column binaryColumn = new BinaryColumn(values.length, Optional.of(valueIsNull), values);
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
 
     BytesToIntColumnTransformer transformer =
-      new BytesToIntColumnTransformer(
-        INT32,
-        childColumnTransformer,
-        NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
-        "from_little_endian_32",
-        BLOB);
+        new BytesToIntColumnTransformer(
+            INT32,
+            childColumnTransformer,
+            NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
+            "from_little_endian_32",
+            BLOB);
     transformer.addReferenceCount();
     transformer.evaluate();
     Column result = transformer.getColumn();
@@ -141,12 +143,12 @@ public class FromLittleEndian32ColumnTransformerTest {
     ColumnTransformer child = mockChildColumnTransformer(binaryColumn);
 
     BytesToIntColumnTransformer transformer =
-      new BytesToIntColumnTransformer(
-        INT32,
-        child,
-        NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
-        "from_little_endian_32",
-        BLOB);
+        new BytesToIntColumnTransformer(
+            INT32,
+            child,
+            NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
+            "from_little_endian_32",
+            BLOB);
     transformer.addReferenceCount();
 
     // Select and process only the first and third rows.
@@ -171,12 +173,12 @@ public class FromLittleEndian32ColumnTransformerTest {
     ColumnTransformer child = mockChildColumnTransformer(binaryColumn);
 
     BytesToIntColumnTransformer transformer =
-      new BytesToIntColumnTransformer(
-        INT32,
-        child,
-        NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
-        "from_little_endian_32",
-        BLOB);
+        new BytesToIntColumnTransformer(
+            INT32,
+            child,
+            NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
+            "from_little_endian_32",
+            BLOB);
     transformer.addReferenceCount();
 
     try {
@@ -184,9 +186,9 @@ public class FromLittleEndian32ColumnTransformerTest {
       Assert.fail("Expected SemanticException was not thrown for short input.");
     } catch (SemanticException e) {
       Assert.assertTrue(
-        e.getMessage()
-          .contains(
-            "Failed to execute function 'from_little_endian_32' due to an invalid input format."));
+          e.getMessage()
+              .contains(
+                  "Failed to execute function 'from_little_endian_32' due to an invalid input format."));
     }
   }
 
@@ -198,12 +200,12 @@ public class FromLittleEndian32ColumnTransformerTest {
     ColumnTransformer child = mockChildColumnTransformer(binaryColumn);
 
     BytesToIntColumnTransformer transformer =
-      new BytesToIntColumnTransformer(
-        INT32,
-        child,
-        NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
-        "from_little_endian_32",
-        BLOB);
+        new BytesToIntColumnTransformer(
+            INT32,
+            child,
+            NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
+            "from_little_endian_32",
+            BLOB);
     transformer.addReferenceCount();
 
     try {
@@ -211,9 +213,9 @@ public class FromLittleEndian32ColumnTransformerTest {
       Assert.fail("Expected SemanticException was not thrown for long input.");
     } catch (SemanticException e) {
       Assert.assertTrue(
-        e.getMessage()
-          .contains(
-            "Failed to execute function 'from_little_endian_32' due to an invalid input format."));
+          e.getMessage()
+              .contains(
+                  "Failed to execute function 'from_little_endian_32' due to an invalid input format."));
     }
   }
 }

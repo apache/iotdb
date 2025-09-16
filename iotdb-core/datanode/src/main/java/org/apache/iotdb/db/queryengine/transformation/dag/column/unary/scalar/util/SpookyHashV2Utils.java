@@ -33,20 +33,20 @@ public class SpookyHashV2Utils {
 
     // little endian
     return (data[index] & 0xFFL)
-      | ((data[index + 1] & 0xFFL) << 8)
-      | ((data[index + 2] & 0xFFL) << 16)
-      | ((data[index + 3] & 0xFFL) << 24)
-      | ((data[index + 4] & 0xFFL) << 32)
-      | ((data[index + 5] & 0xFFL) << 40)
-      | ((data[index + 6] & 0xFFL) << 48)
-      | ((data[index + 7] & 0xFFL) << 56);
+        | ((data[index + 1] & 0xFFL) << 8)
+        | ((data[index + 2] & 0xFFL) << 16)
+        | ((data[index + 3] & 0xFFL) << 24)
+        | ((data[index + 4] & 0xFFL) << 32)
+        | ((data[index + 5] & 0xFFL) << 40)
+        | ((data[index + 6] & 0xFFL) << 48)
+        | ((data[index + 7] & 0xFFL) << 56);
   }
 
   public static long getUnsignedIntFromBytesWithLittleEndian(byte[] data, int index) {
     return (data[index] & 0xFFL)
-      | ((data[index + 1] & 0xFFL) << 8)
-      | ((data[index + 2] & 0xFFL) << 16)
-      | ((data[index + 3] & 0xFFL) << 24);
+        | ((data[index + 1] & 0xFFL) << 8)
+        | ((data[index + 2] & 0xFFL) << 16)
+        | ((data[index + 3] & 0xFFL) << 24);
   }
 
   public static byte[] intToBytes(int value) {
@@ -64,8 +64,6 @@ public class SpookyHashV2Utils {
     return buffer.array();
   }
 
-
-
   private SpookyHashV2Utils() {}
 
   public static byte[] hash32(byte[] data) {
@@ -75,7 +73,6 @@ public class SpookyHashV2Utils {
   public static byte[] hash64(byte[] data) {
     return longToBytes(hash64(data, 0, data.length, 0));
   }
-
 
   public static long hash64(byte[] data, int offset, int length, long seed) {
     if (length < SHORT_THRESHOLD) {

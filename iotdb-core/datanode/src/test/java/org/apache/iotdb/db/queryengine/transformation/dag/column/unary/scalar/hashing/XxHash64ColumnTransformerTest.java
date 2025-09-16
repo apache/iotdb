@@ -21,15 +21,12 @@
 // package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.hashing;
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.hashing;
 
-import static org.apache.tsfile.read.common.type.StringType.STRING;
-
-import java.nio.ByteBuffer;
-import java.util.Optional;
-import net.jpountz.xxhash.XXHash64;
-import net.jpountz.xxhash.XXHashFactory;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
+
+import net.jpountz.xxhash.XXHash64;
+import net.jpountz.xxhash.XXHashFactory;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -38,6 +35,11 @@ import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.nio.ByteBuffer;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class XxHash64ColumnTransformerTest {
 

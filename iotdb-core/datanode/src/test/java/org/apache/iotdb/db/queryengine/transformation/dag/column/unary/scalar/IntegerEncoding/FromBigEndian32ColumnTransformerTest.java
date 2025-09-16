@@ -19,21 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntegerEncoding;
 
-import static org.apache.tsfile.read.common.type.BlobType.BLOB;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
-
-import java.nio.ByteBuffer;
-import java.util.Optional;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToIntColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.nio.ByteBuffer;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class FromBigEndian32ColumnTransformerTest {
 

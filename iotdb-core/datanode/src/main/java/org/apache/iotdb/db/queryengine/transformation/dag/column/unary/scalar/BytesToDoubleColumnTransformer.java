@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util.TransformerDebugUtils.generateOriginalValue;
-
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
+
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util.TransformerDebugUtils.generateOriginalValue;
 
 public class BytesToDoubleColumnTransformer extends UnaryColumnTransformer {
 
@@ -36,11 +37,11 @@ public class BytesToDoubleColumnTransformer extends UnaryColumnTransformer {
   private final Type inputType;
 
   public BytesToDoubleColumnTransformer(
-    Type returnType,
-    ColumnTransformer childColumnTransformer,
-    NumericCodecStrategiesFactory.BytesToDoubleStrategy bytesToDoubleStrategy,
-    String functionName,
-    Type inputType) {
+      Type returnType,
+      ColumnTransformer childColumnTransformer,
+      NumericCodecStrategiesFactory.BytesToDoubleStrategy bytesToDoubleStrategy,
+      String functionName,
+      Type inputType) {
     super(returnType, childColumnTransformer);
     this.bytesToDoubleStrategy = bytesToDoubleStrategy;
     this.functionName = functionName;
@@ -67,9 +68,9 @@ public class BytesToDoubleColumnTransformer extends UnaryColumnTransformer {
       } catch (SemanticException e) {
         String problematicValue = generateOriginalValue(inputBytes, inputType);
         String errorMessage =
-          String.format(
-            "Failed to execute function '%s' due to an invalid input format. Problematic value: %s",
-            functionName, problematicValue);
+            String.format(
+                "Failed to execute function '%s' due to an invalid input format. Problematic value: %s",
+                functionName, problematicValue);
         throw new SemanticException(errorMessage);
       }
     }

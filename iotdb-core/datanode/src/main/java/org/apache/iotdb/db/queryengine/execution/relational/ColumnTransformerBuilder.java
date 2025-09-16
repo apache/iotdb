@@ -19,35 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.relational;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacMd5Strategy;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha1Strategy;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha256Strategy;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha512Strategy;
-import static org.apache.tsfile.read.common.type.BlobType.BLOB;
-import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
-import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
-import static org.apache.tsfile.read.common.type.LongType.INT64;
-import static org.apache.tsfile.read.common.type.StringType.STRING;
-
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -225,6 +196,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.fa
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
@@ -238,6 +210,36 @@ import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacMd5Strategy;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha1Strategy;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha256Strategy;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha512Strategy;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class ColumnTransformerBuilder
     extends AstVisitor<ColumnTransformer, ColumnTransformerBuilder.Context> {

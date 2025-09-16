@@ -19,18 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntegerEncoding;
 
-import static org.apache.tsfile.read.common.type.BlobType.BLOB;
-
-import java.nio.ByteBuffer;
-import java.util.Optional;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntToBytesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.nio.ByteBuffer;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 
 public class ToBigEndian32ColumnTransformerTest {
 

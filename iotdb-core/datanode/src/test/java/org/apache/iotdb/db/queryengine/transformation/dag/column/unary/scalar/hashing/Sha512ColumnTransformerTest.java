@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.hashing;
 
-import static org.apache.tsfile.read.common.type.StringType.STRING;
-
-import com.google.common.hash.Hashing;
-import java.util.Optional;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
+
+import com.google.common.hash.Hashing;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -34,6 +32,10 @@ import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class Sha512ColumnTransformerTest {
 

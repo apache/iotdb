@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary;
 
-import java.util.Optional;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
@@ -29,6 +29,8 @@ import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.Optional;
 
 // This unit test is for a hypothetical LpadColumnTransformer class.
 // It assumes the class exists and follows a similar structure to other transformers.

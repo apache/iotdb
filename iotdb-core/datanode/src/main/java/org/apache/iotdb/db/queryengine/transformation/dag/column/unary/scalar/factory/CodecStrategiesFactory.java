@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory;
 
-import com.google.common.hash.Hashing;
-import com.google.common.io.BaseEncoding;
-import java.nio.ByteBuffer;
-import java.util.Base64;
-import net.jpountz.xxhash.XXHashFactory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.inteface.CodecStrategy;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util.HexUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util.SpookyHashV2Utils;
+
+import com.google.common.hash.Hashing;
+import com.google.common.io.BaseEncoding;
+import net.jpountz.xxhash.XXHashFactory;
 import org.apache.tsfile.common.conf.TSFileConfig;
+
+import java.nio.ByteBuffer;
+import java.util.Base64;
 
 /**
  * for byte[] to byte[] codec transformations, including encoding/decoding and hashing functions for

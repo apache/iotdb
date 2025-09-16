@@ -19,21 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntegerEncoding;
 
-import static org.apache.tsfile.read.common.type.BlobType.BLOB;
-import static org.apache.tsfile.read.common.type.LongType.INT64;
-
-import java.nio.ByteBuffer;
-import java.util.Optional;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToLongColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.nio.ByteBuffer;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public class FromBigEndian64ColumnTransformerTest {
 
@@ -233,7 +235,8 @@ public class FromBigEndian64ColumnTransformerTest {
     } catch (SemanticException e) {
       Assert.assertTrue(
           e.getMessage()
-              .contains("Failed to execute function 'from_big_endian_64' due to an invalid input format."));
+              .contains(
+                  "Failed to execute function 'from_big_endian_64' due to an invalid input format."));
     }
   }
 }

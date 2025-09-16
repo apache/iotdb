@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.strategies.HmacStrategy;
+
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
 
 public final class HmacStrategiesFactory {
 
