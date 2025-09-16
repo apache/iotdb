@@ -993,7 +993,7 @@ public class IoTDBAuthIT {
 
     // 2. USER1 has all privileges on root.**
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege()) {
+      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1";
@@ -1020,7 +1020,7 @@ public class IoTDBAuthIT {
 
     // 4. USER2 has all privilegs on root.** with grant option;
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege()) {
+      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user2 with grant option";
@@ -1150,7 +1150,7 @@ public class IoTDBAuthIT {
     //    user2 has all privileges without grant option on root.**
     //    user2 has all privileges without grant option on root.t1.**
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege()) {
+      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1 WITH GRANT OPTION";
@@ -1168,7 +1168,7 @@ public class IoTDBAuthIT {
     try {
       // revoke privileges on root.** and root.t1.**
       for (PrivilegeType item : PrivilegeType.values()) {
-        if (item.isRelationalPrivilege()) {
+        if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
           continue;
         }
         user1Stmt.execute(String.format("REVOKE %s ON root.** FROM USER user2", item));
@@ -1550,7 +1550,7 @@ public class IoTDBAuthIT {
   public void testPasswordHistory() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      testPasswordHistoryCreate(statement);
+      testPasswordHistoryCreateAndDrop(statement);
       testPasswordHistoryAlter(statement);
     } catch (SQLException e) {
       e.printStackTrace();
@@ -1558,7 +1558,7 @@ public class IoTDBAuthIT {
     }
   }
 
-  public void testPasswordHistoryCreate(Statement statement) throws SQLException {
+  public void testPasswordHistoryCreateAndDrop(Statement statement) throws SQLException {
     statement.execute("create user userA 'abcdef123456'");
 
     try (ResultSet resultSet =
@@ -1569,9 +1569,33 @@ public class IoTDBAuthIT {
       }
       assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
     }
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last oldPassword from root.__system.password_history.`_userA`")) {
+      if (!resultSet.next()) {
+        fail("Password history not found");
+      }
+      assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
+    }
+
+    statement.execute("drop user userA");
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last password from root.__system.password_history.`_userA`")) {
+      assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last oldPassword from root.__system.password_history.`_userA`")) {
+      assertFalse(resultSet.next());
+    }
   }
 
   public void testPasswordHistoryAlter(Statement statement) throws SQLException {
+    statement.execute("create user userA 'abcdef123456'");
     statement.execute("alter user userA set password 'abcdef654321'");
 
     try (ResultSet resultSet =

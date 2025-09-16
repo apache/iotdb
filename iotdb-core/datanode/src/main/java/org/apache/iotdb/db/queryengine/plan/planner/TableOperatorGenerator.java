@@ -279,6 +279,7 @@ import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -3126,18 +3127,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       // LAST_VALUES optimize
       lastValuesCacheResults = new ArrayList<>();
       int measurementSize = parameter.getMeasurementColumnNames().size();
+      // We don't init time if the last cache will not be updated in process of operator
+      boolean needInitTime =
+          parameter.getTableAggregators().stream()
+              .anyMatch(
+                  aggregator ->
+                      aggregator.getAccumulator() instanceof LastDescAccumulator
+                          && !((LastDescAccumulator) aggregator.getAccumulator())
+                              .isMeasurementColumn());
       // When we need last cache of Time column if:
       // 1. query is group by (we need last cache of Time to help judge if there is no data in
       // device)
       // 2. last(time), last(device) or last(attribute) occurs
-      boolean needTime =
-          !node.getGroupingKeys().isEmpty()
-              || parameter.getTableAggregators().stream()
-                  .anyMatch(
-                      aggregator ->
-                          aggregator.getAccumulator() instanceof LastDescAccumulator
-                              && !((LastDescAccumulator) aggregator.getAccumulator())
-                                  .isMeasurementColumn());
+      boolean needTime = !node.getGroupingKeys().isEmpty() || needInitTime;
       String[] targetColumns;
 
       if (needTime) {
@@ -3198,7 +3200,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .initOrInvalidateLastCache(
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
-                  targetColumns,
+                  needInitTime
+                      ? targetColumns
+                      : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
                   false);
         } else {
           hitCachesIndexes.add(i);
@@ -3695,63 +3699,59 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 TableIntoOperator.class.getSimpleName());
 
-    try {
-      PartialPath targetTable = DEVICE_PATH_CACHE.getPartialPath(node.getTable());
+    PartialPath targetTable = new PartialPath(node.getTable(), false);
 
-      Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
-      Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
-      List<TSDataType> inputColumnTypes = new ArrayList<>();
-      List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
+    Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
+    Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
+    List<TSDataType> inputColumnTypes = new ArrayList<>();
+    List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
 
-      List<ColumnSchema> originColumns = node.getColumns();
-      List<Symbol> originInputColumnNames = node.getNeededInputColumnNames();
-      int size = originColumns.size();
-      List<ColumnSchema> inputColumns = new ArrayList<>(size);
+    List<ColumnSchema> originColumns = node.getColumns();
+    List<Symbol> originInputColumnNames = node.getNeededInputColumnNames();
+    int size = originColumns.size();
+    List<ColumnSchema> inputColumns = new ArrayList<>(size);
 
-      List<Symbol> childOutputName = node.getChild().getOutputSymbols();
-      Map<Symbol, Integer> map = new HashMap<>(childOutputName.size());
-      for (int i = 0; i < size; i++) {
-        map.put(childOutputName.get(i), i);
-        inputColumns.add(null);
-      }
-      for (int i = 0; i < size; i++) {
-        int index = map.get(originInputColumnNames.get(i));
-        inputColumns.set(index, originColumns.get(i));
-      }
-
-      for (int i = 0; i < inputColumns.size(); i++) {
-        String columnName = inputColumns.get(i).getName();
-        inputLocationMap.put(columnName, new InputLocation(0, i));
-
-        TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
-        if (columnCategory == TIME) {
-          continue;
-        }
-
-        TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
-        tsDataTypeMap.put(columnName, columnType);
-        inputColumnTypes.add(columnType);
-        inputColumnCategories.add(columnCategory);
-      }
-
-      long statementSizePerLine =
-          OperatorGeneratorUtil.calculateStatementSizePerLine(inputColumnTypes);
-
-      return new TableIntoOperator(
-          operatorContext,
-          child,
-          node.getDatabase(),
-          targetTable,
-          inputColumnTypes,
-          inputColumnCategories,
-          inputLocationMap,
-          tsDataTypeMap,
-          true,
-          FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
-          statementSizePerLine);
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException(e);
+    List<Symbol> childOutputName = node.getChild().getOutputSymbols();
+    Map<Symbol, Integer> map = new HashMap<>(childOutputName.size());
+    for (int i = 0; i < size; i++) {
+      map.put(childOutputName.get(i), i);
+      inputColumns.add(null);
     }
+    for (int i = 0; i < size; i++) {
+      int index = map.get(originInputColumnNames.get(i));
+      inputColumns.set(index, originColumns.get(i));
+    }
+
+    for (int i = 0; i < inputColumns.size(); i++) {
+      String columnName = inputColumns.get(i).getName();
+      inputLocationMap.put(columnName, new InputLocation(0, i));
+
+      TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
+      if (columnCategory == TIME) {
+        continue;
+      }
+
+      TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
+      tsDataTypeMap.put(columnName, columnType);
+      inputColumnTypes.add(columnType);
+      inputColumnCategories.add(columnCategory);
+    }
+
+    long statementSizePerLine =
+        OperatorGeneratorUtil.calculateStatementSizePerLine(inputColumnTypes);
+
+    return new TableIntoOperator(
+        operatorContext,
+        child,
+        node.getDatabase(),
+        targetTable,
+        inputColumnTypes,
+        inputColumnCategories,
+        inputLocationMap,
+        tsDataTypeMap,
+        true,
+        FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
+        statementSizePerLine);
   }
 
   private boolean[] checkStatisticAndScanOrder(

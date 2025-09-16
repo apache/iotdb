@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.pipe.it.single;
 
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -137,6 +140,31 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         "test", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on any to user thulab", null);
 
     TableModelUtils.assertCountData("test", "test", 100, env);
+
+    // test showing pipe
+    // Create another pipe, user is root
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create pipe a2c "
+              + "with source ('database'='test1') "
+              + "with processor('processor'='rename-database-processor', 'processor.new-db-name'='test') "
+              + "with sink ('sink'='write-back-sink')");
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail("Create pipe without user shall succeed if use the current session");
+    }
+
+    // A user shall only see its own pipe
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
+      Assert.assertEquals(
+          1,
+          client
+              .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName("thulab"))
+              .pipeInfoList
+              .size());
+    }
   }
 
   @Test

@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 public interface AccessControl {
+
+  // ====================================== TABLE =============================================
 
   /**
    * Check if user is allowed to create the specified database.
@@ -162,4 +166,16 @@ public interface AccessControl {
    * @throws AccessDeniedException if not allowed
    */
   void checkUserIsAdmin(String userName);
+
+  /**
+   * Check if user has global SYSTEM privilege
+   *
+   * @param userName name of user
+   * @throws AccessDeniedException if not allowed
+   */
+  void checkUserGlobalSysPrivilege(String userName);
+
+  // ====================================== TREE =============================================
+
+  TSStatus checkPermissionBeforeProcess(Statement statement, String userName);
 }

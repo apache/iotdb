@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
@@ -216,7 +217,10 @@ public class AuthTest {
         new SessionInfo(
             0, userName, zoneId, databaseNameInSessionInfo, IClientSession.SqlDialect.TABLE);
     StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(TEST_MATADATA, sqlParser, new AccessControlImpl(authChecker));
+        new StatementAnalyzerFactory(
+            TEST_MATADATA,
+            sqlParser,
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()));
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
     Analyzer analyzer =
         new Analyzer(
@@ -241,7 +245,9 @@ public class AuthTest {
 
     statement.accept(
         new TableConfigTaskVisitor(
-            Mockito.mock(IClientSession.class), TEST_MATADATA, new AccessControlImpl(authChecker)),
+            Mockito.mock(IClientSession.class),
+            TEST_MATADATA,
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor())),
         context);
   }
 
@@ -254,7 +260,9 @@ public class AuthTest {
 
     statement.accept(
         new TableConfigTaskVisitor(
-            clientSession, TEST_MATADATA, new AccessControlImpl(authChecker)),
+            clientSession,
+            TEST_MATADATA,
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor())),
         context);
   }
 }

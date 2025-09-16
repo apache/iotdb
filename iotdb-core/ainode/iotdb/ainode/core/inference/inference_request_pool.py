@@ -19,6 +19,7 @@
 import random
 import threading
 import time
+from collections import defaultdict
 from enum import Enum
 
 import numpy as np
@@ -28,6 +29,8 @@ from transformers import PretrainedConfig
 
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
+from iotdb.ainode.core.inference.batcher.basic_batcher import BasicBatcher
+from iotdb.ainode.core.inference.inference_request import InferenceRequest
 from iotdb.ainode.core.inference.request_scheduler.basic_request_scheduler import (
     BasicRequestScheduler,
 )
@@ -78,6 +81,7 @@ class InferenceRequestPool(mp.Process):
         self._request_scheduler = BasicRequestScheduler(
             self._waiting_queue, self._running_queue, self._finished_queue, self.pool_id
         )
+        self._batcher = BasicBatcher()
         self._stop_event = mp.Event()
 
         self._model = None
@@ -107,42 +111,77 @@ class InferenceRequestPool(mp.Process):
             self._activate_requests()
 
     def _step(self):
-        requests = self._request_scheduler.schedule_step()
-        # TODO: We need a batcher to accelerate the concurrent inference
-        for request in requests:
+        all_requests: list[InferenceRequest] = self._request_scheduler.schedule_step()
+
+        grouped_requests = defaultdict(list)
+        for req in all_requests:
+            key = (req.inputs.shape[1], req.max_new_tokens)
+            grouped_requests[key].append(req)
+        grouped_requests = list(grouped_requests.values())
+
+        for requests in grouped_requests:
+            batch_inputs = self._batcher.batch_request(requests).to(self.device)
             if self.model_id == "sundial":
-                request.inputs = request.inputs.to(self.device)
-                output = self._model.generate(
-                    request.inputs,
-                    max_new_tokens=request.max_new_tokens,
+                batch_output = self._model.generate(
+                    batch_inputs,
+                    max_new_tokens=requests[0].max_new_tokens,
                     num_samples=10,
                     revin=True,
                 )
-                request.output_tensor = request.output_tensor.to(self.device)
-                request.write_step_output(output[0].mean(dim=0))
+
+                offset = 0
+                for request in requests:
+                    request.output_tensor = request.output_tensor.to(self.device)
+                    cur_batch_size = request.batch_size
+                    cur_output = batch_output[offset : offset + cur_batch_size]
+                    offset += cur_batch_size
+                    # TODO Here we only considered the case where batchsize=1 in one request. If multi-variable adaptation is required in the future, modifications may be needed here, such as: `cur_output[0]` maybe not true in multi-variable scene
+                    request.write_step_output(cur_output[0].mean(dim=0))
+
+                    request.inference_pipeline.post_decode()
+                    if request.is_finished():
+                        request.inference_pipeline.post_inference()
+                        self._logger.debug(
+                            f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
+                        )
+                        # ensure the output tensor is on CPU before sending to result queue
+                        request.output_tensor = request.output_tensor.cpu()
+                        self._finished_queue.put(request)
+                    else:
+                        self._logger.debug(
+                            f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
+                        )
+                        self._waiting_queue.put(request)
+
             elif self.model_id == "timer_xl":
-                request.inputs = request.inputs.to(self.device)
-                output = self._model.generate(
-                    request.inputs,
-                    max_new_tokens=request.max_new_tokens,
+                batch_output = self._model.generate(
+                    batch_inputs,
+                    max_new_tokens=requests[0].max_new_tokens,
                     revin=True,
                 )
-                request.output_tensor = request.output_tensor.to(self.device)
-                request.write_step_output(output[0])
-            request.inference_pipeline.post_decode()
-            if request.is_finished():
-                request.inference_pipeline.post_inference()
-                self._logger.debug(
-                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][Req-{request.req_id}] Request is finished"
-                )
-                # ensure the output tensor is on CPU before sending to result queue
-                request.output_tensor = request.output_tensor.cpu()
-                self._finished_queue.put(request)
-            else:
-                self._logger.debug(
-                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][Req-{request.req_id}] Request is not finished, re-queueing"
-                )
-                self._waiting_queue.put(request)
+
+                offset = 0
+                for request in requests:
+                    request.output_tensor = request.output_tensor.to(self.device)
+                    cur_batch_size = request.batch_size
+                    cur_output = batch_output[offset : offset + cur_batch_size]
+                    offset += cur_batch_size
+                    request.write_step_output(cur_output)
+
+                    request.inference_pipeline.post_decode()
+                    if request.is_finished():
+                        request.inference_pipeline.post_inference()
+                        self._logger.debug(
+                            f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
+                        )
+                        # ensure the output tensor is on CPU before sending to result queue
+                        request.output_tensor = request.output_tensor.cpu()
+                        self._finished_queue.put(request)
+                    else:
+                        self._logger.debug(
+                            f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
+                        )
+                        self._waiting_queue.put(request)
 
     def _requests_execute_loop(self):
         while not self._stop_event.is_set():

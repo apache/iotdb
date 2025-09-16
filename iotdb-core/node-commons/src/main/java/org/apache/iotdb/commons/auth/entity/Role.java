@@ -515,7 +515,8 @@ public class Role {
   }
 
   public boolean checkSysPrivilege(PrivilegeType priv) {
-    return sysPrivilegeSet.contains(priv);
+    return AuthUtils.getAllPrivilegesContainingCurrentPrivilege(priv).stream()
+        .anyMatch(sysPrivilegeSet::contains);
   }
 
   public boolean checkSysPriGrantOpt(PrivilegeType priv) {

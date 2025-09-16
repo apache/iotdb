@@ -715,7 +715,7 @@ public class StatementGeneratorTest {
 
     // 1. check simple privilege grant to user/role with/without grant option.
     for (PrivilegeType privilege : PrivilegeType.values()) {
-      if (privilege.isRelationalPrivilege()) {
+      if (privilege.isRelationalPrivilege() || privilege.isAdminPrivilege()) {
         continue;
       }
       testGrant.checkParser(privilege.toString(), name, true, path, true);
@@ -753,7 +753,7 @@ public class StatementGeneratorTest {
 
     // 3. check simple privilege revoke from user/role on simple path
     for (PrivilegeType type : PrivilegeType.values()) {
-      if (type.isRelationalPrivilege()) {
+      if (type.isRelationalPrivilege() || type.isAdminPrivilege()) {
         continue;
       }
       testRevoke.checkParser(type.toString(), name, true, path, false);
@@ -780,14 +780,14 @@ public class StatementGeneratorTest {
     // 1. test complex privilege on single path :"root.**"
     Set<String> allPriv = new HashSet<>();
     for (PrivilegeType type : PrivilegeType.values()) {
-      if (type.isRelationalPrivilege()) {
+      if (type.isRelationalPrivilege() || type.isAdminPrivilege()) {
         continue;
       }
       allPriv.add(type.toString());
     }
 
     for (PrivilegeType type : PrivilegeType.values()) {
-      if (type.isRelationalPrivilege()) {
+      if (type.isRelationalPrivilege() || type.isAdminPrivilege()) {
         continue;
       }
       {

@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.view;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils;
@@ -38,14 +34,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPathType;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPaths;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 /** CREATE LOGICAL VIEW statement. */
 public class CreateLogicalViewStatement extends Statement {
@@ -74,48 +68,6 @@ public class CreateLogicalViewStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return this.getTargetPathList();
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    List<PartialPath> sourcePathList = sourcePaths.fullPathList;
-    if (sourcePathList != null) {
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
-    }
-    if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      sourcePathList = queryStatement.getPaths();
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
-    }
-
-    final List<PartialPath> paths =
-        Objects.nonNull(getTargetPathList())
-            ? getTargetPathList()
-            : Collections.singletonList(
-                batchGenerationItem
-                    .getIntoDevice()
-                    .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathOrPatternListPermission(
-              userName, paths, PrivilegeType.WRITE_SCHEMA),
-          paths,
-          PrivilegeType.WRITE_SCHEMA);
-    }
-    return status;
   }
 
   public ViewPaths getTargetPaths() {
@@ -237,6 +189,10 @@ public class CreateLogicalViewStatement extends Statement {
       }
       this.targetPaths.setFullPathList(targetPathsList);
     }
+  }
+
+  public IntoItem getBatchGenerationItem() {
+    return batchGenerationItem;
   }
 
   // endregion

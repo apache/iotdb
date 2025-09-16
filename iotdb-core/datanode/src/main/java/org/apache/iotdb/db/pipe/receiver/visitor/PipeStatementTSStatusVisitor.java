@@ -95,7 +95,8 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
     return visitInsertBase(insertMultiTabletsStatement, context);
   }
 
-  private TSStatus visitInsertBase(
+  @Override
+  public TSStatus visitInsertBase(
       final InsertBaseStatement insertBaseStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
         || context.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {

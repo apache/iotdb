@@ -265,7 +265,7 @@ public class SessionManager implements SessionManagerMBean {
               username);
           long currentTime = CommonDateTimeUtils.currentTime();
           TSStatus tsStatus =
-              DataNodeAuthUtils.recordPassword(username, password, null, currentTime);
+              DataNodeAuthUtils.recordPasswordHistory(username, password, password, currentTime);
           if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             openSessionResp
                 .sessionId(-1)

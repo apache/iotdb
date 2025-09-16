@@ -16,26 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.auth.authorizer;
 
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
-import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-public class LocalFileAuthorizer extends BasicAuthorizer {
+public class TreeAccessCheckContext {
 
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  final String userName;
 
-  public LocalFileAuthorizer() throws AuthException {
-    super(
-        new LocalFileUserManager(config.getUserFolder()),
-        new LocalFileRoleManager(config.getRoleFolder()));
-  }
-
-  @Override
-  public boolean isAdmin(String username) {
-    return config.getAdminName().equals(username);
+  public TreeAccessCheckContext(String userName) {
+    this.userName = userName;
   }
 }
