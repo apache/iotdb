@@ -360,6 +360,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       final TSStatus drop = client.dropPipe("testPipe");
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), drop.getCode());
 
+      sourceAttributes.put("start-time", "100");
+      sourceAttributes.put("database-name", dbName2);
       sinkAttributes.put("skipif", "no-privileges");
       final TSStatus create =
           client.createPipe(
