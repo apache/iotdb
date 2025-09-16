@@ -982,6 +982,12 @@ public class IoTDBDescriptor {
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
+    conf.setDataNodeTableSchemaCacheSize(
+        Long.parseLong(
+            properties.getProperty(
+                "data_node_table_schema_cache_max_size_in_bytes",
+                String.valueOf(conf.getDataNodeTableSchemaCacheSize()))));
+
     // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
@@ -2127,12 +2133,6 @@ public class IoTDBDescriptor {
                   "include_null_value_in_write_throughput_metric",
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "include_null_value_in_write_throughput_metric"))));
-
-      conf.setDataNodeTableSchemaCacheSize(
-          Long.parseLong(
-              properties.getProperty(
-                  "data_node_table_schema_cache_max_size_in_bytes",
-                  String.valueOf(conf.getDataNodeTableSchemaCacheSize()))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
