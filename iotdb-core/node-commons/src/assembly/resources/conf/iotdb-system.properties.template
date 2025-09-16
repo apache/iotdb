@@ -807,6 +807,11 @@ device_path_cache_proportion=0.05
 # Datatype: double
 write_memory_variation_report_proportion=0.001
 
+# The maximum memory size in bytes for DataNode to table schema cache
+# effectiveMode: restart
+# Datatype: long
+data_node_table_schema_cache_max_size_in_bytes=1048576
+
 # When an inserting is rejected, waiting period (in ms) to check system again, 50 by default.
 # If the insertion has been rejected and the read load is low, it can be set larger.
 # effectiveMode: restart

@@ -2131,7 +2131,7 @@ public class IoTDBDescriptor {
       conf.setDataNodeTableSchemaCacheSize(
           Long.parseLong(
               properties.getProperty(
-                  "data_node_table_schema_cache_max_size",
+                  "data_node_table_schema_cache_max_size_in_bytes",
                   String.valueOf(conf.getDataNodeTableSchemaCacheSize()))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
