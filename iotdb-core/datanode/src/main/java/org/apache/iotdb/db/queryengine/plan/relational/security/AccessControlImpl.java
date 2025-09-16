@@ -29,6 +29,9 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -40,8 +43,12 @@ public class AccessControlImpl implements AccessControl {
 
   private final ITableAuthChecker authChecker;
 
-  public AccessControlImpl(ITableAuthChecker authChecker) {
+  private final StatementVisitor<TSStatus, TreeAccessCheckContext> treeAccessCheckVisitor;
+
+  public AccessControlImpl(
+      ITableAuthChecker authChecker, StatementVisitor<TSStatus, TreeAccessCheckContext> visitor) {
     this.authChecker = authChecker;
+    this.treeAccessCheckVisitor = visitor;
   }
 
   @Override
@@ -357,5 +364,20 @@ public class AccessControlImpl implements AccessControl {
     if (!AuthorityChecker.SUPER_USER.equals(userName)) {
       throw new AccessDeniedException(ONLY_ADMIN_ALLOWED);
     }
+  }
+
+  @Override
+  public void checkUserGlobalSysPrivilege(String userName) {
+    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+      authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.SYSTEM);
+    }
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName) && !(statement instanceof AuthorStatement)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userName));
   }
 }

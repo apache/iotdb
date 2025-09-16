@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
@@ -261,14 +262,21 @@ public class RelationalAuthorStatement extends Statement {
       return onCreateUserSuccess();
     } else if (authorType == AuthorRType.UPDATE_USER) {
       return onUpdateUserSuccess();
+    } else if (authorType == AuthorRType.DROP_USER) {
+      return onDropUserSuccess();
     }
     return null;
   }
 
   private TSStatus onCreateUserSuccess() {
+    // the old password is expected to be encrypted during updates, so we also encrypt it here to
+    // keep consistency
     TSStatus tsStatus =
-        DataNodeAuthUtils.recordPassword(
-            userName, password, null, CommonDateTimeUtils.currentTime());
+        DataNodeAuthUtils.recordPasswordHistory(
+            userName,
+            password,
+            AuthUtils.encryptPassword(password),
+            CommonDateTimeUtils.currentTime());
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -279,8 +287,18 @@ public class RelationalAuthorStatement extends Statement {
 
   private TSStatus onUpdateUserSuccess() {
     TSStatus tsStatus =
-        DataNodeAuthUtils.recordPassword(
+        DataNodeAuthUtils.recordPasswordHistory(
             userName, password, oldPassword, CommonDateTimeUtils.currentTime());
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  private TSStatus onDropUserSuccess() {
+    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(userName);
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {

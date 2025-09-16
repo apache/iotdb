@@ -1138,6 +1138,14 @@ MAINTAIN
     : M A I N T A I N
     ;
 
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
+    ;
+
 REPAIR
     : R E P A I R
     ;

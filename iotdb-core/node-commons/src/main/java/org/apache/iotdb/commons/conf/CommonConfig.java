@@ -298,7 +298,7 @@ public class CommonConfig {
   private int pipeReceiverReqDecompressedMaxLengthInBytes = 1073741824; // 1GB
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long pipePeriodicalLogMinIntervalSeconds = 60;
-  private volatile long pipeLoggerCacheMaxSizeInBytes = 10 * MB;
+  private volatile long pipeLoggerCacheMaxSizeInBytes = 16 * MB;
 
   private volatile double pipeMetaReportMaxLogNumPerRound = 0.1;
   private volatile int pipeMetaReportMaxLogIntervalRounds = 360;

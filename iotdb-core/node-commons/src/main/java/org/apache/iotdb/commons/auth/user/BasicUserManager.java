@@ -82,6 +82,9 @@ public abstract class BasicUserManager extends BasicRoleManager {
       PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
       PathPrivilege pathPri = new PathPrivilege(rootPath);
       for (PrivilegeType item : PrivilegeType.values()) {
+        if (item.isAdminPrivilege()) {
+          continue;
+        }
         if (item.isSystemPrivilege()) {
           admin.grantSysPrivilege(item, true);
         } else if (item.isRelationalPrivilege()) {
