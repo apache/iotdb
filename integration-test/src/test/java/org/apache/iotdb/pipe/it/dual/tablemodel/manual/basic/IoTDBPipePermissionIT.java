@@ -265,6 +265,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
               .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName("thulab"))
               .pipeInfoList
               .size());
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 
