@@ -36,10 +36,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 @ThreadSafe
-public class TableDeviceCacheEntry {
+public class DeviceCacheEntry {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableDeviceCacheEntry.class)
+      RamUsageEstimator.shallowSizeOfInstance(DeviceCacheEntry.class)
           + 2 * RamUsageEstimator.shallowSizeOfInstance(AtomicReference.class);
 
   // the cached attributeMap may not be the latest, but there won't be any correctness problems

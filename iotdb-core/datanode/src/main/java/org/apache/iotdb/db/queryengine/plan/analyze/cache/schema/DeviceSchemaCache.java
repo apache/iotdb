@@ -29,7 +29,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
-import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -50,22 +49,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.ToIntFunction;
 
 /**
- * The {@link DeviceSchemaCache} caches some of the devices and their: attributes of tables /
- * measurement info / template info. The last value of one device is also cached here. Here are the
- * semantics of attributes, other semantics are omitted:
- *
- * <p>1. If a device misses cache, it does not necessarily mean that the device does not exist,
- * Since the cache records only part of the devices.
- *
- * <p>2. If a device is in cache, the attributes will be finally identical to the {@link
- * SchemaRegion}'s version. In reading this may temporarily return false result, and in writing when
- * the new attribute differs from the original ones, we send the new attributes to the {@link
- * SchemaRegion} anyway. This may not update the attributes in {@link SchemaRegion} since the
- * attributes in cache may be stale, but it's okay and {@link SchemaRegion} will just do nothing.
- *
- * <p>3. When the attributeMap does not contain an attributeKey, then the value is {@code null}.
- * Note that we do not tell whether an attributeKey exists here, and it shall be judged from table
- * schema.
+ * The {@link DeviceSchemaCache} caches some of the devices and their: measurement info / template
+ * info. The last value of one device is also cached here.
  */
 @ThreadSafe
 public class DeviceSchemaCache {
@@ -83,7 +68,7 @@ public class DeviceSchemaCache {
    *
    * <p>2. Optimize the speed in invalidation by databases for most scenarios.
    */
-  private final IDualKeyCache<String, PartialPath, TableDeviceCacheEntry> dualKeyCache;
+  private final IDualKeyCache<String, PartialPath, DeviceCacheEntry> dualKeyCache;
 
   private final Map<String, String> databasePool = new ConcurrentHashMap<>();
 
@@ -91,13 +76,13 @@ public class DeviceSchemaCache {
 
   DeviceSchemaCache() {
     dualKeyCache =
-        new DualKeyCacheBuilder<String, PartialPath, TableDeviceCacheEntry>()
+        new DualKeyCacheBuilder<String, PartialPath, DeviceCacheEntry>()
             .cacheEvictionPolicy(
                 DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
             .memoryCapacity(config.getAllocateMemoryForSchemaCache())
             .firstKeySizeComputer(segment -> (int) RamUsageEstimator.sizeOf(segment))
             .secondKeySizeComputer(PartialPath::estimateSize)
-            .valueSizeComputer(TableDeviceCacheEntry::estimateSize)
+            .valueSizeComputer(DeviceCacheEntry::estimateSize)
             .build();
     MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
   }
@@ -113,7 +98,7 @@ public class DeviceSchemaCache {
    *     hit but result is {@code null}, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(final PartialPath device, final String measurement) {
-    final TableDeviceCacheEntry entry = dualKeyCache.get(getLeadingSegment(device), device);
+    final DeviceCacheEntry entry = dualKeyCache.get(getLeadingSegment(device), device);
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
   }
 
@@ -136,7 +121,7 @@ public class DeviceSchemaCache {
     dualKeyCache.update(
         getLeadingSegment(devicePath),
         devicePath,
-        new TableDeviceCacheEntry(),
+        new DeviceCacheEntry(),
         entry ->
             entry.setDeviceSchema(
                 Objects.nonNull(previousDatabase) ? previousDatabase : database, deviceSchemaInfo),
@@ -144,7 +129,7 @@ public class DeviceSchemaCache {
   }
 
   public IDeviceSchema getDeviceSchema(final PartialPath device) {
-    final TableDeviceCacheEntry entry = dualKeyCache.get(getLeadingSegment(device), device);
+    final DeviceCacheEntry entry = dualKeyCache.get(getLeadingSegment(device), device);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
   }
 
@@ -162,7 +147,7 @@ public class DeviceSchemaCache {
     dualKeyCache.update(
         getLeadingSegment(device),
         device,
-        new TableDeviceCacheEntry(),
+        new DeviceCacheEntry(),
         initOrInvalidate
             ? entry ->
                 entry.setMeasurementSchema(
@@ -177,12 +162,11 @@ public class DeviceSchemaCache {
 
   public boolean getLastCache(
       final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> inputMap) {
-    return dualKeyCache.batchApply(inputMap, TableDeviceCacheEntry::updateInputMap);
+    return dualKeyCache.batchApply(inputMap, DeviceCacheEntry::updateInputMap);
   }
 
-  // WARNING: This is not guaranteed to affect table model's cache
   void invalidateLastCache(final PartialPath devicePath, final String measurement) {
-    final ToIntFunction<TableDeviceCacheEntry> updateFunction =
+    final ToIntFunction<DeviceCacheEntry> updateFunction =
         PathPatternUtil.hasWildcard(measurement)
             ? entry -> -entry.invalidateLastCache()
             : entry -> -entry.invalidateLastCache(measurement);
@@ -211,7 +195,6 @@ public class DeviceSchemaCache {
     }
   }
 
-  // WARNING: This is not guaranteed to affect table model's cache
   void invalidateCache(
       final @Nonnull PartialPath devicePath, final boolean isMultiLevelWildcardMeasurement) {
     if (!devicePath.hasWildcard()) {
@@ -336,11 +319,8 @@ public class DeviceSchemaCache {
       }
     }
     if (lastSeparatorPos == -1) {
-      // not find even one separator, probably during a test, use the device as the tableName
       segment = deviceStr;
     } else {
-      // use the first DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME segments or all segments but the last
-      // one as the table name
       segment = deviceStr.substring(0, lastSeparatorPos);
     }
 
