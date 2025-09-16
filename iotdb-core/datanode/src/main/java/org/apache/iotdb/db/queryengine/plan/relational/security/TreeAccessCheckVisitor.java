@@ -110,6 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSchemaTemplateStatement;
@@ -159,18 +160,24 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  private TSStatus checkSystemAuth(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM),
+        PrivilegeType.SYSTEM);
+  }
+
   // ====================== template related =================================
 
   @Override
   public TSStatus visitCreateSchemaTemplate(
       CreateSchemaTemplateStatement createTemplateStatement, TreeAccessCheckContext context) {
-    return visitNode(createTemplateStatement, context);
+    return checkSystemAuth(context.userName);
   }
 
   @Override
   public TSStatus visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, TreeAccessCheckContext context) {
-    return visitNode(setSchemaTemplateStatement, context);
+    return checkSystemAuth(context.userName);
   }
 
   @Override
@@ -194,10 +201,40 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
 
+  private TSStatus checkTemplateShowRelated(
+      AuthorityInformationStatement statement, TreeAccessCheckContext context) {
+    // own SYSTEM can see all, otherwise can only see PATHS that user has READ_SCHEMA auth
+    if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
+      return visitAuthorityInformation(statement, context);
+    } else {
+      return SUCCEED;
+    }
+  }
+
   @Override
   public TSStatus visitShowSchemaTemplate(
       ShowSchemaTemplateStatement showSchemaTemplateStatement, TreeAccessCheckContext context) {
-    return visitNode(showSchemaTemplateStatement, context);
+    return checkTemplateShowRelated(showSchemaTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowNodesInSchemaTemplate(
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement,
+      TreeAccessCheckContext context) {
+    return checkTemplateShowRelated(showNodesInSchemaTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement, TreeAccessCheckContext context) {
+    return checkTemplateShowRelated(showPathSetTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitShowPathsUsingTemplate(
+      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement,
+      TreeAccessCheckContext context) {
+    return visitAuthorityInformation(showPathsUsingTemplateStatement, context);
   }
 
   @Override
@@ -210,32 +247,23 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitUnsetSchemaTemplate(
       UnsetSchemaTemplateStatement unsetSchemaTemplateStatement, TreeAccessCheckContext context) {
-    return visitNode(unsetSchemaTemplateStatement, context);
+    return checkSystemAuth(context.userName);
   }
 
   @Override
   public TSStatus visitDropSchemaTemplate(
       DropSchemaTemplateStatement dropSchemaTemplateStatement, TreeAccessCheckContext context) {
-    return visitNode(dropSchemaTemplateStatement, context);
+    return checkSystemAuth(context.userName);
   }
 
   @Override
   public TSStatus visitAlterSchemaTemplate(
       AlterSchemaTemplateStatement alterSchemaTemplateStatement, TreeAccessCheckContext context) {
-    return visitNode(alterSchemaTemplateStatement, context);
-  }
-
-  @Override
-  public TSStatus visitShowPathsUsingTemplate(
-      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement,
-      TreeAccessCheckContext context) {
-    return visitAuthorityInformation(showPathsUsingTemplateStatement, context);
-  }
-
-  @Override
-  public TSStatus visitShowPathSetTemplate(
-      ShowPathSetTemplateStatement showPathSetTemplateStatement, TreeAccessCheckContext context) {
-    return visitNode(showPathSetTemplateStatement, context);
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)
+            || AuthorityChecker.checkSystemPermission(
+                context.userName, PrivilegeType.EXTEND_TEMPLATE),
+        PrivilegeType.SYSTEM);
   }
 
   // ============================= timeseries view related ===============
@@ -246,21 +274,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     List<PartialPath> sourcePathList = statement.getSourcePaths().fullPathList;
     if (sourcePathList != null) {
       status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  context.userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
+          checkTimeSeriesPermission(context.userName, sourcePathList, PrivilegeType.READ_SCHEMA);
     }
     QueryStatement queryStatement = statement.getQueryStatement();
     if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       sourcePathList = queryStatement.getPaths();
       status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  context.userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
+          checkTimeSeriesPermission(context.userName, sourcePathList, PrivilegeType.READ_SCHEMA);
     }
 
     final List<PartialPath> paths =
@@ -272,11 +292,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                     .getIntoDevice()
                     .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathOrPatternListPermission(
-              context.userName, paths, PrivilegeType.WRITE_SCHEMA),
-          paths,
-          PrivilegeType.WRITE_SCHEMA);
+      return checkTimeSeriesPermission(context.userName, paths, PrivilegeType.WRITE_SCHEMA);
     }
     return status;
   }
@@ -301,29 +317,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     List<PartialPath> sourcePathList = statement.getSourcePaths().fullPathList;
     if (sourcePathList != null) {
       status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  context.userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
+          checkTimeSeriesPermission(context.userName, sourcePathList, PrivilegeType.READ_SCHEMA);
     }
     QueryStatement queryStatement = statement.getQueryStatement();
     if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       sourcePathList = queryStatement.getPaths();
       status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathOrPatternListPermission(
-                  context.userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
+          checkTimeSeriesPermission(context.userName, sourcePathList, PrivilegeType.READ_SCHEMA);
     }
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathOrPatternListPermission(
-              context.userName, statement.getTargetPathList(), PrivilegeType.WRITE_SCHEMA),
-          statement.getTargetPathList(),
-          PrivilegeType.WRITE_SCHEMA);
+      return checkTimeSeriesPermission(
+          context.userName, statement.getTargetPathList(), PrivilegeType.WRITE_SCHEMA);
     }
     return status;
   }
@@ -331,12 +336,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitRenameLogicalView(
       RenameLogicalViewStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths =
-        ImmutableList.of(statement.getOldName(), statement.getNewName());
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
+    return checkTimeSeriesPermission(
+        context.userName,
+        ImmutableList.of(statement.getOldName(), statement.getNewName()),
         PrivilegeType.WRITE_SCHEMA);
   }
 
@@ -501,7 +503,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
-        PrivilegeType.USE_CQ);
+        PrivilegeType.SYSTEM);
   }
 
   // =================================== UDF related ====================================
@@ -520,14 +522,15 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowFunctions(
       ShowFunctionsStatement statement, TreeAccessCheckContext context) {
-    return checkUDFManagement(context.userName);
+    // anyone can show functions
+    return SUCCEED;
   }
 
   private TSStatus checkUDFManagement(String userName) {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF),
-        PrivilegeType.USE_UDF);
+        PrivilegeType.SYSTEM);
   }
 
   // =================================== model related ====================================
@@ -543,14 +546,14 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowModels(ShowModelsStatement statement, TreeAccessCheckContext context) {
-    return checkModelManagement(context.userName);
+    return SUCCEED;
   }
 
   private TSStatus checkModelManagement(String userName) {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
-        PrivilegeType.USE_MODEL);
+        PrivilegeType.SYSTEM);
   }
 
   // ================================ pipe plugin related ==================================
@@ -608,7 +611,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
+        PrivilegeType.SYSTEM);
   }
 
   // =============================== subscription related ========================================
@@ -662,7 +665,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER),
-        PrivilegeType.USE_TRIGGER);
+        PrivilegeType.SYSTEM);
   }
 
   // ============================== database related ===========================
