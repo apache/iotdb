@@ -23,20 +23,30 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.TypeFactory;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -53,13 +63,13 @@ public class CteMaterializer {
         .getNamedQueries()
         .forEach(
             (tableRef, query) -> {
+              Table table = tableRef.getNode();
               if (query.isMaterialized() && !materializedQueries.contains(query)) {
-                CteDataStore dataStore = fetchCteQueryResult(query, context);
+                CteDataStore dataStore = fetchCteQueryResult(table, query, context);
                 if (dataStore == null) {
                   query.setMaterialized(false);
                 } else {
-                  String cteName = tableRef.getNode().getName().toString();
-                  context.addCteDataStore(cteName, dataStore);
+                  context.addCteDataStore(table, dataStore);
                   context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
                   materializedQueries.add(query);
                 }
@@ -67,8 +77,8 @@ public class CteMaterializer {
             });
   }
 
-  public static void cleanUpCTE(Analysis analysis, MPPQueryContext context) {
-    Map<String, CteDataStore> cteDataStores = context.getCteDataStores();
+  public static void cleanUpCTE(MPPQueryContext context) {
+    Map<NodeRef<Table>, CteDataStore> cteDataStores = context.getCteDataStores();
     cteDataStores
         .values()
         .forEach(
@@ -79,7 +89,8 @@ public class CteMaterializer {
     cteDataStores.clear();
   }
 
-  public static CteDataStore fetchCteQueryResult(Query query, MPPQueryContext context) {
+  public static CteDataStore fetchCteQueryResult(
+      Table table, Query query, MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     try {
@@ -99,7 +110,11 @@ public class CteMaterializer {
         return null;
       }
 
-      CteDataStore cteDataStore = new CteDataStore();
+      // get table schema
+      DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
+      TableSchema tableSchema = getTableSchema(datasetHeader, table.getName().toString());
+
+      CteDataStore cteDataStore = new CteDataStore(query, tableSchema);
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {
@@ -125,5 +140,20 @@ public class CteMaterializer {
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
     return null;
+  }
+
+  private static TableSchema getTableSchema(DatasetHeader datasetHeader, String cteName) {
+    List<String> columnNames = datasetHeader.getRespColumns();
+    List<TSDataType> columnDataTypes = datasetHeader.getRespDataTypes();
+    final List<ColumnSchema> columnSchemaList = new ArrayList<>();
+    for (int i = 0; i < columnNames.size(); i++) {
+      columnSchemaList.add(
+          new ColumnSchema(
+              columnNames.get(i),
+              TypeFactory.getType(columnDataTypes.get(i)),
+              false,
+              TsTableColumnCategory.FIELD));
+    }
+    return new TableSchema(cteName, columnSchemaList);
   }
 }

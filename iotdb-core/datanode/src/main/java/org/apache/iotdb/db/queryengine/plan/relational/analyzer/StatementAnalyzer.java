@@ -197,6 +197,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -3076,6 +3077,13 @@ public class StatementAnalyzer {
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+      // if table schema is not found in metada, we check if it's a CTE defined in the parent query
+      if (!tableSchema.isPresent()) {
+        CteDataStore dataStore = queryContext.getCteDataStore(table);
+        if (dataStore != null) {
+          tableSchema = Optional.of(dataStore.getTableSchema());
+        }
+      }
       // This can only be a table
       if (!tableSchema.isPresent()) {
         TableMetadataImpl.throwTableNotExistsException(

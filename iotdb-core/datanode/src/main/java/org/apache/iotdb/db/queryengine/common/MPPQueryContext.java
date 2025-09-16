@@ -33,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
@@ -106,10 +108,8 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
-  private final Map<String, CteDataStore> cteDataStores = new HashMap<>();
-
-  /** check if there is tmp file to be deleted. */
-  private boolean mayHaveTmpFile = false;
+  private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
+  private boolean uncorrelatedSubquery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -443,16 +443,28 @@ public class MPPQueryContext implements IAuditEntity {
     this.userQuery = userQuery;
   }
 
-  public void addCteDataStore(String cteName, CteDataStore dataStore) {
-    cteDataStores.put(cteName, dataStore);
+  public boolean isUncorrelatedSubquery() {
+    return uncorrelatedSubquery;
   }
 
-  public Map<String, CteDataStore> getCteDataStores() {
+  public void setUncorrelatedSubquery(boolean uncorrelatedSubquery) {
+    this.uncorrelatedSubquery = uncorrelatedSubquery;
+  }
+
+  public void addCteDataStore(Table table, CteDataStore dataStore) {
+    cteDataStores.put(NodeRef.of(table), dataStore);
+  }
+
+  public Map<NodeRef<Table>, CteDataStore> getCteDataStores() {
     return cteDataStores;
   }
 
-  public CteDataStore getCteDataStore(String cteName) {
-    return cteDataStores.get(cteName);
+  public CteDataStore getCteDataStore(Table table) {
+    return cteDataStores.get(NodeRef.of(table));
+  }
+
+  public void setCteDataStores(Map<NodeRef<Table>, CteDataStore> cteDataStores) {
+    this.cteDataStores = cteDataStores;
   }
 
   // ================= Authentication Interfaces =========================

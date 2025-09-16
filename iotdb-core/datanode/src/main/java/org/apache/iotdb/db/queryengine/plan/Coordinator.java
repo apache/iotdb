@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
@@ -114,6 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
@@ -124,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import org.apache.thrift.TBase;
 import org.slf4j.Logger;
@@ -131,6 +134,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -323,6 +327,42 @@ public class Coordinator {
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
     return new QueryExecution(treeModelPlanner, queryContext, executor);
+  }
+
+  /**
+   * This method is specifically called in fetchUncorrelatedSubqueryResultForPredicate. When
+   * uncorrelated scalar subquery is handled in SubqueryPlanner, we try to fold it and get constant
+   * value. Since CTE could be used in the subquery, we should add CTE materialization result into
+   * MPPQueryContext.
+   */
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      Map<NodeRef<Table>, CteDataStore> cteDataStoreMap,
+      long timeOut,
+      boolean userQuery) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        userQuery,
+        ((queryContext, startTime) -> {
+          queryContext.setCteDataStores(cteDataStoreMap);
+          queryContext.setUncorrelatedSubquery(true);
+          return createQueryExecutionForTableModel(
+              statement,
+              sqlParser,
+              clientSession,
+              queryContext,
+              metadata,
+              timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+              startTime);
+        }));
   }
 
   public ExecutionResult executeForTableModel(
