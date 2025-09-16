@@ -426,7 +426,7 @@ public class DataNodeSchemaCache {
         true);
   }
 
-  public void invalidate(final List<MeasurementPath> partialPathList) {
+  public void invalidate(final List<PartialPath> partialPathList) {
     // Currently invalidate by device
     partialPathList.forEach(
         measurementPath -> {
