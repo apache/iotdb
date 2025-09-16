@@ -76,6 +76,12 @@ public class DeviceSchemaCache {
   /**
    * Leading_Segment, {@link IDeviceID}, Map{@literal <}Measurement, Schema{@literal
    * >}/templateInfo{@literal >}
+   *
+   * <p>The segment is used to:
+   *
+   * <p>1. Keep abreast of the newer versions.
+   *
+   * <p>2. Optimize the speed in invalidation by databases for most scenarios.
    */
   private final IDualKeyCache<String, PartialPath, TableDeviceCacheEntry> dualKeyCache;
 
