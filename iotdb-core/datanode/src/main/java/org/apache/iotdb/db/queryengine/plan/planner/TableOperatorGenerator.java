@@ -3104,6 +3104,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   parameter.getAllSensors());
           ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
           unCachedDeviceEntries.add(deviceEntry);
+          addUncachedDeviceToContext(node, context, deviceEntry);
 
           // last cache updateColumns need to put "" as time column
           String[] updateColumns = new String[parameter.getMeasurementColumnNames().size() + 1];
@@ -3195,6 +3196,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   parameter.getAllSensors());
           ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
           unCachedDeviceEntries.add(deviceEntry);
+          addUncachedDeviceToContext(node, context, deviceEntry);
 
           TableDeviceSchemaCache.getInstance()
               .initOrInvalidateLastCache(
@@ -3222,13 +3224,30 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getQualifiedObjectName(),
             hitCachesIndexes,
             lastRowCacheResults,
-            lastValuesCacheResults);
+            lastValuesCacheResults,
+            node.getDeviceScanSumMap(),
+            context.getInstanceContext().getDataNodeQueryContext());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
     parameter
         .getOperatorContext()
         .setOperatorType(LastQueryAggTableScanOperator.class.getSimpleName());
     return lastQueryOperator;
+  }
+
+  private void addUncachedDeviceToContext(
+      AggregationTableScanNode node, LocalExecutionPlanContext context, DeviceEntry deviceEntry) {
+    boolean deviceInMultiRegion =
+        node.getDeviceScanSumMap() != null && node.getDeviceScanSumMap().containsKey(deviceEntry);
+    try {
+      context.dataNodeQueryContext.lock(deviceInMultiRegion);
+      context.dataNodeQueryContext.addUnCachedDeviceIfAbsent(
+          node.getQualifiedObjectName(),
+          deviceEntry,
+          node.getDeviceScanSumMap().getOrDefault(deviceEntry, 1));
+    } finally {
+      context.dataNodeQueryContext.unLock(deviceInMultiRegion);
+    }
   }
 
   private SeriesScanOptions buildSeriesScanOptions(

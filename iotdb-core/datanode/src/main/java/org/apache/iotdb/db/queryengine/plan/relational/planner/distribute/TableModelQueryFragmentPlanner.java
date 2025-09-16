@@ -34,6 +34,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
@@ -95,6 +98,48 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
 
     fragmentInstanceList.forEach(
         fi -> fi.setDataNodeFINum(dataNodeFIMap.get(fi.getHostDataNode()).size()));
+
+    if (queryContext.needUpdateScanNumForLastQuery()) {
+      Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceScanSumMapOfEachTable =
+          new HashMap<>();
+      dataNodeFIMap
+          .values()
+          .forEach(
+              fragmentInstances -> {
+                fragmentInstances.forEach(
+                    fragmentInstance ->
+                        updateScanNum(
+                            fragmentInstance.getFragment().getPlanNodeTree(),
+                            deviceScanSumMapOfEachTable));
+              });
+
+      // For less size of serde, remove the entry which the region count of DeviceEntry is 1
+      deviceScanSumMapOfEachTable
+          .values()
+          .forEach(
+              deviceScanSumMap -> deviceScanSumMap.entrySet().removeIf(e -> e.getValue() == 1));
+    }
+  }
+
+  private void updateScanNum(
+      PlanNode planNode,
+      Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceScanSumMapOfEachTable) {
+    if (planNode instanceof AggregationTableScanNode) {
+      AggregationTableScanNode aggregationTableScanNode = (AggregationTableScanNode) planNode;
+      Map<DeviceEntry, Integer> deviceScanSumMap =
+          deviceScanSumMapOfEachTable.computeIfAbsent(
+              aggregationTableScanNode.getQualifiedObjectName(), name -> new HashMap<>());
+      aggregationTableScanNode
+          .getDeviceEntries()
+          .forEach(
+              deviceEntry -> {
+                deviceScanSumMap.merge(deviceEntry, 1, Integer::sum);
+              });
+      // Each AggTableScanNode with the same complete tableName holds this map
+      aggregationTableScanNode.setDeviceScanSumMap(deviceScanSumMap);
+      return;
+    }
+    planNode.getChildren().forEach(node -> updateScanNum(node, deviceScanSumMapOfEachTable));
   }
 
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {

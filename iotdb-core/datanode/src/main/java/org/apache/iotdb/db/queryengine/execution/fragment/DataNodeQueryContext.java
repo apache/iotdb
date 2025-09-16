@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
@@ -32,9 +34,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DataNodeQueryContext {
-  // left of Pair is DataNodeSeriesScanNum, right of Pair is the last value waiting to be updated
+  // Used for TreeModel, left of Pair is DataNodeSeriesScanNum, right of Pair is the last value
+  // waiting to be updated
   @GuardedBy("lock")
   private final Map<PartialPath, Pair<AtomicInteger, TimeValuePair>> uncachedPathToSeriesScanInfo;
+
+  // Used for TableModel
+  // 1. Outer Map: record the info for each AggTableScanNode because of Join will produce the same
+  // deviceEntry in different AggTableScan.
+  // 2. Inner Map: record DeviceEntry to last cache info, left of Pair is the region number of
+  // DeviceEntry, right is the last value waiting to be updated
+  @GuardedBy("lock")
+  private final Map<QualifiedObjectName, Map<DeviceEntry, Pair<Integer, TimeValuePair[]>>>
+      uncachedDeviceToValuesInfo;
 
   private final AtomicInteger dataNodeFINum;
 
@@ -45,6 +57,7 @@ public class DataNodeQueryContext {
   public DataNodeQueryContext(int dataNodeFINum) {
     this.uncachedPathToSeriesScanInfo = new ConcurrentHashMap<>();
     this.dataNodeFINum = new AtomicInteger(dataNodeFINum);
+    this.uncachedDeviceToValuesInfo = new ConcurrentHashMap<>();
   }
 
   public boolean unCached(PartialPath path) {
@@ -53,6 +66,18 @@ public class DataNodeQueryContext {
 
   public void addUnCachePath(PartialPath path, AtomicInteger dataNodeSeriesScanNum) {
     uncachedPathToSeriesScanInfo.put(path, new Pair<>(dataNodeSeriesScanNum, null));
+  }
+
+  public void addUnCachedDeviceIfAbsent(
+      QualifiedObjectName tableName, DeviceEntry deviceEntry, Integer regionNum) {
+    Map<DeviceEntry, Pair<Integer, TimeValuePair[]>> uncachedDeviceToValues =
+        uncachedDeviceToValuesInfo.computeIfAbsent(tableName, t -> new ConcurrentHashMap<>());
+    uncachedDeviceToValues.putIfAbsent(deviceEntry, new Pair<>(regionNum, null));
+  }
+
+  public Pair<Integer, TimeValuePair[]> getDeviceValues(
+      QualifiedObjectName tableName, DeviceEntry deviceEntry) {
+    return uncachedDeviceToValuesInfo.get(tableName).get(deviceEntry);
   }
 
   public Pair<AtomicInteger, TimeValuePair> getSeriesScanInfo(PartialPath path) {
