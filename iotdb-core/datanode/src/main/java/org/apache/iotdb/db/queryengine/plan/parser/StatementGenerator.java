@@ -333,7 +333,9 @@ public class StatementGenerator {
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
     insertStatement.setDevicePath(
-        DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
+        insertTabletReq.isWriteToTable()
+            ? new PartialPath(insertTabletReq.getPrefixPath(), false)
+            : DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
     for (int i = 0; i < insertTabletReq.types.size(); i++) {
