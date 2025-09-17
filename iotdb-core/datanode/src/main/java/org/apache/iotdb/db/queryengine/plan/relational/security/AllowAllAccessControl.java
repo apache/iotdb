@@ -117,7 +117,7 @@ public class AllowAllAccessControl implements AccessControl {
 
   @Override
   public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
-    return false;
+    return true;
   }
 
   @Override
