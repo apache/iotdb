@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -228,6 +229,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -1323,6 +1325,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
+    TSStatus status = node.checkStatementIsValid(context.getSession().getUserName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new SemanticException(status.getMessage());
+    }
     accessControl.checkUserCanRunRelationalAuthorStatement(
         context.getSession().getUserName(), node);
     context.setQueryType(node.getQueryType());
