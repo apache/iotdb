@@ -134,8 +134,13 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
         return;
       }
       // update cache in DataNodeQueryContext
+      // update cache in DataNodeQueryContext
       if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
-        seriesScanInfo.right = new TimeValuePair(time, value);
+        if (Objects.nonNull(value)) {
+          seriesScanInfo.right = new TimeValuePair(time, value);
+        } else {
+          seriesScanInfo.right = needUpdateNullEntry ? DeviceLastCache.EMPTY_TIME_VALUE_PAIR : null;
+        }
       }
 
       if (seriesScanInfo.left.decrementAndGet() == 0) {

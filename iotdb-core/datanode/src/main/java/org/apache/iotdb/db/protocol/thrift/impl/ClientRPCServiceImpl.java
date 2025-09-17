@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -847,14 +848,16 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           for (final Map.Entry<String, TimeValuePair> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue();
-            LastQueryUtil.appendLastValue(
-                builder,
-                tvPair.getTimestamp(),
-                new Binary(
-                    deviceWithSeparator + measurementLastEntry.getKey(),
-                    TSFileConfig.STRING_CHARSET),
-                tvPair.getValue().getStringValue(),
-                tvPair.getValue().getDataType().name());
+            if (tvPair != DeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+              LastQueryUtil.appendLastValue(
+                  builder,
+                  tvPair.getTimestamp(),
+                  new Binary(
+                      deviceWithSeparator + measurementLastEntry.getKey(),
+                      TSFileConfig.STRING_CHARSET),
+                  tvPair.getValue().getStringValue(),
+                  tvPair.getValue().getDataType().name());
+            }
           }
         }
       }
