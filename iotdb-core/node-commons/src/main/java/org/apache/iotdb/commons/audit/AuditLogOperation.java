@@ -23,8 +23,7 @@ public enum AuditLogOperation {
   DDL,
   DML,
   QUERY,
-  CONTROL,
-  NULL;
+  CONTROL;
 
   @Override
   public String toString() {

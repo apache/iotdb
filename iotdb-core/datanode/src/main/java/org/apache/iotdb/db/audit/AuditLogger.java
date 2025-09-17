@@ -265,8 +265,7 @@ public class AuditLogger {
       case SHOW_PIPEPLUGINS:
         return AuditLogOperation.QUERY;
       default:
-        logger.error("Unrecognizable operator type ({}) for audit log", type);
-        return AuditLogOperation.NULL;
+        return AuditLogOperation.CONTROL;
     }
   }
 }

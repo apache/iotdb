@@ -55,13 +55,13 @@ import org.slf4j.LoggerFactory;
 import javax.validation.constraints.NotNull;
 
 import java.time.ZoneId;
-import java.util.List;
 
 import static org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader.SCHEMA_FETCHER;
 
 public class DNAuditLogger extends AbstractAuditLogger {
   private static final Logger logger = LoggerFactory.getLogger(DNAuditLogger.class);
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String LOG = "log";
   private static final String USERNAME = "username";
   private static final String CLI_HOSTNAME = "cli_hostname";
@@ -75,31 +75,28 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   private static final String AUDIT_LOG_DEVICE = "root.__audit.log.%s.%s";
   private static final String AUDIT_LOGIN_LOG_DEVICE = "root.__audit.login.%s.%s";
+  private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.control.%s.%s";
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final SessionInfo sessionInfo =
       new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
-
-  private static final List<AuditLogOperation> auditLogOperationList =
-      config.getAuditableOperationType();
-
-  private static final PrivilegeLevel auditablePrivilegeLevel = config.getAuditableOperationLevel();
-
-  private static final String auditableOperationResult = config.getAuditableOperationResult();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
       DataNodeDevicePathCache.getInstance();
-  private static boolean tableViewisInitialized = false;
+  private static boolean tableViewIsInitialized = false;
 
   private DNAuditLogger() {
     // Empty constructor
   }
 
+  public static DNAuditLogger getInstance() {
+    return DNAuditLoggerHolder.INSTANCE;
+  }
+
   @NotNull
   private static InsertRowStatement generateInsertStatement(
-      AuditLogFields auditLogFields, String log) throws IllegalPathException {
+      AuditLogFields auditLogFields, String log, String log_device) throws IllegalPathException {
     String username = auditLogFields.getUsername();
     String address = auditLogFields.getCliHostname();
     AuditEventType type = auditLogFields.getAuditType();
@@ -109,7 +106,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
     String dataNodeId = String.valueOf(config.getDataNodeId());
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(
-        DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, username)));
+        DEVICE_PATH_CACHE.getPartialPath(String.format(log_device, dataNodeId, username)));
     insertStatement.setTime(CommonDateTimeUtils.currentTime());
     insertStatement.setMeasurements(
         new String[] {
@@ -163,8 +160,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
     return insertStatement;
   }
 
-  public static void log(AuditLogFields auditLogFields, String log) throws IllegalPathException {
-    if (!tableViewisInitialized) {
+  public static void createViewIfNecessary() {
+    if (!tableViewIsInitialized) {
       Statement statement =
           StatementGenerator.createStatement(
               "CREATE DATABASE " + SystemConstant.AUDIT_DATABASE, ZoneId.systemDefault());
@@ -184,12 +181,13 @@ public class DNAuditLogger extends AbstractAuditLogger {
                     + "    dn_id STRING TAG,\n"
                     + "    user_name STRING TAG,\n"
                     + "    cli_hostname STRING FIELD,\n"
-                    + "    audit_event_type INT32 FIELD,\n"
-                    + "    operation_type INT32 FIELD,\n"
-                    + "    privilege_type INT32 FIELD,\n"
-                    + "    privilege_level INT32 FIELD,\n"
+                    + "    audit_event_type STRING FIELD,\n"
+                    + "    operation_type STRING FIELD,\n"
+                    + "    privilege_type STRING FIELD,\n"
+                    + "    privilege_level STRING FIELD,\n"
                     + "    result BOOLEAN FIELD,\n"
                     + "    database STRING FIELD,\n"
+                    + "    sql_string STRING FIELD,\n"
                     + "    log STRING FIELD\n"
                     + ") AS root.__audit.log",
                 ZoneId.systemDefault());
@@ -205,36 +203,17 @@ public class DNAuditLogger extends AbstractAuditLogger {
             "",
             metadata,
             config.getQueryTimeoutThreshold());
-        tableViewisInitialized = true;
+        tableViewIsInitialized = true;
       } else {
         logger.error("Failed to create database {} for audit log", SystemConstant.AUDIT_DATABASE);
       }
     }
-    String username = auditLogFields.getUsername();
-    String address = auditLogFields.getCliHostname();
-    AuditEventType type = auditLogFields.getAuditType();
-    AuditLogOperation operation = auditLogFields.getOperationType();
-    PrivilegeType privilegeType = auditLogFields.getPrivilegeType();
-    PrivilegeLevel privilegeLevel = judgePrivilegeLevel(privilegeType);
-    boolean result = auditLogFields.isResult();
-    String dataNodeId = String.valueOf(config.getDataNodeId());
+  }
 
-    // to do: check whether this event should be logged.
-    // if whitelist or blacklist is used, only ip on the whitelist or blacklist can be logged
-
-    if (auditLogOperationList == null || !auditLogOperationList.contains(operation)) {
-      return;
-    }
-    if (auditablePrivilegeLevel == PrivilegeLevel.OBJECT
-        && privilegeLevel == PrivilegeLevel.GLOBAL) {
-      return;
-    }
-    if (!auditableOperationResult.equals("BOTH")
-        && ((auditableOperationResult.equals("SUCCESS") && !result)
-            || (auditableOperationResult.equals("FAILURE") && result))) {
-      return;
-    }
-    InsertRowStatement statement = generateInsertStatement(auditLogFields, log);
+  public void log(AuditLogFields auditLogFields, String log) throws IllegalPathException {
+    createViewIfNecessary();
+    checkBeforeLog(auditLogFields);
+    InsertRowStatement statement = generateInsertStatement(auditLogFields, log, AUDIT_LOG_DEVICE);
     COORDINATOR.executeForTreeModel(
         statement,
         SESSION_MANAGER.requestQueryId(),
@@ -242,6 +221,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
         "",
         ClusterPartitionFetcher.getInstance(),
         SCHEMA_FETCHER);
+    String username = auditLogFields.getUsername();
+    AuditEventType type = auditLogFields.getAuditType();
+    String dataNodeId = String.valueOf(config.getDataNodeId());
     if (isLoginEvent(type)) {
       statement.setDevicePath(
           DEVICE_PATH_CACHE.getPartialPath(
@@ -256,49 +238,24 @@ public class DNAuditLogger extends AbstractAuditLogger {
     }
   }
 
-  private static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {
-    switch (type) {
-      case READ_DATA:
-      case DROP:
-      case ALTER:
-      case CREATE:
-      case DELETE:
-      case INSERT:
-      case SELECT:
-      case WRITE_DATA:
-      case READ_SCHEMA:
-      case WRITE_SCHEMA:
-        return PrivilegeLevel.OBJECT;
-      case USE_CQ:
-      case USE_UDF:
-      case USE_PIPE:
-      case USE_MODEL:
-      case MAINTAIN:
-      case MANAGE_ROLE:
-      case MANAGE_USER:
-      case USE_TRIGGER:
-      case MANAGE_DATABASE:
-      case EXTEND_TEMPLATE:
-        return PrivilegeLevel.GLOBAL;
-      default:
-        logger.error("Unrecognizable PrivilegeType ({}) for audit log", type);
-        return PrivilegeLevel.GLOBAL;
-    }
+  public void logFromCN(AuditLogFields auditLogFields, String log) throws IllegalPathException {
+    createViewIfNecessary();
+    checkBeforeLog(auditLogFields);
+    InsertRowStatement statement =
+        generateInsertStatement(auditLogFields, log, AUDIT_CN_LOG_DEVICE);
+    COORDINATOR.executeForTreeModel(
+        statement,
+        SESSION_MANAGER.requestQueryId(),
+        sessionInfo,
+        "",
+        ClusterPartitionFetcher.getInstance(),
+        SCHEMA_FETCHER);
   }
 
-  private static Boolean isLoginEvent(AuditEventType type) {
-    switch (type) {
-      case LOGIN:
-      case LOGIN_FINAL:
-      case MODIFY_PASSWD:
-      case LOGIN_EXCEED_LIMIT:
-      case LOGIN_FAILED_TRIES:
-      case LOGIN_REJECT_IP:
-      case LOGIN_FAIL_MAX_TIMES:
-      case LOGIN_RESOURCE_RESTRICT:
-        return true;
-      default:
-        return false;
-    }
+  private static class DNAuditLoggerHolder {
+
+    private static final DNAuditLogger INSTANCE = new DNAuditLogger();
+
+    private DNAuditLoggerHolder() {}
   }
 }

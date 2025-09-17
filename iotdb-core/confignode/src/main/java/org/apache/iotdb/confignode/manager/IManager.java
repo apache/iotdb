@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
@@ -492,6 +493,8 @@ public interface IManager {
    * @return CNAuditLogger
    */
   CNAuditLogger getAuditLogger();
+
+  TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId);
 
   /**
    * Operate Permission.

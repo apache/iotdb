@@ -49,7 +49,6 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.Consum
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
-import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
@@ -397,10 +396,6 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.INSERT_RECORD,
         (req, client, handler) ->
             client.insertRecord((TSInsertRecordReq) req, (DataNodeTSStatusRPCHandler) handler));
-    actionMapBuilder.put(
-        CnToDnAsyncRequestType.WRITE_AUDIT_LOG,
-        (req, client, handler) ->
-            client.writeAuditLog((TAuditLogReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.UPDATE_TABLE,
         (req, client, handler) ->

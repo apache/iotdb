@@ -1288,6 +1288,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId) {
+    Map<TConsensusGroupId, Integer> regionLeaderMap =
+        getLoadManager().getLoadCache().getRegionLeaderMap();
+    Integer regionLeaderId = regionLeaderMap.get(regionId);
+    Map<Integer, TDataNodeLocation> dataNodeMap = getNodeManager().getRegisteredDataNodeLocations();
+    return dataNodeMap.get(regionLeaderId);
+  }
+
+  @Override
   public TSStatus operatePermission(final AuthorPlan authorPlan) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

@@ -644,14 +644,14 @@ struct TFetchTimeseriesResp {
 }
 
 struct TAuditLogReq {
-  1: required string username,
-  2: required string cliHostname,
-  3: required string auditEventType,
-  4: required string operationType,
-  5: required string privilegeType,
-  6: required bool result,
-  7: required string database,
-  8: required string sqlString,
+  1: required string username
+  2: required string cliHostname
+  3: required string auditEventType
+  4: required string operationType
+  5: required string privilegeType
+  6: required bool result
+  7: required string database
+  8: required string sqlString
   9: required string log
 }
 

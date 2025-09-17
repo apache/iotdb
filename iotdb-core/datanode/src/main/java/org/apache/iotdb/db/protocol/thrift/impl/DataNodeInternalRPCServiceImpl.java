@@ -2970,9 +2970,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus writeAuditLog(TAuditLogReq req) {
-    if (req == null) {
-      return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "Audit log is null");
-    }
     AuditLogFields fields =
         new AuditLogFields(
             req.getUsername(),
@@ -2984,7 +2981,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             req.getDatabase(),
             req.getSqlString());
     try {
-      DNAuditLogger.log(fields, req.getLog());
+      DNAuditLogger.getInstance().logFromCN(fields, req.getLog());
     } catch (IllegalPathException e) {
       return onIoTDBException(e, OperationType.WRITE_AUDIT_LOG, e.getErrorCode());
     }

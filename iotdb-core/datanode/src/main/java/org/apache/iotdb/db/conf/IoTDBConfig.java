@@ -22,7 +22,6 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
-import org.apache.iotdb.commons.audit.PrivilegeLevel;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -1053,11 +1052,6 @@ public class IoTDBConfig {
           AuditLogOperation.DDL,
           AuditLogOperation.QUERY,
           AuditLogOperation.CONTROL);
-
-  /** The level of privilege required to record audit logs * */
-  private PrivilegeLevel auditableOperationLevel = PrivilegeLevel.GLOBAL;
-
-  private String auditableOperationResult = "BOTH";
 
   /** whether the local write api records audit logs * */
   private boolean enableAuditLogForNativeInsertApi = true;
@@ -3742,62 +3736,16 @@ public class IoTDBConfig {
     this.enableAuditLog = enableAuditLog;
   }
 
+  public List<AuditLogOperation> getAuditableOperationType() {
+    return auditableOperationType;
+  }
+
   public List<AuditLogStorage> getAuditLogStorage() {
     return auditLogStorage;
   }
 
   public void setAuditLogStorage(List<AuditLogStorage> auditLogStorage) {
     this.auditLogStorage = auditLogStorage;
-  }
-
-  public List<AuditLogOperation> getAuditableOperationType() {
-    return auditableOperationType;
-  }
-
-  public void setAuditableOperationType(String auditableOperationTypeStr) {
-    List<AuditLogOperation> auditableOperationType = new ArrayList<>();
-    if (auditableOperationTypeStr == null || auditableOperationTypeStr.isEmpty()) {
-      this.auditableOperationType = auditableOperationType;
-      return;
-    }
-    String[] operationTypes = auditableOperationTypeStr.split(",");
-    for (String operationType : operationTypes) {
-      try {
-        auditableOperationType.add(AuditLogOperation.valueOf(operationType.trim().toUpperCase()));
-      } catch (IllegalArgumentException e) {
-        logger.warn("Unsupported audit log operation type: {}", operationType);
-        throw new IllegalArgumentException(
-            "Unsupported audit log operation type: " + operationType);
-      }
-    }
-    this.auditableOperationType = auditableOperationType;
-  }
-
-  public PrivilegeLevel getAuditableOperationLevel() {
-    return auditableOperationLevel;
-  }
-
-  public void setAuditableOperationLevel(String auditableOperationLevelStr) {
-    if (auditableOperationLevelStr == null || auditableOperationLevelStr.isEmpty()) {
-      this.auditableOperationLevel = PrivilegeLevel.GLOBAL;
-      return;
-    }
-    try {
-      this.auditableOperationLevel =
-          PrivilegeLevel.valueOf(auditableOperationLevelStr.trim().toUpperCase());
-    } catch (IllegalArgumentException e) {
-      logger.warn("Unsupported audit log operation level: {}", auditableOperationLevelStr);
-      throw new IllegalArgumentException(
-          "Unsupported audit log operation level: " + auditableOperationLevelStr);
-    }
-  }
-
-  public String getAuditableOperationResult() {
-    return auditableOperationResult;
-  }
-
-  public void setAuditableOperationResult(String auditableOperationResult) {
-    this.auditableOperationResult = auditableOperationResult;
   }
 
   public boolean isEnableAuditLogForNativeInsertApi() {
