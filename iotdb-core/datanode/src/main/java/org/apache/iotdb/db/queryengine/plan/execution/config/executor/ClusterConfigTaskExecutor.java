@@ -1618,10 +1618,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // TODO: send all paths in one RPC
+      PathPatternTree authorityScope = showTTLStatement.getAuthorityScope();
       for (PartialPath pathPattern : showTTLStatement.getPaths()) {
-        TShowTTLReq req = new TShowTTLReq(Arrays.asList(pathPattern.getNodes()));
-        TShowTTLResp resp = client.showTTL(req);
-        databaseToTTL.putAll(resp.getPathTTLMap());
+        for (PartialPath overlappedPathPattern :
+            authorityScope.getOverlappedPathPatterns(pathPattern)) {
+          TShowTTLReq req = new TShowTTLReq(Arrays.asList(overlappedPathPattern.getNodes()));
+          TShowTTLResp resp = client.showTTL(req);
+          databaseToTTL.putAll(resp.getPathTTLMap());
+        }
       }
     } catch (ClientManagerException | TException e) {
       future.setException(e);

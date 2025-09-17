@@ -134,6 +134,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
@@ -358,7 +359,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
               false, "Cannot create user has same name with admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          return RpcUtils.SUCCESS_STATUS;
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
@@ -368,7 +369,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         // users can change passwords of themselves
         if (AuthorityChecker.SUPER_USER.equals(context.userName)
             || statement.getUserName().equals(context.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          return RpcUtils.SUCCESS_STATUS;
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
@@ -380,24 +381,24 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
         }
         if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          return RpcUtils.SUCCESS_STATUS;
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case LIST_USER:
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        if (AuthorityChecker.SUPER_USER.equals(context.userName)
+            || AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SECURITY)) {
+          return RpcUtils.SUCCESS_STATUS;
         }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
+        statement.setUserName(context.userName);
+        return RpcUtils.SUCCESS_STATUS;
 
       case LIST_USER_PRIVILEGE:
         if (AuthorityChecker.SUPER_USER.equals(context.userName)
             || context.userName.equals(statement.getUserName())) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          return RpcUtils.SUCCESS_STATUS;
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
@@ -405,27 +406,28 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
       case LIST_ROLE_PRIVILEGE:
         if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          return RpcUtils.SUCCESS_STATUS;
         }
         if (!AuthorityChecker.checkRole(context.userName, statement.getRoleName())) {
           return AuthorityChecker.getTSStatus(
               AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE),
               PrivilegeType.MANAGE_ROLE);
         } else {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          return RpcUtils.SUCCESS_STATUS;
         }
 
       case LIST_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        if (AuthorityChecker.SUPER_USER.equals(context.userName)
+            || AuthorityChecker.checkSystemPermission(
+                context.userName, PrivilegeType.MANAGE_ROLE)) {
+          return RpcUtils.SUCCESS_STATUS;
         }
-        if (statement.getUserName() != null && context.userName.equals(statement.getUserName())) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        } else {
-          return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE),
-              PrivilegeType.MANAGE_ROLE);
+        // list roles of other user is not allowed
+        if (statement.getUserName() != null && !statement.getUserName().equals(context.userName)) {
+          return AuthorityChecker.getTSStatus(false, PrivilegeType.MANAGE_ROLE);
         }
+        statement.setUserName(context.userName);
+        return RpcUtils.SUCCESS_STATUS;
 
       case CREATE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(statement.getRoleName())) {
@@ -436,7 +438,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       case GRANT_USER_ROLE:
       case REVOKE_USER_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          return RpcUtils.SUCCESS_STATUS;
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE),
@@ -450,8 +452,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           return AuthorityChecker.getTSStatus(
               false, "Cannot grant/revoke privileges of admin user");
         }
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        if (AuthorityChecker.SUPER_USER.equals(context.userName)
+            || AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SECURITY)) {
+          return RpcUtils.SUCCESS_STATUS;
         }
 
         for (String s : statement.getPrivilegeList()) {
@@ -479,7 +482,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                 false, "Not support Relation statement in tree sql_dialect");
           }
         }
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        return RpcUtils.SUCCESS_STATUS;
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
@@ -1066,8 +1069,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   // ======================== TTL related ===========================
   @Override
   public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName).getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)
+        || AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
       return SUCCEED;
     }
     List<PartialPath> checkedPaths = statement.getPaths();
@@ -1080,8 +1083,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowTTL(ShowTTLStatement showTTLStatement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName).getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)
+        || AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
       return SUCCEED;
     }
     return visitAuthorityInformation(showTTLStatement, context);
