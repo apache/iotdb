@@ -55,6 +55,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -170,6 +171,14 @@ public class AuthorityChecker {
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(errMsg);
   }
 
+  public static TSStatus getTSStatus(Collection<PrivilegeType> missingPrivileges) {
+    return missingPrivileges.isEmpty()
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(
+                NO_PERMISSION_PROMOTION + getMissingAllNeededPrivilegeString(missingPrivileges));
+  }
+
   public static TSStatus getTSStatus(boolean hasPermission, PrivilegeType neededPrivilege) {
     return hasPermission
         ? SUCCEED
@@ -182,6 +191,14 @@ public class AuthorityChecker {
 
   private static String getSatisfyAnyNeededPrivilegeString(List<PrivilegeType> privileges) {
     StringJoiner sj = new StringJoiner("/");
+    for (PrivilegeType privilege : privileges) {
+      sj.add(privilege.toString());
+    }
+    return sj.toString();
+  }
+
+  private static String getMissingAllNeededPrivilegeString(Collection<PrivilegeType> privileges) {
+    StringJoiner sj = new StringJoiner(",");
     for (PrivilegeType privilege : privileges) {
       sj.add(privilege.toString());
     }
@@ -274,7 +291,7 @@ public class AuthorityChecker {
   }
 
   public static boolean checkSystemPermission(String userName, PrivilegeType permission) {
-    return authorityFetcher.get().checkUserSysPrivileges(userName, permission).getCode()
+    return authorityFetcher.get().checkUserSysPrivilege(userName, permission).getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
@@ -349,22 +366,21 @@ public class AuthorityChecker {
     return authorityFetcher.get().checkRole(username, roleName);
   }
 
-  public static TSStatus checkSuperUserOrMaintain(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
+  public static TSStatus checkMaintain(String userName) {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
         PrivilegeType.MAINTAIN);
   }
 
-  public static TSStatus checkSuperUserOrSystemAdmin(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
+  public static TSStatus checkUserIsSystemAdmin(String userName) {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM),
         PrivilegeType.SYSTEM);
+  }
+
+  public static Collection<PrivilegeType> checkUserHaveSystemPermissions(
+      String userName, Collection<PrivilegeType> permissions) {
+    return authorityFetcher.get().checkUserSysPrivileges(userName, permissions);
   }
 
   public static void buildTSBlock(

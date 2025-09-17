@@ -25,6 +25,8 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.Collection;
+
 public class ITableAuthCheckerImpl implements ITableAuthChecker {
 
   @Override
@@ -150,6 +152,19 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new AccessDeniedException(result.getMessage());
+    }
+  }
+
+  @Override
+  public void checkGlobalPrivileges(String username, Collection<PrivilegeType> privileges) {
+    if (AuthorityChecker.SUPER_USER.equals(username)) {
+      return;
+    }
+    TSStatus result =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkUserHaveSystemPermissions(username, privileges));
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(result.getMessage());
     }

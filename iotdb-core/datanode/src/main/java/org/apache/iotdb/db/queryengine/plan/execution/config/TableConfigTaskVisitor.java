@@ -234,6 +234,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -923,7 +924,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     // todo: check all configuration items' privilege requirement
-    return new SetConfigurationTask(((SetConfigurationStatement) node.getInnerTreeStatement()));
+    SetConfigurationStatement setConfigurationStatement =
+        (SetConfigurationStatement) node.getInnerTreeStatement();
+    try {
+      accessControl.checkMissingPrivileges(
+          context.getSession().getUserName(), setConfigurationStatement.getNeededPrivileges());
+    } catch (IOException e) {
+      throw new AccessDeniedException("Failed to check config item permission");
+    }
+    return new SetConfigurationTask(setConfigurationStatement);
   }
 
   @Override

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.Collection;
 import java.util.Objects;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
@@ -401,6 +402,14 @@ public class AccessControlImpl implements AccessControl {
   public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
     return AuthorityChecker.SUPER_USER.equals(userName)
         || AuthorityChecker.checkSystemPermission(userName, privilegeType);
+  }
+
+  @Override
+  public void checkMissingPrivileges(String username, Collection<PrivilegeType> privilegeTypes) {
+    if (AuthorityChecker.SUPER_USER.equals(username)) {
+      return;
+    }
+    authChecker.checkGlobalPrivileges(username, privilegeTypes);
   }
 
   @Override
