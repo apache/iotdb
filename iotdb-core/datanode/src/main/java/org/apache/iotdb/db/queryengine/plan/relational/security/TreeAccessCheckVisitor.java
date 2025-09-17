@@ -126,10 +126,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatemen
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -905,11 +908,33 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitKillQuery(KillQueryStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    if (AuthorityChecker.checkSuperUserOrMaintain(context.userName).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      statement.setAllowedUsername(context.userName);
+    }
+    return SUCCEED;
   }
 
   @Override
   public TSStatus visitFlush(FlushStatement flushStatement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+  }
+
+  @Override
+  public TSStatus visitSetSystemStatus(
+      SetSystemStatusStatement setSystemStatusStatement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+  }
+
+  @Override
+  public TSStatus visitStartRepairData(
+      StartRepairDataStatement startRepairDataStatement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+  }
+
+  @Override
+  public TSStatus visitStopRepairData(
+      StopRepairDataStatement stopRepairDataStatement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
   }
 
@@ -1041,6 +1066,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   // ======================== TTL related ===========================
   @Override
   public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return SUCCEED;
+    }
     List<PartialPath> checkedPaths = statement.getPaths();
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathOrPatternListPermission(
@@ -1051,6 +1080,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowTTL(ShowTTLStatement showTTLStatement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return SUCCEED;
+    }
     return visitAuthorityInformation(showTTLStatement, context);
   }
 
