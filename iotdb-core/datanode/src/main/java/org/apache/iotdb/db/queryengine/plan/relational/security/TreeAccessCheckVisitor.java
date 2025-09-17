@@ -121,7 +121,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
@@ -907,6 +909,17 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
+  public TSStatus visitFlush(FlushStatement flushStatement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+  }
+
+  @Override
+  public TSStatus visitClearCache(
+      ClearCacheStatement clearCacheStatement, TreeAccessCheckContext context) {
+    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+  }
+
+  @Override
   public TSStatus visitMigrateRegion(
       MigrateRegionStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
@@ -990,7 +1003,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    if (AuthorityChecker.checkSuperUserOrMaintain(context.userName).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      statement.setAllowedUsername(context.userName);
+    }
+    return SUCCEED;
   }
 
   @Override
@@ -1001,12 +1018,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowVariables(
       ShowVariablesStatement statement, TreeAccessCheckContext context) {
-    return SUCCEED;
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitShowVersion(ShowVersionStatement statement, TreeAccessCheckContext context) {
-    return SUCCEED;
+    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
   }
 
   @Override
