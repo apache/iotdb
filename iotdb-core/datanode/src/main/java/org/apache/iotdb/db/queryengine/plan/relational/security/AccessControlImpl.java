@@ -54,18 +54,27 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanCreateDatabase(String userName, String databaseName) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropDatabase(String userName, String databaseName) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterDatabase(String userName, String databaseName) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.ALTER);
   }
 
@@ -75,24 +84,36 @@ public class AccessControlImpl implements AccessControl {
     if (databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
     }
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkDatabaseVisibility(userName, databaseName);
   }
 
   @Override
   public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER);
   }
 
@@ -136,12 +157,18 @@ public class AccessControlImpl implements AccessControl {
     if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
     }
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkTableVisibility(userName, tableName);
   }
 
   @Override
   public void checkCanCreateViewFromTreePath(final String userName, final PartialPath path) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return;
+    }
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
       return;
     }
     TSStatus status =
@@ -371,6 +398,11 @@ public class AccessControlImpl implements AccessControl {
     if (!AuthorityChecker.SUPER_USER.equals(userName)) {
       authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.SYSTEM);
     }
+  }
+
+  @Override
+  public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
+    return AuthorityChecker.SUPER_USER.equals(userName) || AuthorityChecker.checkSystemPermission(userName, privilegeType);
   }
 
   @Override

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -174,6 +175,14 @@ public interface AccessControl {
    * @throws AccessDeniedException if not allowed
    */
   void checkUserGlobalSysPrivilege(String userName);
+
+  /**
+   * Check if user has sepecified global privilege
+   * @param userName name of user
+   * @param privilegeType needed privilege
+   * @throws AccessDeniedException if not allowed
+   */
+  boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType);
 
   // ====================================== TREE =============================================
 

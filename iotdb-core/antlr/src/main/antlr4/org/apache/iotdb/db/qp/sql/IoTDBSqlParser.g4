@@ -1132,6 +1132,8 @@ privilegeValue
     : ALL
     | READ
     | WRITE
+    | SYSTEM
+    | SECURITY
     | PRIVILEGE_VALUE
     ;
 

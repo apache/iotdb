@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
@@ -173,7 +174,10 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + getSatisfyAnyNeededPrivilegeString(
+                        AuthUtils.getAllPrivilegesContainingCurrentPrivilege(neededPrivilege)));
   }
 
   private static String getSatisfyAnyNeededPrivilegeString(List<PrivilegeType> privileges) {
@@ -396,6 +400,9 @@ public class AuthorityChecker {
   private static void appendPriBuilder(
       String name, String scope, Set<Integer> priv, Set<Integer> grantOpt, TsBlockBuilder builder) {
     for (int i : priv) {
+      if (isIgnoredPrivilege(i)) {
+        continue;
+      }
       builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary(scope, TSFileConfig.STRING_CHARSET));
       builder
@@ -406,6 +413,10 @@ public class AuthorityChecker {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();
     }
+  }
+
+  private static boolean isIgnoredPrivilege(int i) {
+    return PrivilegeType.values()[i] == PrivilegeType.AUDIT;
   }
 
   private static void appendEntryInfo(String name, TRoleResp resp, TsBlockBuilder builder) {
