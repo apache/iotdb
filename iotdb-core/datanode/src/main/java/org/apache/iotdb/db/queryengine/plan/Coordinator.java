@@ -353,7 +353,7 @@ public class Coordinator {
         userQuery,
         ((queryContext, startTime) -> {
           queryContext.setCteDataStores(cteDataStoreMap);
-          queryContext.setUncorrelatedSubquery(true);
+          queryContext.setSubquery(true);
           return createQueryExecutionForTableModel(
               statement,
               sqlParser,
