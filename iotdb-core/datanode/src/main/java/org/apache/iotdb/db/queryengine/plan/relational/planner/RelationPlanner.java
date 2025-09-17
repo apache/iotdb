@@ -250,18 +250,42 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       if (namedQuery.isMaterialized()) {
         CteDataStore dataStore = queryContext.getCteDataStore(table);
         if (dataStore != null) {
-          List<Symbol> outputSymbols =
-              analysis.getOutputDescriptor(table).getAllFields().stream()
-                  .map(symbolAllocator::newSymbol)
-                  .collect(toImmutableList());
+          List<Symbol> cteSymbols = new ArrayList<>();
+          Map<String, Symbol> cteSymbolMap = new HashMap<>();
+          dataStore
+              .getTableSchema()
+              .getColumns()
+              .forEach(
+                  column -> {
+                    Symbol columnSymbol =
+                        symbolAllocator.newSymbol(column.getName(), column.getType());
+                    cteSymbols.add(columnSymbol);
+                    cteSymbolMap.put(column.getName(), columnSymbol);
+                  });
 
           // CTE Scan Node
-          return new RelationPlan(
-              new CteScanNode(
-                  idAllocator.genPlanNodeId(), table.getName(), outputSymbols, dataStore),
-              scope,
-              outputSymbols,
-              outerContext);
+          CteScanNode cteScanNode =
+              new CteScanNode(idAllocator.genPlanNodeId(), table.getName(), cteSymbols, dataStore);
+
+          List<Symbol> outputSymbols = new ArrayList<>();
+          Assignments.Builder assignments = Assignments.builder();
+          analysis
+              .getOutputDescriptor(table)
+              .getVisibleFields()
+              .forEach(
+                  field -> {
+                    String columnName = field.getName().orElse("field");
+                    Symbol symbol = cteSymbolMap.get(columnName);
+                    outputSymbols.add(symbol);
+                    assignments.put(symbol, symbol.toSymbolReference());
+                  });
+
+          // Project Node
+          ProjectNode projectNode =
+              new ProjectNode(
+                  queryContext.getQueryId().genPlanNodeId(), cteScanNode, assignments.build());
+
+          return new RelationPlan(projectNode, scope, outputSymbols, outerContext);
         }
       }
 
