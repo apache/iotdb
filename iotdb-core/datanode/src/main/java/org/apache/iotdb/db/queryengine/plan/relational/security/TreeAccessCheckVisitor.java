@@ -202,11 +202,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkTemplateShowRelated(
-      AuthorityInformationStatement statement, TreeAccessCheckContext context) {
+      ShowSchemaTemplateStatement statement, TreeAccessCheckContext context) {
     // own SYSTEM can see all, otherwise can only see PATHS that user has READ_SCHEMA auth
     if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
+      statement.setCamSeeAll(false);
       return visitAuthorityInformation(statement, context);
     } else {
+      statement.setCamSeeAll(true);
       return SUCCEED;
     }
   }

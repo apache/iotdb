@@ -363,6 +363,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -1763,10 +1764,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final ShowSchemaTemplateStatement showSchemaTemplateStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
+      List<Template> templateList;
       // Send request to some API server
-      final List<Template> templateList =
-          ClusterTemplateManager.getInstance()
-              .getAllRelatedTemplates(showSchemaTemplateStatement.getAuthorityScope());
+      if (showSchemaTemplateStatement.isCamSeeAll()) {
+        templateList = ClusterTemplateManager.getInstance().getAllTemplates();
+      } else {
+        templateList =
+            ClusterTemplateManager.getInstance()
+                .getAllRelatedTemplates(showSchemaTemplateStatement.getAuthorityScope());
+      }
       // build TSBlock
       ShowSchemaTemplateTask.buildTSBlock(templateList, future);
     } catch (final Exception e) {
@@ -1782,7 +1788,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String req = showNodesInSchemaTemplateStatement.getTemplateName();
     try {
       // Send request to some API server
-      final Template template = ClusterTemplateManager.getInstance().getTemplate(req);
+      Template template = ClusterTemplateManager.getInstance().getTemplate(req);
+      if (!showNodesInSchemaTemplateStatement.isCamSeeAll()
+          && template != null
+          && ClusterTemplateManager.getInstance()
+              .getPathsSetTemplate(req, showNodesInSchemaTemplateStatement.getAuthorityScope())
+              .isEmpty()) {
+        template = null;
+      }
       // Build TSBlock
       ShowNodesInSchemaTemplateTask.buildTSBlock(template, future);
     } catch (final Exception e) {
@@ -1824,6 +1837,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   showPathSetTemplateStatement.getTemplateName(),
                   showPathSetTemplateStatement.getAuthorityScope());
       // Build TSBlock
+      if (listPath != null) {
+        listPath.removeIf(
+            path ->
+                !showPathSetTemplateStatement.isCamSeeAll()
+                    && showPathSetTemplateStatement
+                        .getAuthorityScope()
+                        .getOverlappedPathPatterns(path.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+                        .isEmpty());
+      }
       ShowPathSetTemplateTask.buildTSBlock(listPath, future);
     } catch (final Exception e) {
       future.setException(e);

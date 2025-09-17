@@ -20,16 +20,21 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
-public class ShowNodesInSchemaTemplateStatement extends AbstractShowExactTemplate {
+public class AbstractShowExactTemplate extends ShowSchemaTemplateStatement {
+  private String templateName;
 
-  public ShowNodesInSchemaTemplateStatement(String templateName) {
-    super(templateName, StatementType.SHOW_NODES_IN_SCHEMA_TEMPLATE);
+  public AbstractShowExactTemplate(String templateName, StatementType statementType) {
+    super();
+    this.statementType = statementType;
+    this.templateName = templateName;
   }
 
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowNodesInSchemaTemplate(this, context);
+  public String getTemplateName() {
+    return templateName;
+  }
+
+  public void setTemplateName(String templateName) {
+    this.templateName = templateName;
   }
 }

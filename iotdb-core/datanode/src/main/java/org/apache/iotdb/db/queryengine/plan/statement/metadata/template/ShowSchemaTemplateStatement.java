@@ -27,6 +27,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
 public class ShowSchemaTemplateStatement extends ShowStatement implements IConfigStatement {
 
+  // own SYSTEM can see all
+  private boolean camSeeAll = true;
+
   public ShowSchemaTemplateStatement() {
     super();
     statementType = StatementType.SHOW_SCHEMA_TEMPLATE;
@@ -40,5 +43,13 @@ public class ShowSchemaTemplateStatement extends ShowStatement implements IConfi
   @Override
   public QueryType getQueryType() {
     return QueryType.READ;
+  }
+
+  public void setCamSeeAll(boolean camSeeAll) {
+    this.camSeeAll = camSeeAll;
+  }
+
+  public boolean isCamSeeAll() {
+    return camSeeAll;
   }
 }
