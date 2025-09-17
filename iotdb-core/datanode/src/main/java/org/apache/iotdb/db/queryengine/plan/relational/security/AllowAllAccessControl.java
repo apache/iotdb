@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
+import java.util.Collection;
+
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 
 public class AllowAllAccessControl implements AccessControl {
@@ -118,6 +120,11 @@ public class AllowAllAccessControl implements AccessControl {
   @Override
   public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
     return true;
+  }
+
+  @Override
+  public void checkMissingPrivileges(String username, Collection<PrivilegeType> privilegeTypes) {
+    // allow anything
   }
 
   @Override

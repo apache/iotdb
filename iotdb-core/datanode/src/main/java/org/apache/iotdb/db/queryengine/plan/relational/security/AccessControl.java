@@ -27,6 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
+import java.util.Collection;
+
 public interface AccessControl {
 
   // ====================================== TABLE =============================================
@@ -184,6 +186,8 @@ public interface AccessControl {
    * @throws AccessDeniedException if not allowed
    */
   boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType);
+
+  void checkMissingPrivileges(String username, Collection<PrivilegeType> privilegeTypes);
 
   // ====================================== TREE =============================================
 

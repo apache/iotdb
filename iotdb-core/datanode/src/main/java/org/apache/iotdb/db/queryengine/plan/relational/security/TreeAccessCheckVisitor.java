@@ -125,6 +125,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
@@ -139,6 +140,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -885,35 +887,35 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitExtendRegion(
       ExtendRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitGetRegionId(GetRegionIdStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitGetSeriesSlotList(
       GetSeriesSlotListStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitGetTimeSlotList(
       GetTimeSlotListStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitCountTimeSlotList(
       CountTimeSlotListStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitKillQuery(KillQueryStatement statement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.checkSuperUserOrMaintain(context.userName).getCode()
+    if (AuthorityChecker.checkMaintain(context.userName).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       statement.setAllowedUsername(context.userName);
     }
@@ -922,67 +924,79 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitFlush(FlushStatement flushStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
+  }
+
+  @Override
+  public TSStatus visitSetConfiguration(
+      SetConfigurationStatement setConfigurationStatement, TreeAccessCheckContext context) {
+    try {
+      return AuthorityChecker.getTSStatus(
+          AuthorityChecker.checkUserHaveSystemPermissions(
+              context.userName, setConfigurationStatement.getNeededPrivileges()));
+    } catch (IOException e) {
+      return AuthorityChecker.getTSStatus(false, "Failed to check config item permission");
+    }
   }
 
   @Override
   public TSStatus visitSetSystemStatus(
       SetSystemStatusStatement setSystemStatusStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
   }
 
   @Override
   public TSStatus visitStartRepairData(
       StartRepairDataStatement startRepairDataStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
   }
 
   @Override
   public TSStatus visitStopRepairData(
       StopRepairDataStatement stopRepairDataStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
   }
 
   @Override
   public TSStatus visitClearCache(
       ClearCacheStatement clearCacheStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrSystemAdmin(context.userName);
+    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
   }
 
   @Override
   public TSStatus visitMigrateRegion(
       MigrateRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitReconstructRegion(
       ReconstructRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitRemoveAINode(
       RemoveAINodeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitRemoveConfigNode(
       RemoveConfigNodeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitRemoveDataNode(
       RemoveDataNodeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitRemoveRegion(
       RemoveRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
@@ -993,24 +1007,24 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowAINodes(ShowAINodesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitShowClusterId(
       ShowClusterIdStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitShowCluster(ShowClusterStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitShowConfigNodes(
       ShowConfigNodesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
@@ -1028,12 +1042,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowDataNodes(
       ShowDataNodesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.checkSuperUserOrMaintain(context.userName).getCode()
+    if (AuthorityChecker.checkMaintain(context.userName).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       statement.setAllowedUsername(context.userName);
     }
@@ -1042,24 +1056,24 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowRegion(ShowRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitShowVariables(
       ShowVariablesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitShowVersion(ShowVersionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
   public TSStatus visitTestConnection(
       TestConnectionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+    return AuthorityChecker.checkMaintain(context.userName);
   }
 
   @Override
