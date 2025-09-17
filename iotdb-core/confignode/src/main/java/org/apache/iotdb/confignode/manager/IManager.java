@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -479,6 +480,13 @@ public interface IManager {
    */
   TDataPartitionTableResp getOrCreateDataPartition(
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
+
+  /**
+   * Get AuditLogger.
+   *
+   * @return CNAuditLogger
+   */
+  CNAuditLogger getAuditLogger();
 
   /**
    * Operate Permission.

@@ -46,6 +46,10 @@ public class GetRegionIdResp implements DataSet {
     this.status = status;
   }
 
+  public List<TConsensusGroupId> getDataRegionIdList() {
+    return dataRegionIdList;
+  }
+
   public TGetRegionIdResp convertToRpcGetRegionIdResp() {
     TGetRegionIdResp resp = new TGetRegionIdResp();
     resp.setStatus(status);

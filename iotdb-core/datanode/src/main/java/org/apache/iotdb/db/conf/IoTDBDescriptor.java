@@ -903,7 +903,24 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
+    conf.setEnableAuditLog(
+        Boolean.parseBoolean(
+            properties
+                .getProperty("enable_audit_log", String.valueOf(conf.isEnableAuditLog()))
+                .trim()));
+    conf.setAuditableOperationType(
+        properties.getProperty("auditable_operation_type", "DDL,DML,QUERY,CONTROL").trim());
 
+    conf.setAuditableOperationLevel(
+        properties
+            .getProperty("auditable_operation_level", conf.getAuditableOperationLevel().toString())
+            .trim()
+            .toUpperCase());
+    conf.setAuditableOperationResult(
+        properties
+            .getProperty("auditable_operation_result", conf.getAuditableOperationResult())
+            .trim()
+            .toUpperCase());
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);

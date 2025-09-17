@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.audit;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -59,7 +60,7 @@ public class AuditLogger {
   private static final String LOG = "log";
   private static final String USERNAME = "username";
   private static final String ADDRESS = "address";
-  private static final String AUDIT_LOG_DEVICE = "root.__audit._%s";
+  private static final String AUDIT_LOG_DEVICE = "root.__system.audit._%s";
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<AuditLogStorage> auditLogStorageList = config.getAuditLogStorage();
@@ -67,7 +68,7 @@ public class AuditLogger {
       new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
   private static final List<AuditLogOperation> auditLogOperationList =
-      config.getAuditLogOperation();
+      config.getAuditableOperationType();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
