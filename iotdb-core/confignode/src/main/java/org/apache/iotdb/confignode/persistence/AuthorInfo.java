@@ -342,6 +342,9 @@ public class AuthorInfo implements SnapshotProcessor {
             break;
           }
           for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.isDeprecated()) {
+              continue;
+            }
             if (privilege.forRelationalSys()) {
               authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(privilege, grantOpt));
             }
@@ -368,6 +371,9 @@ public class AuthorInfo implements SnapshotProcessor {
             break;
           }
           for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.isDeprecated()) {
+              continue;
+            }
             if (privilege.forRelationalSys()) {
               authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(privilege, grantOpt));
             }
