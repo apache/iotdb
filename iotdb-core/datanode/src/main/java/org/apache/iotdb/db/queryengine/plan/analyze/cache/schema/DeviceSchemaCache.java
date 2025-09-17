@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
@@ -247,17 +248,22 @@ public class DeviceSchemaCache {
 
   // Note: It might be very slow if the database is too long
   void invalidateLastCache(final @Nonnull String database) {
-    readWriteLock.writeLock().lock();
+    Predicate<PartialPath> secondKeyChecker;
+    try {
+      final PartialPath databasePath = new PartialPath(database);
+      secondKeyChecker = device -> device.matchPrefixPath(databasePath);
+    } catch (final Exception ignored) {
+      secondKeyChecker = device -> device.startsWith(database);
+    }
 
+    readWriteLock.writeLock().lock();
     try {
       dualKeyCache.update(
           segment -> segment.startsWith(database),
           device -> true,
           entry -> -entry.invalidateLastCache());
       dualKeyCache.update(
-          database::startsWith,
-          device -> device.startsWith(database),
-          entry -> -entry.invalidateLastCache());
+          database::startsWith, secondKeyChecker, entry -> -entry.invalidateLastCache());
     } finally {
       readWriteLock.writeLock().unlock();
     }

@@ -855,11 +855,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public TimeValuePair composeTimeValuePair(int columnIndex) {
-    if (columnIndex >= values.length) {
+    if (columnIndex >= values.length || Objects.isNull(dataTypes[columnIndex])) {
       return null;
     }
     Object value = values[columnIndex];
-    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+    return Objects.nonNull(value)
+        ? new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value))
+        : null;
   }
 
   public void updateLastCache(String databaseName) {
