@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.utils.cte.CteDataStore;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -40,7 +42,10 @@ public class Query extends Statement {
   private final Optional<OrderBy> orderBy;
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
+  // whether this query needs serialization
   private boolean materialized = false;
+  // query result for common table expression
+  private CteDataStore cteDataStore = null;
 
   public Query(
       Optional<With> with,
@@ -109,6 +114,14 @@ public class Query extends Statement {
 
   public void setMaterialized(boolean materialized) {
     this.materialized = materialized;
+  }
+
+  public CteDataStore getCteDataStore() {
+    return cteDataStore;
+  }
+
+  public void setCteDataStore(CteDataStore cteDataStore) {
+    this.cteDataStore = cteDataStore;
   }
 
   @Override
