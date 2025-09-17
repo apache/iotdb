@@ -402,7 +402,8 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
-    return AuthorityChecker.SUPER_USER.equals(userName) || AuthorityChecker.checkSystemPermission(userName, privilegeType);
+    return AuthorityChecker.SUPER_USER.equals(userName)
+        || AuthorityChecker.checkSystemPermission(userName, privilegeType);
   }
 
   @Override

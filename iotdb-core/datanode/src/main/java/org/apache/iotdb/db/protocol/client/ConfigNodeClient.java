@@ -856,9 +856,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus killQuery(String queryId, int dataNodeId) throws TException {
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername)
+      throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.killQuery(queryId, dataNodeId), status -> !updateConfigNodeLeader(status));
+        () -> client.killQuery(queryId, dataNodeId, allowedUsername),
+        status -> !updateConfigNodeLeader(status));
   }
 
   @Override
