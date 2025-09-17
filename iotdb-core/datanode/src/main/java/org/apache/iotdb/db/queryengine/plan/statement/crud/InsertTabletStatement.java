@@ -106,7 +106,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
             .toArray(String[]::new));
     setDataTypes(
         tablet.getSchemas().stream().map(IMeasurementSchema::getType).toArray(TSDataType[]::new));
-    setDevicePath(DataNodeDevicePathCache.getInstance().getPartialPath(tablet.getDeviceId()));
+    if (Objects.nonNull(databaseName)) {
+      setDevicePath(new PartialPath(tablet.getTableName(), false));
+    } else {
+      setDevicePath(DataNodeDevicePathCache.getInstance().getPartialPath(tablet.getDeviceId()));
+    }
     setAligned(isAligned);
     setTimes(tablet.getTimestamps());
     setColumns(Arrays.stream(tablet.getValues()).map(this::convertTableColumn).toArray());
@@ -124,12 +128,18 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   private Object convertTableColumn(final Object input) {
-    return input instanceof LocalDate[]
-        ? Arrays.stream(((LocalDate[]) input))
-            .map(date -> Objects.nonNull(date) ? DateUtils.parseDateExpressionToInt(date) : 0)
-            .mapToInt(Integer::intValue)
-            .toArray()
-        : input;
+    if (input instanceof LocalDate[]) {
+      return Arrays.stream(((LocalDate[]) input))
+          .map(date -> Objects.nonNull(date) ? DateUtils.parseDateExpressionToInt(date) : 0)
+          .mapToInt(Integer::intValue)
+          .toArray();
+    } else if (input instanceof Binary[]) {
+      return Arrays.stream(((Binary[]) input))
+          .map(binary -> Objects.nonNull(binary) ? binary : Binary.EMPTY_VALUE)
+          .toArray(Binary[]::new);
+    }
+
+    return input;
   }
 
   public InsertTabletStatement(InsertTabletNode node) {

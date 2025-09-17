@@ -646,8 +646,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
+      final TPipeHeartbeatResp resp = new TPipeHeartbeatResp(new ArrayList<>());
       collectPipeMetaList(new TPipeHeartbeatReq(Long.MIN_VALUE), resp);
+      if (resp.getPipeMetaList().isEmpty()) {
+        return;
+      }
       final TSStatus result =
           configNodeClient.pushHeartbeat(
               IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);

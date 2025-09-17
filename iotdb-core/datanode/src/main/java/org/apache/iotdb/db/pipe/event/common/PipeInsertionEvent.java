@@ -117,14 +117,6 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         null);
   }
 
-  public void markAsTableModelEvent() {
-    isTableModelEvent = Boolean.TRUE;
-  }
-
-  public void markAsTreeModelEvent() {
-    isTableModelEvent = Boolean.FALSE;
-  }
-
   public boolean isTableModelEvent() {
     if (isTableModelEvent == null) {
       if (sourceDatabaseNameFromDataRegion == null) {

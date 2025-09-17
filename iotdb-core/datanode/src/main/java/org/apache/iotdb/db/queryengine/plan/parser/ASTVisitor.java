@@ -188,8 +188,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.LoadModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.UnloadModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -267,6 +271,8 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.TimeDuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.net.URI;
@@ -314,6 +320,8 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_START;
 
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ASTVisitor.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -1368,6 +1376,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
+  private static List<String> convertToDeviceIdList(Token rawDeviceString) {
+    String rawString = rawDeviceString.getText();
+    rawString = rawString.substring(1, rawString.length() - 1);
+    String[] deviceIdList = rawString.split(",");
+    List<String> result = new ArrayList<>();
+    for (String deviceId : deviceIdList) {
+      deviceId = deviceId.trim();
+      if (deviceId.equals("cpu")) {
+        result.add("cpu");
+        continue;
+      }
+      try {
+        Integer.valueOf(deviceId);
+      } catch (NumberFormatException e) {
+        throw new SemanticException("Device id should be 'cpu' or integer");
+      }
+      result.add(deviceId);
+    }
+    return result;
+  }
+
   @Override
   public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
     if (ctx.uriClause() == null) {
@@ -1416,6 +1445,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return createModelStatement;
   }
 
+  @Override
+  public Statement visitLoadModel(IoTDBSqlParser.LoadModelContext ctx) {
+    String modelId = parseIdentifier(ctx.existingModelId.getText());
+    validateModelId(modelId);
+    List<String> deviceIdList = convertToDeviceIdList(ctx.deviceIdList);
+    return new LoadModelStatement(modelId, deviceIdList);
+  }
+
+  @Override
+  public Statement visitUnloadModel(IoTDBSqlParser.UnloadModelContext ctx) {
+    String modelId = parseIdentifier(ctx.existingModelId.getText());
+    validateModelId(modelId);
+    List<String> deviceIdList = convertToDeviceIdList(ctx.deviceIdList);
+    return new UnloadModelStatement(modelId, deviceIdList);
+  }
+
   // Drop Model =====================================================================
   @Override
   public Statement visitDropModel(IoTDBSqlParser.DropModelContext ctx) {
@@ -1430,6 +1475,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       statement.setModelId(parseIdentifier(ctx.modelId.getText()));
     }
     return statement;
+  }
+
+  @Override
+  public Statement visitShowLoadedModels(IoTDBSqlParser.ShowLoadedModelsContext ctx) {
+    return new ShowLoadedModelsStatement(
+        ctx.deviceIdList != null ? convertToDeviceIdList(ctx.deviceIdList) : null);
+  }
+
+  public Statement visitShowAIDevices(IoTDBSqlParser.ShowAIDevicesContext ctx) {
+    return new ShowAIDevicesStatement();
   }
 
   /** Data Manipulation Language (DML). */
@@ -2604,7 +2659,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         continue;
       } else if (priv.equalsIgnoreCase("ALL")) {
         for (PrivilegeType type : PrivilegeType.values()) {
-          if (type.isRelationalPrivilege()) {
+          if (type.isRelationalPrivilege() || type.isAdminPrivilege()) {
             continue;
           }
           privSet.add(type.toString());

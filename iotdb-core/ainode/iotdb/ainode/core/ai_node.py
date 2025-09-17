@@ -147,6 +147,8 @@ class AINode:
         self._stop_event = threading.Event()
         signal.signal(signal.SIGTERM, self._handle_signal)
 
+        self._rpc_service.join()
+
     def _handle_signal(self, signum, frame):
         signal_name = {signal.SIGTERM: "SIGTERM", signal.SIGINT: "SIGINT"}.get(
             signum, f"SIGNAL {signum}"

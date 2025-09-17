@@ -452,10 +452,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // match time column modifications
     List<ModEntry> modificationForTimeColumn =
         CompactionUtils.getMatchedModifications(
-            modifications, device, AlignedPath.VECTOR_PLACEHOLDER);
-    if (ttlDeletion != null) {
-      modificationForTimeColumn.add(ttlDeletion);
-    }
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, ttlDeletion);
 
     // match value column modifications
     List<List<ModEntry>> modificationForValueColumns = new ArrayList<>();
@@ -466,10 +463,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       List<ModEntry> modificationList =
           CompactionUtils.getMatchedModifications(
-              modifications, device, valueChunkMetadata.getMeasurementUid());
-      if (ttlDeletion != null) {
-        modificationList.add(ttlDeletion);
-      }
+              modifications, device, valueChunkMetadata.getMeasurementUid(), null);
       modificationForValueColumns.add(
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
@@ -686,11 +680,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           // collect the modifications for current series
           List<ModEntry> modificationForCurrentSeries =
               CompactionUtils.getMatchedModifications(
-                  modificationsInThisResource, device, currentCompactingSeries);
-          // add ttl deletion for current series
-          if (ttlDeletion != null) {
-            modificationForCurrentSeries.add(ttlDeletion);
-          }
+                  modificationsInThisResource, device, currentCompactingSeries, ttlDeletion);
 
           // if there are modifications of current series, apply them to the chunk metadata
           if (!modificationForCurrentSeries.isEmpty()) {

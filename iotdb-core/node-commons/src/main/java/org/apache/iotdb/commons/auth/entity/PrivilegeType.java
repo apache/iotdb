@@ -44,7 +44,11 @@ public enum PrivilegeType {
   ALTER(PrivilegeModelType.RELATIONAL),
   SELECT(PrivilegeModelType.RELATIONAL),
   INSERT(PrivilegeModelType.RELATIONAL),
-  DELETE(PrivilegeModelType.RELATIONAL);
+  DELETE(PrivilegeModelType.RELATIONAL),
+
+  SYSTEM(PrivilegeModelType.SYSTEM),
+  SECURITY(PrivilegeModelType.SYSTEM),
+  AUDIT(PrivilegeModelType.SYSTEM);
 
   private final PrivilegeModelType modelType;
 
@@ -62,6 +66,10 @@ public enum PrivilegeType {
 
   public boolean isRelationalPrivilege() {
     return this.modelType == PrivilegeModelType.RELATIONAL;
+  }
+
+  public boolean isAdminPrivilege() {
+    return this == SYSTEM || this == SECURITY || this == AUDIT;
   }
 
   public static int getPrivilegeCount(PrivilegeModelType type) {
@@ -93,7 +101,16 @@ public enum PrivilegeType {
   }
 
   public boolean forRelationalSys() {
-    return this == MANAGE_USER || this == MANAGE_ROLE;
+    switch (this) {
+      case MANAGE_USER:
+      case MANAGE_ROLE:
+      case SYSTEM:
+      case SECURITY:
+      case AUDIT:
+        return true;
+      default:
+        return false;
+    }
   }
 
   public PrivilegeModelType getModelType() {

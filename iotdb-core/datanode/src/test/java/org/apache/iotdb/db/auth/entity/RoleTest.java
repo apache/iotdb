@@ -78,21 +78,7 @@ public class RoleTest {
     admin.getDBScopePrivilegeMap().put("testDB", databasePrivilege);
     admin.getPathPrivilegeList().add(pathPri);
     Assert.assertEquals(
-        "Role{name='root', pathPrivilegeList=[root.** : READ_DATA_wi"
-            + "th_grant_option WRITE_DATA_with_grant_option READ_SCHEMA"
-            + "_with_grant_option WRITE_SCHEMA_with_grant_option], systemPr"
-            + "ivilegeSet=[MANAGE_USER_with_grant_option, USE_TRIGGER_with_gra"
-            + "nt_option, USE_MODEL_with_grant_option, MAINTAIN_with_grant_option"
-            + ", USE_CQ_with_grant_option, USE_PIPE_with_grant_option, USE_UDF_wit"
-            + "h_grant_option, EXTEND_TEMPLATE_with_grant_option, MANAGE_ROLE_with_gr"
-            + "ant_option, MANAGE_DATABASE_with_grant_option], AnyScopePrivilegeMap=[D"
-            + "ELETE_with_grant_option, DROP_with_grant_option, ALTER_with_grant_optio"
-            + "n, CREATE_with_grant_option, SELECT_with_grant_option, INSERT_with_gran"
-            + "t_option], objectPrivilegeSet={testDB=Database(testDB):{CREATE_with_gran"
-            + "t_option,DROP_with_grant_option,ALTER_with_grant_option,SELECT_with_grant_"
-            + "option,INSERT_with_grant_option,DELETE_with_grant_option,; Tables: [ testTa"
-            + "ble(CREATE_with_grant_option,DROP_with_grant_option,ALTER_with_grant_option"
-            + ",SELECT_with_grant_option,INSERT_with_grant_option,DELETE_with_grant_option,)]}}}",
+        "Role{name='root', pathPrivilegeList=[root.** : READ_DATA_with_grant_option WRITE_DATA_with_grant_option READ_SCHEMA_with_grant_option WRITE_SCHEMA_with_grant_option], systemPrivilegeSet=[USE_MODEL_with_grant_option, MAINTAIN_with_grant_option, EXTEND_TEMPLATE_with_grant_option, SYSTEM_with_grant_option, MANAGE_DATABASE_with_grant_option, MANAGE_USER_with_grant_option, USE_TRIGGER_with_grant_option, USE_CQ_with_grant_option, SECURITY_with_grant_option, USE_PIPE_with_grant_option, USE_UDF_with_grant_option, MANAGE_ROLE_with_grant_option, AUDIT_with_grant_option], AnyScopePrivilegeMap=[DELETE_with_grant_option, DROP_with_grant_option, ALTER_with_grant_option, CREATE_with_grant_option, SELECT_with_grant_option, INSERT_with_grant_option], objectPrivilegeSet={testDB=Database(testDB):{CREATE_with_grant_option,DROP_with_grant_option,ALTER_with_grant_option,SELECT_with_grant_option,INSERT_with_grant_option,DELETE_with_grant_option,; Tables: [ testTable(CREATE_with_grant_option,DROP_with_grant_option,ALTER_with_grant_option,SELECT_with_grant_option,INSERT_with_grant_option,DELETE_with_grant_option,)]}}}",
         admin.toString());
   }
 }

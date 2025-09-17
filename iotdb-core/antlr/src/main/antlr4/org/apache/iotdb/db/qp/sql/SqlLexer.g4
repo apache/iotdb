@@ -45,6 +45,10 @@ AFTER
     : A F T E R
     ;
 
+AI_DEVICES
+    : A I '_' D E V I C E S
+    ;
+
 ALIAS
     : A L I A S
     ;
@@ -476,6 +480,10 @@ LIST
 
 LOAD
     : L O A D
+    ;
+
+LOADED
+    : L O A D E D
     ;
 
 LOCAL
@@ -1128,6 +1136,14 @@ MANAGE_DATABASE
 
 MAINTAIN
     : M A I N T A I N
+    ;
+
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
     ;
 
 REPAIR

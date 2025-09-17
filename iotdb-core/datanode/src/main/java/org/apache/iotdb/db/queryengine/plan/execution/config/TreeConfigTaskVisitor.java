@@ -65,7 +65,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.LoadModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowAIDevicesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowLoadedModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.UnloadModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -149,8 +153,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.LoadModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.UnloadModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -829,6 +837,31 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
     return new ShowModelsTask(showModelsStatement.getModelId());
+  }
+
+  @Override
+  public IConfigTask visitShowLoadedModels(
+      ShowLoadedModelsStatement showLoadedModelsStatement, MPPQueryContext context) {
+    return new ShowLoadedModelsTask(showLoadedModelsStatement.getDeviceIdList());
+  }
+
+  @Override
+  public IConfigTask visitShowAIDevices(
+      ShowAIDevicesStatement showAIDevicesStatement, MPPQueryContext context) {
+    return new ShowAIDevicesTask();
+  }
+
+  @Override
+  public IConfigTask visitLoadModel(
+      LoadModelStatement loadModelStatement, MPPQueryContext context) {
+    return new LoadModelTask(loadModelStatement.getModelId(), loadModelStatement.getDeviceIdList());
+  }
+
+  @Override
+  public IConfigTask visitUnloadModel(
+      UnloadModelStatement unloadModelStatement, MPPQueryContext context) {
+    return new UnloadModelTask(
+        unloadModelStatement.getModelId(), unloadModelStatement.getDeviceIdList());
   }
 
   @Override

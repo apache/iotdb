@@ -3741,7 +3741,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id='d01'",
@@ -3779,7 +3779,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by device_id order by device_id",
@@ -3820,7 +3820,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,city,region,device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by 1,2,3,4 order by 1,2,3,4",
@@ -3871,7 +3871,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select device_id,date_bin(5s,time),last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by province,city,region,device_id,date_bin(5s,time) order by device_id,date_bin(5s,time)",
@@ -3925,7 +3925,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,city,region,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd08', 'd12', 'd13') group by 1,2,3 order by 1,2,3",
@@ -3965,7 +3965,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,city,region,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd08', 'd12', 'd13') group by 1,2,3 order by 1,2,3",
@@ -4002,7 +4002,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,city,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1,2 order by 1,2",
@@ -4038,7 +4038,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1 order by 1",
@@ -4076,7 +4076,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select device_id, last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where city = 'shanghai' and type='A' group by province,city,region,device_id order by device_id",

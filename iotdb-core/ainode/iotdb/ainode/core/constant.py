@@ -71,7 +71,7 @@ AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs"
 
 # AINode log
-LOG_FILE_TYPE = ["all", "info", "warning", "error"]
+LOG_FILE_TYPE = ["all", "info", "warn", "error"]
 AINODE_LOG_FILE_NAME_PREFIX = "log_ainode_"
 AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
 DEFAULT_LOG_LEVEL = logging.INFO
@@ -90,6 +90,9 @@ DEFAULT_CHUNK_SIZE = 8192
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
     REDIRECTION_RECOMMEND = 400
+    MODEL_EXIST_ERROR = 1502
+    MODEL_NOT_FOUND_ERROR = 1505
+    UNAVAILABLE_AI_DEVICE_ERROR = 1507
     AINODE_INTERNAL_ERROR = 1510
     INVALID_URI_ERROR = 1511
     INVALID_INFERENCE_CONFIG = 1512

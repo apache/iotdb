@@ -17,20 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.runtime;
+package org.apache.iotdb.confignode.exception;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-public class TableNotExistsRuntimeException extends IoTDBRuntimeException {
-
-  public TableNotExistsRuntimeException(final String databaseName, final String tableName) {
+public class NoAvailableAINodeException extends ConfigNodeException {
+  public NoAvailableAINodeException() {
     super(
-        String.format("Table %s in the database %s is not exists.", tableName, databaseName),
-        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
-  }
-
-  public TableNotExistsRuntimeException(final Throwable cause) {
-    super(cause, TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+        "There are no available AINodes currently, please use \"show cluster\" to check the cluster status.");
   }
 }

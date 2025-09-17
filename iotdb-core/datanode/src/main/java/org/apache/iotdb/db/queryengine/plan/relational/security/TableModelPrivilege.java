@@ -23,8 +23,14 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
 public enum TableModelPrivilege {
   // global privilege
+  @Deprecated
   MANAGE_USER,
+  @Deprecated
   MANAGE_ROLE,
+
+  SYSTEM,
+  SECURITY,
+  AUDIT,
 
   // scope privilege
   CREATE,
@@ -52,6 +58,12 @@ public enum TableModelPrivilege {
         return PrivilegeType.INSERT;
       case DELETE:
         return PrivilegeType.DELETE;
+      case SYSTEM:
+        return PrivilegeType.SYSTEM;
+      case SECURITY:
+        return PrivilegeType.SECURITY;
+      case AUDIT:
+        return PrivilegeType.AUDIT;
       default:
         throw new IllegalStateException("Unexpected value:" + this);
     }
@@ -75,6 +87,12 @@ public enum TableModelPrivilege {
         return TableModelPrivilege.INSERT;
       case DELETE:
         return TableModelPrivilege.DELETE;
+      case SYSTEM:
+        return TableModelPrivilege.SYSTEM;
+      case SECURITY:
+        return TableModelPrivilege.SECURITY;
+      case AUDIT:
+        return TableModelPrivilege.AUDIT;
       default:
         throw new IllegalStateException("Unexpected value:" + privilegeType);
     }
