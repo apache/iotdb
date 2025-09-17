@@ -109,7 +109,8 @@ public class MPPQueryContext implements IAuditEntity {
   private boolean userQuery = false;
 
   private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
-  private boolean uncorrelatedSubquery = false;
+  // If this is a subquery, we do not release CTE query result
+  private boolean subquery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -443,12 +444,12 @@ public class MPPQueryContext implements IAuditEntity {
     this.userQuery = userQuery;
   }
 
-  public boolean isUncorrelatedSubquery() {
-    return uncorrelatedSubquery;
+  public boolean isSubquery() {
+    return subquery;
   }
 
-  public void setUncorrelatedSubquery(boolean uncorrelatedSubquery) {
-    this.uncorrelatedSubquery = uncorrelatedSubquery;
+  public void setSubquery(boolean subquery) {
+    this.subquery = subquery;
   }
 
   public void addCteDataStore(Table table, CteDataStore dataStore) {

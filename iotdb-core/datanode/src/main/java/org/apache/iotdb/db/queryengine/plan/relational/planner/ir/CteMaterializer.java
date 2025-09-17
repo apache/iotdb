@@ -45,11 +45,9 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -60,21 +58,25 @@ public class CteMaterializer {
   private CteMaterializer() {}
 
   public static void materializeCTE(Analysis analysis, MPPQueryContext context) {
-    Set<Query> materializedQueries = new HashSet<>();
     analysis
         .getNamedQueries()
         .forEach(
             (tableRef, query) -> {
               Table table = tableRef.getNode();
-              if (query.isMaterialized() && !materializedQueries.contains(query)) {
-                CteDataStore dataStore = fetchCteQueryResult(table, query, context);
+              if (query.isMaterialized()) {
+                CteDataStore dataStore = query.getCteDataStore();
                 if (dataStore == null) {
-                  query.setMaterialized(false);
-                } else {
-                  context.addCteDataStore(table, dataStore);
-                  context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
-                  materializedQueries.add(query);
+                  dataStore = fetchCteQueryResult(table, query, context);
+                  if (dataStore == null) {
+                    // CTE query execution failed. Use inline instead of materialization in the
+                    // outer query
+                    query.setMaterialized(false);
+                  } else {
+                    context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
+                    query.setCteDataStore(dataStore);
+                  }
                 }
+                context.addCteDataStore(table, dataStore);
               }
             });
   }
