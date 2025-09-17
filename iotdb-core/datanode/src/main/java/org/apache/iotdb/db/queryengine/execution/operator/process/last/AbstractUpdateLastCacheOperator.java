@@ -134,7 +134,6 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
         return;
       }
       // update cache in DataNodeQueryContext
-      // update cache in DataNodeQueryContext
       if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
         if (Objects.nonNull(value)) {
           seriesScanInfo.right = new TimeValuePair(time, value);
