@@ -133,10 +133,10 @@ public class IoTDBTemplatePermissionIT {
         "insert into root.sg1.d1(time, temperature) values(1,1)", "test", "test123123456");
     assertNonQueryTestFail(
         "insert into root.sg1.d1(time, s1) values(1,1)",
-        "803: No permissions for this operation, please add privilege EXTEND_TEMPLATE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
-    grantUserSeriesPrivilege("test", PrivilegeType.EXTEND_TEMPLATE, "root.**");
+    grantUserSeriesPrivilege("test", PrivilegeType.SYSTEM, "root.**");
     executeNonQuery("insert into root.sg1.d1(time, s1) values(1,1)", "test", "test123123456");
 
     // show

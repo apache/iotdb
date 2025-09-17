@@ -199,7 +199,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               "create role `admin`",
               "grant role `admin` to `thulab`",
               "grant read on root.** to role `admin`",
-              "grant manage_database,manage_user,manage_role,use_trigger,use_udf,use_cq,use_pipe on root.** to role `admin`;",
+              "grant system,security on root.** to role `admin`;",
               "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
@@ -251,13 +251,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               + ",",
           new HashSet<>(
               Arrays.asList(
-                  "admin,,MANAGE_USER,false,",
-                  "admin,,MANAGE_ROLE,false,",
-                  "admin,,USE_TRIGGER,false,",
-                  "admin,,USE_UDF,false,",
-                  "admin,,USE_CQ,false,",
-                  "admin,,USE_PIPE,false,",
-                  "admin,,MANAGE_DATABASE,false,",
+                  "admin,,SYSTEM,false,",
+                  "admin,,SECURITY,false,",
                   "admin,root.**,READ_DATA,false,",
                   "admin,root.**,READ_SCHEMA,false,")));
 

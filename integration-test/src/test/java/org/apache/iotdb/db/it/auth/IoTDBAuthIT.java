@@ -172,16 +172,9 @@ public class IoTDBAuthIT {
         Set<String> ansSet =
             new HashSet<>(
                 Arrays.asList(
-                    ",,MANAGE_USER,true,",
-                    ",,MANAGE_ROLE,true,",
-                    ",,USE_TRIGGER,true,",
-                    ",,USE_UDF,true,",
-                    ",,USE_CQ,true,",
-                    ",,USE_PIPE,true,",
-                    ",,USE_MODEL,true,",
-                    ",,EXTEND_TEMPLATE,true,",
-                    ",,MANAGE_DATABASE,true,",
-                    ",,MAINTAIN,true,",
+                    ",,SYSTEM,true,",
+                    ",,SECURITY,true,",
+                    ",,AUDIT,true,",
                     ",root.**,READ_DATA,true,",
                     ",root.**,WRITE_DATA,true,",
                     ",root.**,READ_SCHEMA,true,",
@@ -647,16 +640,9 @@ public class IoTDBAuthIT {
         validateResultSet(resultSet, ans);
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER root");
         ans =
-            ",,MANAGE_USER,true,\n"
-                + ",,MANAGE_ROLE,true,\n"
-                + ",,USE_TRIGGER,true,\n"
-                + ",,USE_UDF,true,\n"
-                + ",,USE_CQ,true,\n"
-                + ",,USE_PIPE,true,\n"
-                + ",,USE_MODEL,true,\n"
-                + ",,EXTEND_TEMPLATE,true,\n"
-                + ",,MANAGE_DATABASE,true,\n"
-                + ",,MAINTAIN,true,\n"
+            ",,SYSTEM,true,\n"
+                + ",,SECURITY,true,\n"
+                + ",,AUDIT,true,\n"
                 + ",root.**,READ_DATA,true,\n"
                 + ",root.**,WRITE_DATA,true,\n"
                 + ",root.**,READ_SCHEMA,true,\n"
@@ -987,13 +973,13 @@ public class IoTDBAuthIT {
     adminStmt.execute("CREATE USER user2 'password123456'");
     adminStmt.execute("CREATE USER user3 'password123456'");
     adminStmt.execute("CREATE ROLE testRole");
-    adminStmt.execute("GRANT manage_database ON root.** TO ROLE testRole WITH GRANT OPTION");
+    adminStmt.execute("GRANT system ON root.** TO ROLE testRole WITH GRANT OPTION");
     adminStmt.execute("GRANT READ_DATA ON root.t1.** TO ROLE testRole");
     adminStmt.execute("GRANT READ_SCHEMA ON root.t3.t2.** TO ROLE testRole WITH GRANT OPTION");
 
     // 2. USER1 has all privileges on root.**
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
+      if (item.isRelationalPrivilege() || !item.isAdminPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1";
@@ -1002,16 +988,9 @@ public class IoTDBAuthIT {
     // 3.admin lists privileges of user1
     ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
     String ans =
-        ",,MANAGE_USER,false,\n"
-            + ",,MANAGE_ROLE,false,\n"
-            + ",,USE_TRIGGER,false,\n"
-            + ",,USE_UDF,false,\n"
-            + ",,USE_CQ,false,\n"
-            + ",,USE_PIPE,false,\n"
-            + ",,USE_MODEL,false,\n"
-            + ",,EXTEND_TEMPLATE,false,\n"
-            + ",,MANAGE_DATABASE,false,\n"
-            + ",,MAINTAIN,false,\n"
+        ",,SYSTEM,false,\n"
+            + ",,SECURITY,false,\n"
+            + ",,AUDIT,false,\n"
             + ",root.**,READ_DATA,false,\n"
             + ",root.**,WRITE_DATA,false,\n"
             + ",root.**,READ_SCHEMA,false,\n"
@@ -1020,7 +999,7 @@ public class IoTDBAuthIT {
 
     // 4. USER2 has all privilegs on root.** with grant option;
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
+      if (item.isRelationalPrivilege() || !item.isAdminPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user2 with grant option";
@@ -1028,16 +1007,9 @@ public class IoTDBAuthIT {
     }
     resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user2");
     ans =
-        ",,MANAGE_USER,true,\n"
-            + ",,MANAGE_ROLE,true,\n"
-            + ",,USE_TRIGGER,true,\n"
-            + ",,USE_UDF,true,\n"
-            + ",,USE_CQ,true,\n"
-            + ",,USE_PIPE,true,\n"
-            + ",,USE_MODEL,true,\n"
-            + ",,EXTEND_TEMPLATE,true,\n"
-            + ",,MANAGE_DATABASE,true,\n"
-            + ",,MAINTAIN,true,\n"
+        ",,SYSTEM,true,\n"
+            + ",,SECURITY,true,\n"
+            + ",,AUDIT,true,\n"
             + ",root.**,READ_DATA,true,\n"
             + ",root.**,WRITE_DATA,true,\n"
             + ",root.**,READ_SCHEMA,true,\n"
@@ -1054,27 +1026,18 @@ public class IoTDBAuthIT {
       try {
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
         ans =
-            ",,MANAGE_USER,false,\n"
-                + ",,MANAGE_ROLE,false,\n"
-                + ",,USE_TRIGGER,false,\n"
-                + ",,USE_UDF,false,\n"
-                + ",,USE_CQ,false,\n"
-                + ",,USE_PIPE,false,\n"
-                + ",,USE_MODEL,false,\n"
-                + ",,EXTEND_TEMPLATE,false,\n"
-                + ",,MANAGE_DATABASE,false,\n"
-                + ",,MAINTAIN,false,\n"
+            ",,SYSTEM,false,\n"
+                + ",,SECURITY,false,\n"
+                + ",,AUDIT,false,\n"
                 + ",root.**,READ_DATA,false,\n"
                 + ",root.**,WRITE_DATA,false,\n"
                 + ",root.**,READ_SCHEMA,false,\n"
                 + ",root.**,WRITE_SCHEMA,false,\n";
         validateResultSet(resultSet, ans);
         Assert.assertThrows(
-            SQLException.class,
-            () -> userStmt.execute("GRANT MANAGE_ROLE ON root.** TO USER user3"));
+            SQLException.class, () -> userStmt.execute("GRANT SECURITY ON root.** TO USER user3"));
         Assert.assertThrows(
-            SQLException.class,
-            () -> userStmt.execute("REVOKE MANAGE_ROLE ON root.** FROM USER user2"));
+            SQLException.class, () -> userStmt.execute("REVOKE SYSTEM ON root.** FROM USER user2"));
       } finally {
         userStmt.close();
       }
@@ -1085,23 +1048,16 @@ public class IoTDBAuthIT {
       try {
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
         validateResultSet(resultSet, ans);
-        userStmt.execute("GRANT MANAGE_ROLE ON root.** TO USER user3");
+        userStmt.execute("GRANT SECURITY ON root.** TO USER user3");
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user3");
-        ans = ",,MANAGE_ROLE,false,\n";
+        ans = ",,SECURITY,false,\n";
         validateResultSet(resultSet, ans);
 
-        userStmt.execute("REVOKE MANAGE_ROLE ON root.** FROM USER user1");
+        userStmt.execute("REVOKE SECURITY ON root.** FROM USER user1");
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
         ans =
-            ",,MANAGE_USER,false,\n"
-                + ",,USE_TRIGGER,false,\n"
-                + ",,USE_UDF,false,\n"
-                + ",,USE_CQ,false,\n"
-                + ",,USE_PIPE,false,\n"
-                + ",,USE_MODEL,false,\n"
-                + ",,EXTEND_TEMPLATE,false,\n"
-                + ",,MANAGE_DATABASE,false,\n"
-                + ",,MAINTAIN,false,\n"
+            ",,SYSTEM,false,\n"
+                + ",,AUDIT,false,\n"
                 + ",root.**,READ_DATA,false,\n"
                 + ",root.**,WRITE_DATA,false,\n"
                 + ",root.**,READ_SCHEMA,false,\n"
@@ -1252,7 +1208,7 @@ public class IoTDBAuthIT {
 
         adminStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("create schema template t1 aligned (s_name TEXT)");
-        adminStmt.execute("GRANT EXTEND_TEMPLATE ON root.** TO USER tempuser");
+        adminStmt.execute("GRANT SYSTEM ON root.** TO USER tempuser");
         adminStmt.execute("GRANT WRITE_DATA ON root.a.** TO USER tempuser");
         adminStmt.execute("set schema template t1 to root.a");
 
@@ -1265,7 +1221,7 @@ public class IoTDBAuthIT {
 
         adminStmt.execute("GRANT WRITE_SCHEMA ON root.a.d1.** TO USER tempuser");
         userStmt.execute("INSERT INTO root.a.d1(timestamp, s_name, s_value) VALUES (1,'IoTDB', 2)");
-        adminStmt.execute("REVOKE EXTEND_TEMPLATE ON root.** FROM USER tempuser");
+        adminStmt.execute("REVOKE SYSTEM ON root.** FROM USER tempuser");
 
         Assert.assertThrows(
             SQLException.class,
