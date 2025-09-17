@@ -1481,7 +1481,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus executionStatus = client.killQuery(queryId, dataNodeId);
+      final TSStatus executionStatus =
+          client.killQuery(queryId, dataNodeId, killQueryStatement.getAllowedUsername());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus));
       } else {

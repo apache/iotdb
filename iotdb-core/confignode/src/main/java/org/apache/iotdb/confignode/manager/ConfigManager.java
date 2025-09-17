@@ -1834,10 +1834,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus killQuery(String queryId, int dataNodeId) {
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? nodeManager.killQuery(queryId, dataNodeId)
+        ? nodeManager.killQuery(queryId, dataNodeId, allowedUsername)
         : status;
   }
 

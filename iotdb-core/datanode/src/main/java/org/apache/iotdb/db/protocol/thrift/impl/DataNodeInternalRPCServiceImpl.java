@@ -249,6 +249,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -2427,16 +2428,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus killQueryInstance(String queryId) {
+  public TSStatus killQueryInstance(TKillQueryInstanceReq req) {
     Coordinator coordinator = Coordinator.getInstance();
+    String queryId = req.getQueryId();
+    String allowedUsername = req.getAllowedUsername();
     if (queryId == null) {
-      coordinator.getAllQueryExecutions().forEach(IQueryExecution::cancel);
+      coordinator.getAllQueryExecutions().stream()
+          .filter(
+              iQueryExecution ->
+                  allowedUsername == null || allowedUsername.equals(iQueryExecution.getUser()))
+          .forEach(IQueryExecution::cancel);
     } else {
       Optional<IQueryExecution> queryExecution =
           coordinator.getAllQueryExecutions().stream()
               .filter(iQueryExecution -> iQueryExecution.getQueryId().equals(queryId))
               .findAny();
       if (queryExecution.isPresent()) {
+        if (allowedUsername != null && !allowedUsername.equals(queryExecution.get().getUser())) {
+          return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode());
+        }
         queryExecution.get().cancel();
       } else {
         return new TSStatus(TSStatusCode.NO_SUCH_QUERY.getStatusCode()).setMessage("No such query");

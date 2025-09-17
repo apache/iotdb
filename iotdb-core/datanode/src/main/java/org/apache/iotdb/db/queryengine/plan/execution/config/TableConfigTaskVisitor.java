@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -414,7 +415,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowRegions(
       final ShowRegions showRegions, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     final ShowRegionStatement treeStatement = new ShowRegionStatement();
@@ -465,7 +466,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowDataNodes(
       final ShowDataNodes showDataNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowDataNodesTask();
   }
 
@@ -473,7 +474,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowConfigNodes(
       final ShowConfigNodes showConfigNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowConfigNodesTask();
   }
 
@@ -481,7 +482,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowAINodes(
       final ShowAINodes showAINodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowAINodesTask();
   }
 
@@ -489,7 +490,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitClearCache(
       final ClearCache clearCacheStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ClearCacheTask(clearCacheStatement);
   }
 
@@ -914,14 +915,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitFlush(final Flush node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
   }
 
   @Override
   protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    // todo: check all configuration items' privilege requirement
     return new SetConfigurationTask(((SetConfigurationStatement) node.getInnerTreeStatement()));
   }
 
@@ -935,14 +936,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitStartRepairData(StartRepairData node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new StartRepairDataTask(((StartRepairDataStatement) node.getInnerTreeStatement()));
   }
 
   @Override
   protected IConfigTask visitStopRepairData(StopRepairData node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new StopRepairDataTask(((StopRepairDataStatement) node.getInnerTreeStatement()));
   }
 
@@ -956,7 +957,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitSetSystemStatus(SetSystemStatus node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new SetSystemStatusTask(((SetSystemStatusStatement) node.getInnerTreeStatement()));
   }
 
@@ -1285,20 +1286,21 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitShowVersion(ShowVersion node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowVersionTask();
   }
 
   @Override
   protected IConfigTask visitShowVariables(ShowVariables node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowVariablesTask();
   }
 
   @Override
   protected IConfigTask visitShowClusterId(ShowClusterId node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowClusterIdTask();
   }
 
@@ -1333,8 +1335,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitKillQuery(KillQuery node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
-    return new KillQueryTask(node);
+    String allowedUsername = context.getSession().getUserName();
+    if (accessControl.hasGlobalPrivilege(allowedUsername, PrivilegeType.SYSTEM)) {
+      allowedUsername = null;
+    }
+    return new KillQueryTask(node, allowedUsername);
   }
 
   @Override
@@ -1367,7 +1372,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitMigrateRegion(MigrateRegion migrateRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     return new MigrateRegionTask(migrateRegion);

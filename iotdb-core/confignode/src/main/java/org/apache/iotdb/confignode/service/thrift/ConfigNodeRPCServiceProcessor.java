@@ -1012,8 +1012,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus killQuery(String queryId, int dataNodeId) {
-    return configManager.killQuery(queryId, dataNodeId);
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername) {
+    return configManager.killQuery(queryId, dataNodeId, allowedUsername);
   }
 
   @Override
