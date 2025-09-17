@@ -175,8 +175,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }
 
   @Override
-  public int getColumnDisplaySize(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public int getColumnDisplaySize(int column) throws SQLException {
+    return getPrecision(column);
   }
 
   @Override
