@@ -350,8 +350,7 @@ public class QueryExecution implements IQueryExecution {
       resultHandle.close();
       cleanUpResultHandle();
     }
-    if (getSQLDialect().equals(IClientSession.SqlDialect.TABLE)
-        && !context.isUncorrelatedSubquery()) {
+    if (getSQLDialect().equals(IClientSession.SqlDialect.TABLE) && !context.isSubquery()) {
       CteMaterializer.cleanUpCTE(context);
     }
   }
@@ -397,8 +396,7 @@ public class QueryExecution implements IQueryExecution {
       }
       cleanUpResultHandle();
     }
-    if (getSQLDialect().equals(IClientSession.SqlDialect.TABLE)
-        && !context.isUncorrelatedSubquery()) {
+    if (getSQLDialect().equals(IClientSession.SqlDialect.TABLE) && !context.isSubquery()) {
       CteMaterializer.cleanUpCTE(context);
     }
   }
