@@ -142,7 +142,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
@@ -3598,15 +3597,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setRealStatement(showNodesInSchemaTemplateStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowNodesInSchemaTemplateHeader());
-    return analysis;
-  }
-
-  @Override
-  public Analysis visitShowSchemaTemplate(
-      ShowSchemaTemplateStatement showSchemaTemplateStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setRealStatement(showSchemaTemplateStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowSchemaTemplateHeader());
     return analysis;
   }
 

@@ -1763,7 +1763,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
       // Send request to some API server
-      final List<Template> templateList = ClusterTemplateManager.getInstance().getAllTemplates();
+      final List<Template> templateList =
+          ClusterTemplateManager.getInstance()
+              .getAllRelatedTemplates(showSchemaTemplateStatement.getAuthorityScope());
       // build TSBlock
       ShowSchemaTemplateTask.buildTSBlock(templateList, future);
     } catch (final Exception e) {

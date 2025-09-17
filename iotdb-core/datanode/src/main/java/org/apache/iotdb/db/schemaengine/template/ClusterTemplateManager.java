@@ -373,6 +373,28 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
   }
 
+  @Override
+  public List<Template> getAllRelatedTemplates(PathPatternTree scope) {
+    readWriteLock.readLock().lock();
+    try {
+      List<Template> result = new ArrayList<>();
+      for (Map.Entry<Integer, List<PartialPath>> entry : templateSetOnPathsMap.entrySet()) {
+        int templateId = entry.getKey();
+        for (PartialPath path : entry.getValue()) {
+          if (!scope
+              .getOverlappedPathPatterns(path.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+              .isEmpty()) {
+            result.add(templateIdMap.get(templateId));
+            break;
+          }
+        }
+      }
+      return result;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   private boolean checkIsRelated(
       PartialPath pathPattern, PartialPath pathSetTemplate, Template template) {
     // e.g. given template t1(s1 int32) set on root.sg, the possible timeseries are matched by
