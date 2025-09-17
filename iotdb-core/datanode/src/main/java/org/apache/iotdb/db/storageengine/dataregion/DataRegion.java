@@ -63,6 +63,7 @@ import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -157,6 +158,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -248,6 +251,15 @@ public class DataRegion implements IDataRegionForQuery {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
+
+  // Cache TableSchema to prevent OOM
+  private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
+      Caffeine.newBuilder()
+          .maximumWeight(config.getDataNodeTableSchemaCacheSize())
+          .weigher(
+              (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
+                  (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
+          .build();
 
   /**
    * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -1447,7 +1459,16 @@ public class DataRegion implements IDataRegionForQuery {
                 throw new TableLostRuntimeException(getDatabaseName(), tableName);
               }
             }
-            return TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
+
+            org.apache.tsfile.file.metadata.TableSchema tableSchema =
+                TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
+            org.apache.tsfile.file.metadata.TableSchema cachedSchema =
+                SCHEMA_CACHE.getIfPresent(tableName);
+            if (Objects.equals(cachedSchema, tableSchema)) {
+              return cachedSchema;
+            }
+            SCHEMA_CACHE.put(tableName, tableSchema);
+            return tableSchema;
           });
     }
   }
