@@ -1758,7 +1758,7 @@ service IConfigNodeRPCService {
   common.TSStatus removeRegion(TRemoveRegionReq req)
 
   /** Kill query */
-  common.TSStatus killQuery(string queryId, i32 dataNodeId)
+  common.TSStatus killQuery(string queryId, i32 dataNodeId, string allowedUsername)
 
   /** Get all DataNodeLocations of Readable DataNodes */
   TGetDataNodeLocationsResp getReadableDataNodeLocations()

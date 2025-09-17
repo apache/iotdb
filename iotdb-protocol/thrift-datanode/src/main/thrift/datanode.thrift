@@ -740,6 +740,11 @@ struct TFetchFragmentInstanceStatisticsResp {
   17: optional i32 initDataQuerySourceRetryCount
 }
 
+struct TKillQueryInstanceReq {
+  1: optional string queryId
+  2: optional string allowedUsername
+}
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -997,7 +1002,7 @@ service IDataNodeRPCService {
 
   common.TSStatus setSystemStatus(string status)
 
-  common.TSStatus killQueryInstance(string queryId)
+  common.TSStatus killQueryInstance(TKillQueryInstanceReq req)
 
   /**
      * Config node will Set the TTL for the database on a list of data nodes.
