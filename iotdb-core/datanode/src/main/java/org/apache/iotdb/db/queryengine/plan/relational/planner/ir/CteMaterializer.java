@@ -50,6 +50,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class CteMaterializer {
 
@@ -143,17 +145,33 @@ public class CteMaterializer {
   }
 
   private static TableSchema getTableSchema(DatasetHeader datasetHeader, String cteName) {
-    List<String> columnNames = datasetHeader.getRespColumns();
-    List<TSDataType> columnDataTypes = datasetHeader.getRespDataTypes();
-    final List<ColumnSchema> columnSchemaList = new ArrayList<>();
-    for (int i = 0; i < columnNames.size(); i++) {
-      columnSchemaList.add(
-          new ColumnSchema(
-              columnNames.get(i),
-              TypeFactory.getType(columnDataTypes.get(i)),
-              false,
-              TsTableColumnCategory.FIELD));
+    final List<String> columnNames = datasetHeader.getRespColumns();
+    final List<TSDataType> columnDataTypes = datasetHeader.getRespDataTypes();
+    if (columnNames.size() != columnDataTypes.size()) {
+      throw new IoTDBRuntimeException(
+          "Size of column names and column data types do not match",
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
+    final Map<String, Integer> columnNameIndexMap = datasetHeader.getColumnNameIndexMap();
+    final List<ColumnSchema> columnSchemaList = new ArrayList<>();
+
+    // build name -> type map
+    Map<String, TSDataType> columnNameDataTypeMap =
+        IntStream.range(0, columnNames.size())
+            .boxed()
+            .collect(Collectors.toMap(columnNames::get, columnDataTypes::get));
+
+    // build column schema list of cte table based on columnNameIndexMap
+    columnNameIndexMap.entrySet().stream()
+        .sorted(Map.Entry.comparingByValue())
+        .forEach(
+            entry ->
+                columnSchemaList.add(
+                    new ColumnSchema(
+                        entry.getKey(),
+                        TypeFactory.getType(columnNameDataTypeMap.get(entry.getKey())),
+                        false,
+                        TsTableColumnCategory.FIELD)));
     return new TableSchema(cteName, columnSchemaList);
   }
 }
