@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
@@ -186,10 +185,10 @@ public class AuthorityChecker {
             .setMessage(
                 NO_PERMISSION_PROMOTION
                     + getSatisfyAnyNeededPrivilegeString(
-                        AuthUtils.getAllPrivilegesContainingCurrentPrivilege(neededPrivilege)));
+                        neededPrivilege.getReplacedPrivilegeType()));
   }
 
-  private static String getSatisfyAnyNeededPrivilegeString(List<PrivilegeType> privileges) {
+  private static String getSatisfyAnyNeededPrivilegeString(PrivilegeType... privileges) {
     StringJoiner sj = new StringJoiner("/");
     for (PrivilegeType privilege : privileges) {
       sj.add(privilege.toString());

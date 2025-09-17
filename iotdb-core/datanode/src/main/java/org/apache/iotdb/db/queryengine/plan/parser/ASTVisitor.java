@@ -2633,6 +2633,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           || (!"READ".equalsIgnoreCase(privilege)
               && !"WRITE".equalsIgnoreCase(privilege)
               && !PrivilegeType.valueOf(privilege.toUpperCase()).isPathPrivilege())) {
+        PrivilegeType privilegeType = PrivilegeType.valueOf(privilege.toUpperCase());
+        if (privilegeType.isDeprecated()) {
+          throw new SemanticException(
+              "Privilege type "
+                  + privilege.toUpperCase()
+                  + " is deprecated, use "
+                  + privilegeType.getReplacedPrivilegeType()
+                  + " to instead it");
+        }
         hasSystemPri = true;
         errorPrivilegeName = privilege.toUpperCase();
         break;
@@ -2659,7 +2668,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         continue;
       } else if (priv.equalsIgnoreCase("ALL")) {
         for (PrivilegeType type : PrivilegeType.values()) {
-          if (type.isRelationalPrivilege() || type.isAdminPrivilege()) {
+          if (type.isRelationalPrivilege() || type.isDeprecated()) {
             continue;
           }
           privSet.add(type.toString());

@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.commons.auth.entity;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /** This enum class contains all available privileges in IoTDB. */
@@ -115,5 +118,47 @@ public enum PrivilegeType {
 
   public PrivilegeModelType getModelType() {
     return modelType;
+  }
+
+  public List<PrivilegeType> getAllPrivilegesContainingCurrentPrivilege() {
+    switch (this) {
+      case MANAGE_USER:
+      case MANAGE_ROLE:
+        return Arrays.asList(this, PrivilegeType.SECURITY);
+      case MAINTAIN:
+      case USE_UDF:
+      case USE_MODEL:
+      case USE_TRIGGER:
+      case USE_CQ:
+      case USE_PIPE:
+      case MANAGE_DATABASE:
+      case EXTEND_TEMPLATE:
+        return Arrays.asList(this, PrivilegeType.SYSTEM);
+      default:
+        return Collections.singletonList(this);
+    }
+  }
+
+  public PrivilegeType getReplacedPrivilegeType() {
+    switch (this) {
+      case MANAGE_USER:
+      case MANAGE_ROLE:
+        return PrivilegeType.SECURITY;
+      case MAINTAIN:
+      case USE_UDF:
+      case USE_MODEL:
+      case USE_TRIGGER:
+      case USE_CQ:
+      case USE_PIPE:
+      case MANAGE_DATABASE:
+      case EXTEND_TEMPLATE:
+        return PrivilegeType.SYSTEM;
+      default:
+        return this;
+    }
+  }
+
+  public boolean isDeprecated() {
+    return this.getReplacedPrivilegeType() != this;
   }
 }
