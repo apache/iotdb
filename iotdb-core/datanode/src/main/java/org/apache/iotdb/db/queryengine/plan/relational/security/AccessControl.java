@@ -178,6 +178,7 @@ public interface AccessControl {
 
   /**
    * Check if user has sepecified global privilege
+   *
    * @param userName name of user
    * @param privilegeType needed privilege
    * @throws AccessDeniedException if not allowed
