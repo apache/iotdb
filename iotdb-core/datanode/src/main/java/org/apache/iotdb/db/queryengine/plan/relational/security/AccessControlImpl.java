@@ -224,10 +224,9 @@ public class AccessControlImpl implements AccessControl {
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
         return;
       case LIST_USER:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return;
+        if (!hasGlobalPrivilege(userName, PrivilegeType.MANAGE_USER)) {
+          statement.setUserName(userName);
         }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
         return;
       case CREATE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(statement.getRoleName())) {
@@ -269,15 +268,13 @@ public class AccessControlImpl implements AccessControl {
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
         return;
       case LIST_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (statement.getUserName() != null && !statement.getUserName().equals(userName)) {
+          authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
           return;
         }
-
-        // user can list his roles.
-        if (statement.getUserName() != null && statement.getUserName().equals(userName)) {
-          return;
+        if (!hasGlobalPrivilege(userName, PrivilegeType.MANAGE_ROLE)) {
+          statement.setUserName(userName);
         }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
         return;
       case LIST_ROLE_PRIV:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
@@ -295,7 +292,7 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
           throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
         }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -310,7 +307,7 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
           throw new AccessDeniedException("Cannot grant/revoke all privileges of admin user");
         }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (TableModelPrivilege privilege : TableModelPrivilege.values()) {
@@ -334,7 +331,7 @@ public class AccessControlImpl implements AccessControl {
           throw new SemanticException(
               "Cannot grant or revoke any privileges to information_schema");
         }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -355,7 +352,7 @@ public class AccessControlImpl implements AccessControl {
           throw new SemanticException(
               "Cannot grant or revoke any privileges to information_schema");
         }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -373,7 +370,7 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
           throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
         }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {

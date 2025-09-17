@@ -502,7 +502,15 @@ public class AuthorInfo implements SnapshotProcessor {
 
   public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
-    final List<String> userList = authorizer.listAllUsers();
+    final List<String> userList;
+    boolean hasPermissionToListOtherUsers = plan.getUserName().isEmpty();
+    if (!hasPermissionToListOtherUsers) {
+      // userList may be modified later
+      userList = new ArrayList<>(1);
+      userList.add(plan.getUserName());
+    } else {
+      userList = authorizer.listAllUsers();
+    }
     if (!plan.getRoleName().isEmpty()) {
       final Role role = authorizer.getRole(plan.getRoleName());
       if (role == null) {
