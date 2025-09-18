@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -194,24 +193,32 @@ public class PipeTableResp implements DataSet {
         final Integer nodeId = entry.getKey();
         final PipeRuntimeException e = entry.getValue();
         final String exceptionMessage =
-            DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
+            "exceptionTime:"
+                + DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms")
+                + ", "
+                + e.getMessage();
 
         pipeExceptionMessage2NodeIdsMap
             .computeIfAbsent(exceptionMessage, k -> new TreeSet<>())
             .add(nodeId);
       }
 
-      for (final Map.Entry<Integer, PipeTaskMeta> entry :
-          runtimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
-        final Integer regionId = entry.getKey();
-        for (final PipeRuntimeException e : entry.getValue().getExceptionMessages()) {
-          final String exceptionMessage =
-              DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
-          pipeExceptionMessage2RegionIdsMap
-              .computeIfAbsent(exceptionMessage, k -> new TreeSet<>())
-              .add(regionId);
-        }
-      }
+      runtimeMeta
+          .getConsensusGroupId2TaskMetaMap()
+          .forEach(
+              (key, value) ->
+                  value
+                      .getLastException()
+                      .ifPresent(
+                          e ->
+                              pipeExceptionMessage2RegionIdsMap
+                                  .computeIfAbsent(
+                                      "exceptionTime:"
+                                          + DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms")
+                                          + ", "
+                                          + e.getMessage(),
+                                      k -> new TreeSet<>())
+                                  .add(key)));
 
       for (final Map.Entry<String, Set<Integer>> entry :
           pipeExceptionMessage2NodeIdsMap.entrySet()) {

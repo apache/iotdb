@@ -153,7 +153,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
         pipeRuntimeException.getMessage(),
         pipeRuntimeException);
 
-    pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+    pipeTaskMeta.trackException(pipeRuntimeException);
 
     // Do not call "stopAllPipesWithCriticalException" because the sinks are not reused in
     // ConfigNodeSubtask

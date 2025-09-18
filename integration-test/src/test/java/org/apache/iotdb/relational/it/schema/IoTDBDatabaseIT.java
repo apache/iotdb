@@ -466,7 +466,8 @@ public class IoTDBDatabaseIT {
                   "pipe_source,STRING,ATTRIBUTE,",
                   "pipe_processor,STRING,ATTRIBUTE,",
                   "pipe_sink,STRING,ATTRIBUTE,",
-                  "exception_message,STRING,ATTRIBUTE,",
+                  "last_exception,STRING,ATTRIBUTE,",
+                  "suggested_action,STRING,ATTRIBUTE,",
                   "remaining_event_count,INT64,ATTRIBUTE,",
                   "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
