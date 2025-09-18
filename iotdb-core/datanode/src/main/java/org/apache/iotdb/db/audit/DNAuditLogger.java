@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.audit;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -99,8 +102,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   @NotNull
   private static InsertRowStatement generateInsertStatement(
-      AuditLogFields auditLogFields, String log, PartialPath log_device)
-      throws IllegalPathException {
+      AuditLogFields auditLogFields, String log, PartialPath log_device) {
     String username = auditLogFields.getUsername();
     String address = auditLogFields.getCliHostname();
     AuditEventType type = auditLogFields.getAuditType();
@@ -171,7 +173,10 @@ public class DNAuditLogger extends AbstractAuditLogger {
         }
         Statement statement =
             StatementGenerator.createStatement(
-                "CREATE DATABASE " + SystemConstant.AUDIT_DATABASE, ZoneId.systemDefault());
+                "CREATE DATABASE "
+                    + SystemConstant.AUDIT_DATABASE
+                    + " WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1",
+                ZoneId.systemDefault());
         ExecutionResult result =
             COORDINATOR.executeForTreeModel(
                 statement,
@@ -182,9 +187,44 @@ public class DNAuditLogger extends AbstractAuditLogger {
                 SCHEMA_FETCHER);
         if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || result.status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-          statement =
-              StatementGenerator.createStatement(
-                  "CREATE VIEW __view_system.audit_log (\n"
+
+          SqlParser relationSqlParser = new SqlParser();
+          IClientSession session =
+              new InternalClientSession(
+                  String.format(
+                      "%s_%s", DNAuditLogger.class.getSimpleName(), SystemConstant.AUDIT_DATABASE));
+          session.setUsername(AuthorityChecker.SUPER_USER);
+          session.setZoneId(ZoneId.systemDefault());
+          session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+          session.setDatabaseName(SystemConstant.AUDIT_DATABASE);
+          session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+          SESSION_MANAGER.registerSession(session);
+          Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
+
+          org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement stmt =
+              relationSqlParser.createStatement(
+                  "CREATE DATABASE " + SystemConstant.AUDIT_PREFIX_KEY,
+                  ZoneId.systemDefault(),
+                  session);
+          TSStatus status =
+              COORDINATOR.executeForTableModel(
+                      stmt,
+                      relationSqlParser,
+                      session,
+                      SESSION_MANAGER.requestQueryId(),
+                      SESSION_MANAGER.getSessionInfoOfTableModel(session),
+                      "",
+                      metadata,
+                      config.getQueryTimeoutThreshold(),
+                      false)
+                  .status;
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && status.getCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+            logger.error("Failed to create view for audit log, because {}", status.getMessage());
+          }
+          stmt =
+              relationSqlParser.createStatement(
+                  "CREATE VIEW __audit.audit_log (\n"
                       + "    node_id STRING TAG,\n"
                       + "    user_id STRING TAG,\n"
                       + "    username STRING FIELD,\n"
@@ -197,21 +237,29 @@ public class DNAuditLogger extends AbstractAuditLogger {
                       + "    database STRING FIELD,\n"
                       + "    sql_string STRING FIELD,\n"
                       + "    log STRING FIELD\n"
-                      + ") AS root.__audit.log",
-                  ZoneId.systemDefault());
-          SqlParser relationSqlParser = new SqlParser();
-          IClientSession session = SESSION_MANAGER.getCurrSession();
-          Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-          COORDINATOR.executeForTableModel(
-              statement,
-              relationSqlParser,
-              session,
-              SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfTableModel(session),
-              "",
-              metadata,
-              config.getQueryTimeoutThreshold());
-          tableViewIsInitialized.set(true);
+                      + ") AS root.__audit.log.**",
+                  ZoneId.systemDefault(),
+                  session);
+          status =
+              COORDINATOR.executeForTableModel(
+                      stmt,
+                      relationSqlParser,
+                      session,
+                      SESSION_MANAGER.requestQueryId(),
+                      SESSION_MANAGER.getSessionInfoOfTableModel(session),
+                      "",
+                      metadata,
+                      config.getQueryTimeoutThreshold(),
+                      false)
+                  .status;
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && status.getCode()
+                  != TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
+            logger.error("Failed to create view for audit log, because {}", status.getMessage());
+          } else {
+            logger.info("Create view for audit log successfully");
+            tableViewIsInitialized.set(true);
+          }
         } else {
           logger.error("Failed to create database {} for audit log", SystemConstant.AUDIT_DATABASE);
         }
@@ -219,23 +267,28 @@ public class DNAuditLogger extends AbstractAuditLogger {
     }
   }
 
-  public void log(AuditLogFields auditLogFields, String log) throws IllegalPathException {
+  public void log(AuditLogFields auditLogFields, String log) {
     createViewIfNecessary();
     if (!checkBeforeLog(auditLogFields)) {
       return;
     }
-    ;
     int userId = auditLogFields.getUserId();
     String user = String.valueOf(userId);
     if (userId == -1) {
       user = "none";
     }
     String dataNodeId = String.valueOf(config.getDataNodeId());
-    InsertRowStatement statement =
-        generateInsertStatement(
-            auditLogFields,
-            log,
-            DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, user)));
+    InsertRowStatement statement;
+    try {
+      statement =
+          generateInsertStatement(
+              auditLogFields,
+              log,
+              DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, user)));
+    } catch (IllegalPathException e) {
+      logger.error("Failed to log audit events because ", e);
+      return;
+    }
     COORDINATOR.executeForTreeModel(
         statement,
         SESSION_MANAGER.requestQueryId(),
@@ -245,9 +298,14 @@ public class DNAuditLogger extends AbstractAuditLogger {
         SCHEMA_FETCHER);
     AuditEventType type = auditLogFields.getAuditType();
     if (isLoginEvent(type)) {
-      statement.setDevicePath(
-          DEVICE_PATH_CACHE.getPartialPath(
-              String.format(AUDIT_LOGIN_LOG_DEVICE, dataNodeId, user)));
+      try {
+        statement.setDevicePath(
+            DEVICE_PATH_CACHE.getPartialPath(
+                String.format(AUDIT_LOGIN_LOG_DEVICE, dataNodeId, user)));
+      } catch (IllegalPathException e) {
+        logger.error("Failed to log audit login events because ", e);
+        return;
+      }
       COORDINATOR.executeForTreeModel(
           statement,
           SESSION_MANAGER.requestQueryId(),
@@ -268,8 +326,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
         generateInsertStatement(
             auditLogFields,
             log,
-            DEVICE_PATH_CACHE.getPartialPath(
-                String.format(AUDIT_CN_LOG_DEVICE, String.valueOf(nodeId))));
+            DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_CN_LOG_DEVICE, nodeId)));
     COORDINATOR.executeForTreeModel(
         statement,
         SESSION_MANAGER.requestQueryId(),
