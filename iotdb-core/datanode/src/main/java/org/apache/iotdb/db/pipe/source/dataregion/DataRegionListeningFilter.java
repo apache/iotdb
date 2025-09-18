@@ -32,6 +32,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -78,9 +79,13 @@ public class DataRegionListeningFilter {
     } else {
       final String databaseTreeModel =
           databaseRawName.startsWith("root.") ? databaseRawName : "root." + databaseRawName;
-      final TreePattern treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
-      return treePattern.isTreeModelDataAllowedToBeCaptured()
-          && treePattern.mayOverlapWithDb(databaseTreeModel);
+      final List<TreePattern> treePatterns =
+          TreePattern.parsePipePatternFromSourceParameters(parameters);
+      return treePatterns.stream()
+          .anyMatch(
+              treePattern ->
+                  treePattern.isTreeModelDataAllowedToBeCaptured()
+                      && treePattern.mayOverlapWithDb(databaseTreeModel));
     }
   }
 
@@ -106,11 +111,15 @@ public class DataRegionListeningFilter {
     final String databaseTableModel =
         databaseRawName.startsWith("root.") ? databaseRawName.substring(5) : databaseRawName;
 
-    final TreePattern treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    final List<TreePattern> treePatterns =
+        TreePattern.parsePipePatternFromSourceParameters(parameters);
     final TablePattern tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
 
-    return treePattern.isTreeModelDataAllowedToBeCaptured()
-            && treePattern.mayOverlapWithDb(databaseTreeModel)
+    return treePatterns.stream()
+            .anyMatch(
+                treePattern ->
+                    treePattern.isTreeModelDataAllowedToBeCaptured()
+                        && treePattern.mayOverlapWithDb(databaseTreeModel))
         || tablePattern.isTableModelDataAllowedToBeCaptured()
             && tablePattern.matchesDatabase(databaseTableModel);
   }

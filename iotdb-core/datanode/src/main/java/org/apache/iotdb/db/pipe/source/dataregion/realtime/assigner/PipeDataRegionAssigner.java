@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
@@ -39,6 +41,7 @@ import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.matcher.DataRegionSourceWithPattern;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -134,17 +137,20 @@ public class PipeDataRegionAssigner implements Closeable {
       return;
     }
 
-    final Pair<Set<PipeRealtimeDataRegionSource>, Set<PipeRealtimeDataRegionSource>>
+    final Pair<Set<DataRegionSourceWithPattern>, Set<DataRegionSourceWithPattern>>
         matchedAndUnmatched = matcher.match(event);
 
     matchedAndUnmatched
         .getLeft()
         .forEach(
-            extractor -> {
+            sourceWithPattern -> {
               if (disruptor.isClosed()) {
                 return;
               }
 
+              final PipeRealtimeDataRegionSource extractor = sourceWithPattern.getSource();
+              final TreePattern treePattern = sourceWithPattern.getTreePattern();
+              final TablePattern tablePattern = sourceWithPattern.getTablePattern();
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
                 final ProgressReportEvent reportEvent =
                     new ProgressReportEvent(
@@ -167,8 +173,8 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getPipeName(),
                       extractor.getCreationTime(),
                       extractor.getPipeTaskMeta(),
-                      extractor.getTreePattern(),
-                      extractor.getTablePattern(),
+                      treePattern,
+                      tablePattern,
                       extractor.getUserName(),
                       extractor.isSkipIfNoPrivileges(),
                       extractor.getRealtimeDataExtractionStartTime(),
@@ -221,11 +227,12 @@ public class PipeDataRegionAssigner implements Closeable {
     matchedAndUnmatched
         .getRight()
         .forEach(
-            extractor -> {
+            sourceWithPattern -> {
               if (disruptor.isClosed()) {
                 return;
               }
 
+              final PipeRealtimeDataRegionSource extractor = sourceWithPattern.getSource();
               final EnrichedEvent innerEvent = event.getEvent();
               if (innerEvent instanceof TabletInsertionEvent
                   || innerEvent instanceof TsFileInsertionEvent) {
