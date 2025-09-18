@@ -172,15 +172,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  private TSStatus checkSystemAuth(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM),
-        PrivilegeType.SYSTEM);
-  }
-
   // ====================== template related =================================
 
   @Override
@@ -193,10 +184,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, TreeAccessCheckContext context) {
     // root.__audit can never be set template
-    String[] nodes = setSchemaTemplateStatement.getPath().getNodes();
-    if (nodes.length >= 2 && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1])) {
-      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+    TSStatus status = checkWriteOnReadOnlyPath(setSchemaTemplateStatement.getPath());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     }
     return checkSystemAuth(context.userName);
   }
@@ -372,21 +362,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     switch (authorType) {
       case CREATE_USER:
       case DROP_USER:
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
-
+        return checkGlobalAuth(context.userName, PrivilegeType.MANAGE_USER);
       case UPDATE_USER:
         // users can change passwords of themselves
         if (statement.getUserName().equals(context.userName)) {
           return RpcUtils.SUCCESS_STATUS;
         }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
+        return checkGlobalAuth(context.userName, PrivilegeType.MANAGE_USER);
 
       case LIST_USER:
-        if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SECURITY)) {
+        if (checkHasGlobalAuth(context.userName, PrivilegeType.MANAGE_USER)) {
           return RpcUtils.SUCCESS_STATUS;
         }
         statement.setUserName(context.userName);
@@ -396,22 +381,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         if (context.userName.equals(statement.getUserName())) {
           return RpcUtils.SUCCESS_STATUS;
         }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
+        return checkGlobalAuth(context.userName, PrivilegeType.MANAGE_USER);
 
       case LIST_ROLE_PRIVILEGE:
         if (!AuthorityChecker.checkRole(context.userName, statement.getRoleName())) {
-          return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE),
-              PrivilegeType.MANAGE_ROLE);
+          return checkGlobalAuth(context.userName, PrivilegeType.MANAGE_ROLE);
         } else {
-          return RpcUtils.SUCCESS_STATUS;
+          return SUCCEED;
         }
 
       case LIST_ROLE:
         if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE)) {
-          return RpcUtils.SUCCESS_STATUS;
+          return SUCCEED;
         }
         // list roles of other user is not allowed
         if (statement.getUserName() != null && !statement.getUserName().equals(context.userName)) {
@@ -424,23 +405,20 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       case DROP_ROLE:
       case GRANT_USER_ROLE:
       case REVOKE_USER_ROLE:
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE),
-            PrivilegeType.MANAGE_ROLE);
+        return checkGlobalAuth(context.userName, PrivilegeType.MANAGE_ROLE);
 
       case REVOKE_USER:
       case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
-        if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SECURITY)) {
+        if (checkHasGlobalAuth(context.userName, PrivilegeType.SECURITY)) {
           return RpcUtils.SUCCESS_STATUS;
         }
 
         for (String s : statement.getPrivilegeList()) {
           PrivilegeType privilegeType = PrivilegeType.valueOf(s.toUpperCase());
           if (privilegeType.isSystemPrivilege()) {
-            if (!AuthorityChecker.checkSystemPermissionGrantOption(
-                context.userName, privilegeType)) {
+            if (!checkHasGlobalAuth(context.userName, privilegeType)) {
               return AuthorityChecker.getTSStatus(
                   false,
                   "Has no permission to execute "
@@ -899,36 +877,35 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitExtendRegion(
       ExtendRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitGetRegionId(GetRegionIdStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitGetSeriesSlotList(
       GetSeriesSlotListStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitGetTimeSlotList(
       GetTimeSlotListStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitCountTimeSlotList(
       CountTimeSlotListStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitKillQuery(KillQueryStatement statement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.checkMaintain(context.userName).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (checkHasGlobalAuth(context.userName, PrivilegeType.MAINTAIN)) {
       statement.setAllowedUsername(context.userName);
     }
     return SUCCEED;
@@ -936,7 +913,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitFlush(FlushStatement flushStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
   }
 
   @Override
@@ -954,61 +931,61 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitSetSystemStatus(
       SetSystemStatusStatement setSystemStatusStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
   }
 
   @Override
   public TSStatus visitStartRepairData(
       StartRepairDataStatement startRepairDataStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
   }
 
   @Override
   public TSStatus visitStopRepairData(
       StopRepairDataStatement stopRepairDataStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
   }
 
   @Override
   public TSStatus visitClearCache(
       ClearCacheStatement clearCacheStatement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkUserIsSystemAdmin(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
   }
 
   @Override
   public TSStatus visitMigrateRegion(
       MigrateRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitReconstructRegion(
       ReconstructRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitRemoveAINode(
       RemoveAINodeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitRemoveConfigNode(
       RemoveConfigNodeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitRemoveDataNode(
       RemoveDataNodeStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitRemoveRegion(
       RemoveRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
@@ -1019,24 +996,24 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowAINodes(ShowAINodesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitShowClusterId(
       ShowClusterIdStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitShowCluster(ShowClusterStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitShowConfigNodes(
       ShowConfigNodesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
@@ -1054,13 +1031,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowDataNodes(
       ShowDataNodesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.checkMaintain(context.userName).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (checkHasGlobalAuth(context.userName, PrivilegeType.MAINTAIN)) {
       statement.setAllowedUsername(context.userName);
     }
     return SUCCEED;
@@ -1068,36 +1044,36 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowRegion(ShowRegionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitShowVariables(
       ShowVariablesStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitShowVersion(ShowVersionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitTestConnection(
       TestConnectionStatement statement, TreeAccessCheckContext context) {
-    return AuthorityChecker.checkMaintain(context.userName);
+    return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
   }
 
   @Override
   public TSStatus visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement, TreeAccessCheckContext context) {
-    return visitAuthorityInformation(showCurrentTimestampStatement, context);
+    return SUCCEED;
   }
 
   // ======================== TTL related ===========================
   @Override
   public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
+    if (checkHasGlobalAuth(context.userName, PrivilegeType.SYSTEM)) {
       return SUCCEED;
     }
     List<PartialPath> checkedPaths = statement.getPaths();
@@ -1110,7 +1086,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowTTL(ShowTTLStatement showTTLStatement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
+    if (checkHasGlobalAuth(context.userName, PrivilegeType.SYSTEM)) {
       return SUCCEED;
     }
     return visitAuthorityInformation(showTTLStatement, context);
@@ -1156,5 +1132,32 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     } else {
       return visitAuthorityInformation(statement, context);
     }
+  }
+
+  protected TSStatus checkSystemAuth(String userName) {
+    return checkGlobalAuth(userName, PrivilegeType.SYSTEM);
+  }
+
+  protected TSStatus checkGlobalAuth(String userName, PrivilegeType requiredPrivilege) {
+    if (checkHasGlobalAuth(userName, requiredPrivilege)) {
+      return SUCCEED;
+    }
+    return AuthorityChecker.getTSStatus(false, requiredPrivilege);
+  }
+
+  protected boolean checkHasGlobalAuth(String userName, PrivilegeType requiredPrivilege) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return true;
+    }
+    return AuthorityChecker.checkSystemPermission(userName, requiredPrivilege);
+  }
+
+  protected TSStatus checkWriteOnReadOnlyPath(PartialPath path) {
+    String[] nodes = path.getNodes();
+    if (nodes.length >= 2 && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1])) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+    }
+    return SUCCEED;
   }
 }

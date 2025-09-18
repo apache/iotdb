@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckV
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -70,7 +71,7 @@ public class AuthorityChecker {
 
   public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
 
-  public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public static final TSStatus SUCCEED = RpcUtils.SUCCESS_STATUS;
 
   public static final String ONLY_ADMIN_ALLOWED =
       "No permissions for this operation, only root user is allowed";
