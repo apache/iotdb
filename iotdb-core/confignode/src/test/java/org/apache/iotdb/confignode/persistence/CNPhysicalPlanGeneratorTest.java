@@ -260,7 +260,7 @@ public class CNPhysicalPlanGeneratorTest {
                 + File.separator
                 + USER_SNAPSHOT_FILE_NAME
                 + File.separator
-                + userName
+                + 10000
                 + ".profile");
 
     CNPhysicalPlanGenerator planGenerator =
@@ -278,7 +278,7 @@ public class CNPhysicalPlanGeneratorTest {
                 + File.separator
                 + USER_SNAPSHOT_FILE_NAME
                 + File.separator
-                + userName
+                + 10000
                 + "_role.profile");
     planGenerator =
         new CNPhysicalPlanGenerator(

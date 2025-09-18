@@ -227,7 +227,17 @@ public abstract class BasicUserManager extends BasicRoleManager {
 
   @Override
   public void reset() throws AuthException {
-    super.reset();
+    accessor.reset();
+    entityMap.clear();
+    for (String userId : accessor.listAllEntities()) {
+      try {
+        User user = (User) accessor.loadEntity(userId);
+        entityMap.put(user.getName(), user);
+      } catch (IOException e) {
+        LOGGER.warn("Get exception when load user {}", userId);
+        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      }
+    }
     initUserId();
     initAdmin();
   }

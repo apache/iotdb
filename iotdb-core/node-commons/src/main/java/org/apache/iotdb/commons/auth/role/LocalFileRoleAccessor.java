@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.auth.entity.DatabasePrivilege;
 import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -242,11 +243,17 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
 
   @Override
   public void saveEntity(Role entity) throws IOException {
+    String prefixName = "";
+    if (entity instanceof User) {
+      prefixName = String.valueOf(((User) entity).getUserId());
+    } else {
+      prefixName = entity.getName();
+    }
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
             entityDirPath
                 + File.separator
-                + entity.getName()
+                + prefixName
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
     File roleDir = new File(entityDirPath);
@@ -270,7 +277,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
 
     File oldFile =
         SystemFileFactory.INSTANCE.getFile(
-            entityDirPath + File.separator + entity.getName() + IoTDBConstant.PROFILE_SUFFIX);
+            entityDirPath + File.separator + prefixName + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldFile);
     saveRoles(entity);
   }
@@ -318,7 +325,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       }
       retList.addAll(set);
     }
-    retList.remove("user_id");
+    retList.remove("user_id"); // skip user_id.profile
     return retList;
   }
 

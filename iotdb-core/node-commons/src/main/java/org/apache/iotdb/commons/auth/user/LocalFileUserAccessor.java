@@ -102,7 +102,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         SystemFileFactory.INSTANCE.getFile(
             entityDirPath
                 + File.separator
-                + user.getName()
+                + user.getUserId()
                 + ROLE_SUFFIX
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
@@ -124,7 +124,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         SystemFileFactory.INSTANCE.getFile(
             entityDirPath
                 + File.separator
-                + user.getName()
+                + user.getUserId()
                 + ROLE_SUFFIX
                 + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldURoleFile);
@@ -300,6 +300,46 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     File oldFile =
         SystemFileFactory.INSTANCE.getFile(
             entityDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
+    IOUtils.replaceFile(userProfile, oldFile);
+  }
+
+  @TestOnly
+  public void saveUserOldVersion1(User user) throws IOException {
+    File userProfile =
+            SystemFileFactory.INSTANCE.getFile(
+                    entityDirPath
+                            + File.separator
+                            + user.getName()
+                            + IoTDBConstant.PROFILE_SUFFIX
+                            + TEMP_SUFFIX);
+
+    try (FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
+         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+      byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
+      // test for version1
+      IOUtils.writeInt(outputStream, 1, encodingBufferLocal);
+      outputStream.write(strBuffer);
+      IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+      IOUtils.writeInt(outputStream, user.getAllSysPrivileges(), encodingBufferLocal);
+
+      int privilegeNum = user.getPathPrivilegeList().size();
+      for (int i = 0; i < privilegeNum; i++) {
+        PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
+        IOUtils.writePathPrivilege(
+                outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+      }
+      outputStream.flush();
+      fileOutputStream.getFD().sync();
+
+    } catch (Exception e) {
+      throw new IOException(e);
+    } finally {
+      encodingBufferLocal.remove();
+    }
+
+    File oldFile =
+            SystemFileFactory.INSTANCE.getFile(
+                    entityDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(userProfile, oldFile);
   }
 }
