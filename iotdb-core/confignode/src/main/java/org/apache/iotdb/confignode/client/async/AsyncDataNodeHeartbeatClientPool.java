@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.async.handlers.audit.DatanodeWriteAuditLogHandler;
+import org.apache.iotdb.confignode.client.async.handlers.audit.DataNodeWriteAuditLogHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
@@ -55,7 +55,7 @@ public class AsyncDataNodeHeartbeatClientPool {
   }
 
   public void writeAuditLog(
-      TEndPoint endPoint, TAuditLogReq req, DatanodeWriteAuditLogHandler handler) {
+      TEndPoint endPoint, TAuditLogReq req, DataNodeWriteAuditLogHandler handler) {
     try {
       clientManager.borrowClient(endPoint).writeAuditLog(req, handler);
     } catch (Exception e) {

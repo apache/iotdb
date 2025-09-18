@@ -25,11 +25,11 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DatanodeWriteAuditLogHandler implements AsyncMethodCallback<TSStatus> {
-  private static final Logger logger = LoggerFactory.getLogger(DatanodeWriteAuditLogHandler.class);
+public class DataNodeWriteAuditLogHandler implements AsyncMethodCallback<TSStatus> {
+  private static final Logger logger = LoggerFactory.getLogger(DataNodeWriteAuditLogHandler.class);
   private final int nodeId;
 
-  public DatanodeWriteAuditLogHandler(int nodeId) {
+  public DataNodeWriteAuditLogHandler(int nodeId) {
     this.nodeId = nodeId;
   }
 

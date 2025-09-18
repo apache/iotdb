@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.audit.DatanodeWriteAuditLogHandler;
+import org.apache.iotdb.confignode.client.async.handlers.audit.DataNodeWriteAuditLogHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -84,6 +84,6 @@ public class CNAuditLogger extends AbstractAuditLogger {
         .writeAuditLog(
             regionLeader.getInternalEndPoint(),
             req,
-            new DatanodeWriteAuditLogHandler(regionLeader.getDataNodeId()));
+            new DataNodeWriteAuditLogHandler(regionLeader.getDataNodeId()));
   }
 }
