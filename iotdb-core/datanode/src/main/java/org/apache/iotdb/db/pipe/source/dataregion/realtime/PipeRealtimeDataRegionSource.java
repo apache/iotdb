@@ -306,7 +306,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     PipeTimePartitionListener.getInstance().startListen(dataRegionId, this);
     PipeInsertionDataNodeListener.getInstance().startListenAndAssign(dataRegionId, this);
     if (this instanceof PipeRealtimeDataRegionHybridSource) {
-      ((PipeRealtimeDataRegionHybridSource) this).registerSelfToPipeSources();
+      ((PipeRealtimeDataRegionHybridSource) this).registerSelfToHybridSources();
     }
   }
 
@@ -320,7 +320,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     synchronized (isClosed) {
       clearPendingQueue();
       if (this instanceof PipeRealtimeDataRegionHybridSource) {
-        ((PipeRealtimeDataRegionHybridSource) this).deregisterSelfFromPipeSources();
+        ((PipeRealtimeDataRegionHybridSource) this).deregisterSelfFromHybridSources();
       }
       isClosed.set(true);
     }

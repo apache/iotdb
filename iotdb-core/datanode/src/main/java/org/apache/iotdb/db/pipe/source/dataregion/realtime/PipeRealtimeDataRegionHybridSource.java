@@ -50,10 +50,10 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridSource.class);
 
-  private static final ConcurrentMap<String, Set<PipeRealtimeDataRegionHybridSource>> PIPE_SOURCES =
-      new ConcurrentHashMap<>();
+  private static final ConcurrentMap<String, Set<PipeRealtimeDataRegionHybridSource>>
+      PIPE_ID_TO_HYBRID_SOURCES = new ConcurrentHashMap<>();
 
-  private final AtomicBoolean degradePending = new AtomicBoolean(false);
+  private final AtomicBoolean shouldDegrade = new AtomicBoolean(false);
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
@@ -278,7 +278,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private Event supplyTabletInsertion(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
-      maybeDegradeOnHead(event);
+      degradeIfNecessary(event);
       return event.getEvent();
     } else {
       // If the event's reference count can not be increased, it means the data represented by
@@ -295,7 +295,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private Event supplyTsFileInsertion(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
-      maybeDegradeOnHead(event);
+      degradeIfNecessary(event);
       return event.getEvent();
     } else {
       // If the event's reference count can not be increased, it means the data represented by
@@ -316,39 +316,41 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     }
   }
 
-  protected void registerSelfToPipeSources() {
-    PIPE_SOURCES
+  protected void registerSelfToHybridSources() {
+    PIPE_ID_TO_HYBRID_SOURCES
         .computeIfAbsent(pipeID, k -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
         .add(this);
   }
 
-  protected void deregisterSelfFromPipeSources() {
-    final Set<PipeRealtimeDataRegionHybridSource> set = PIPE_SOURCES.get(pipeID);
-    if (set != null) {
-      set.remove(this);
-      if (set.isEmpty()) {
-        PIPE_SOURCES.remove(pipeID, set);
+  protected void deregisterSelfFromHybridSources() {
+    final Set<PipeRealtimeDataRegionHybridSource> hybridSources =
+        PIPE_ID_TO_HYBRID_SOURCES.get(pipeID);
+    if (hybridSources != null) {
+      hybridSources.remove(this);
+      if (hybridSources.isEmpty()) {
+        PIPE_ID_TO_HYBRID_SOURCES.remove(pipeID, hybridSources);
       }
     }
   }
 
   public static void degradeHeadTsFileEpoch(final String pipeID) {
-    final Set<PipeRealtimeDataRegionHybridSource> sources = PIPE_SOURCES.get(pipeID);
-    if (sources == null || sources.isEmpty()) {
+    final Set<PipeRealtimeDataRegionHybridSource> hybridSources =
+        PIPE_ID_TO_HYBRID_SOURCES.get(pipeID);
+    if (hybridSources == null || hybridSources.isEmpty()) {
       return;
     }
-    sources.forEach(PipeRealtimeDataRegionHybridSource::degradeOwnHeadFileEpoch);
+    hybridSources.forEach(PipeRealtimeDataRegionHybridSource::degradeHeadFileEpoch);
   }
 
-  private void degradeOwnHeadFileEpoch() {
-    final Event head = pendingQueue.peek();
-    if (!(head instanceof PipeRealtimeEvent)) {
-      degradePending.set(true);
+  private void degradeHeadFileEpoch() {
+    final Event headEvent = pendingQueue.peek();
+    if (!(headEvent instanceof PipeRealtimeEvent)) {
+      shouldDegrade.set(true);
       return;
     }
-    final TsFileEpoch epoch = ((PipeRealtimeEvent) head).getTsFileEpoch();
+    final TsFileEpoch epoch = ((PipeRealtimeEvent) headEvent).getTsFileEpoch();
     if (epoch == null) {
-      degradePending.set(true);
+      shouldDegrade.set(true);
       return;
     }
     epoch.migrateState(this, s -> TsFileEpoch.State.USING_TSFILE);
@@ -358,8 +360,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
         dataRegionId);
   }
 
-  private void maybeDegradeOnHead(final PipeRealtimeEvent event) {
-    if (!degradePending.get()) {
+  private void degradeIfNecessary(final PipeRealtimeEvent event) {
+    if (!shouldDegrade.get()) {
       return;
     }
     final TsFileEpoch epoch = event.getTsFileEpoch();
@@ -367,7 +369,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       return;
     }
 
-    if (!degradePending.compareAndSet(true, false)) {
+    if (!shouldDegrade.compareAndSet(true, false)) {
       return;
     }
 
