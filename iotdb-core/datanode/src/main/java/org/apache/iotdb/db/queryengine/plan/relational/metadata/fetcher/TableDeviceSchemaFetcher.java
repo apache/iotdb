@@ -183,11 +183,11 @@ public class TableDeviceSchemaFetcher {
       t = throwable;
       throw throwable;
     } finally {
+      schema.notifyFetchDone();
+      requestCache.removeCompletedRequest(statement);
       queryIdSet.remove(queryId);
       attributeGuard.tryUpdateCache();
       coordinator.cleanupQueryExecution(queryId, null, t);
-      schema.notifyFetchDone();
-      requestCache.removeCompletedRequest(statement);
     }
   }
 

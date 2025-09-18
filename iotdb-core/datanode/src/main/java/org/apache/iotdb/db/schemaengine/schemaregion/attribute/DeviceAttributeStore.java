@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.schema.MemUsageUtil;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.cache.AttributeStringCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.tsfile.utils.Binary;
@@ -280,9 +279,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     final Map<String, Binary> map =
         concurrent ? new ConcurrentHashMap<>(length) : new HashMap<>(length);
     for (int i = 0; i < length; i++) {
-      map.put(
-          AttributeStringCache.getCachedString(ReadWriteIOUtils.readString(inputStream)),
-          readBinary(inputStream));
+      map.put(ReadWriteIOUtils.readString(inputStream), readBinary(inputStream));
     }
     return map;
   }

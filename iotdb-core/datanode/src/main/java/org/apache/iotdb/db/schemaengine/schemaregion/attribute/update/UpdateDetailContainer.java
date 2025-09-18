@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeStore;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.cache.AttributeStringCache;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
@@ -395,8 +394,7 @@ public class UpdateDetailContainer implements UpdateContainer {
   public void deserialize(final InputStream inputStream) throws IOException {
     final int tableSize = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < tableSize; ++i) {
-      final String tableName =
-          AttributeStringCache.getCachedString(ReadWriteIOUtils.readString(inputStream));
+      final String tableName = ReadWriteIOUtils.readString(inputStream);
       final int deviceSize = ReadWriteIOUtils.readInt(inputStream);
       final ConcurrentMap<List<String>, ConcurrentMap<String, Binary>> deviceMap =
           new ConcurrentHashMap<>(deviceSize);
@@ -404,8 +402,7 @@ public class UpdateDetailContainer implements UpdateContainer {
         final int nodeSize = ReadWriteIOUtils.readInt(inputStream);
         final List<String> deviceId = new ArrayList<>(nodeSize);
         for (int k = 0; k < nodeSize; ++k) {
-          deviceId.add(
-              AttributeStringCache.getCachedString(ReadWriteIOUtils.readString(inputStream)));
+          deviceId.add(ReadWriteIOUtils.readString(inputStream));
         }
         deviceMap.put(
             deviceId,

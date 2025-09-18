@@ -24,22 +24,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DeviceSchemaRequestCache {
-  private static final Logger logger = LoggerFactory.getLogger(DeviceSchemaRequestCache.class);
   private static final DeviceSchemaRequestCache INSTANCE = new DeviceSchemaRequestCache();
 
   private final Map<FetchDevice, FetchMissingDeviceSchema> pendingRequests =
       new ConcurrentHashMap<>();
   private final AtomicLong requestCounter = new AtomicLong(0);
 
-  private static final int MAX_PENDING_REQUESTS = 
+  private static final int MAX_PENDING_REQUESTS =
       IoTDBDescriptor.getInstance().getConfig().getDeviceSchemaRequestCacheMaxSize();
 
   private DeviceSchemaRequestCache() {}
@@ -75,27 +72,6 @@ public class DeviceSchemaRequestCache {
       pendingRequests.remove(entry.getKey());
       removed++;
     }
-    
-    if (removed > 0) {
-      logger.info("DeviceSchemaRequestCache: Removed {} oldest requests, remaining: {}", 
-          removed, pendingRequests.size());
-    }
-  }
-  
-  /**
-   * 获取缓存统计信息
-   */
-  public String getCacheStats() {
-    return String.format("Device schema cache - Pending: %d, Total: %d", 
-        pendingRequests.size(), requestCounter.get());
-  }
-  
-  /**
-   * 强制清理所有缓存（紧急情况使用）
-   */
-  public void clearAll() {
-    pendingRequests.clear();
-    logger.info("DeviceSchemaRequestCache cleared all requests");
   }
 
   public static class FetchMissingDeviceSchema {
