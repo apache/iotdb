@@ -117,15 +117,13 @@ public class DeviceSchemaCache {
 
   public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-    final String previousDatabase = databasePool.putIfAbsent(database, database);
+    final String databaseToUse = databasePool.computeIfAbsent(database, k -> database);
 
     dualKeyCache.update(
         getLeadingSegment(devicePath),
         devicePath,
         new DeviceCacheEntry(),
-        entry ->
-            entry.setDeviceSchema(
-                Objects.nonNull(previousDatabase) ? previousDatabase : database, deviceSchemaInfo),
+        entry -> entry.setDeviceSchema(databaseToUse, deviceSchemaInfo),
         true);
   }
 
@@ -142,8 +140,7 @@ public class DeviceSchemaCache {
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas,
       final boolean initOrInvalidate) {
-    final String previousDatabase = databasePool.putIfAbsent(database, database);
-    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
+    final String database2Use = databasePool.computeIfAbsent(database, k -> database);
 
     dualKeyCache.update(
         getLeadingSegment(device),
