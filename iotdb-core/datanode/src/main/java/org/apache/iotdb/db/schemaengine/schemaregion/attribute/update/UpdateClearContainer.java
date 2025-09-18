@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.cache.AttributeStringCache;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -154,7 +156,8 @@ public class UpdateClearContainer implements UpdateContainer {
   public void deserialize(final InputStream inputStream) throws IOException {
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
-      tableNames.add(ReadWriteIOUtils.readString(inputStream));
+      tableNames.add(
+          AttributeStringCache.getCachedString(ReadWriteIOUtils.readString(inputStream)));
     }
   }
 
