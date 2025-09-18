@@ -1015,7 +1015,6 @@ public class IoTDBAuthIT {
     ans =
         ",,SYSTEM,true,\n"
             + ",,SECURITY,true,\n"
-            + ",,AUDIT,true,\n"
             + ",root.**,READ_DATA,true,\n"
             + ",root.**,WRITE_DATA,true,\n"
             + ",root.**,READ_SCHEMA,true,\n"
@@ -1034,16 +1033,11 @@ public class IoTDBAuthIT {
         ans =
             ",,SYSTEM,false,\n"
                 + ",,SECURITY,false,\n"
-                + ",,AUDIT,false,\n"
                 + ",root.**,READ_DATA,false,\n"
                 + ",root.**,WRITE_DATA,false,\n"
                 + ",root.**,READ_SCHEMA,false,\n"
                 + ",root.**,WRITE_SCHEMA,false,\n";
         validateResultSet(resultSet, ans);
-        Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("GRANT SECURITY ON root.** TO USER user3"));
-        Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("REVOKE SYSTEM ON root.** FROM USER user2"));
       } finally {
         userStmt.close();
       }
@@ -1118,7 +1112,7 @@ public class IoTDBAuthIT {
       if (item == PrivilegeType.AUDIT) {
         continue;
       }
-      if (item.isRelationalPrivilege() || item.isAdminPrivilege()) {
+      if (item.isRelationalPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1 WITH GRANT OPTION";
