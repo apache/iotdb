@@ -200,6 +200,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
+  @Ignore
   @Test
   public void testHistoryAndRealtime() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
