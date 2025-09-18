@@ -409,8 +409,8 @@ public class DataNodeSchemaCache {
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}
-   * @param isInvalidate {@code true} if invalidate the first pushed cache, or {@code null} for the
-   *     first fetch.
+   * @param isInvalidate {@code true} if invalidate the first pushed cache, or {@code false} for the
+   *     first push.
    */
   public void updateLastCache(
       final String database, final MeasurementPath measurementPath, final boolean isInvalidate) {
