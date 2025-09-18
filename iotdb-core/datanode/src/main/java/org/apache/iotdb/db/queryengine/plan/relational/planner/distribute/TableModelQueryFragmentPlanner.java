@@ -100,46 +100,43 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
         fi -> fi.setDataNodeFINum(dataNodeFIMap.get(fi.getHostDataNode()).size()));
 
     if (queryContext.needUpdateScanNumForLastQuery()) {
-      Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceScanSumMapOfEachTable =
-          new HashMap<>();
       dataNodeFIMap
           .values()
           .forEach(
               fragmentInstances -> {
+                Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceCountMapOfEachTable =
+                    new HashMap<>();
                 fragmentInstances.forEach(
                     fragmentInstance ->
                         updateScanNum(
                             fragmentInstance.getFragment().getPlanNodeTree(),
-                            deviceScanSumMapOfEachTable));
-              });
+                            deviceCountMapOfEachTable));
 
-      // For less size of serde, remove the entry which the region count of DeviceEntry is 1
-      deviceScanSumMapOfEachTable
-          .values()
-          .forEach(
-              deviceScanSumMap -> deviceScanSumMap.entrySet().removeIf(e -> e.getValue() == 1));
+                // For less size of serde, remove the device which the region count is 1
+                deviceCountMapOfEachTable
+                    .values()
+                    .forEach(deviceMap -> deviceMap.entrySet().removeIf(v -> v.getValue() == 1));
+              });
     }
   }
 
   private void updateScanNum(
       PlanNode planNode,
-      Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceScanSumMapOfEachTable) {
+      Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceCountMapOfEachTable) {
     if (planNode instanceof AggregationTableScanNode) {
       AggregationTableScanNode aggregationTableScanNode = (AggregationTableScanNode) planNode;
-      Map<DeviceEntry, Integer> deviceScanSumMap =
-          deviceScanSumMapOfEachTable.computeIfAbsent(
+      Map<DeviceEntry, Integer> deviceMap =
+          deviceCountMapOfEachTable.computeIfAbsent(
               aggregationTableScanNode.getQualifiedObjectName(), name -> new HashMap<>());
+
       aggregationTableScanNode
           .getDeviceEntries()
-          .forEach(
-              deviceEntry -> {
-                deviceScanSumMap.merge(deviceEntry, 1, Integer::sum);
-              });
-      // Each AggTableScanNode with the same complete tableName holds this map
-      aggregationTableScanNode.setDeviceScanSumMap(deviceScanSumMap);
+          .forEach(deviceEntry -> deviceMap.merge(deviceEntry, 1, Integer::sum));
+      // Each AggTableScanNode with the same complete tableName in this DataNode holds this map
+      aggregationTableScanNode.setDeviceCountMap(deviceMap);
       return;
     }
-    planNode.getChildren().forEach(node -> updateScanNum(node, deviceScanSumMapOfEachTable));
+    planNode.getChildren().forEach(node -> updateScanNum(node, deviceCountMapOfEachTable));
   }
 
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {

@@ -3094,8 +3094,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           allHitCache = false;
         }
 
+        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
         if (!allHitCache) {
-          DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
           AlignedFullPath alignedPath =
               constructAlignedPath(
                   deviceEntry,
@@ -3121,7 +3121,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         } else {
           hitCachesIndexes.add(i);
           lastRowCacheResults.add(lastByResult.get());
-          cachedDeviceEntries.add(node.getDeviceEntries().get(i));
+          cachedDeviceEntries.add(deviceEntry);
+          decreaseDeviceCount(node, context, deviceEntry);
         }
       }
     } else {
@@ -3186,8 +3187,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           allHitCache = false;
         }
 
+        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
         if (!allHitCache) {
-          DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
           AlignedFullPath alignedPath =
               constructAlignedPath(
                   deviceEntry,
@@ -3209,7 +3210,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         } else {
           hitCachesIndexes.add(i);
           lastValuesCacheResults.add(lastResult);
-          cachedDeviceEntries.add(node.getDeviceEntries().get(i));
+          cachedDeviceEntries.add(deviceEntry);
+          decreaseDeviceCount(node, context, deviceEntry);
         }
       }
     }
@@ -3225,7 +3227,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             hitCachesIndexes,
             lastRowCacheResults,
             lastValuesCacheResults,
-            node.getDeviceScanSumMap(),
+            node.getDeviceCountMap(),
             context.getInstanceContext().getDataNodeQueryContext());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
@@ -3238,17 +3240,38 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private void addUncachedDeviceToContext(
       AggregationTableScanNode node, LocalExecutionPlanContext context, DeviceEntry deviceEntry) {
     boolean deviceInMultiRegion =
-        node.getDeviceScanSumMap() != null && node.getDeviceScanSumMap().containsKey(deviceEntry);
+        node.getDeviceCountMap() != null && node.getDeviceCountMap().containsKey(deviceEntry);
+    if (!deviceInMultiRegion) {
+      return;
+    }
+
+    context.dataNodeQueryContext.lock(true);
     try {
-      context.dataNodeQueryContext.lock(deviceInMultiRegion);
       context.dataNodeQueryContext.addUnCachedDeviceIfAbsent(
-          node.getQualifiedObjectName(),
-          deviceEntry,
-          node.getDeviceScanSumMap() == null
-              ? 1
-              : node.getDeviceScanSumMap().getOrDefault(deviceEntry, 1));
+          node.getQualifiedObjectName(), deviceEntry, node.getDeviceCountMap().get(deviceEntry));
     } finally {
-      context.dataNodeQueryContext.unLock(deviceInMultiRegion);
+      context.dataNodeQueryContext.unLock(true);
+    }
+  }
+
+  /**
+   * Decrease the device count when its last cache was hit. Notice that the count can also be zero
+   * after decrease, we need to update last cache if needed.
+   */
+  private void decreaseDeviceCount(
+      AggregationTableScanNode node, LocalExecutionPlanContext context, DeviceEntry deviceEntry) {
+    boolean deviceInMultiRegion =
+        node.getDeviceCountMap() != null && node.getDeviceCountMap().containsKey(deviceEntry);
+    if (!deviceInMultiRegion) {
+      return;
+    }
+
+    context.dataNodeQueryContext.lock(true);
+    try {
+      context.dataNodeQueryContext.decreaseDeviceAndMayUpdateLastCache(
+          node.getQualifiedObjectName(), deviceEntry, node.getDeviceCountMap().get(deviceEntry));
+    } finally {
+      context.dataNodeQueryContext.unLock(true);
     }
   }
 

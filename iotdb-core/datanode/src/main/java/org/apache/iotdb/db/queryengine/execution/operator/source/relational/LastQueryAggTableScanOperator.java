@@ -84,7 +84,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   // indicates the index of last(time) aggregation
   private int lastTimeAggregationIdx = -1;
 
-  private final Map<DeviceEntry, Integer> deviceScanSumMap;
+  private final Map<DeviceEntry, Integer> deviceCountMap;
   private final DataNodeQueryContext dataNodeQueryContext;
 
   public LastQueryAggTableScanOperator(
@@ -94,7 +94,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       List<Integer> hitCachesIndexes,
       List<Pair<OptionalLong, TsPrimitiveType[]>> lastRowCacheResults,
       List<TimeValuePair[]> lastValuesCacheResults,
-      Map<DeviceEntry, Integer> deviceScanSumMap,
+      Map<DeviceEntry, Integer> deviceCountMap,
       DataNodeQueryContext dataNodeQueryContext) {
 
     super(parameter);
@@ -119,7 +119,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         lastTimeAggregationIdx = i;
       }
     }
-    this.deviceScanSumMap = deviceScanSumMap;
+    this.deviceCountMap = deviceCountMap;
     this.dataNodeQueryContext = dataNodeQueryContext;
   }
 
@@ -645,38 +645,42 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
 
       boolean deviceInMultiRegion =
-          deviceScanSumMap != null && deviceScanSumMap.containsKey(currentDeviceEntry);
+          deviceCountMap != null && deviceCountMap.containsKey(currentDeviceEntry);
+      if (!deviceInMultiRegion) {
+        TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
+            dbName,
+            currentDeviceEntry.getDeviceID(),
+            updateMeasurementList.toArray(new String[0]),
+            updateTimeValuePairList.toArray(new TimeValuePair[0]));
+        return;
+      }
+
+      dataNodeQueryContext.lock(true);
       try {
-        dataNodeQueryContext.lock(deviceInMultiRegion);
+        Pair<Integer, Map<String, TimeValuePair>> deviceInfo =
+            dataNodeQueryContext.getDeviceInfo(tableCompleteName, currentDeviceEntry);
+        Map<String, TimeValuePair> values = deviceInfo.getRight();
 
-        if (!deviceInMultiRegion) {
-          TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-              dbName,
-              currentDeviceEntry.getDeviceID(),
-              updateMeasurementList.toArray(new String[0]),
-              updateTimeValuePairList.toArray(new TimeValuePair[0]));
-          return;
+        int size = updateMeasurementList.size();
+        for (int i = 0; i < size; i++) {
+          String measurementName = updateMeasurementList.get(i);
+          TimeValuePair timeValuePair = updateTimeValuePairList.get(i);
+          if (values.containsKey(measurementName)) {
+            TimeValuePair oldValue = values.get(measurementName);
+            if (timeValuePair.getTimestamp() > oldValue.getTimestamp()) {
+              values.put(measurementName, timeValuePair);
+            }
+          } else {
+            values.put(measurementName, timeValuePair);
+          }
         }
 
-        Pair<Integer, TimeValuePair[]> deviceValues =
-            dataNodeQueryContext.getDeviceValues(tableCompleteName, currentDeviceEntry);
-        TimeValuePair[] values = deviceValues.getRight();
-        // update cache in DataNodeQueryContext
-        if (values == null) {
-          values = updateTimeValuePairList.toArray(new TimeValuePair[0]);
-        } else {
-          updateTimeValuePairList.toArray(new TimeValuePair[0]);
-        }
-
-        if (deviceValues.left-- == 0) {
-          TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-              dbName,
-              currentDeviceEntry.getDeviceID(),
-              updateMeasurementList.toArray(new String[0]),
-              values);
+        deviceInfo.left--;
+        if (deviceInfo.left == 0) {
+          dataNodeQueryContext.updateLastCache(tableCompleteName, currentDeviceEntry);
         }
       } finally {
-        dataNodeQueryContext.unLock(deviceInMultiRegion);
+        dataNodeQueryContext.unLock(true);
       }
     }
   }

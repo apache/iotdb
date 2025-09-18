@@ -71,7 +71,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
   protected AggregationNode.Step step;
   protected Optional<Symbol> groupIdSymbol;
 
-  private Map<DeviceEntry, Integer> deviceScanSumMap;
+  private Map<DeviceEntry, Integer> deviceCountMap;
 
   public AggregationTableScanNode(
       PlanNodeId id,
@@ -479,10 +479,10 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       Symbol.serialize(node.groupIdSymbol.get(), byteBuffer);
     }
 
-    if (node.deviceScanSumMap != null) {
+    if (node.deviceCountMap != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
-      ReadWriteIOUtils.write(node.deviceScanSumMap.size(), byteBuffer);
-      for (Map.Entry<DeviceEntry, Integer> entry : node.deviceScanSumMap.entrySet()) {
+      ReadWriteIOUtils.write(node.deviceCountMap.size(), byteBuffer);
+      for (Map.Entry<DeviceEntry, Integer> entry : node.deviceCountMap.entrySet()) {
         entry.getKey().serialize(byteBuffer);
         ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
       }
@@ -527,10 +527,10 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       Symbol.serialize(node.groupIdSymbol.get(), stream);
     }
 
-    if (node.deviceScanSumMap != null) {
+    if (node.deviceCountMap != null) {
       ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(node.deviceScanSumMap.size(), stream);
-      for (Map.Entry<DeviceEntry, Integer> entry : node.deviceScanSumMap.entrySet()) {
+      ReadWriteIOUtils.write(node.deviceCountMap.size(), stream);
+      for (Map.Entry<DeviceEntry, Integer> entry : node.deviceCountMap.entrySet()) {
         entry.getKey().serialize(stream);
         ReadWriteIOUtils.write(entry.getValue(), stream);
       }
@@ -585,14 +585,13 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       size = ReadWriteIOUtils.readInt(byteBuffer);
-      Map<DeviceEntry, Integer> deviceScanSumMap = new HashMap<>(size);
+      Map<DeviceEntry, Integer> deviceRegionCountMap = new HashMap<>(size);
       while (size-- > 0) {
-        deviceScanSumMap.put(
-            DeviceEntry.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+        DeviceEntry deviceEntry = DeviceEntry.deserialize(byteBuffer);
+        deviceRegionCountMap.put(deviceEntry, ReadWriteIOUtils.readInt(byteBuffer));
       }
-      node.setDeviceScanSumMap(deviceScanSumMap);
+      node.setDeviceCountMap(deviceRegionCountMap);
     }
-    node.projection = projection.build();
   }
 
   @Override
@@ -617,11 +616,11 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     return node;
   }
 
-  public void setDeviceScanSumMap(Map<DeviceEntry, Integer> deviceScanSumMap) {
-    this.deviceScanSumMap = deviceScanSumMap;
+  public void setDeviceCountMap(Map<DeviceEntry, Integer> deviceCountMap) {
+    this.deviceCountMap = deviceCountMap;
   }
 
-  public Map<DeviceEntry, Integer> getDeviceScanSumMap() {
-    return deviceScanSumMap;
+  public Map<DeviceEntry, Integer> getDeviceCountMap() {
+    return deviceCountMap;
   }
 }
