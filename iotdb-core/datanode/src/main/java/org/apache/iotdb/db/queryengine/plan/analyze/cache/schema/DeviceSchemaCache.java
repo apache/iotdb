@@ -45,7 +45,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -73,7 +73,7 @@ public class DeviceSchemaCache {
 
   private final Map<String, String> databasePool = new ConcurrentHashMap<>();
 
-  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
+  private final ReentrantLock lock = new ReentrantLock(false);
 
   DeviceSchemaCache() {
     dualKeyCache =
@@ -256,7 +256,7 @@ public class DeviceSchemaCache {
       secondKeyChecker = device -> device.startsWith(database);
     }
 
-    readWriteLock.writeLock().lock();
+    lock.lock();
     try {
       dualKeyCache.update(
           segment -> segment.startsWith(database),
@@ -265,45 +265,45 @@ public class DeviceSchemaCache {
       dualKeyCache.update(
           database::startsWith, secondKeyChecker, entry -> -entry.invalidateLastCache());
     } finally {
-      readWriteLock.writeLock().unlock();
+      lock.unlock();
     }
   }
 
   // Note: It might be very slow if the database is too long
   public void invalidate(final @Nonnull String database) {
-    readWriteLock.writeLock().lock();
+    lock.lock();
     try {
       dualKeyCache.invalidate(segment -> segment.startsWith(database), device -> true);
       dualKeyCache.invalidate(database::startsWith, device -> device.startsWith(database));
     } finally {
-      readWriteLock.writeLock().unlock();
+      lock.unlock();
     }
   }
 
   public void invalidateLastCache() {
-    readWriteLock.writeLock().lock();
+    lock.lock();
     try {
       dualKeyCache.update(segment -> true, device -> true, entry -> -entry.invalidateLastCache());
     } finally {
-      readWriteLock.writeLock().unlock();
+      lock.unlock();
     }
   }
 
   public void invalidateTreeSchema() {
-    readWriteLock.writeLock().lock();
+    lock.lock();
     try {
       dualKeyCache.update(segment -> true, device -> true, entry -> -entry.invalidateSchema());
     } finally {
-      readWriteLock.writeLock().unlock();
+      lock.unlock();
     }
   }
 
   public void invalidateAll() {
-    readWriteLock.writeLock().lock();
+    lock.lock();
     try {
       dualKeyCache.invalidateAll();
     } finally {
-      readWriteLock.writeLock().unlock();
+      lock.unlock();
     }
   }
 

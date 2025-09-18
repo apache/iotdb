@@ -37,11 +37,11 @@ interface ICacheEntryManager<FK, SK, V, T extends ICacheEntry<SK, V>> {
 
   void put(final T cacheEntry);
 
-  // A cacheEntry is removed iff the caller has called "invalid" and it returns "true"
-  // Shall never remove a cacheEntry directly or when the "invalid" returns false
+  // A cacheEntry is removed iff the caller has called "invalidate" and it returns "true"
+  // Shall never remove a cacheEntry directly or when the "invalidate" returns false
   boolean invalidate(final T cacheEntry);
 
-  // The "evict" is allowed to be synchronized called
+  // The "evict" is allowed to be concurrently called
   // Inner implementation guarantees that an entry won't be concurrently evicted
   T evict();
 

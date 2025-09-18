@@ -269,10 +269,9 @@ public class DataNodeSchemaCache {
 
     final DeviceTemplateSchema deviceTemplateSchema = (DeviceTemplateSchema) deviceSchema;
 
-    computation.computeDevice(
-        templateManager.getTemplate(deviceTemplateSchema.getTemplateId()).isDirectAligned());
-    final Map<String, IMeasurementSchema> templateSchema =
-        templateManager.getTemplate(deviceTemplateSchema.getTemplateId()).getSchemaMap();
+    final Template template = templateManager.getTemplate(deviceTemplateSchema.getTemplateId());
+    computation.computeDevice(template.isDirectAligned());
+    final Map<String, IMeasurementSchema> templateSchema = template.getSchemaMap();
     for (int i = 0; i < measurements.length; i++) {
       if (!templateSchema.containsKey(measurements[i])) {
         indexOfMissingMeasurements.add(i);
@@ -368,10 +367,9 @@ public class DataNodeSchemaCache {
   }
 
   /**
-   * Update the {@link DeviceLastCache} in writing for tree model. If a measurement is with all
-   * {@code null}s or is an id/attribute column, its {@link TimeValuePair}[] shall be {@code null}.
-   * For correctness, this will put the {@link DeviceCacheEntry} lazily and only update the existing
-   * {@link DeviceLastCache}s of measurements.
+   * Update the {@link DeviceLastCache} in writing. If a measurement is with all {@code null}s, its
+   * {@link TimeValuePair}[] shall be {@code null}. For correctness, this will put the {@link
+   * DeviceCacheEntry} lazily and only update the existing {@link DeviceLastCache}s of measurements.
    *
    * @param database the device's database, WITH "root"
    * @param deviceID {@link IDeviceID}
