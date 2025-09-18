@@ -2973,6 +2973,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     AuditLogFields fields =
         new AuditLogFields(
             req.getUsername(),
+            req.getUserId(),
             req.getCliHostname(),
             AuditEventType.valueOf(req.getAuditEventType()),
             AuditLogOperation.valueOf(req.getOperationType()),
@@ -2981,7 +2982,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             req.getDatabase(),
             req.getSqlString());
     try {
-      DNAuditLogger.getInstance().logFromCN(fields, req.getLog());
+      DNAuditLogger.getInstance().logFromCN(fields, req.getLog(), req.getCnId());
     } catch (IllegalPathException e) {
       return onIoTDBException(e, OperationType.WRITE_AUDIT_LOG, e.getErrorCode());
     }

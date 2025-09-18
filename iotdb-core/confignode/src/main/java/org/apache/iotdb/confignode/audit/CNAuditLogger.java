@@ -27,10 +27,10 @@ import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.audit.DatanodeWriteAuditLogHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
 
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ import java.util.List;
 
 public class CNAuditLogger extends AbstractAuditLogger {
   private static final Logger logger = LoggerFactory.getLogger(CNAuditLogger.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   protected final IManager configManager;
 
@@ -49,7 +49,9 @@ public class CNAuditLogger extends AbstractAuditLogger {
   }
 
   public void log(AuditLogFields auditLogFields, String log) {
-    checkBeforeLog(auditLogFields);
+    if (!checkBeforeLog(auditLogFields)) {
+      return;
+    }
     // find database "__audit"'s data_region
     List<TRegionReplicaSet> auditReplicaSets =
         configManager
@@ -65,6 +67,7 @@ public class CNAuditLogger extends AbstractAuditLogger {
     TAuditLogReq req =
         new TAuditLogReq(
             auditLogFields.getUsername(),
+            auditLogFields.getUserId(),
             auditLogFields.getCliHostname(),
             auditLogFields.getAuditType().toString(),
             auditLogFields.getOperationType().toString(),
@@ -72,7 +75,8 @@ public class CNAuditLogger extends AbstractAuditLogger {
             auditLogFields.isResult(),
             auditLogFields.getDatabase(),
             auditLogFields.getSqlString(),
-            log);
+            log,
+            CONF.getConfigNodeId());
     // refer the implementation of HeartbeatService.pingRegisteredDataNode(). By appending a new
     // writeAudtiLog() interface in AsyncDataNodeHeartbeatClientPool, the main thread is not
     // required to wait until the write audit log request to be complete.

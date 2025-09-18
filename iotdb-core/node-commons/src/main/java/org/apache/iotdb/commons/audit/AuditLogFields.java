@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
 public class AuditLogFields {
   private final String username;
+
+  private final int userId;
   private final String cliHostname;
   private final AuditEventType auditType;
   private final AuditLogOperation operationType;
@@ -33,6 +35,7 @@ public class AuditLogFields {
 
   public AuditLogFields(
       String username,
+      int userId,
       String cliHostname,
       AuditEventType auditType,
       AuditLogOperation operationType,
@@ -41,6 +44,7 @@ public class AuditLogFields {
       String database,
       String sqlString) {
     this.username = username;
+    this.userId = userId;
     this.cliHostname = cliHostname;
     this.auditType = auditType;
     this.operationType = operationType;
@@ -52,6 +56,10 @@ public class AuditLogFields {
 
   public String getUsername() {
     return username;
+  }
+
+  public int getUserId() {
+    return userId;
   }
 
   public String getCliHostname() {
