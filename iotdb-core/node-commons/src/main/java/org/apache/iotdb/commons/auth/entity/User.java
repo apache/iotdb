@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 
 import java.io.ByteArrayOutputStream;
@@ -46,18 +47,20 @@ public class User extends Role {
     // empty constructor
   }
 
-  /**
-   * construct function for User.
-   *
-   * @param name -user name
-   * @param password -user password
-   */
+  @TestOnly
   public User(String name, String password) {
     super(name);
     this.password = password;
     this.roleSet = new HashSet<>();
   }
 
+  /**
+   * construct function for User.
+   *
+   * @param name -user name
+   * @param password -user password
+   * @param userId -user index
+   */
   public User(String name, String password, long userId) {
     super(name);
     this.password = password;
@@ -213,7 +216,9 @@ public class User extends Role {
   @Override
   public String toString() {
     return "User{"
-        + "name='"
+        + "id="
+        + userId
+        + ", name='"
         + super.getName()
         + '\''
         + ", pathPrivilegeList="

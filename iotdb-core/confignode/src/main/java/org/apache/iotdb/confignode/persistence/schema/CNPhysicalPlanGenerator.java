@@ -207,7 +207,9 @@ public class CNPhysicalPlanGenerator
       } else if (tag == 1) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       } else {
-        dataInputStream.readLong(); // userId
+        if (isUser) {
+          dataInputStream.readLong(); // skip userId since authorPlan do not demand it.
+        }
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       }
 

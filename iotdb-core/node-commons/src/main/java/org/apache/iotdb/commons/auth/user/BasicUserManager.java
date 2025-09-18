@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.BasicRoleManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -36,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Map;
 
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
@@ -127,7 +129,12 @@ public abstract class BasicUserManager extends BasicRoleManager {
 
   @Override
   public User getEntity(long entityId) {
-    return (User) super.getEntity(entityId);
+    for (Map.Entry<String, Role> roleEntry : entityMap.entrySet()) {
+      if (((User) roleEntry.getValue()).getUserId() == entityId) {
+        return (User) roleEntry.getValue();
+      }
+    }
+    return null;
   }
 
   public boolean createUser(
