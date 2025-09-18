@@ -1072,15 +1072,15 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   // ======================== TTL related ===========================
   @Override
   public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
-    if (checkHasGlobalAuth(context.userName, PrivilegeType.SYSTEM)) {
-      return SUCCEED;
-    }
     List<PartialPath> checkedPaths = statement.getPaths();
     for (PartialPath checkedPath : checkedPaths) {
       TSStatus status = checkWriteOnReadOnlyPath(checkedPath);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
+    }
+    if (checkHasGlobalAuth(context.userName, PrivilegeType.SYSTEM)) {
+      return SUCCEED;
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathOrPatternListPermission(

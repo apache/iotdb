@@ -366,7 +366,6 @@ public class AuthorityChecker {
     return authorityFetcher.get().checkRole(username, roleName);
   }
 
-
   public static Collection<PrivilegeType> checkUserHaveSystemPermissions(
       String userName, Collection<PrivilegeType> permissions) {
     return authorityFetcher.get().checkUserSysPrivileges(userName, permissions);
