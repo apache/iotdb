@@ -61,6 +61,7 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.apache.iotdb.itbase.env.BaseEnv.TREE_SQL_DIALECT;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
@@ -665,6 +666,11 @@ public class TestUtils {
     assertNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password);
   }
 
+  public static void assertTableNonQueryTestFail(
+      String sql, String errMsg, String userName, String password) {
+    assertTableNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password);
+  }
+
   public static void assertNonQueryTestFail(Statement statement, String sql, String errMsg) {
     try {
       statement.execute(sql);
@@ -682,6 +688,17 @@ public class TestUtils {
   public static void assertNonQueryTestFail(
       BaseEnv env, String sql, String errMsg, String userName, String password) {
     try (Connection connection = env.getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void assertTableNonQueryTestFail(
+      BaseEnv env, String sql, String errMsg, String userName, String password) {
+    try (Connection connection = env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
       fail("No exception!");
@@ -876,6 +893,17 @@ public class TestUtils {
 
   public static void executeNonQuery(String sql, String userName, String password) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void executeTableNonQuery(String sql, String userName, String password) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
@@ -1194,6 +1222,17 @@ public class TestUtils {
 
   public static void executeQuery(String sql, String userName, String password) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void executeTableQuery(String sql, String userName, String password) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
     } catch (SQLException e) {

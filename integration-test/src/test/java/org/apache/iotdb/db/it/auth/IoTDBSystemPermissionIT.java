@@ -215,7 +215,8 @@ public class IoTDBSystemPermissionIT {
     executeNonQuery("clear cache", "test6", "test123123456");
     executeNonQuery("set system to readonly", "test6", "test123123456");
     executeNonQuery("set system to running", "test6", "test123123456");
-    executeNonQuery("set configuration 'enable_seq_space_compaction'='true'");
+    executeNonQuery(
+        "set configuration 'enable_seq_space_compaction'='true'", "test6", "test123123456");
     executeNonQuery("start repair data", "test6", "test123123456");
     executeNonQuery("stop repair data", "test6", "test123123456");
     executeQuery("show queries", "test6", "test123123456");
