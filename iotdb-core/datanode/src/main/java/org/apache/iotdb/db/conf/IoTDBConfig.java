@@ -193,6 +193,12 @@ public class IoTDBConfig {
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
 
+  /** Maximum memory size in bytes for attribute string cache */
+  private volatile long attributeStringCacheMaxSize = 1 << 20; // 1MB
+
+  /** Maximum number of pending device schema requests */
+  private volatile int deviceSchemaRequestCacheMaxSize = 500;
+
   private volatile long dataNodeTableSchemaCacheSize = 1 << 20;
 
   /**
@@ -1935,6 +1941,28 @@ public class IoTDBConfig {
       return;
     }
     this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
+  }
+
+  public long getAttributeStringCacheMaxSize() {
+    return attributeStringCacheMaxSize;
+  }
+
+  public void setAttributeStringCacheMaxSize(long attributeStringCacheMaxSize) {
+    if (attributeStringCacheMaxSize < 0) {
+      return;
+    }
+    this.attributeStringCacheMaxSize = attributeStringCacheMaxSize;
+  }
+
+  public int getDeviceSchemaRequestCacheMaxSize() {
+    return deviceSchemaRequestCacheMaxSize;
+  }
+
+  public void setDeviceSchemaRequestCacheMaxSize(int deviceSchemaRequestCacheMaxSize) {
+    if (deviceSchemaRequestCacheMaxSize < 0) {
+      return;
+    }
+    this.deviceSchemaRequestCacheMaxSize = deviceSchemaRequestCacheMaxSize;
   }
 
   public long getWalMemTableSnapshotThreshold() {

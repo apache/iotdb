@@ -812,6 +812,16 @@ write_memory_variation_report_proportion=0.001
 # Datatype: long
 data_node_table_schema_cache_max_size_in_bytes=1048576
 
+# The maximum memory size in bytes for attribute string cache
+# effectiveMode: restart
+# Datatype: long
+attribute_string_cache_max_size_in_bytes=1048576
+
+# The maximum number of pending device schema requests
+# effectiveMode: restart
+# Datatype: int
+device_schema_request_cache_max_size=500
+
 # When an inserting is rejected, waiting period (in ms) to check system again, 50 by default.
 # If the insertion has been rejected and the read load is low, it can be set larger.
 # effectiveMode: restart

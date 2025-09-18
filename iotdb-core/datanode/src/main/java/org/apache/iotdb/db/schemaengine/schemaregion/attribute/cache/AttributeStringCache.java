@@ -21,11 +21,12 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.cache;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 public class AttributeStringCache {
   private static final Cache<String, String> cache =
       Caffeine.newBuilder()
-          .maximumWeight(1 << 20)
+          .maximumWeight(IoTDBDescriptor.getInstance().getConfig().getAttributeStringCacheMaxSize())
           .weigher((String key, String value) -> key.length())
           .build();
 

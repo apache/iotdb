@@ -988,6 +988,18 @@ public class IoTDBDescriptor {
                 "data_node_table_schema_cache_max_size_in_bytes",
                 String.valueOf(conf.getDataNodeTableSchemaCacheSize()))));
 
+    conf.setAttributeStringCacheMaxSize(
+        Long.parseLong(
+            properties.getProperty(
+                "attribute_string_cache_max_size_in_bytes",
+                String.valueOf(conf.getAttributeStringCacheMaxSize()))));
+
+    conf.setDeviceSchemaRequestCacheMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_schema_request_cache_max_size",
+                String.valueOf(conf.getDeviceSchemaRequestCacheMaxSize()))));
+
     // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
