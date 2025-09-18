@@ -200,9 +200,12 @@ public class CNPhysicalPlanGenerator
       int tag = dataInputStream.readInt();
       boolean fromOldVersion = tag < 0;
       String user;
-      if (fromOldVersion) {
+      if (tag<0) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
-      } else {
+      } else if (tag==1) {
+        user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      }else{
+        dataInputStream.readLong();//userId
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       }
 
@@ -226,7 +229,7 @@ public class CNPhysicalPlanGenerator
       final int privilegeMask = dataInputStream.readInt();
       generateGrantSysPlan(user, isUser, privilegeMask);
 
-      if (fromOldVersion) {
+      if (tag < 0) {
         while (dataInputStream.available() != 0) {
           final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
           final PartialPath priPath;
