@@ -264,6 +264,9 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
+  private long pipeConnectorInsertNodeDegradeTransferThresholdMs = 5 * 60 * 1000;
+  private long pipeConnectorTsFileDegradeTransferThresholdMs = 10 * 60 * 1000;
+
   private int pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold = 5;
   private int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold = 20;
   private int pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold = 30;
@@ -1120,6 +1123,40 @@ public class CommonConfig {
 
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {
     return pipeConnectorRPCThriftCompressionEnabled;
+  }
+
+  public void setPipeConnectorInsertNodeDegradeTransferThresholdMs(
+      long pipeConnectorInsertNodeDegradeTransferThresholdMs) {
+    if (this.pipeConnectorInsertNodeDegradeTransferThresholdMs
+        == pipeConnectorInsertNodeDegradeTransferThresholdMs) {
+      return;
+    }
+    this.pipeConnectorInsertNodeDegradeTransferThresholdMs =
+        pipeConnectorInsertNodeDegradeTransferThresholdMs;
+    logger.info(
+        "pipeConnectorInsertNodeDegradeTransferThresholdMs is set to {}.",
+        pipeConnectorInsertNodeDegradeTransferThresholdMs);
+  }
+
+  public long getPipeConnectorInsertNodeDegradeTransferThresholdMs() {
+    return pipeConnectorInsertNodeDegradeTransferThresholdMs;
+  }
+
+  public void setPipeConnectorTsFileDegradeTransferThresholdMs(
+      long pipeConnectorTsFileDegradeTransferThresholdMs) {
+    if (this.pipeConnectorTsFileDegradeTransferThresholdMs
+        == pipeConnectorTsFileDegradeTransferThresholdMs) {
+      return;
+    }
+    this.pipeConnectorTsFileDegradeTransferThresholdMs =
+        pipeConnectorTsFileDegradeTransferThresholdMs;
+    logger.info(
+        "pipeConnectorTsFileDegradeTransferThresholdMs is set to {}.",
+        pipeConnectorTsFileDegradeTransferThresholdMs);
+  }
+
+  public long getPipeConnectorTsFileDegradeTransferThresholdMs() {
+    return pipeConnectorTsFileDegradeTransferThresholdMs;
   }
 
   public void setPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold(
