@@ -674,6 +674,10 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  public String getUserName(long userId) throws AuthException {
+    return authorizer.getUser(userId).getName();
+  }
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     return authorizer.processTakeSnapshot(snapshotDir);

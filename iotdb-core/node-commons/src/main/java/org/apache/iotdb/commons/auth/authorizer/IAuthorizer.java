@@ -210,6 +210,14 @@ public interface IAuthorizer extends SnapshotProcessor {
   User getUser(String username) throws AuthException;
 
   /**
+   * Find a user by its userId.
+   *
+   * @param userId the index of the user.
+   * @return A user whose id is userId or null if such user does not exist.
+   */
+  User getUser(long userId) throws AuthException;
+
+  /**
    * get all user
    *
    * @return key-> userName, value->user

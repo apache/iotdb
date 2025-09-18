@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.source;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.user.LocalFileUserAccessor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -147,13 +148,26 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
         continue;
       }
       final Path templateFilePath = snapshotPathInfo.getLeft().getRight();
-      events.add(
+      PipeConfigRegionSnapshotEvent curEvent =
           new PipeConfigRegionSnapshotEvent(
               snapshotPath.toString(),
               Objects.nonNull(templateFilePath) && templateFilePath.toFile().length() > 0
                   ? templateFilePath.toString()
                   : null,
-              snapshotPathInfo.getRight()));
+              snapshotPathInfo.getRight());
+      if (type == CNSnapshotFileType.USER_ROLE) {
+        long userId = Long.parseLong(snapshotPath.toFile().getName().split("_")[0]);
+        try {
+          curEvent.setAuthUserName(
+              ConfigNode.getInstance()
+                  .getConfigManager()
+                  .getPermissionManager()
+                  .getUserName(userId));
+        } catch (AuthException e) {
+          // ignore
+        }
+      }
+      events.add(curEvent);
     }
     tryListen(events);
   }

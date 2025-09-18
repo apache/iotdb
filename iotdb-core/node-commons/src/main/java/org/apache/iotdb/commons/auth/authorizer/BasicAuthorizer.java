@@ -466,6 +466,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public User getUser(long userId) throws AuthException {
+    return userManager.getEntity(userId);
+  }
+
+  @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     return userManager.processTakeSnapshot(snapshotDir)
         && roleManager.processTakeSnapshot(snapshotDir);

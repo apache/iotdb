@@ -78,6 +78,11 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
     return role;
   }
 
+  public Role getEntity(long entityId) {
+    String entityName = String.valueOf(entityId);
+    return this.getEntity(entityName);
+  }
+
   public boolean createRole(String entityName) {
     Role role = getEntity(entityName);
     if (role != null) {

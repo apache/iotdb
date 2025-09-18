@@ -125,6 +125,11 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return (User) super.getEntity(entityName);
   }
 
+  @Override
+  public User getEntity(long entityId) {
+    return (User) super.getEntity(entityId);
+  }
+
   public boolean createUser(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {

@@ -103,14 +103,15 @@ public class CNPhysicalPlanGenerator
   private Exception latestException = null;
   private String userName;
 
-  public CNPhysicalPlanGenerator(final Path snapshotFilePath, final CNSnapshotFileType fileType)
+  public CNPhysicalPlanGenerator(
+      final Path snapshotFilePath, final CNSnapshotFileType fileType, final String userName)
       throws IOException {
     if (fileType == CNSnapshotFileType.SCHEMA) {
       logger.warn("schema_template need two files");
       return;
     }
     if (fileType == CNSnapshotFileType.USER_ROLE) {
-      userName = snapshotFilePath.getFileName().toString().split("_role.profile")[0];
+      this.userName = userName;
     }
     snapshotFileType = fileType;
     inputStream = Files.newInputStream(snapshotFilePath);

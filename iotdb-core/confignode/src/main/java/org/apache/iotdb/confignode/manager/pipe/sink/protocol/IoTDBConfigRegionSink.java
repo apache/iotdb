@@ -246,7 +246,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
                   Objects.nonNull(templateFile) ? templateFile.getName() : null,
                   Objects.nonNull(templateFile) ? templateFile.length() : 0,
                   snapshotEvent.getFileType(),
-                  snapshotEvent.toSealTypeString()));
+                  snapshotEvent.toSealTypeString(),
+                  snapshotEvent.getAuthUserName()));
       rateLimitIfNeeded(
           snapshotEvent.getPipeName(),
           snapshotEvent.getCreationTime(),
