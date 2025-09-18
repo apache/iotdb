@@ -145,14 +145,10 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     FileInputStream inputStream = new FileInputStream(entityFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      boolean fromOldVersion = false;
       int tag = dataInputStream.readInt();
-      if (tag < 0) {
-        fromOldVersion = true;
-      }
       User user = new User();
 
-      if (fromOldVersion) {
+      if (tag < 0) {
         String name =
             IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
         user.setName(name);
@@ -164,6 +160,10 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
               IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
         }
         user.setPrivilegeList(pathPrivilegeList);
+      } else if (tag == 1) {
+        user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        loadPrivileges(dataInputStream, user);
       } else {
         assert (tag == VERSION);
         user.setUserId(dataInputStream.readLong());
