@@ -200,12 +200,12 @@ public class CNPhysicalPlanGenerator
       int tag = dataInputStream.readInt();
       boolean fromOldVersion = tag < 0;
       String user;
-      if (tag<0) {
+      if (tag < 0) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
-      } else if (tag==1) {
+      } else if (tag == 1) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      }else{
-        dataInputStream.readLong();//userId
+      } else {
+        dataInputStream.readLong(); // userId
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       }
 
