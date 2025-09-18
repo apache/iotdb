@@ -695,6 +695,7 @@ struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
   3: optional bool isTableModel
+  4: optional bool canSeeAuditDB
 }
 
 struct TShowDatabaseResp {

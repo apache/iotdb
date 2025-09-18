@@ -1018,7 +1018,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final String userName = context.getSession().getUserName();
-    accessControl.checkUserIsAdmin(userName);
+    accessControl.checkUserGlobalSysPrivilege(userName);
 
     final Map<String, String> extractorAttributes = node.getExtractorAttributes();
     final String pipeName = node.getPipeName();
@@ -1144,7 +1144,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.WRITE);
 
     final String userName = context.getSession().getUserName();
-    accessControl.checkUserIsAdmin(userName);
+    accessControl.checkUserGlobalSysPrivilege(userName);
 
     final String pipeName = node.getPipeName();
     final Map<String, String> extractorAttributes = node.getExtractorAttributes();
@@ -1175,34 +1175,35 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropPipe(DropPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new DropPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitStartPipe(StartPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new StartPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitStopPipe(StopPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new StopPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowPipeTask(node, context.getSession().getUserName());
   }
 
   @Override
   protected IConfigTask visitCreatePipePlugin(CreatePipePlugin node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     if (node.getUriString() != null && isUriTrusted(node.getUriString())) {
       // 1. user specified uri and that uri is trusted
       // 2. user doesn't specify uri
@@ -1216,20 +1217,21 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropPipePlugin(DropPipePlugin node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new DropPipePluginTask(node);
   }
 
   @Override
   protected IConfigTask visitShowPipePlugins(ShowPipePlugins node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowPipePluginsTask(node);
   }
 
   @Override
   protected IConfigTask visitCreateTopic(CreateTopic node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
 
     // Inject table model into the topic attributes
     node.getTopicAttributes()
@@ -1241,28 +1243,28 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropTopic(DropTopic node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new DropTopicTask(node);
   }
 
   @Override
   protected IConfigTask visitShowTopics(ShowTopics node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowTopicsTask(node);
   }
 
   @Override
   protected IConfigTask visitShowSubscriptions(ShowSubscriptions node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowSubscriptionsTask(node);
   }
 
   @Override
   protected IConfigTask visitDropSubscription(DropSubscription node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new DropSubscriptionTask(node);
   }
 
@@ -1323,9 +1325,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
+    context.setQueryType(node.getQueryType());
     accessControl.checkUserCanRunRelationalAuthorStatement(
         context.getSession().getUserName(), node);
-    context.setQueryType(node.getQueryType());
     if (node.getAuthorType() == AuthorRType.UPDATE_USER) {
       visitUpdateUser(node);
     }
@@ -1354,7 +1356,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     if (node.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
       // 1. user specified uri and that uri is trusted
       // 2. user doesn't specify uri
@@ -1374,7 +1376,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new DropFunctionTask(Model.TABLE, node.getUdfName());
   }
 
@@ -1418,7 +1420,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateTraining(CreateTraining node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new CreateTrainingTask(
         node.getModelId(), node.getParameters(), node.getExistingModelId(), node.getTargetSql());
   }
@@ -1426,6 +1428,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateModel(CreateModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     String uri = node.getUri();
     if (uri != null && ExecutableManager.isUriTrusted(uri)) {
       // user specified uri and that uri is trusted
@@ -1444,12 +1447,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropModel(DropModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new DropModelTask(node.getModelId());
   }
 
   @Override
   protected IConfigTask visitShowLoadedModels(ShowLoadedModels node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new ShowLoadedModelsTask(node.getDeviceIdList());
   }
 
@@ -1462,12 +1467,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitLoadModel(LoadModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new LoadModelTask(node.getModelId(), node.getDeviceIdList());
   }
 
   @Override
   protected IConfigTask visitUnloadModel(UnloadModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserGlobalSysPrivilege(context.getSession().getUserName());
     return new UnloadModelTask(node.getModelId(), node.getDeviceIdList());
   }
 }

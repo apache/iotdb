@@ -498,7 +498,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(
                   databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
-              .setIsTableModel(false);
+              .setIsTableModel(false)
+              .setCanSeeAuditDB(showDatabaseStatement.isCanSeeAuditDB());
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
@@ -519,7 +520,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetDatabaseReq req =
           new TGetDatabaseReq(
-              databasePathPattern, countDatabaseStatement.getAuthorityScope().serialize());
+                  databasePathPattern, countDatabaseStatement.getAuthorityScope().serialize())
+              .setCanSeeAuditDB(countDatabaseStatement.isCanSeeAuditDB());
       TCountDatabaseResp resp = client.countMatchedDatabases(req);
       databaseNum = resp.getCount();
       // build TSBlock

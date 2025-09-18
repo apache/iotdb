@@ -131,7 +131,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
@@ -3169,16 +3168,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
-    return analysis;
-  }
-
-  @Override
-  public Analysis visitShowStorageGroup(
-      ShowDatabaseStatement showDatabaseStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setRealStatement(showDatabaseStatement);
-    analysis.setRespDatasetHeader(
-        DatasetHeaderFactory.getShowDatabaseHeader(showDatabaseStatement.isDetailed()));
     return analysis;
   }
 

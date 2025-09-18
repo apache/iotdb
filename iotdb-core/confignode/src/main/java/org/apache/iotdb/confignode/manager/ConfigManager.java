@@ -294,6 +294,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
 public class ConfigManager implements IManager {
@@ -783,6 +784,10 @@ public class ConfigManager implements IManager {
           getClusterSchemaManager()
               .getMatchedDatabaseSchemasByName(
                   deletedPaths, tDeleteReq.isSetIsTableModel() && tDeleteReq.isIsTableModel());
+
+      // remove root.__audit
+      deleteDatabaseSchemaMap.remove(TREE_MODEL_AUDIT_DATABASE);
+
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
@@ -1986,7 +1991,8 @@ public class ConfigManager implements IManager {
               req.getDatabasePathPattern(),
               scope,
               req.isSetIsTableModel() && req.isIsTableModel(),
-              true);
+              true,
+              !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);

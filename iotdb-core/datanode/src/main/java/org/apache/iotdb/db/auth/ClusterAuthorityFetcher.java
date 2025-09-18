@@ -21,7 +21,6 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
@@ -70,6 +69,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiFunction;
+
+import static org.apache.iotdb.commons.auth.utils.AuthUtils.constructAuthorityScope;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -340,19 +341,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     PathPatternTree patternTree = new PathPatternTree();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      for (PathPrivilege path : user.getPathPrivilegeList()) {
-        if (path.checkPrivilege(permission)) {
-          patternTree.appendPathPattern(path.getPath());
-        }
-      }
+      constructAuthorityScope(patternTree, user, permission);
       for (String roleName : user.getRoleSet()) {
         Role role = iAuthorCache.getRoleCache(roleName);
         if (role != null) {
-          for (PathPrivilege path : role.getPathPrivilegeList()) {
-            if (path.checkPrivilege(permission)) {
-              patternTree.appendPathPattern(path.getPath());
-            }
-          }
+          constructAuthorityScope(patternTree, role, permission);
         } else {
           return fetchAuthizedPatternTree(username, permission);
         }

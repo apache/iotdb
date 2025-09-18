@@ -38,9 +38,13 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.util.Collection;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
+import static org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl.checkCanSelectAuditTable;
 
 public class AccessControlImpl implements AccessControl {
+
+  public static final String READ_ONLY_DB_ERROR_MSG = "The database '%s' is read-only.";
 
   private final ITableAuthChecker authChecker;
 
@@ -52,48 +56,40 @@ public class AccessControlImpl implements AccessControl {
     this.treeAccessCheckVisitor = visitor;
   }
 
+  private void checkAuditDatabase(String databaseName) {
+    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
+      throw new AccessDeniedException(
+          String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+    }
+  }
+
   @Override
   public void checkCanCreateDatabase(String userName, String databaseName) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
-      return;
-    }
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropDatabase(String userName, String databaseName) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
-      return;
-    }
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterDatabase(String userName, String databaseName) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
-      return;
-    }
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.ALTER);
   }
 
   @Override
   public void checkCanShowOrUseDatabase(String userName, String databaseName) {
-    // Information_schema is visible to any user
-    if (databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
-      return;
-    }
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
-      return;
-    }
     authChecker.checkDatabaseVisibility(userName, databaseName);
   }
 
   @Override
   public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
       return;
     }
@@ -103,6 +99,7 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
       return;
     }
@@ -112,6 +109,7 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
       return;
     }
@@ -121,6 +119,7 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT);
   }
 
@@ -128,6 +127,9 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanSelectFromTable(String userName, QualifiedObjectName tableName) {
     if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
+    }
+    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(tableName.getDatabaseName())) {
+      checkCanSelectAuditTable(userName);
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
   }
@@ -149,6 +151,7 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
 
@@ -158,18 +161,12 @@ public class AccessControlImpl implements AccessControl {
     if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
     }
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
-      return;
-    }
     authChecker.checkTableVisibility(userName, tableName);
   }
 
   @Override
   public void checkCanCreateViewFromTreePath(final String userName, final PartialPath path) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return;
-    }
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
       return;
     }
     TSStatus status =

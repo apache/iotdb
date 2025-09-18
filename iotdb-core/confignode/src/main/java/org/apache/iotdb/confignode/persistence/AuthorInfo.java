@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
@@ -69,6 +68,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.iotdb.commons.auth.utils.AuthUtils.constructAuthorityScope;
 
 public class AuthorInfo implements SnapshotProcessor {
 
@@ -610,19 +611,13 @@ public class AuthorInfo implements SnapshotProcessor {
       resp.setPrivilegeId(permission);
       return resp;
     }
-    for (PathPrivilege path : user.getPathPrivilegeList()) {
-      if (path.checkPrivilege(type)) {
-        pPtree.appendPathPattern(path.getPath());
-      }
-    }
-    for (String rolename : user.getRoleSet()) {
-      Role role = authorizer.getRole(rolename);
+
+    constructAuthorityScope(pPtree, user, type);
+
+    for (String roleName : user.getRoleSet()) {
+      Role role = authorizer.getRole(roleName);
       if (role != null) {
-        for (PathPrivilege path : role.getPathPrivilegeList()) {
-          if (path.checkPrivilege(type)) {
-            pPtree.appendPathPattern(path.getPath());
-          }
-        }
+        constructAuthorityScope(pPtree, role, type);
       }
     }
     pPtree.constructTree();
@@ -644,7 +639,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return resp;
   }
 
-  public TPermissionInfoResp checkRoleOfUser(String username, String rolename)
+  public TPermissionInfoResp checkRoleOfUser(String username, String roleName)
       throws AuthException {
     TPermissionInfoResp result;
     User user = authorizer.getUser(username);
@@ -653,7 +648,7 @@ public class AuthorInfo implements SnapshotProcessor {
           TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
     }
     result = getUserPermissionInfo(username, ModelType.ALL);
-    if (user.getRoleSet().contains(rolename)) {
+    if (user.getRoleSet().contains(roleName)) {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     } else {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_HAS_ROLE));

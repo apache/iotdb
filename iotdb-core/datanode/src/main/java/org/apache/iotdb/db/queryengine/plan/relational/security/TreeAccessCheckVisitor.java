@@ -146,7 +146,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE_PATH;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
+import static org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl.READ_ONLY_DB_ERROR_MSG;
 
 /** userName in TreeAccessCheckContext will never be SUPER_USER */
 public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAccessCheckContext> {
@@ -185,6 +189,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, TreeAccessCheckContext context) {
+    // root.__audit can never be deleted
+    if (TREE_MODEL_AUDIT_DATABASE_PATH.equals(setSchemaTemplateStatement.getPath())) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+    }
     return checkSystemAuth(context.userName);
   }
 
@@ -684,37 +693,74 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitSetDatabase(
       DatabaseSchemaStatement statement, TreeAccessCheckContext context) {
-    return checkCreateOrAlterDatabasePermission(context.userName);
+    return checkCreateOrAlterDatabasePermission(context.userName, statement.getDatabasePath());
   }
 
   @Override
   public TSStatus visitAlterDatabase(
       DatabaseSchemaStatement databaseSchemaStatement, TreeAccessCheckContext context) {
-    return checkCreateOrAlterDatabasePermission(context.userName);
+    return checkCreateOrAlterDatabasePermission(
+        context.userName, databaseSchemaStatement.getDatabasePath());
   }
 
   @Override
   public TSStatus visitShowStorageGroup(
       ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
-    return visitAuthorityInformation(showDatabaseStatement, context);
+    if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.AUDIT)) {
+      showDatabaseStatement.setCanSeeAuditDB(false);
+    }
+    return checkShowOrCountDatabasePermission(showDatabaseStatement, context);
   }
 
   @Override
   public TSStatus visitCountStorageGroup(
       CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
-    return visitAuthorityInformation(countDatabaseStatement, context);
+    if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.AUDIT)) {
+      countDatabaseStatement.setCanSeeAuditDB(false);
+    }
+    return checkShowOrCountDatabasePermission(countDatabaseStatement, context);
   }
 
   @Override
   public TSStatus visitDeleteStorageGroup(
       DeleteDatabaseStatement statement, TreeAccessCheckContext context) {
-    return checkCreateOrAlterDatabasePermission(context.userName);
+    for (String prefixPath : statement.getPrefixPath()) {
+      // root.__audit can never be deleted
+      if (TREE_MODEL_AUDIT_DATABASE.equals(prefixPath)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+      }
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)
+            || AuthorityChecker.checkSystemPermission(
+                context.userName, PrivilegeType.MANAGE_DATABASE),
+        PrivilegeType.SYSTEM);
   }
 
-  private TSStatus checkCreateOrAlterDatabasePermission(String userName) {
+  private TSStatus checkCreateOrAlterDatabasePermission(String userName, PartialPath databaseName) {
+    // root.__audit can never be created or alter
+    if (TREE_MODEL_AUDIT_DATABASE_PATH.equals(databaseName)) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+    }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
-        PrivilegeType.MANAGE_DATABASE);
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
+            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
+        PrivilegeType.SYSTEM);
+  }
+
+  private TSStatus checkShowOrCountDatabasePermission(
+      AuthorityInformationStatement statement, TreeAccessCheckContext context) {
+    // own SYSTEM/MAINTAIN can see all except for root.__audit, otherwise can only see PATHS that
+    // user has READ_SCHEMA auth
+    if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)
+        && !AuthorityChecker.checkSystemPermission(
+            context.userName, PrivilegeType.MANAGE_DATABASE)) {
+      return visitAuthorityInformation(statement, context);
+    } else {
+      return SUCCEED;
+    }
   }
 
   // ==================================== data related ========================================

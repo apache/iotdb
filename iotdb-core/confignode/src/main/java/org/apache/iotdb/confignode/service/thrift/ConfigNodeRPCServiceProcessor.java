@@ -527,7 +527,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     final CountDatabasePlan plan =
         new CountDatabasePlan(
-            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+            req.getDatabasePathPattern(),
+            scope,
+            req.isSetIsTableModel() && req.isIsTableModel(),
+            !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
     final CountDatabaseResp countDatabaseResp =
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
@@ -547,7 +550,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getDatabasePathPattern(),
             scope,
             req.isSetIsTableModel() && req.isIsTableModel(),
-            false);
+            false,
+            !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
