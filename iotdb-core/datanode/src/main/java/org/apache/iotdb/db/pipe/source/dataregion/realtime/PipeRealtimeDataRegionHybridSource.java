@@ -38,22 +38,12 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSource {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridSource.class);
-
-  private static final ConcurrentMap<String, Set<PipeRealtimeDataRegionHybridSource>>
-      PIPE_ID_TO_HYBRID_SOURCES = new ConcurrentHashMap<>();
-
-  private final AtomicBoolean shouldDegrade = new AtomicBoolean(false);
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
@@ -215,20 +205,23 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    final long totalFloatingMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
+    // Use dynamic memory threshold instead of fixed value
+    final long effectiveTotalFloatingMemorySizeInBytes =
+        (long)
+            (PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes()
+                * PipeDataNodeAgent.task().getMemoryAdjustFactor(pipeName));
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
-        floatingMemoryUsageInByte * pipeCount >= totalFloatingMemorySizeInBytes;
+        floatingMemoryUsageInByte * pipeCount >= effectiveTotalFloatingMemorySizeInBytes;
     if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       final PipeDataNodeRemainingEventAndTimeOperator operator =
           PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.get(pipeID);
       LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnyMore for tsFile {}: The memory usage of the insert node {} has reached the dangerous threshold of single pipe {}, event count: {}",
+          "Pipe task {}@{} canNotUseTabletAnyMore for tsFile {}: The memory usage of the insert node {} has reached the dangerous threshold of single pipe {} , event count: {}",
           pipeName,
           dataRegionId,
           event.getTsFileEpoch().getFilePath(),
           floatingMemoryUsageInByte,
-          totalFloatingMemorySizeInBytes / pipeCount,
+          effectiveTotalFloatingMemorySizeInBytes / pipeCount,
           Optional.ofNullable(operator)
               .map(PipeDataNodeRemainingEventAndTimeOperator::getInsertNodeEventCount)
               .orElse(0));
@@ -278,7 +271,6 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private Event supplyTabletInsertion(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
-      degradeIfNecessary(event);
       return event.getEvent();
     } else {
       // If the event's reference count can not be increased, it means the data represented by
@@ -295,7 +287,6 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private Event supplyTsFileInsertion(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
-      degradeIfNecessary(event);
       return event.getEvent();
     } else {
       // If the event's reference count can not be increased, it means the data represented by
@@ -314,69 +305,5 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
           .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
       return null;
     }
-  }
-
-  protected void registerSelfToHybridSources() {
-    PIPE_ID_TO_HYBRID_SOURCES
-        .computeIfAbsent(pipeID, k -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
-        .add(this);
-  }
-
-  protected void deregisterSelfFromHybridSources() {
-    final Set<PipeRealtimeDataRegionHybridSource> hybridSources =
-        PIPE_ID_TO_HYBRID_SOURCES.get(pipeID);
-    if (hybridSources != null) {
-      hybridSources.remove(this);
-      if (hybridSources.isEmpty()) {
-        PIPE_ID_TO_HYBRID_SOURCES.remove(pipeID, hybridSources);
-      }
-    }
-  }
-
-  public static void degradeHeadTsFileEpoch(final String pipeID) {
-    final Set<PipeRealtimeDataRegionHybridSource> hybridSources =
-        PIPE_ID_TO_HYBRID_SOURCES.get(pipeID);
-    if (hybridSources == null || hybridSources.isEmpty()) {
-      return;
-    }
-    hybridSources.forEach(PipeRealtimeDataRegionHybridSource::degradeHeadFileEpoch);
-  }
-
-  private void degradeHeadFileEpoch() {
-    final Event headEvent = pendingQueue.peek();
-    if (!(headEvent instanceof PipeRealtimeEvent)) {
-      shouldDegrade.set(true);
-      return;
-    }
-    final TsFileEpoch epoch = ((PipeRealtimeEvent) headEvent).getTsFileEpoch();
-    if (epoch == null) {
-      shouldDegrade.set(true);
-      return;
-    }
-    epoch.migrateState(this, s -> TsFileEpoch.State.USING_TSFILE);
-    LOGGER.info(
-        "Pipe {}@{} degrade head epoch to USING_TSFILE due to high transfer time",
-        pipeName,
-        dataRegionId);
-  }
-
-  private void degradeIfNecessary(final PipeRealtimeEvent event) {
-    if (!shouldDegrade.get()) {
-      return;
-    }
-    final TsFileEpoch epoch = event.getTsFileEpoch();
-    if (epoch == null) {
-      return;
-    }
-
-    if (!shouldDegrade.compareAndSet(true, false)) {
-      return;
-    }
-
-    epoch.migrateState(this, s -> TsFileEpoch.State.USING_TSFILE);
-    LOGGER.info(
-        "Pipe {}@{} delayed-degrade head epoch to USING_TSFILE at supply time due to high transfer time",
-        pipeName,
-        dataRegionId);
   }
 }

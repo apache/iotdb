@@ -21,9 +21,12 @@ package org.apache.iotdb.commons.pipe.agent.task.meta;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 
+import com.google.common.util.concurrent.AtomicDouble;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
@@ -34,6 +37,10 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
   // Object pool
   private final String pipeNameWithCreationTime;
   private final Map<Integer, CommitterKey> regionId2CommitterKeyMap = new ConcurrentHashMap<>();
+
+  private final AtomicDouble memoryAdjustFactor = new AtomicDouble(1.0);
+  private final AtomicInteger stableTransferCount = new AtomicInteger(0);
+  private final AtomicLong lastAdjustmentTime = new AtomicLong(0L);
 
   PipeTemporaryMetaInAgent(final String pipeName, final long creationTime) {
     this.pipeNameWithCreationTime = pipeName + "_" + creationTime;
@@ -72,6 +79,42 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     return newKey;
   }
 
+  public void reportHighTransferTime() {
+    if (memoryAdjustFactor.get() <= 0.5) {
+      return;
+    }
+    final long currentTime = System.currentTimeMillis();
+
+    if (currentTime - lastAdjustmentTime.get() < 5000) {
+      return;
+    }
+    // Reset stable counter when high transfer time is detected
+    stableTransferCount.set(0);
+    // Reduce memory threshold factor
+    memoryAdjustFactor.set(memoryAdjustFactor.get() - 0.1);
+    lastAdjustmentTime.set(currentTime);
+  }
+
+  public void reportStableTransferTime() {
+    if (memoryAdjustFactor.get() >= 1.0) {
+      return;
+    }
+    if (stableTransferCount.addAndGet(1) >= 5) {
+      final long currentTime = System.currentTimeMillis();
+
+      if (currentTime - lastAdjustmentTime.get() < 5000) {
+        return;
+      }
+      memoryAdjustFactor.set(memoryAdjustFactor.get() + 0.1);
+      lastAdjustmentTime.set(currentTime);
+      stableTransferCount.set(0);
+    }
+  }
+
+  public double getMemoryAdjustFactor() {
+    return memoryAdjustFactor.get();
+  }
+
   /////////////////////////////// Object ///////////////////////////////
 
   // We assume that the "pipeNameWithCreationTime" does not contain extra information
@@ -87,12 +130,20 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     final PipeTemporaryMetaInAgent that = (PipeTemporaryMetaInAgent) o;
     return Objects.equals(
             this.floatingMemoryUsageInByte.get(), that.floatingMemoryUsageInByte.get())
-        && Objects.equals(this.regionId2CommitterKeyMap, that.regionId2CommitterKeyMap);
+        && Objects.equals(this.regionId2CommitterKeyMap, that.regionId2CommitterKeyMap)
+        && Objects.equals(this.memoryAdjustFactor.get(), that.memoryAdjustFactor.get())
+        && Objects.equals(this.stableTransferCount.get(), that.stableTransferCount.get())
+        && Objects.equals(this.lastAdjustmentTime.get(), that.lastAdjustmentTime.get());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(floatingMemoryUsageInByte, regionId2CommitterKeyMap);
+    return Objects.hash(
+        floatingMemoryUsageInByte.get(),
+        regionId2CommitterKeyMap,
+        memoryAdjustFactor.get(),
+        stableTransferCount.get(),
+        lastAdjustmentTime.get());
   }
 
   @Override
@@ -102,6 +153,8 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
         + floatingMemoryUsageInByte
         + ", regionId2CommitterKeyMap="
         + regionId2CommitterKeyMap
+        + ", memoryAdjustFactor="
+        + memoryAdjustFactor
         + '}';
   }
 }

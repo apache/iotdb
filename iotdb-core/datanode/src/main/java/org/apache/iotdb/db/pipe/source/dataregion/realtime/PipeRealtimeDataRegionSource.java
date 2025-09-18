@@ -305,9 +305,6 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public void start() throws Exception {
     PipeTimePartitionListener.getInstance().startListen(dataRegionId, this);
     PipeInsertionDataNodeListener.getInstance().startListenAndAssign(dataRegionId, this);
-    if (this instanceof PipeRealtimeDataRegionHybridSource) {
-      ((PipeRealtimeDataRegionHybridSource) this).registerSelfToHybridSources();
-    }
   }
 
   @Override
@@ -319,9 +316,6 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     synchronized (isClosed) {
       clearPendingQueue();
-      if (this instanceof PipeRealtimeDataRegionHybridSource) {
-        ((PipeRealtimeDataRegionHybridSource) this).deregisterSelfFromHybridSources();
-      }
       isClosed.set(true);
     }
   }
