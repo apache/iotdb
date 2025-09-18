@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -173,14 +174,17 @@ public class RestApiServiceImpl extends RestApiService {
           resultMap.entrySet()) {
         for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> device2MeasurementLastEntry :
             entry.getValue().entrySet()) {
-          final String deviceWithPrefix = entry.getKey() + TsFileConstant.PATH_SEPARATOR;
+          final String deviceWithSeparator =
+              device2MeasurementLastEntry.getKey() + TsFileConstant.PATH_SEPARATOR;
           for (Map.Entry<String, TimeValuePair> measurementEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementEntry.getValue();
-            valueList.add(tvPair.getValue().getStringValue());
-            dataTypeList.add(tvPair.getValue().getDataType().name());
-            targetDataSet.addTimestampsItem(tvPair.getTimestamp());
-            timeseries.add(deviceWithPrefix + measurementEntry.getKey());
+            if (tvPair != DeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+              valueList.add(tvPair.getValue().getStringValue());
+              dataTypeList.add(tvPair.getValue().getDataType().name());
+              targetDataSet.addTimestampsItem(tvPair.getTimestamp());
+              timeseries.add(deviceWithSeparator + measurementEntry.getKey());
+            }
           }
         }
       }
