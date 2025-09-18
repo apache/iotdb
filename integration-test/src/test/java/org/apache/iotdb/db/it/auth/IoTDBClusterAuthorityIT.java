@@ -465,16 +465,19 @@ public class IoTDBClusterAuthorityIT {
               .size());
       assertEquals(
           PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
-          authorizerResp.getPermissionInfo().getUserInfo().getPermissionInfo().getSysPriSet().size()
-              + 3);
+          authorizerResp
+              .getPermissionInfo()
+              .getUserInfo()
+              .getPermissionInfo()
+              .getSysPriSet()
+              .size());
       assertEquals(
           PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
           authorizerResp
-                  .getPermissionInfo()
-                  .getUserInfo()
-                  .getPermissionInfo()
-                  .getSysPriSetGrantOptSize()
-              + 3);
+              .getPermissionInfo()
+              .getUserInfo()
+              .getPermissionInfo()
+              .getSysPriSetGrantOptSize());
 
       authorizerReq =
           new TAuthorizerReq(

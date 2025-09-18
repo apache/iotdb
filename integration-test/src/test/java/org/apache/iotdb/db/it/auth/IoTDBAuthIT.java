@@ -94,6 +94,16 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("GRANT WRITE_SCHEMA ON root.a TO USER tempuser"));
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("LIST PRIVILEGES OF USER root"));
+
+        ResultSet resultSet = userStmt.executeQuery("LIST USER");
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals("tempuser", resultSet.getString(1));
+        Assert.assertFalse(resultSet.next());
+
+        resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER tempuser");
+        Assert.assertFalse(resultSet.next());
 
         //  2. admin grant all privileges to user tempuser, So tempuser can do anything.
         adminStmt.execute("GRANT ALL ON root.** TO USER tempuser");
@@ -1581,6 +1591,67 @@ public class IoTDBAuthIT {
         Statement statement = connection.createStatement()) {
       statement.execute("ALTER USER root SET PASSWORD 'newPassword'");
       statement.execute("ALTER USER root SET PASSWORD 'root'");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testSecurityPrivilege() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE USER security_user 'abcdef123456'");
+      statement.execute("CREATE USER common_user 'abcdef123456'");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("security_user", "abcdef123456");
+          Statement userStatement = userCon.createStatement()) {
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStatement.execute("GRANT SYSTEM ON root.** TO USER common_user"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStatement.execute("REVOKE SYSTEM ON root.** FROM USER common_user"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStatement.executeQuery("LIST PRIVILEGES OF USER common_user"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStatement.execute("CREATE USER common_user2 'abcdef123456'"));
+        Assert.assertThrows(
+            SQLException.class, () -> userStatement.execute("CREATE ROLE common_role"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStatement.execute("GRANT SYSTEM ON root.** TO ROLE common_role"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStatement.execute("REVOKE SYSTEM ON root.** FROM ROLE common_role"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStatement.execute("GRANT ROLE common_role TO common_user"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStatement.execute("REVOKE ROLE common_role FROM common_user"));
+        Assert.assertThrows(
+            SQLException.class, () -> userStatement.execute("DROP USER common_user2"));
+        Assert.assertThrows(
+            SQLException.class, () -> userStatement.execute("DROP ROLE common_role"));
+      }
+      statement.execute("GRANT SECURITY ON root.** TO USER security_user");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("security_user", "abcdef123456");
+          Statement userStatement = userCon.createStatement()) {
+        userStatement.execute("GRANT SYSTEM ON root.** TO USER common_user");
+        userStatement.execute("REVOKE SYSTEM ON root.** FROM USER common_user");
+        ResultSet resultSet = userStatement.executeQuery("LIST PRIVILEGES OF USER common_user");
+        Assert.assertFalse(resultSet.next());
+        userStatement.execute("CREATE USER common_user2 'abcdef123456'");
+        userStatement.execute("CREATE ROLE common_role");
+        userStatement.execute("GRANT SYSTEM ON root.** TO ROLE common_role");
+        userStatement.execute("REVOKE SYSTEM ON root.** FROM ROLE common_role");
+        userStatement.execute("GRANT ROLE common_role TO common_user");
+        userStatement.execute("REVOKE ROLE common_role FROM common_user");
+        userStatement.execute("DROP USER common_user2");
+        userStatement.execute("DROP ROLE common_role");
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
