@@ -57,11 +57,9 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -89,6 +87,9 @@ import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivil
 public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeDataRegionSource.class);
+
+  private static final ConcurrentMap<String, Set<PipeRealtimeDataRegionSource>> PIPE_SOURCES =
+      new ConcurrentHashMap<>();
 
   protected String pipeName;
   protected long creationTime;
@@ -300,6 +301,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public void start() throws Exception {
     PipeTimePartitionListener.getInstance().startListen(dataRegionId, this);
     PipeInsertionDataNodeListener.getInstance().startListenAndAssign(dataRegionId, this);
+    if (this instanceof PipeRealtimeDataRegionHybridSource) {
+      ((PipeRealtimeDataRegionHybridSource) this).registerSelfToPipeSources();
+    }
   }
 
   @Override
@@ -311,6 +315,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     synchronized (isClosed) {
       clearPendingQueue();
+      if (this instanceof PipeRealtimeDataRegionHybridSource) {
+        ((PipeRealtimeDataRegionHybridSource) this).deregisterSelfFromPipeSources();
+      }
       isClosed.set(true);
     }
   }

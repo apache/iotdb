@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -50,6 +51,12 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
       remainingEventAndTimeOperatorMap = new ConcurrentHashMap<>();
+
+  // Degrade threshold in nanoseconds; can be overridden by system property
+  // "iotdb.pipe.degrade.transfer.ns"
+  private static final long DEFAULT_DEGRADE_THRESHOLD_NS = TimeUnit.SECONDS.toNanos(5);
+  private static final long DEGRADE_THRESHOLD_NS =
+      Long.getLong("iotdb.pipe.degrade.transfer.ns", DEFAULT_DEGRADE_THRESHOLD_NS);
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -242,6 +249,9 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
     if (transferTime > 0) {
       operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+      if (transferTime >= DEGRADE_THRESHOLD_NS) {
+        PipeRealtimeDataRegionHybridSource.degradeHeadTsFileEpoch(pipeName + "_" + creationTime);
+      }
     }
   }
 
@@ -292,6 +302,9 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
     if (transferTime > 0) {
       operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+      if (transferTime >= DEGRADE_THRESHOLD_NS) {
+        PipeRealtimeDataRegionHybridSource.degradeHeadTsFileEpoch(pipeName + "_" + creationTime);
+      }
     }
   }
 

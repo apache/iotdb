@@ -38,12 +38,22 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSource {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridSource.class);
+
+  private static final ConcurrentMap<String, Set<PipeRealtimeDataRegionHybridSource>> PIPE_SOURCES =
+      new ConcurrentHashMap<>();
+
+  private final AtomicBoolean degradePending = new AtomicBoolean(false);
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
@@ -268,6 +278,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private Event supplyTabletInsertion(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
+      maybeDegradeOnHead(event);
       return event.getEvent();
     } else {
       // If the event's reference count can not be increased, it means the data represented by
@@ -284,6 +295,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private Event supplyTsFileInsertion(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
+      maybeDegradeOnHead(event);
       return event.getEvent();
     } else {
       // If the event's reference count can not be increased, it means the data represented by
@@ -301,6 +313,70 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       PipeTsFileEpochProgressIndexKeeper.getInstance()
           .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
       return null;
+    }
+  }
+
+  protected void registerSelfToPipeSources() {
+    PIPE_SOURCES
+        .computeIfAbsent(pipeID, k -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
+        .add(this);
+  }
+
+  protected void deregisterSelfFromPipeSources() {
+    final Set<PipeRealtimeDataRegionHybridSource> set = PIPE_SOURCES.get(pipeID);
+    if (set != null) {
+      set.remove(this);
+      if (set.isEmpty()) {
+        PIPE_SOURCES.remove(pipeID, set);
+      }
+    }
+  }
+
+  public static void degradeHeadTsFileEpoch(final String pipeID) {
+    final Set<PipeRealtimeDataRegionHybridSource> sources = PIPE_SOURCES.get(pipeID);
+    if (sources == null || sources.isEmpty()) {
+      return;
+    }
+    sources.forEach(PipeRealtimeDataRegionHybridSource::degradeOwnHeadFileEpoch);
+  }
+
+  private void degradeOwnHeadFileEpoch() {
+    final Event head = pendingQueue.peek();
+    if (!(head instanceof PipeRealtimeEvent)) {
+      degradePending.set(true);
+      return;
+    }
+    final TsFileEpoch epoch = ((PipeRealtimeEvent) head).getTsFileEpoch();
+    if (epoch == null) {
+      degradePending.set(true);
+      return;
+    }
+    epoch.migrateState(this, s -> TsFileEpoch.State.USING_TSFILE);
+    LOGGER.info(
+        "Pipe {}@{} degrade head epoch to USING_TSFILE due to high transfer time",
+        pipeName,
+        dataRegionId);
+  }
+
+  private void maybeDegradeOnHead(final PipeRealtimeEvent event) {
+    if (!degradePending.get()) {
+      return;
+    }
+    final TsFileEpoch epoch = event.getTsFileEpoch();
+    if (epoch == null) {
+      return;
+    }
+
+    if (!degradePending.compareAndSet(true, false)) {
+      return;
+    }
+
+    epoch.migrateState(this, s -> TsFileEpoch.State.USING_TSFILE);
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(
+          "Pipe {}@{} delayed-degrade head epoch to USING_TSFILE at supply time due to high transfer time ",
+          pipeName,
+          dataRegionId);
     }
   }
 }
