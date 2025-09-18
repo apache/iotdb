@@ -22,17 +22,21 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.cache;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class DeviceSchemaRequestCache {
   private static final DeviceSchemaRequestCache INSTANCE = new DeviceSchemaRequestCache();
 
-  private final Map<FetchDevice, FetchMissingDeviceSchema> pendingRequests =
-      new ConcurrentHashMap<>();
+  private final Cache<FetchDevice, FetchMissingDeviceSchema> pendingRequests =
+      Caffeine.newBuilder()
+          .maximumSize(
+              IoTDBDescriptor.getInstance().getConfig().getDeviceSchemaRequestCacheMaxSize())
+          .build();
 
   private DeviceSchemaRequestCache() {}
 
@@ -41,37 +45,12 @@ public class DeviceSchemaRequestCache {
   }
 
   public FetchMissingDeviceSchema getOrCreatePendingRequest(FetchDevice statement) {
-    if (pendingRequests.size()
-        >= IoTDBDescriptor.getInstance().getConfig().getDeviceSchemaRequestCacheMaxSize()) {
-      clearOldestRequests();
-    }
 
-    return pendingRequests.computeIfAbsent(
-        statement,
-        k -> {
-          return new FetchMissingDeviceSchema();
-        });
+    return pendingRequests.get(statement, k -> new FetchMissingDeviceSchema());
   }
 
   public void removeCompletedRequest(FetchDevice statement) {
-    pendingRequests.remove(statement);
-  }
-
-  private void clearOldestRequests() {
-    int toRemove =
-        pendingRequests.size()
-            - IoTDBDescriptor.getInstance().getConfig().getDeviceSchemaRequestCacheMaxSize()
-            + 50;
-    if (toRemove <= 0) return;
-
-    int removed = 0;
-    for (Map.Entry<FetchDevice, FetchMissingDeviceSchema> entry : pendingRequests.entrySet()) {
-      if (removed >= toRemove) {
-        break;
-      }
-      pendingRequests.remove(entry.getKey());
-      removed++;
-    }
+    pendingRequests.invalidate(statement);
   }
 
   public static class FetchMissingDeviceSchema {
