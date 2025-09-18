@@ -994,6 +994,12 @@ public class IoTDBDescriptor {
                 "device_schema_request_cache_max_size",
                 String.valueOf(conf.getDeviceSchemaRequestCacheMaxSize()))));
 
+    conf.setDeviceSchemaRequestCacheWaitTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_schema_request_cache_wait_time_ms",
+                String.valueOf(conf.getDeviceSchemaRequestCacheWaitTimeMs()))));
+
     // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());

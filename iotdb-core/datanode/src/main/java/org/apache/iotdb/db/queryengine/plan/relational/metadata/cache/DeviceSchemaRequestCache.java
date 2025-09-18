@@ -66,7 +66,9 @@ public class DeviceSchemaRequestCache {
 
     int removed = 0;
     for (Map.Entry<FetchDevice, FetchMissingDeviceSchema> entry : pendingRequests.entrySet()) {
-      if (removed >= toRemove) break;
+      if (removed >= toRemove) {
+        break;
+      }
       pendingRequests.remove(entry.getKey());
       removed++;
     }
@@ -87,12 +89,12 @@ public class DeviceSchemaRequestCache {
 
     public synchronized void waitForQuery(long queryId) {
       if (this.queryId != -1) {
-        for (int i = 0; i < 20 && !done; i++) {
+        if (!done) {
           try {
-            this.wait(1);
+            this.wait(
+                IoTDBDescriptor.getInstance().getConfig().getDeviceSchemaRequestCacheWaitTimeMs());
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            break;
           }
         }
       } else {

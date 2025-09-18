@@ -196,6 +196,9 @@ public class IoTDBConfig {
   /** Maximum number of pending device schema requests */
   private volatile int deviceSchemaRequestCacheMaxSize = 500;
 
+  /** Wait time in milliseconds for device schema request cache */
+  private volatile int deviceSchemaRequestCacheWaitTimeMs = 20;
+
   private volatile long dataNodeTableSchemaCacheSize = 1 << 20;
 
   /**
@@ -1949,6 +1952,17 @@ public class IoTDBConfig {
       return;
     }
     this.deviceSchemaRequestCacheMaxSize = deviceSchemaRequestCacheMaxSize;
+  }
+
+  public int getDeviceSchemaRequestCacheWaitTimeMs() {
+    return deviceSchemaRequestCacheWaitTimeMs;
+  }
+
+  public void setDeviceSchemaRequestCacheWaitTimeMs(int deviceSchemaRequestCacheWaitTimeMs) {
+    if (deviceSchemaRequestCacheWaitTimeMs < 0) {
+      return;
+    }
+    this.deviceSchemaRequestCacheWaitTimeMs = deviceSchemaRequestCacheWaitTimeMs;
   }
 
   public long getWalMemTableSnapshotThreshold() {
