@@ -335,14 +335,14 @@ public class DataNodeSchemaCache {
   }
 
   /**
-   * Update the {@link DeviceLastCache} on query in tree model.
+   * Update the {@link DeviceLastCache} on query.
    *
    * <p>Note: The query shall put the {@link DeviceLastCache} twice:
    *
-   * <p>- First time set the "isCommit" to {@code false} before the query accesses data. It is just
-   * to allow the writing to update the cache, then avoid that the query put a stale value to cache
-   * and break the consistency. WARNING: The writing may temporarily put a stale value in cache if a
-   * stale value is written, but it won't affect the eventual consistency.
+   * <p>- First time call this before the query accesses data. It is just to allow the writing to
+   * update the cache, then avoid that the query put a stale value to cache and break the
+   * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
+   * is written, but it won't affect the eventual consistency.
    *
    * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
    * #updateLastCacheIfExists(String, PartialPath, String[], TimeValuePair[], boolean,
@@ -350,22 +350,35 @@ public class DataNodeSchemaCache {
    * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
    * DeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
    *
-   * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
-   * in the first time, to avoid the stale writing damaging the eventual consistency. In this case
-   * and the "isInvalidate" shall be {@code true}.
-   *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}
-   * @param isInvalidate {@code true} if invalidate the first pushed cache, or {@code false} for the
-   *     first push.
    */
-  public void updateLastCache(
-      final String database, final MeasurementPath measurementPath, final boolean isInvalidate) {
+  public void declareLastCache(final String database, final MeasurementPath measurementPath) {
     deviceSchemaCache.updateLastCache(
         database,
         measurementPath.getDevicePath(),
         new String[] {measurementPath.getMeasurement()},
-        isInvalidate ? new TimeValuePair[] {null} : null,
+        null,
+        measurementPath.isUnderAlignedEntity(),
+        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        true);
+  }
+
+  /**
+   * Update the {@link DeviceLastCache} on query.
+   *
+   * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
+   * in the first time, to avoid the stale writing damaging the eventual consistency.
+   *
+   * @param database the device's database, WITH "root"
+   * @param measurementPath the fetched {@link MeasurementPath}
+   */
+  public void invalidateLastCache(final String database, final MeasurementPath measurementPath) {
+    deviceSchemaCache.updateLastCache(
+        database,
+        measurementPath.getDevicePath(),
+        new String[] {measurementPath.getMeasurement()},
+        new TimeValuePair[] {null},
         measurementPath.isUnderAlignedEntity(),
         new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
         true);

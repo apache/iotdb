@@ -113,8 +113,6 @@ public class DeviceSchemaCache {
         getLeadingSegment(device), device, null, entry -> -entry.invalidateLastCache(), false);
   }
 
-  /////////////////////////////// Tree model ///////////////////////////////
-
   public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
     final String databaseToUse = databasePool.computeIfAbsent(database, k -> database);

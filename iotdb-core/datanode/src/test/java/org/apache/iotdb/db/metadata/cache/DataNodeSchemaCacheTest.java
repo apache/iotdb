@@ -202,10 +202,10 @@ public class DataNodeSchemaCacheTest {
 
     final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
 
-    dataNodeSchemaCache.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), false);
-    dataNodeSchemaCache.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s3"), s3), false);
+    dataNodeSchemaCache.declareLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1));
+    dataNodeSchemaCache.declareLastCache(
+        database, new MeasurementPath(device.concatNode("s3"), s3));
 
     // Simulate "s1" revert when the query has failed in calculation
     dataNodeSchemaCache.updateLastCacheIfExists(
@@ -217,8 +217,8 @@ public class DataNodeSchemaCacheTest {
         },
         false,
         new MeasurementSchema[] {s1});
-    dataNodeSchemaCache.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), true);
+    dataNodeSchemaCache.invalidateLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1));
 
     // "s2" shall be null since the "null" timeValuePair has not been put
     dataNodeSchemaCache.updateLastCacheIfExists(
