@@ -35,7 +35,7 @@ import java.util.Set;
 /** This class contains all information of a User. */
 public class User extends Role {
 
-  private long userId;
+  private long userId = -1;
 
   private String password;
 

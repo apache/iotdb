@@ -129,9 +129,14 @@ public class LocalFileUserAccessorTest {
     accessor.saveUserOldVersion(role);
     User newRole = accessor.loadEntity("root");
     assertEquals(role, newRole);
+    newRole.setName("root1");
+    accessor.saveUserOldVersion1(newRole);
+    User newRole1 = accessor.loadEntity("root1");
+    assertEquals(newRole, newRole1);
     newRole.setName("root2");
+    newRole.setUserId(10000);
     accessor.saveEntity(newRole);
-    User newRole2 = accessor.loadEntity("root2");
+    User newRole2 = accessor.loadEntity("10000");
     assertEquals(newRole, newRole2);
   }
 }

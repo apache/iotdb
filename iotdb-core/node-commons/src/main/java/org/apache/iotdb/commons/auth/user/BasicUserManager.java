@@ -116,6 +116,13 @@ public abstract class BasicUserManager extends BasicRoleManager {
       } else {
         nextUserId = maxUserId;
       }
+
+      for (Map.Entry<String, Role> userEntry : entityMap.entrySet()) {
+        User user = (User) userEntry.getValue();
+        if (user.getUserId() == -1) {
+          user.setUserId(nextUserId++);
+        }
+      }
     } catch (IOException e) {
       LOGGER.warn("meet error in load max userId.");
       throw new RuntimeException(e);

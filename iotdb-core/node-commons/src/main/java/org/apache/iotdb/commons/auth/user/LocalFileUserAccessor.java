@@ -315,22 +315,13 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-      byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
       // test for version1
       IOUtils.writeInt(outputStream, 1, encodingBufferLocal);
-      outputStream.write(strBuffer);
+      IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
       IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
-      IOUtils.writeInt(outputStream, user.getAllSysPrivileges(), encodingBufferLocal);
-
-      int privilegeNum = user.getPathPrivilegeList().size();
-      for (int i = 0; i < privilegeNum; i++) {
-        PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
-        IOUtils.writePathPrivilege(
-            outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
-      }
+      savePrivileges(outputStream, user);
       outputStream.flush();
       fileOutputStream.getFD().sync();
-
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
