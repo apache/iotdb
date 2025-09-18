@@ -91,7 +91,7 @@ public class DeviceSchemaRequestCache {
       if (this.queryId != -1) {
         for (int i = 0; i < 20 && !done; i++) {
           try {
-            this.wait(50);
+            this.wait(1);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             break;
