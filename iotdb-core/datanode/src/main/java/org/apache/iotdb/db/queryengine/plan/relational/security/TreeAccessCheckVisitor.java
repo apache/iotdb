@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowAvailableUrlsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -959,6 +960,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowCluster(ShowClusterStatement statement, TreeAccessCheckContext context) {
     return AuthorityChecker.checkSuperUserOrMaintain(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowAvailableUrls(
+      ShowAvailableUrlsStatement showAvailableUrlsStatement, TreeAccessCheckContext context) {
+    return SUCCEED;
   }
 
   @Override

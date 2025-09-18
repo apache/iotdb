@@ -41,6 +41,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private static final long UPDATE_PERIOD_IN_S = 60;
   private static final String SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
+  private static final String SHOW_AVAILABLE_URLS_COMMAND = "SHOW AVAILABLE URLS";
 
   private static final String STATUS_COLUMN_NAME = "Status";
 
@@ -228,28 +229,37 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private boolean updateDataNodeList() {
     try (SessionDataSet sessionDataSet =
-        client.executeQueryStatement(SHOW_DATA_NODES_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
-      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
-      List<TEndPoint> res = new ArrayList<>();
-      while (iterator.next()) {
-        String ip = iterator.getString(IP_COLUMN_NAME);
-        // ignore 0.0.0.0 and removing DN
-        if (!REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
-            && !"0.0.0.0".equals(ip)) {
-          String port = iterator.getString(PORT_COLUMN_NAME);
-          if (ip != null && port != null) {
-            res.add(new TEndPoint(ip, Integer.parseInt(port)));
-          }
+        client.executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
+      updateAvailableNodes(sessionDataSet);
+    } catch (Exception e1) {
+      try (SessionDataSet sessionDataSet =
+          client.executeQueryStatement(SHOW_DATA_NODES_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
+        updateAvailableNodes(sessionDataSet);
+      } catch (Exception e2) {
+        LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void updateAvailableNodes(SessionDataSet sessionDataSet) throws Exception {
+    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+    List<TEndPoint> res = new ArrayList<>();
+    while (iterator.next()) {
+      String ip = iterator.getString(IP_COLUMN_NAME);
+      // ignore 0.0.0.0 and removing DN
+      if (!REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
+          && !"0.0.0.0".equals(ip)) {
+        String port = iterator.getString(PORT_COLUMN_NAME);
+        if (ip != null && port != null) {
+          res.add(new TEndPoint(ip, Integer.parseInt(port)));
         }
       }
-      // replace the older ones.
-      if (!res.isEmpty()) {
-        availableNodes = res;
-      }
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint);
-      return false;
+    }
+    // replace the older ones.
+    if (!res.isEmpty()) {
+      availableNodes = res;
     }
   }
 }
