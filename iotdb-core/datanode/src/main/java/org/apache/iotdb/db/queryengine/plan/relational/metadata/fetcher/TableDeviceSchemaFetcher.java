@@ -175,8 +175,8 @@ public class TableDeviceSchemaFetcher {
         }
       }
 
-      fetchedDeviceSchema.forEach((key, value) -> cache.putAttributes(database, key, value));
       schema.setResult(fetchedDeviceSchema);
+      fetchedDeviceSchema.forEach((key, value) -> cache.putAttributes(database, key, value));
 
       return fetchedDeviceSchema;
     } catch (final Throwable throwable) {
