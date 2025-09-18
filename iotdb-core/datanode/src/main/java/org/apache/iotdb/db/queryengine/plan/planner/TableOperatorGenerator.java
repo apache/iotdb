@@ -3203,9 +3203,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .initOrInvalidateLastCache(
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
-                  needInitTime
-                      ? targetColumns
-                      : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
+                  needInitTime && node.getGroupingKeys().isEmpty()
+                      ? Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1)
+                      : targetColumns,
                   false);
         } else {
           hitCachesIndexes.add(i);
