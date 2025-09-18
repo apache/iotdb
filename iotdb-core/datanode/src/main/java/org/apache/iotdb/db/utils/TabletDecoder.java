@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.util;
+package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;
