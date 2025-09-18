@@ -21,26 +21,6 @@ typing-extensions = ">=4"
 tz = ["backports.zoneinfo ; python_version < \"3.9\""]
 
 [[package]]
-name = "apache-iotdb"
-version = "2.0.5"
-description = "Apache IoTDB client API"
-optional = false
-python-versions = ">=3.6"
-groups = ["main"]
-files = [
-    {file = "apache_iotdb-2.0.5-py3-none-any.whl", hash = "sha256:620f46dcc0db46b34969eaca3b56bb1513174f60867856cc99e50605324f0c73"},
-    {file = "apache_iotdb-2.0.5.tar.gz", hash = "sha256:f8facc1d83e40314bd0dcb1a47819f4c38ff33634413340602c9afc965028a38"},
-]
-
-[package.dependencies]
-numpy = ">=1.0.0"
-pandas = ">=1.0.0"
-sqlalchemy = ">=1.4"
-sqlalchemy-utils = ">=0.37.8"
-thrift = ">=0.14.1"
-tzlocal = ">=4.0"
-
-[[package]]
 name = "black"
 version = "25.1.0"
 description = "The uncompromising code formatter."
@@ -1744,35 +1724,6 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
-name = "sqlalchemy-utils"
-version = "0.42.0"
-description = "Various utility functions for SQLAlchemy."
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "sqlalchemy_utils-0.42.0-py3-none-any.whl", hash = "sha256:c8c0b7f00f4734f6f20e9a4d06b39d79d58c8629cba50924fcaeb20e28eb4f48"},
-    {file = "sqlalchemy_utils-0.42.0.tar.gz", hash = "sha256:6d1ecd3eed8b941f0faf8a531f5d5cee7cffa2598fcf8163de8c31c7a417a5e0"},
-]
-
-[package.dependencies]
-SQLAlchemy = ">=1.4"
-
-[package.extras]
-arrow = ["arrow (>=0.3.4)"]
-babel = ["Babel (>=1.3)"]
-color = ["colour (>=0.0.4)"]
-encrypted = ["cryptography (>=0.6)"]
-intervals = ["intervals (>=0.7.1)"]
-password = ["passlib (>=1.6,<2.0)"]
-pendulum = ["pendulum (>=2.0.5)"]
-phone = ["phonenumbers (>=5.9.2)"]
-test = ["Jinja2 (>=2.3)", "Pygments (>=1.2)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "isort (>=4.2.2)", "pg8000 (>=1.12.4)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
-test-all = ["Babel (>=1.3)", "Jinja2 (>=2.3)", "Pygments (>=1.2)", "arrow (>=0.3.4)", "colour (>=0.0.4)", "cryptography (>=0.6)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "furl (>=0.4.1)", "intervals (>=0.7.1)", "isort (>=4.2.2)", "passlib (>=1.6,<2.0)", "pendulum (>=2.0.5)", "pg8000 (>=1.12.4)", "phonenumbers (>=5.9.2)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
-timezone = ["python-dateutil"]
-url = ["furl (>=0.4.1)"]
-
-[[package]]
 name = "statsmodels"
 version = "0.14.5"
 description = "Statistical computations and models for Python"
@@ -2259,4 +2210,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<=3.13.5"
-content-hash = "8d31dadf57a2134038a78bf1918523e0c777c79791abf1b7757897dd80789f54"
+content-hash = "8d55de66fc1204d82ecb4e7cfecf0b0d1828c9a939ee015e9a28bbd6e2592d28"

@@ -45,7 +45,7 @@ public interface IAuthorityFetcher {
   TSStatus checkUserPathPrivilegesGrantOpt(
       String username, List<? extends PartialPath> allPath, PrivilegeType permission);
 
-  TSStatus checkUserSysPrivileges(String username, PrivilegeType permission);
+  TSStatus checkUserSysPrivileges(String username, PrivilegeType permissions);
 
   TSStatus checkUserDBPrivileges(String username, String database, PrivilegeType permission);
 

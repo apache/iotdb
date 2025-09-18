@@ -20,7 +20,7 @@ package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
-import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -204,11 +204,9 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     }
   }
 
-  private InsertTabletStatement constructInsertTabletStatement(TableMessage message)
-      throws IllegalPathException {
+  private InsertTabletStatement constructInsertTabletStatement(TableMessage message) {
     InsertTabletStatement insertStatement = new InsertTabletStatement();
-    insertStatement.setDevicePath(
-        DataNodeDevicePathCache.getInstance().getPartialPath(message.getTable()));
+    insertStatement.setDevicePath(new PartialPath(message.getTable(), false));
     List<String> measurements =
         Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
             .flatMap(List::stream)

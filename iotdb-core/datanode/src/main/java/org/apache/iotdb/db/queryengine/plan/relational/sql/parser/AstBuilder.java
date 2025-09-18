@@ -121,6 +121,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -173,6 +174,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAIDevices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -187,6 +189,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowLoadedModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
@@ -220,6 +223,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
@@ -3616,6 +3620,25 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
   }
 
+  private static List<String> convertToDeviceIdList(String rawDeviceString) {
+    String[] deviceIdList = rawDeviceString.split(",");
+    List<String> result = new ArrayList<>();
+    for (String deviceId : deviceIdList) {
+      deviceId = deviceId.trim();
+      if (deviceId.equals("cpu")) {
+        result.add("cpu");
+        continue;
+      }
+      try {
+        Integer.valueOf(deviceId);
+      } catch (NumberFormatException e) {
+        throw new SemanticException("Device id should be 'cpu' or integer");
+      }
+      result.add(deviceId);
+    }
+    return result;
+  }
+
   @Override
   public Node visitCreateModelStatement(RelationalSqlParser.CreateModelStatementContext ctx) {
     String modelId = ctx.modelId.getText();
@@ -3646,6 +3669,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitLoadModelStatement(RelationalSqlParser.LoadModelStatementContext ctx) {
+    List<String> deviceIds = convertToDeviceIdList(unquote(ctx.deviceIdList.getText()));
+    String modelId = ctx.existingModelId.getText();
+    validateModelId(modelId);
+    return new LoadModel(modelId, deviceIds);
+  }
+
+  @Override
+  public Node visitUnloadModelStatement(RelationalSqlParser.UnloadModelStatementContext ctx) {
+    List<String> deviceIds = convertToDeviceIdList(unquote(ctx.deviceIdList.getText()));
+    String modelId = ctx.existingModelId.getText();
+    validateModelId(modelId);
+    return new UnloadModel(modelId, deviceIds);
+  }
+
+  @Override
   public Node visitShowModelsStatement(RelationalSqlParser.ShowModelsStatementContext ctx) {
     ShowModels showModels = new ShowModels();
     if (ctx.modelId != null) {
@@ -3654,6 +3693,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       showModels.setModelId(modelId);
     }
     return showModels;
+  }
+
+  @Override
+  public Node visitShowLoadedModelsStatement(
+      RelationalSqlParser.ShowLoadedModelsStatementContext ctx) {
+    return new ShowLoadedModels(
+        ctx.deviceIdList != null
+            ? convertToDeviceIdList(unquote(ctx.deviceIdList.getText()))
+            : null);
+  }
+
+  @Override
+  public Node visitShowAIDevicesStatement(RelationalSqlParser.ShowAIDevicesStatementContext ctx) {
+    return new ShowAIDevices();
   }
 
   @Override

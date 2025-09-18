@@ -223,7 +223,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
-  SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement);
+  SettableFuture<ConfigTaskResult> showPipes(
+      ShowPipesStatement showPipesStatement, String userName);
 
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);
@@ -426,6 +427,14 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropModel(String modelId);
 
   SettableFuture<ConfigTaskResult> showModels(String modelId);
+
+  SettableFuture<ConfigTaskResult> showLoadedModels(List<String> deviceIdList);
+
+  SettableFuture<ConfigTaskResult> showAIDevices();
+
+  SettableFuture<ConfigTaskResult> loadModel(String existingModelId, List<String> deviceIdList);
+
+  SettableFuture<ConfigTaskResult> unloadModel(String existingModelId, List<String> deviceIdList);
 
   SettableFuture<ConfigTaskResult> createTraining(
       String modelId,
