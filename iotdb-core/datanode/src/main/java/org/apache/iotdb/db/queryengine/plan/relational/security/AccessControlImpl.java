@@ -366,9 +366,6 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
     return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userName));
   }
 }
