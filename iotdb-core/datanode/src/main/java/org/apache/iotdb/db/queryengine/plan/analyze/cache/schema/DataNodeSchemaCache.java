@@ -127,7 +127,7 @@ public class DataNodeSchemaCache {
    * @param devicePath full path of the device
    * @return empty if cache miss or the device path is not a template activated path
    */
-  public ClusterSchemaTree getMatchedSchemaWithTemplate(final PartialPath devicePath) {
+  public ClusterSchemaTree getMatchedTemplateSchema(final PartialPath devicePath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath);
     if (!(schema instanceof DeviceTemplateSchema)) {
@@ -146,7 +146,7 @@ public class DataNodeSchemaCache {
    * @param fullPath full path
    * @return empty if cache miss
    */
-  public ClusterSchemaTree getMatchedSchemaWithoutTemplate(final PartialPath fullPath) {
+  public ClusterSchemaTree getMatchedNormalSchema(final PartialPath fullPath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(fullPath.getDevicePath());
     if (!(schema instanceof DeviceNormalSchema)) {

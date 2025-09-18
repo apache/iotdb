@@ -74,8 +74,11 @@ public class DeviceLastCache {
         }
       };
 
+  /** This means that the tv pair has been put, and the value is null */
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
+
+  /** This means that the tv pair has been put once, and is ready for the next put. */
   private static final TimeValuePair PLACEHOLDER_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
 

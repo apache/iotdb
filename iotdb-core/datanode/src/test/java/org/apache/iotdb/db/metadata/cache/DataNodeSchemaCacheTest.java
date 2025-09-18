@@ -290,11 +290,11 @@ public class DataNodeSchemaCacheTest {
         new MeasurementPath("root.sg1.d3.s1", TSDataType.FLOAT));
     dataNodeSchemaCache.put(clusterSchemaTree);
     final ClusterSchemaTree d1Tree =
-        dataNodeSchemaCache.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d1"));
+        dataNodeSchemaCache.getMatchedTemplateSchema(new PartialPath("root.sg1.d1"));
     final ClusterSchemaTree d2Tree =
-        dataNodeSchemaCache.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
+        dataNodeSchemaCache.getMatchedTemplateSchema(new PartialPath("root.sg1.d2"));
     final ClusterSchemaTree d3Tree =
-        dataNodeSchemaCache.getMatchedSchemaWithoutTemplate(new MeasurementPath("root.sg1.d3.s1"));
+        dataNodeSchemaCache.getMatchedNormalSchema(new MeasurementPath("root.sg1.d3.s1"));
     List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(2, measurementPaths.size());
     for (final MeasurementPath measurementPath : measurementPaths) {
