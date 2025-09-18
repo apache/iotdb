@@ -189,8 +189,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, TreeAccessCheckContext context) {
-    // root.__audit can never be deleted
-    if (TREE_MODEL_AUDIT_DATABASE_PATH.equals(setSchemaTemplateStatement.getPath())) {
+    // root.__audit can never be set template
+    String[] nodes = setSchemaTemplateStatement.getPath().getNodes();
+    if (nodes.length >= 2 && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1])) {
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
     }
