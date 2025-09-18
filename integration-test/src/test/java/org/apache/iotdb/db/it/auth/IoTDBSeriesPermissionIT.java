@@ -117,11 +117,11 @@ public class IoTDBSeriesPermissionIT {
 
     assertNonQueryTestFail(
         "create timeseries root.test.d1.s1 with dataType = int32",
-        "803: No permissions for this operation, please add privilege MANAGE_DATABASE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
 
-    grantUserSeriesPrivilege("test", PrivilegeType.MANAGE_DATABASE, "root.**");
+    grantUserSeriesPrivilege("test", PrivilegeType.SYSTEM, "root.**");
 
     executeNonQuery(
         "create timeseries root.test.d1.s1 with dataType = int32", "test", "test123123456");
@@ -281,10 +281,10 @@ public class IoTDBSeriesPermissionIT {
     grantUserSeriesPrivilege("test1", PrivilegeType.WRITE_SCHEMA, "root.sg.d1.**");
     assertNonQueryTestFail(
         "insert into root.sg.d1(time,s1,s2) values(1,1,1)",
-        "803: No permissions for this operation, please add privilege MANAGE_DATABASE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test1",
         "test123123456");
-    grantUserSystemPrivileges("test1", PrivilegeType.MANAGE_DATABASE);
+    grantUserSystemPrivileges("test1", PrivilegeType.SYSTEM);
     executeNonQuery("insert into root.sg.d1(time,s1,s2) values(1,1,1)", "test1", "test123123456");
   }
 

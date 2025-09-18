@@ -65,42 +65,38 @@ public class IoTDBTemplatePermissionIT {
   public void adminOperationsTest() {
     assertNonQueryTestFail(
         "create device template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "drop device template t1",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "alter device template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
-    assertNonQueryTestFail(
-        "show device templates",
-        "803: Only the admin user can perform this operation",
-        "test",
-        "test123123456");
+    executeNonQuery("show device templates");
     assertNonQueryTestFail(
         "show nodes in device template t1",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "set device template t1 to root.sg1",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "unset device template t1 from root.sg1",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "show paths set device template t1",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
   }

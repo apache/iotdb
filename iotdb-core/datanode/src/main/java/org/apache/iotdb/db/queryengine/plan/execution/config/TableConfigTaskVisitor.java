@@ -925,7 +925,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    // todo: check all configuration items' privilege requirement
     SetConfigurationStatement setConfigurationStatement =
         (SetConfigurationStatement) node.getInnerTreeStatement();
     try {
