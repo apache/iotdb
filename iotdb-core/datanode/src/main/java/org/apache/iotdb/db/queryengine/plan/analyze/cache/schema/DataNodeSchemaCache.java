@@ -278,60 +278,7 @@ public class DataNodeSchemaCache {
         continue;
       }
       final IMeasurementSchema schema = templateSchema.get(measurements[i]);
-      computation.computeMeasurement(
-          i,
-          new IMeasurementSchemaInfo() {
-            @Override
-            public String getName() {
-              return schema.getMeasurementId();
-            }
-
-            @Override
-            public IMeasurementSchema getSchema() {
-              if (isLogicalView()) {
-                return new LogicalViewSchema(
-                    schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
-              } else {
-                return this.getSchemaAsMeasurementSchema();
-              }
-            }
-
-            @Override
-            public MeasurementSchema getSchemaAsMeasurementSchema() {
-              return new MeasurementSchema(
-                  schema.getMeasurementId(),
-                  schema.getType(),
-                  schema.getEncodingType(),
-                  schema.getCompressor());
-            }
-
-            @Override
-            public LogicalViewSchema getSchemaAsLogicalViewSchema() {
-              throw new RuntimeException(
-                  new UnsupportedOperationException(
-                      "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
-            }
-
-            @Override
-            public Map<String, String> getTagMap() {
-              return null;
-            }
-
-            @Override
-            public Map<String, String> getAttributeMap() {
-              return null;
-            }
-
-            @Override
-            public String getAlias() {
-              return null;
-            }
-
-            @Override
-            public boolean isLogicalView() {
-              return schema.isLogicalView();
-            }
-          });
+      computation.computeMeasurement(i, new WrappedSchemaInfo(schema));
     }
     return indexOfMissingMeasurements;
   }
@@ -442,5 +389,64 @@ public class DataNodeSchemaCache {
 
   public void cleanUp() {
     deviceSchemaCache.invalidateAll();
+  }
+
+  private static class WrappedSchemaInfo implements IMeasurementSchemaInfo {
+    private final IMeasurementSchema schema;
+
+    public WrappedSchemaInfo(final IMeasurementSchema schema) {
+      this.schema = schema;
+    }
+
+    @Override
+    public String getName() {
+      return schema.getMeasurementId();
+    }
+
+    @Override
+    public IMeasurementSchema getSchema() {
+      if (isLogicalView()) {
+        return new LogicalViewSchema(
+            schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+      } else {
+        return this.getSchemaAsMeasurementSchema();
+      }
+    }
+
+    @Override
+    public MeasurementSchema getSchemaAsMeasurementSchema() {
+      return new MeasurementSchema(
+          schema.getMeasurementId(),
+          schema.getType(),
+          schema.getEncodingType(),
+          schema.getCompressor());
+    }
+
+    @Override
+    public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+      throw new RuntimeException(
+          new UnsupportedOperationException(
+              "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
+    }
+
+    @Override
+    public Map<String, String> getTagMap() {
+      return null;
+    }
+
+    @Override
+    public Map<String, String> getAttributeMap() {
+      return null;
+    }
+
+    @Override
+    public String getAlias() {
+      return null;
+    }
+
+    @Override
+    public boolean isLogicalView() {
+      return schema.isLogicalView();
+    }
   }
 }
