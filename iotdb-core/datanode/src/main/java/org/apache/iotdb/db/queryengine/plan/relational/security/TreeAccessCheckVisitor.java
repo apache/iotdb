@@ -367,33 +367,14 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     AuthorType authorType = statement.getAuthorType();
     switch (authorType) {
       case CREATE_USER:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          return AuthorityChecker.getTSStatus(
-              false, "Cannot create user has same name with admin user");
-        }
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return RpcUtils.SUCCESS_STATUS;
-        }
+      case DROP_USER:
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case UPDATE_USER:
         // users can change passwords of themselves
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)
-            || statement.getUserName().equals(context.userName)) {
-          return RpcUtils.SUCCESS_STATUS;
-        }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
-
-      case DROP_USER:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())
-            || statement.getUserName().equals(context.userName)) {
-          return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
-        }
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+        if (statement.getUserName().equals(context.userName)) {
           return RpcUtils.SUCCESS_STATUS;
         }
         return AuthorityChecker.getTSStatus(
@@ -401,16 +382,14 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             PrivilegeType.MANAGE_USER);
 
       case LIST_USER:
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)
-            || AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SECURITY)) {
+        if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SECURITY)) {
           return RpcUtils.SUCCESS_STATUS;
         }
         statement.setUserName(context.userName);
         return RpcUtils.SUCCESS_STATUS;
 
       case LIST_USER_PRIVILEGE:
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)
-            || context.userName.equals(statement.getUserName())) {
+        if (context.userName.equals(statement.getUserName())) {
           return RpcUtils.SUCCESS_STATUS;
         }
         return AuthorityChecker.getTSStatus(
@@ -418,9 +397,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             PrivilegeType.MANAGE_USER);
 
       case LIST_ROLE_PRIVILEGE:
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return RpcUtils.SUCCESS_STATUS;
-        }
         if (!AuthorityChecker.checkRole(context.userName, statement.getRoleName())) {
           return AuthorityChecker.getTSStatus(
               AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE),
@@ -430,9 +406,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         }
 
       case LIST_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)
-            || AuthorityChecker.checkSystemPermission(
-                context.userName, PrivilegeType.MANAGE_ROLE)) {
+        if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE)) {
           return RpcUtils.SUCCESS_STATUS;
         }
         // list roles of other user is not allowed
@@ -443,16 +417,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         return RpcUtils.SUCCESS_STATUS;
 
       case CREATE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getRoleName())) {
-          return AuthorityChecker.getTSStatus(
-              false, "Cannot create role has same name with admin user");
-        }
       case DROP_ROLE:
       case GRANT_USER_ROLE:
       case REVOKE_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-          return RpcUtils.SUCCESS_STATUS;
-        }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE),
             PrivilegeType.MANAGE_ROLE);
@@ -461,12 +428,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          return AuthorityChecker.getTSStatus(
-              false, "Cannot grant/revoke privileges of admin user");
-        }
-        if (AuthorityChecker.SUPER_USER.equals(context.userName)
-            || AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SECURITY)) {
+        if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SECURITY)) {
           return RpcUtils.SUCCESS_STATUS;
         }
 
@@ -1131,8 +1093,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   // ======================== TTL related ===========================
   @Override
   public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.SUPER_USER.equals(context.userName)
-        || AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
+    if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
       return SUCCEED;
     }
     List<PartialPath> checkedPaths = statement.getPaths();
@@ -1145,8 +1106,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowTTL(ShowTTLStatement showTTLStatement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.SUPER_USER.equals(context.userName)
-        || AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
+    if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
       return SUCCEED;
     }
     return visitAuthorityInformation(showTTLStatement, context);

@@ -27,10 +27,16 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.TIME;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.countDevicesColumnHeaders;
@@ -48,6 +54,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -59,6 +66,7 @@ public class IoTDBSeriesPermissionIT {
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123123456");
     createUser("test1", "test123123456");
+    createUser("test2", "test123123456");
   }
 
   @After
@@ -305,5 +313,46 @@ public class IoTDBSeriesPermissionIT {
         new String[] {"1,1.0,null,", "2,null,2.0,"},
         "test",
         "test123123456");
+  }
+
+  @Test
+  public void ttlOperationsTest() {
+    try (Connection connection = EnvFactory.getEnv().getConnection("test2", "test123123456");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("show all ttl");
+      Assert.assertFalse(resultSet.next());
+      assertNonQueryTestFail(
+          statement,
+          "set ttl to root.test.** 1",
+          "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.test.**]");
+      assertNonQueryTestFail(
+          statement,
+          "unset ttl from root.test.**",
+          "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.test.**]");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("show all ttl");
+      Assert.assertTrue(resultSet.next());
+      Assert.assertFalse(resultSet.next());
+      statement.execute("grant WRITE_SCHEMA on root.test.** to user test2");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection("test2", "test123123456");
+        Statement statement = connection.createStatement()) {
+      statement.execute("set ttl to root.test.** 1");
+      ResultSet resultSet = statement.executeQuery("show all ttl");
+      Assert.assertTrue(resultSet.next());
+      Assert.assertFalse(resultSet.next());
+      statement.execute("unset ttl from root.test.**");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

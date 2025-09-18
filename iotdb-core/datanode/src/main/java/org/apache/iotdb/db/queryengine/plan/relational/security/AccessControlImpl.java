@@ -25,13 +25,11 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -194,20 +192,12 @@ public class AccessControlImpl implements AccessControl {
     AuthorRType type = statement.getAuthorType();
     switch (type) {
       case CREATE_USER:
-        // admin cannot be created.
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot create user has same name with admin user");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
         return;
       case DROP_USER:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())
-            || statement.getUserName().equals(userName)) {
-          throw new AccessDeniedException("Cannot drop admin user or yourself");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -227,9 +217,6 @@ public class AccessControlImpl implements AccessControl {
         }
         return;
       case CREATE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getRoleName())) {
-          throw new AccessDeniedException("Cannot create role has same name with admin user");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -237,9 +224,6 @@ public class AccessControlImpl implements AccessControl {
         return;
 
       case DROP_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot drop role with admin name");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -247,9 +231,6 @@ public class AccessControlImpl implements AccessControl {
         return;
 
       case GRANT_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant role to admin");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -257,9 +238,6 @@ public class AccessControlImpl implements AccessControl {
         return;
 
       case REVOKE_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot revoke role from admin");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -287,9 +265,6 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_USER_ANY:
       case REVOKE_ROLE_ANY:
       case REVOKE_USER_ANY:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
-        }
         if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
@@ -302,9 +277,6 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_ROLE_ALL:
       case GRANT_USER_ALL:
       case REVOKE_USER_ALL:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke all privileges of admin user");
-        }
         if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
@@ -322,13 +294,6 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_DB:
       case REVOKE_USER_DB:
       case REVOKE_ROLE_DB:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
-        }
-        if (InformationSchema.INFORMATION_DATABASE.equals(statement.getDatabase())) {
-          throw new SemanticException(
-              "Cannot grant or revoke any privileges to information_schema");
-        }
         if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
@@ -343,13 +308,6 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_TB:
       case REVOKE_USER_TB:
       case REVOKE_ROLE_TB:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
-        }
-        if (InformationSchema.INFORMATION_DATABASE.equals(statement.getDatabase())) {
-          throw new SemanticException(
-              "Cannot grant or revoke any privileges to information_schema");
-        }
         if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
@@ -365,9 +323,6 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_ROLE_SYS:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
-        }
         if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
@@ -411,7 +366,7 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName) && !(statement instanceof AuthorStatement)) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userName));

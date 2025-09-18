@@ -665,6 +665,15 @@ public class TestUtils {
     assertNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password);
   }
 
+  public static void assertNonQueryTestFail(Statement statement, String sql, String errMsg) {
+    try {
+      statement.execute(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
   public static void assertTableNonQueryTestFail(
       String sql, String errMsg, String userName, String password, String dbName) {
     assertTableNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password, dbName);
