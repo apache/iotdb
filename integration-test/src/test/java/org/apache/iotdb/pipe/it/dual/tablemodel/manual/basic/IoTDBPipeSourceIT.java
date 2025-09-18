@@ -247,8 +247,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.capture.tree", "true");
-      extractorAttributes.put("extractor.database", "test");
-      extractorAttributes.put("extractor.table", "test2");
+      extractorAttributes.put("extractor.database-name", "test");
+      extractorAttributes.put("extractor.table-name", "test2");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.pattern", "root.db.d2");
       extractorAttributes.put("extractor.history.enable", "false");
