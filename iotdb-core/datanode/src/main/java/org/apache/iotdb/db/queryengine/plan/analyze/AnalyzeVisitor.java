@@ -3209,14 +3209,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PartialPath pattern,
       PathPatternTree authorityScope,
       Analysis analysis,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     // If there is time condition in SHOW DEVICES, we need to scan the raw data
     analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
     context.generateGlobalTimeFilter(analysis);
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(pattern);
     ISchemaTree schemaTree =
-        schemaFetcher.fetchRawSchemaInDeviceLevel(patternTree, authorityScope, context);
+        schemaFetcher.fetchRawSchemaInDeviceLevel(
+            patternTree, authorityScope, context, canSeeAuditDB);
     if (schemaTree.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
       return;
@@ -3250,12 +3252,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           showDevicesStatement.getPathPattern(),
           showDevicesStatement.getAuthorityScope(),
           analysis,
-          context);
+          context,
+          showDevicesStatement.isCanSeeAuditDB());
     } else {
       PathPatternTree patternTree = new PathPatternTree();
       patternTree.appendPathPattern(
           showDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(patternTree, showDevicesStatement.isCanSeeAuditDB());
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     }
     analysis.setRespDatasetHeader(
@@ -3316,7 +3320,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendPathPattern(path.concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     }
     patternTree.constructTree();
-    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+    SchemaPartition schemaPartition =
+        partitionFetcher.getSchemaPartition(
+            patternTree, deviceSchemaFetchStatement.isCanSeeAuditDB());
     analysis.setSchemaPartitionInfo(schemaPartition);
 
     if (schemaPartition.isEmpty()) {
@@ -3338,12 +3344,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           countDevicesStatement.getPathPattern(),
           countDevicesStatement.getAuthorityScope(),
           analysis,
-          context);
+          context,
+          countDevicesStatement.isCanSeeAuditDB());
     } else {
       PathPatternTree patternTree = new PathPatternTree();
       patternTree.appendPathPattern(
           countDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(patternTree, countDevicesStatement.isCanSeeAuditDB());
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     }
 

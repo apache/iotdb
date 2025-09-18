@@ -165,10 +165,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ISchemaTree fetchRawSchemaInDeviceLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     authorityScope.constructTree();
     return clusterSchemaFetchExecutor.fetchDeviceLevelRawSchema(
-        patternTree, authorityScope, context);
+        patternTree, authorityScope, context, canSeeAuditDB);
   }
 
   @Override

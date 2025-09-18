@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 
 public abstract class AuthorityInformationStatement extends Statement {
   protected PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
+  private boolean canSeeAuditDB = true;
 
   public PathPatternTree getAuthorityScope() {
     return authorityScope;
@@ -35,5 +36,13 @@ public abstract class AuthorityInformationStatement extends Statement {
 
   public void setAuthorityScope(PathPatternTree authorityScope) {
     this.authorityScope = authorityScope;
+  }
+
+  public boolean isCanSeeAuditDB() {
+    return canSeeAuditDB;
+  }
+
+  public void setCanSeeAuditDB(boolean canSeeAuditDB) {
+    this.canSeeAuditDB = canSeeAuditDB;
   }
 }

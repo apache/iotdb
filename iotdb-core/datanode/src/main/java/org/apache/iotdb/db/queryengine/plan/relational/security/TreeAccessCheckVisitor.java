@@ -162,6 +162,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitAuthorityInformation(
       AuthorityInformationStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return SUCCEED;
+    }
     try {
       statement.setAuthorityScope(
           AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_SCHEMA));
@@ -213,6 +216,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   private TSStatus checkTemplateShowRelated(
       ShowSchemaTemplateStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      statement.setCamSeeAll(true);
+      return SUCCEED;
+    }
     // own SYSTEM can see all, otherwise can only see PATHS that user has READ_SCHEMA auth
     if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
       statement.setCamSeeAll(false);
@@ -271,6 +278,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitAlterSchemaTemplate(
       AlterSchemaTemplateStatement alterSchemaTemplateStatement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return SUCCEED;
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(
@@ -464,6 +474,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkCQManagement(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
@@ -491,6 +504,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkUDFManagement(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF),
@@ -514,6 +530,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkModelManagement(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
@@ -572,6 +591,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkPipeManagement(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
@@ -626,6 +648,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkTriggerManagement(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER),
@@ -649,18 +674,20 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowStorageGroup(
       ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
-    if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.AUDIT)) {
-      showDatabaseStatement.setCanSeeAuditDB(false);
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return SUCCEED;
     }
+    setCanSeeAuditDB(showDatabaseStatement, context.userName);
     return checkShowOrCountDatabasePermission(showDatabaseStatement, context);
   }
 
   @Override
   public TSStatus visitCountStorageGroup(
       CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
-    if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.AUDIT)) {
-      countDatabaseStatement.setCanSeeAuditDB(false);
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return SUCCEED;
     }
+    setCanSeeAuditDB(countDatabaseStatement, context.userName);
     return checkShowOrCountDatabasePermission(countDatabaseStatement, context);
   }
 
@@ -673,6 +700,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
       }
+    }
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return SUCCEED;
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)
@@ -687,6 +717,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
     }
+
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
+
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
             || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
@@ -753,6 +788,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   // ============================= timeseries related =================================
   private TSStatus checkTimeSeriesPermission(
       String userName, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathOrPatternListPermission(userName, checkedPaths, permission),
         checkedPaths,
@@ -1106,6 +1144,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   // ================================= device related =============================
   @Override
   public TSStatus visitShowDevices(ShowDevicesStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      statement.setCanSeeAuditDB(true);
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(statement, context.userName);
     if (statement.hasTimeCondition()) {
       try {
         statement.setAuthorityScope(
@@ -1124,6 +1167,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCountDevices(
       CountDevicesStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(statement, context.userName);
     if (statement.hasTimeCondition()) {
       try {
         statement.setAuthorityScope(
@@ -1164,5 +1211,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
     }
     return SUCCEED;
+  }
+
+  protected void setCanSeeAuditDB(AuthorityInformationStatement statement, String userName) {
+    if (!checkHasGlobalAuth(userName, PrivilegeType.AUDIT)) {
+      statement.setCanSeeAuditDB(false);
+    }
   }
 }

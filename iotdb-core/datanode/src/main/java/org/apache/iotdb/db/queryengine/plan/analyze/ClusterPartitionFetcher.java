@@ -67,6 +67,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+
 public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -98,14 +100,19 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(final PathPatternTree patternTree, String userName) {
-    try (final ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      patternTree.constructTree();
-      final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-      final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
-          partitionCache.getDatabaseToDevice(deviceIDs, true, false, userName);
-      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
-      if (null == schemaPartition) {
+    return getSchemaPartition(patternTree, userName, true);
+  }
+
+  private SchemaPartition getSchemaPartition(
+      final PathPatternTree patternTree, String userName, boolean needAuditDB) {
+    patternTree.constructTree();
+    final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
+    final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+        partitionCache.getDatabaseToDevice(deviceIDs, true, false, userName);
+    SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
+    if (null == schemaPartition) {
+      try (final ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
@@ -118,30 +125,38 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               schemaPartitionTableResp.getStatus().getMessage(),
               schemaPartitionTableResp.getStatus().getCode());
         }
+      } catch (final ClientManagerException | TException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getSchemaPartition():" + e.getMessage());
       }
-      return schemaPartition;
-    } catch (final ClientManagerException | TException e) {
-      throw new StatementAnalyzeException(
-          "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
+    if (!needAuditDB) {
+      schemaPartition.removeDB(TREE_MODEL_AUDIT_DATABASE);
+    }
+    return schemaPartition;
   }
 
   @Override
   public SchemaPartition getSchemaPartition(final PathPatternTree patternTree) {
-    return getSchemaPartition(patternTree, null);
+    return getSchemaPartition(patternTree, true);
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
+    return getSchemaPartition(patternTree, null, needAuditDB);
   }
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(
       final PathPatternTree patternTree, final String userName) {
-    try (final ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      patternTree.constructTree();
-      final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-      final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
-          partitionCache.getDatabaseToDevice(deviceIDs, true, true, userName);
-      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
-      if (null == schemaPartition) {
+    patternTree.constructTree();
+    final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
+    final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+        partitionCache.getDatabaseToDevice(deviceIDs, true, true, userName);
+    SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
+    if (null == schemaPartition) {
+      try (final ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
@@ -154,12 +169,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               schemaPartitionTableResp.getStatus().getMessage(),
               schemaPartitionTableResp.getStatus().getCode());
         }
+      } catch (final ClientManagerException | TException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
       }
-      return schemaPartition;
-    } catch (final ClientManagerException | TException e) {
-      throw new StatementAnalyzeException(
-          "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
+    return schemaPartition;
   }
 
   @Override

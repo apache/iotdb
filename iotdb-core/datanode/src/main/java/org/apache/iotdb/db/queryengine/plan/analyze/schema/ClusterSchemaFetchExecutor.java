@@ -151,9 +151,12 @@ class ClusterSchemaFetchExecutor {
   }
 
   ClusterSchemaTree fetchDeviceLevelRawSchema(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     return executeSchemaFetchQuery(
-        new DeviceSchemaFetchStatement(patternTree, authorityScope), context);
+        new DeviceSchemaFetchStatement(patternTree, authorityScope, canSeeAuditDB), context);
   }
 
   ClusterSchemaTree fetchMeasurementLevelRawSchema(

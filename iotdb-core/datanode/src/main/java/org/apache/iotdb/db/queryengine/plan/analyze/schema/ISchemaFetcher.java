@@ -56,7 +56,10 @@ public interface ISchemaFetcher {
    * @return schemaTree without measurement nodes
    */
   ISchemaTree fetchRawSchemaInDeviceLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch all the schema by the given patternTree in device level

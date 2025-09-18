@@ -38,6 +38,8 @@ public interface IPartitionFetcher {
   /** Get schema partition without automatically create, used in write and query scenarios. */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
+  SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB);
+
   /** Get schema partition without automatically create, used in write and query scenarios. */
   default SchemaPartition getSchemaPartition(PathPatternTree patternTree, String username) {
     return getSchemaPartition(patternTree);

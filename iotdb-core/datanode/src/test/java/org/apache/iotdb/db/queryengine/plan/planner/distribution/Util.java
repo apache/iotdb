@@ -309,7 +309,10 @@ public class Util {
 
       @Override
       public ISchemaTree fetchRawSchemaInDeviceLevel(
-          PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+          PathPatternTree patternTree,
+          PathPatternTree authorityScope,
+          MPPQueryContext context,
+          boolean canSeeAuditDB) {
         return ANALYSIS.getSchemaTree();
       }
 
@@ -374,6 +377,11 @@ public class Util {
     return new IPartitionFetcher() {
       @Override
       public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+        return ANALYSIS.getSchemaPartitionInfo();
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
         return ANALYSIS.getSchemaPartitionInfo();
       }
 

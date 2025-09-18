@@ -53,7 +53,6 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
 
   private final PartialPath pathPattern;
   private boolean isDetailed;
-  private boolean canSeeAuditDB = true;
 
   public ShowDatabaseStatement(final PartialPath pathPattern) {
     super();
@@ -128,13 +127,5 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   @Override
   public List<PartialPath> getPaths() {
     return Collections.singletonList(pathPattern);
-  }
-
-  public boolean isCanSeeAuditDB() {
-    return canSeeAuditDB;
-  }
-
-  public void setCanSeeAuditDB(boolean canSeeAuditDB) {
-    this.canSeeAuditDB = canSeeAuditDB;
   }
 }

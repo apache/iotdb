@@ -574,6 +574,11 @@ public class TestMetadata implements Metadata {
       }
 
       @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
+        return TABLE_SCHEMA_PARTITION;
+      }
+
+      @Override
       public SchemaPartition getOrCreateSchemaPartition(
           PathPatternTree patternTree, String userName) {
         return TABLE_SCHEMA_PARTITION;

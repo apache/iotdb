@@ -55,7 +55,10 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   @Override
   public ISchemaTree fetchRawSchemaInDeviceLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }

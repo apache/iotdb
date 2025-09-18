@@ -122,4 +122,10 @@ public class SchemaPartition extends Partition {
   public String toString() {
     return "SchemaPartition{" + "schemaPartitionMap=" + schemaPartitionMap + '}';
   }
+
+  public void removeDB(String databaseName) {
+    if (schemaPartitionMap != null) {
+      schemaPartitionMap.remove(databaseName);
+    }
+  }
 }
