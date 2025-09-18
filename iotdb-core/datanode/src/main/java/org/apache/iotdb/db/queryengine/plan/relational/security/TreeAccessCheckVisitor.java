@@ -152,7 +152,6 @@ import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATAB
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl.READ_ONLY_DB_ERROR_MSG;
 
-/** userName in TreeAccessCheckContext will never be SUPER_USER */
 public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAccessCheckContext> {
 
   @Override
@@ -1077,6 +1076,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return SUCCEED;
     }
     List<PartialPath> checkedPaths = statement.getPaths();
+    for (PartialPath checkedPath : checkedPaths) {
+      TSStatus status = checkWriteOnReadOnlyPath(checkedPath);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathOrPatternListPermission(
             context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),

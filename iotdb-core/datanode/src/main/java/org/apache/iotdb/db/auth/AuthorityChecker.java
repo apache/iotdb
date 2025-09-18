@@ -366,17 +366,6 @@ public class AuthorityChecker {
     return authorityFetcher.get().checkRole(username, roleName);
   }
 
-  public static TSStatus checkMaintain(String userName) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
-        PrivilegeType.MAINTAIN);
-  }
-
-  public static TSStatus checkUserIsSystemAdmin(String userName) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM),
-        PrivilegeType.SYSTEM);
-  }
 
   public static Collection<PrivilegeType> checkUserHaveSystemPermissions(
       String userName, Collection<PrivilegeType> permissions) {
