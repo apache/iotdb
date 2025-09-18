@@ -27,17 +27,12 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class DeviceSchemaRequestCache {
   private static final DeviceSchemaRequestCache INSTANCE = new DeviceSchemaRequestCache();
 
   private final Map<FetchDevice, FetchMissingDeviceSchema> pendingRequests =
       new ConcurrentHashMap<>();
-  private final AtomicLong requestCounter = new AtomicLong(0);
-
-  private static final int MAX_PENDING_REQUESTS =
-      IoTDBDescriptor.getInstance().getConfig().getDeviceSchemaRequestCacheMaxSize();
 
   private DeviceSchemaRequestCache() {}
 
@@ -46,14 +41,14 @@ public class DeviceSchemaRequestCache {
   }
 
   public FetchMissingDeviceSchema getOrCreatePendingRequest(FetchDevice statement) {
-    if (pendingRequests.size() >= MAX_PENDING_REQUESTS) {
+    if (pendingRequests.size()
+        >= IoTDBDescriptor.getInstance().getConfig().getDeviceSchemaRequestCacheMaxSize()) {
       clearOldestRequests();
     }
 
     return pendingRequests.computeIfAbsent(
         statement,
         k -> {
-          requestCounter.incrementAndGet();
           return new FetchMissingDeviceSchema();
         });
   }
@@ -63,7 +58,10 @@ public class DeviceSchemaRequestCache {
   }
 
   private void clearOldestRequests() {
-    int toRemove = pendingRequests.size() - MAX_PENDING_REQUESTS + 50;
+    int toRemove =
+        pendingRequests.size()
+            - IoTDBDescriptor.getInstance().getConfig().getDeviceSchemaRequestCacheMaxSize()
+            + 50;
     if (toRemove <= 0) return;
 
     int removed = 0;
