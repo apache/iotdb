@@ -375,7 +375,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
     epoch.migrateState(this, s -> TsFileEpoch.State.USING_TSFILE);
     LOGGER.info(
-        "Pipe {}@{} delayed-degrade head epoch to USING_TSFILE at supply time due to high transfer time ",
+        "Pipe {}@{} delayed-degrade head epoch to USING_TSFILE at supply time due to high transfer time",
         pipeName,
         dataRegionId);
   }

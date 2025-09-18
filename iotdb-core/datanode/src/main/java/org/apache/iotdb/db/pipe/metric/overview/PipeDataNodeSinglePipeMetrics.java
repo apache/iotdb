@@ -244,7 +244,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
     if (transferTime > 0) {
       operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-      if (transferTime
+      if (transferTime / 1_000_000
           >= PipeConfig.getInstance().getPipeConnectorInsertNodeDegradeTransferThresholdMs()) {
         PipeRealtimeDataRegionHybridSource.degradeHeadTsFileEpoch(pipeName + "_" + creationTime);
       }
@@ -298,7 +298,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
     if (transferTime > 0) {
       operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-      if (transferTime
+      if (transferTime / 1_000_000
           >= PipeConfig.getInstance().getPipeConnectorTsFileDegradeTransferThresholdMs()) {
         PipeRealtimeDataRegionHybridSource.degradeHeadTsFileEpoch(pipeName + "_" + creationTime);
       }
