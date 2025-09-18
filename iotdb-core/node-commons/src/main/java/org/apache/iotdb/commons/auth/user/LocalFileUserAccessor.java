@@ -306,15 +306,15 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   @TestOnly
   public void saveUserOldVersion1(User user) throws IOException {
     File userProfile =
-            SystemFileFactory.INSTANCE.getFile(
-                    entityDirPath
-                            + File.separator
-                            + user.getName()
-                            + IoTDBConstant.PROFILE_SUFFIX
-                            + TEMP_SUFFIX);
+        SystemFileFactory.INSTANCE.getFile(
+            entityDirPath
+                + File.separator
+                + user.getName()
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
-         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
       byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
       // test for version1
       IOUtils.writeInt(outputStream, 1, encodingBufferLocal);
@@ -326,7 +326,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
       for (int i = 0; i < privilegeNum; i++) {
         PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
         IOUtils.writePathPrivilege(
-                outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+            outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
       outputStream.flush();
       fileOutputStream.getFD().sync();
@@ -338,8 +338,8 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     }
 
     File oldFile =
-            SystemFileFactory.INSTANCE.getFile(
-                    entityDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
+        SystemFileFactory.INSTANCE.getFile(
+            entityDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(userProfile, oldFile);
   }
 }
