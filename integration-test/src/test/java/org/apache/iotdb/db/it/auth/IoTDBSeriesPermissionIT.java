@@ -339,6 +339,9 @@ public class IoTDBSeriesPermissionIT {
       Assert.assertTrue(resultSet.next());
       Assert.assertFalse(resultSet.next());
       statement.execute("grant WRITE_SCHEMA on root.test.** to user test2");
+
+      assertNonQueryTestFail(
+          statement, "set ttl to root.__audit.** 1", "803: The database '__audit' is read-only.");
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
