@@ -136,15 +136,16 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
               && snapshotPath
                   .toFile()
                   .getName()
-                  .equals(AuthorityChecker.SUPER_USER + IoTDBConstant.PROFILE_SUFFIX)
+                  .equals(AuthorityChecker.SUPER_USER_ID + IoTDBConstant.PROFILE_SUFFIX)
           || type == CNSnapshotFileType.USER_ROLE
               && snapshotPath
                   .toFile()
                   .getName()
                   .equals(
-                      AuthorityChecker.SUPER_USER
+                      AuthorityChecker.SUPER_USER_ID
                           + LocalFileUserAccessor.ROLE_SUFFIX
-                          + IoTDBConstant.PROFILE_SUFFIX)) {
+                          + IoTDBConstant.PROFILE_SUFFIX)
+          || snapshotPath.toFile().getName().equals("user_id.profile")) {
         continue;
       }
       final Path templateFilePath = snapshotPathInfo.getLeft().getRight();

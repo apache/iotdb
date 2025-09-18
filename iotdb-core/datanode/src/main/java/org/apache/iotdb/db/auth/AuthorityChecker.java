@@ -71,7 +71,9 @@ public class AuthorityChecker {
 
   public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
 
-  public static final TSStatus SUCCEED = RpcUtils.SUCCESS_STATUS;
+  public static String SUPER_USER_ID = "0";
+
+  public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
   public static final String ONLY_ADMIN_ALLOWED =
       "No permissions for this operation, only root user is allowed";
