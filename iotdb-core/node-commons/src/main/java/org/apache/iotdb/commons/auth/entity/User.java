@@ -34,6 +34,8 @@ import java.util.Set;
 /** This class contains all information of a User. */
 public class User extends Role {
 
+  private long userId;
+
   private String password;
 
   private Set<String> roleSet;
@@ -56,6 +58,13 @@ public class User extends Role {
     this.roleSet = new HashSet<>();
   }
 
+  public User(String name, String password, long userId) {
+    super(name);
+    this.password = password;
+    this.userId = userId;
+    this.roleSet = new HashSet<>();
+  }
+
   /** ---------- set func ---------------* */
   public void setPassword(String password) {
     this.password = password;
@@ -73,7 +82,15 @@ public class User extends Role {
     roleSet.add(roleName);
   }
 
+  public void setUserId(long userId) {
+    this.userId = userId;
+  }
+
   /** ------------ get func ----------------* */
+  public long getUserId() {
+    return userId;
+  }
+
   public String getPassword() {
     return password;
   }

@@ -224,6 +224,23 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
   }
 
   @Override
+  public long loadUserId() throws IOException {
+    File userIdFile = checkFileAvailable("user_id", "");
+    if (userIdFile == null) {
+      return -1;
+    }
+    FileInputStream inputStream = new FileInputStream(userIdFile);
+    try (DataInputStream dataInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
+      return dataInputStream.readLong();
+    } catch (Exception e) {
+      throw new IOException(e);
+    } finally {
+      strBufferLocal.remove();
+    }
+  }
+
+  @Override
   public void saveEntity(Role entity) throws IOException {
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
@@ -301,6 +318,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       }
       retList.addAll(set);
     }
+    retList.remove("user_id");
     return retList;
   }
 
@@ -377,5 +395,36 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     } else {
       LOGGER.warn("Role folder not exists");
     }
+  }
+
+  @Override
+  public void saveUserId(long nextUserId) throws IOException {
+    File userInfoProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            entityDirPath
+                + File.separator
+                + "user_id"
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
+    File userDir = new File(entityDirPath);
+    if (!userDir.exists() && !userDir.mkdirs()) {
+      LOGGER.error("Failed to create user dir {}", entityDirPath);
+    }
+
+    try (FileOutputStream fileOutputStream = new FileOutputStream(userInfoProfile);
+        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+      IOUtils.writeLong(outputStream, nextUserId, encodingBufferLocal);
+      outputStream.flush();
+      fileOutputStream.getFD().sync();
+    } catch (Exception e) {
+      LOGGER.warn("meet error when save userId: {}", nextUserId);
+      throw new IOException(e);
+    } finally {
+      encodingBufferLocal.remove();
+    }
+    File oldFile =
+        SystemFileFactory.INSTANCE.getFile(
+            entityDirPath + File.separator + "user_id" + IoTDBConstant.PROFILE_SUFFIX);
+    IOUtils.replaceFile(userInfoProfile, oldFile);
   }
 }

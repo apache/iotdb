@@ -89,6 +89,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
 
   @Override
   protected void saveEntityName(BufferedOutputStream outputStream, Role role) throws IOException {
+    IOUtils.writeLong(outputStream, ((User) role).getUserId(), encodingBufferLocal);
     super.saveEntityName(outputStream, role);
     IOUtils.writeString(
         outputStream, ((User) role).getPassword(), STRING_ENCODING, encodingBufferLocal);
@@ -165,6 +166,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         user.setPrivilegeList(pathPrivilegeList);
       } else {
         assert (tag == VERSION);
+        user.setUserId(dataInputStream.readLong());
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         loadPrivileges(dataInputStream, user);

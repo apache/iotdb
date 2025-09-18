@@ -35,6 +35,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
 
@@ -49,6 +51,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   protected String getNoSuchEntityError() {
     return "No such user %s";
   }
+
+  protected long nextUserId = 9999;
 
   /**
    * BasicUserManager Constructor.
@@ -102,6 +106,20 @@ public abstract class BasicUserManager extends BasicRoleManager {
     LOGGER.info("Admin initialized");
   }
 
+  private void initUserId() {
+    try {
+      long maxUserId = this.accessor.loadUserId();
+      if (maxUserId == -1 || maxUserId < 10000) {
+        nextUserId = 10000;
+      } else {
+        nextUserId = maxUserId;
+      }
+    } catch (IOException e) {
+      LOGGER.warn("meet error in load max userId.");
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public User getEntity(String entityName) {
     return (User) super.getEntity(entityName);
@@ -128,7 +146,15 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
     lock.writeLock(username);
     try {
-      user = new User(username, enableEncrypt ? AuthUtils.encryptPassword(password) : password);
+      long userid = 0;
+      if (username.equals("root")) {
+        userid = 0;
+      } else {
+        userid = ++nextUserId;
+      }
+      user =
+          new User(
+              username, enableEncrypt ? AuthUtils.encryptPassword(password) : password, userid);
       entityMap.put(username, user);
       return true;
     } finally {
@@ -197,6 +223,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   @Override
   public void reset() throws AuthException {
     super.reset();
+    initUserId();
     initAdmin();
   }
 
