@@ -39,7 +39,6 @@ public class IoTDBTableAggregation2IT extends IoTDBTableAggregationIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(5_000);
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataPartitionAllocationStrategy(SHUFFLE);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableLastCache(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }

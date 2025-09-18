@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
@@ -44,6 +45,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.TimeUnit;
@@ -65,6 +67,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   private static final TableDeviceSchemaCache TABLE_DEVICE_SCHEMA_CACHE =
       TableDeviceSchemaCache.getInstance();
 
+  private final QualifiedObjectName tableCompleteName;
   private final String dbName;
   private int outputDeviceIndex;
   private DeviceEntry currentDeviceEntry;
@@ -81,13 +84,18 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   // indicates the index of last(time) aggregation
   private int lastTimeAggregationIdx = -1;
 
+  private final Map<DeviceEntry, Integer> deviceCountMap;
+  private final DataNodeQueryContext dataNodeQueryContext;
+
   public LastQueryAggTableScanOperator(
       AbstractAggTableScanOperatorParameter parameter,
       List<DeviceEntry> cachedDeviceEntries,
       QualifiedObjectName qualifiedObjectName,
       List<Integer> hitCachesIndexes,
       List<Pair<OptionalLong, TsPrimitiveType[]>> lastRowCacheResults,
-      List<TimeValuePair[]> lastValuesCacheResults) {
+      List<TimeValuePair[]> lastValuesCacheResults,
+      Map<DeviceEntry, Integer> deviceCountMap,
+      DataNodeQueryContext dataNodeQueryContext) {
 
     super(parameter);
 
@@ -101,6 +109,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
     this.hitCachesIndexes = hitCachesIndexes;
     this.lastRowCacheResults = lastRowCacheResults;
     this.lastValuesCacheResults = lastValuesCacheResults;
+    this.tableCompleteName = qualifiedObjectName;
     this.dbName = qualifiedObjectName.getDatabaseName();
 
     this.operatorContext.recordSpecifiedInfo(
@@ -110,6 +119,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         lastTimeAggregationIdx = i;
       }
     }
+    this.deviceCountMap = deviceCountMap;
+    this.dataNodeQueryContext = dataNodeQueryContext;
   }
 
   @Override
@@ -518,28 +529,23 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         case TIME:
           if (!hasSetLastTime) {
             hasSetLastTime = true;
+            updateMeasurementList.add("");
             if (i == lastTimeAggregationIdx) {
               LastDescAccumulator lastAccumulator =
                   (LastDescAccumulator) tableAggregator.getAccumulator();
               if (lastAccumulator.hasInitResult()) {
-                updateMeasurementList.add("");
                 updateTimeValuePairList.add(
                     new TimeValuePair(
                         lastAccumulator.getMaxTime(),
                         new TsPrimitiveType.TsLong(lastAccumulator.getMaxTime())));
               } else {
                 currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-                TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-                    dbName,
-                    currentDeviceEntry.getDeviceID(),
-                    new String[] {""},
-                    new TimeValuePair[] {EMPTY_TIME_VALUE_PAIR});
+                updateTimeValuePairList.add(EMPTY_TIME_VALUE_PAIR);
               }
             } else {
               LastByDescAccumulator lastByAccumulator =
                   (LastByDescAccumulator) tableAggregator.getAccumulator();
               if (lastByAccumulator.hasInitResult() && !lastByAccumulator.isXNull()) {
-                updateMeasurementList.add("");
                 updateTimeValuePairList.add(
                     new TimeValuePair(
                         lastByAccumulator.getLastTimeOfY(),
@@ -551,7 +557,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         case FIELD:
           LastByDescAccumulator lastByAccumulator =
               (LastByDescAccumulator) tableAggregator.getAccumulator();
-          // only can update LastCache when last_by return non-null value
+          updateMeasurementList.add(schema.getName());
           if (lastByAccumulator.hasInitResult() && !lastByAccumulator.isXNull()) {
             long lastByTime = lastByAccumulator.getLastTimeOfY();
 
@@ -562,10 +568,11 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
                   new TimeValuePair(lastByTime, new TsPrimitiveType.TsLong(lastByTime)));
             }
 
-            updateMeasurementList.add(schema.getName());
             updateTimeValuePairList.add(
                 new TimeValuePair(
                     lastByTime, cloneTsPrimitiveType(lastByAccumulator.getXResult())));
+          } else {
+            updateTimeValuePairList.add(EMPTY_TIME_VALUE_PAIR);
           }
           break;
         default:
@@ -575,17 +582,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       channel += tableAggregator.getChannelCount();
     }
 
-    if (!updateMeasurementList.isEmpty()) {
-      String[] updateMeasurementArray = updateMeasurementList.toArray(new String[0]);
-      TimeValuePair[] updateTimeValuePairArray =
-          updateTimeValuePairList.toArray(new TimeValuePair[0]);
-      currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-      TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-          dbName,
-          currentDeviceEntry.getDeviceID(),
-          updateMeasurementArray,
-          updateTimeValuePairArray);
-    }
+    checkIfUpdated(updateMeasurementList, updateTimeValuePairList);
   }
 
   private void updateLastCacheUseLastValuesIfPossible() {
@@ -604,19 +601,15 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             hasSetLastTime = true;
             LastDescAccumulator lastAccumulator =
                 (LastDescAccumulator) tableAggregator.getAccumulator();
+            updateMeasurementList.add("");
             if (lastAccumulator.hasInitResult()) {
-              updateMeasurementList.add("");
               updateTimeValuePairList.add(
                   new TimeValuePair(
                       lastAccumulator.getMaxTime(),
                       new TsPrimitiveType.TsLong(lastAccumulator.getMaxTime())));
             } else {
               currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-              TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-                  dbName,
-                  currentDeviceEntry.getDeviceID(),
-                  new String[] {""},
-                  new TimeValuePair[] {EMPTY_TIME_VALUE_PAIR});
+              updateTimeValuePairList.add(EMPTY_TIME_VALUE_PAIR);
             }
           }
           break;
@@ -643,16 +636,52 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       channel += tableAggregator.getChannelCount();
     }
 
+    checkIfUpdated(updateMeasurementList, updateTimeValuePairList);
+  }
+
+  private void checkIfUpdated(
+      List<String> updateMeasurementList, List<TimeValuePair> updateTimeValuePairList) {
     if (!updateMeasurementList.isEmpty()) {
-      String[] updateMeasurementArray = updateMeasurementList.toArray(new String[0]);
-      TimeValuePair[] updateTimeValuePairArray =
-          updateTimeValuePairList.toArray(new TimeValuePair[0]);
       currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-      TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-          dbName,
-          currentDeviceEntry.getDeviceID(),
-          updateMeasurementArray,
-          updateTimeValuePairArray);
+
+      boolean deviceInMultiRegion =
+          deviceCountMap != null && deviceCountMap.containsKey(currentDeviceEntry);
+      if (!deviceInMultiRegion) {
+        TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
+            dbName,
+            currentDeviceEntry.getDeviceID(),
+            updateMeasurementList.toArray(new String[0]),
+            updateTimeValuePairList.toArray(new TimeValuePair[0]));
+        return;
+      }
+
+      dataNodeQueryContext.lock(true);
+      try {
+        Pair<Integer, Map<String, TimeValuePair>> deviceInfo =
+            dataNodeQueryContext.getDeviceInfo(tableCompleteName, currentDeviceEntry);
+        Map<String, TimeValuePair> values = deviceInfo.getRight();
+
+        int size = updateMeasurementList.size();
+        for (int i = 0; i < size; i++) {
+          String measurementName = updateMeasurementList.get(i);
+          TimeValuePair timeValuePair = updateTimeValuePairList.get(i);
+          if (values.containsKey(measurementName)) {
+            TimeValuePair oldValue = values.get(measurementName);
+            if (timeValuePair.getTimestamp() > oldValue.getTimestamp()) {
+              values.put(measurementName, timeValuePair);
+            }
+          } else {
+            values.put(measurementName, timeValuePair);
+          }
+        }
+
+        deviceInfo.left--;
+        if (deviceInfo.left == 0) {
+          dataNodeQueryContext.updateLastCache(tableCompleteName, currentDeviceEntry);
+        }
+      } finally {
+        dataNodeQueryContext.unLock(true);
+      }
     }
   }
 

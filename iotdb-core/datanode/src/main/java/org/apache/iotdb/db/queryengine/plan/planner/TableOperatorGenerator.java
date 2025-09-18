@@ -3094,8 +3094,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           allHitCache = false;
         }
 
+        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
         if (!allHitCache) {
-          DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
           AlignedFullPath alignedPath =
               constructAlignedPath(
                   deviceEntry,
@@ -3104,6 +3104,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   parameter.getAllSensors());
           ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
           unCachedDeviceEntries.add(deviceEntry);
+          addUncachedDeviceToContext(node, context, deviceEntry);
 
           // last cache updateColumns need to put "" as time column
           String[] updateColumns = new String[parameter.getMeasurementColumnNames().size() + 1];
@@ -3120,7 +3121,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         } else {
           hitCachesIndexes.add(i);
           lastRowCacheResults.add(lastByResult.get());
-          cachedDeviceEntries.add(node.getDeviceEntries().get(i));
+          cachedDeviceEntries.add(deviceEntry);
+          decreaseDeviceCount(node, context, deviceEntry);
         }
       }
     } else {
@@ -3185,8 +3187,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           allHitCache = false;
         }
 
+        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
         if (!allHitCache) {
-          DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
           AlignedFullPath alignedPath =
               constructAlignedPath(
                   deviceEntry,
@@ -3195,19 +3197,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   parameter.getAllSensors());
           ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
           unCachedDeviceEntries.add(deviceEntry);
+          addUncachedDeviceToContext(node, context, deviceEntry);
 
           TableDeviceSchemaCache.getInstance()
               .initOrInvalidateLastCache(
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
-                  needInitTime
-                      ? targetColumns
-                      : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
+                  needInitTime && node.getGroupingKeys().isEmpty()
+                      ? Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1)
+                      : targetColumns,
                   false);
         } else {
           hitCachesIndexes.add(i);
           lastValuesCacheResults.add(lastResult);
-          cachedDeviceEntries.add(node.getDeviceEntries().get(i));
+          cachedDeviceEntries.add(deviceEntry);
+          decreaseDeviceCount(node, context, deviceEntry);
         }
       }
     }
@@ -3222,13 +3226,53 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getQualifiedObjectName(),
             hitCachesIndexes,
             lastRowCacheResults,
-            lastValuesCacheResults);
+            lastValuesCacheResults,
+            node.getDeviceCountMap(),
+            context.getInstanceContext().getDataNodeQueryContext());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
     parameter
         .getOperatorContext()
         .setOperatorType(LastQueryAggTableScanOperator.class.getSimpleName());
     return lastQueryOperator;
+  }
+
+  private void addUncachedDeviceToContext(
+      AggregationTableScanNode node, LocalExecutionPlanContext context, DeviceEntry deviceEntry) {
+    boolean deviceInMultiRegion =
+        node.getDeviceCountMap() != null && node.getDeviceCountMap().containsKey(deviceEntry);
+    if (!deviceInMultiRegion) {
+      return;
+    }
+
+    context.dataNodeQueryContext.lock(true);
+    try {
+      context.dataNodeQueryContext.addUnCachedDeviceIfAbsent(
+          node.getQualifiedObjectName(), deviceEntry, node.getDeviceCountMap().get(deviceEntry));
+    } finally {
+      context.dataNodeQueryContext.unLock(true);
+    }
+  }
+
+  /**
+   * Decrease the device count when its last cache was hit. Notice that the count can also be zero
+   * after decrease, we need to update last cache if needed.
+   */
+  private void decreaseDeviceCount(
+      AggregationTableScanNode node, LocalExecutionPlanContext context, DeviceEntry deviceEntry) {
+    boolean deviceInMultiRegion =
+        node.getDeviceCountMap() != null && node.getDeviceCountMap().containsKey(deviceEntry);
+    if (!deviceInMultiRegion) {
+      return;
+    }
+
+    context.dataNodeQueryContext.lock(true);
+    try {
+      context.dataNodeQueryContext.decreaseDeviceAndMayUpdateLastCache(
+          node.getQualifiedObjectName(), deviceEntry, node.getDeviceCountMap().get(deviceEntry));
+    } finally {
+      context.dataNodeQueryContext.unLock(true);
+    }
   }
 
   private SeriesScanOptions buildSeriesScanOptions(
