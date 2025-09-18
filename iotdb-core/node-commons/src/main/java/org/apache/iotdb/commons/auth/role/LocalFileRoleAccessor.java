@@ -84,7 +84,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
 
   // It might be a good idea to use a Version number to control upgrade compatibility.
   // Now it's version 1
-  protected static final int VERSION = 1;
+  protected static final int VERSION = 2;
 
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
