@@ -1527,7 +1527,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showVariablesResp = client.showVariables();
     } catch (ClientManagerException | TException e) {
-      future.setException(e);
+      if (showVariablesResp.getStatus().getCode()
+          == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        future.setException(new TException(MSG_RECONNECTION_FAIL));
+      } else {
+        future.setException(e);
+      }
+      return future;
     }
 
     // build TSBlock
