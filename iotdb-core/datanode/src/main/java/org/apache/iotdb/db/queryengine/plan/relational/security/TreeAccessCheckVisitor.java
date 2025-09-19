@@ -518,10 +518,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return SUCCEED;
     }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
-            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
-        PrivilegeType.SYSTEM);
+    return checkGlobalAuth(userName, PrivilegeType.USE_CQ);
   }
 
   // =================================== UDF related ====================================
@@ -545,13 +542,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkUDFManagement(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return SUCCEED;
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
-            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF),
-        PrivilegeType.SYSTEM);
+    return checkGlobalAuth(userName, PrivilegeType.USE_UDF);
   }
 
   // =================================== model related ====================================
@@ -571,13 +562,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkModelManagement(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return SUCCEED;
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
-            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
-        PrivilegeType.SYSTEM);
+    return checkGlobalAuth(userName, PrivilegeType.USE_MODEL);
   }
 
   // ================================ pipe plugin related ==================================
@@ -632,13 +617,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   private TSStatus checkPipeManagement(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return SUCCEED;
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
-            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.SYSTEM);
+    return checkGlobalAuth(userName, PrivilegeType.USE_PIPE);
   }
 
   // =============================== subscription related ========================================
