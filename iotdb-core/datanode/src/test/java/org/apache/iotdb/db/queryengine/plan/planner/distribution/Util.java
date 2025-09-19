@@ -303,7 +303,10 @@ public class Util {
     return new ISchemaFetcher() {
       @Override
       public ISchemaTree fetchSchema(
-          PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+          PathPatternTree patternTree,
+          boolean withTemplate,
+          MPPQueryContext context,
+          boolean canSeeAuditDB) {
         return ANALYSIS.getSchemaTree();
       }
 
@@ -318,13 +321,19 @@ public class Util {
 
       @Override
       public ISchemaTree fetchRawSchemaInMeasurementLevel(
-          PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+          PathPatternTree patternTree,
+          PathPatternTree authorityScope,
+          MPPQueryContext context,
+          boolean canSeeAuditDB) {
         return ANALYSIS.getSchemaTree();
       }
 
       @Override
       public ISchemaTree fetchSchemaWithTags(
-          PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+          PathPatternTree patternTree,
+          boolean withTemplate,
+          MPPQueryContext context,
+          boolean canSeeAuditDB) {
         return ANALYSIS.getSchemaTree();
       }
 
@@ -417,7 +426,10 @@ public class Util {
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+          PathPatternTree patternTree,
+          PathPatternTree scope,
+          Integer level,
+          boolean canSeeAuditDB) {
         return null;
       }
 

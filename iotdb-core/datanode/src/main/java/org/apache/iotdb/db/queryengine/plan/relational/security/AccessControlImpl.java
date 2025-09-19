@@ -21,7 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -33,11 +35,17 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
+import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl.checkCanSelectAuditTable;
 
 public class AccessControlImpl implements AccessControl {
@@ -88,7 +96,7 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE);
@@ -98,7 +106,7 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP);
@@ -108,7 +116,7 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER);
@@ -128,8 +136,9 @@ public class AccessControlImpl implements AccessControl {
     }
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(tableName.getDatabaseName())) {
       checkCanSelectAuditTable(userName);
+    } else {
+      authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
     }
-    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
   }
 
   @Override
@@ -167,6 +176,11 @@ public class AccessControlImpl implements AccessControl {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return;
     }
+
+    if (includeByAuditTreeDB(path)) {
+      checkCanSelectAuditTable(userName);
+    }
+
     TSStatus status =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathOrPatternPermission(
@@ -367,5 +381,25 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
     return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userName));
+  }
+
+  @Override
+  public TSStatus checkFullPathWriteDataPermission(
+      String userName, IDeviceID device, String measurementId) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
+    try {
+      List<PartialPath> paths =
+          Collections.singletonList(new MeasurementPath(device, measurementId));
+      return AuthorityChecker.getTSStatus(
+          AuthorityChecker.checkFullPathOrPatternListPermission(
+              userName, paths, PrivilegeType.WRITE_DATA),
+          paths,
+          PrivilegeType.WRITE_DATA);
+
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

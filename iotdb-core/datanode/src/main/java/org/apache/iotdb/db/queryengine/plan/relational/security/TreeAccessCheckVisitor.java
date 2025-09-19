@@ -146,9 +146,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE_PATH;
+import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl.READ_ONLY_DB_ERROR_MSG;
 
@@ -292,6 +292,36 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCreateLogicalView(
       CreateLogicalViewStatement statement, TreeAccessCheckContext context) {
+    final List<PartialPath> paths =
+        Objects.nonNull(statement.getTargetPathList())
+            ? statement.getTargetPathList()
+            : Collections.singletonList(
+                statement
+                    .getBatchGenerationItem()
+                    .getIntoDevice()
+                    .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+    for (PartialPath path : paths) {
+      // audit db is read-only
+      if (includeByAuditTreeDB(path)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+    }
+
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      statement.setCanSeeAuditDB(true);
+      if (statement.getQueryStatement() != null) {
+        statement.getQueryStatement().setCanSeeAuditDB(true);
+      }
+      return SUCCEED;
+    }
+    if (!checkHasGlobalAuth(context.userName, PrivilegeType.AUDIT)) {
+      statement.setCanSeeAuditDB(false);
+      if (statement.getQueryStatement() != null) {
+        statement.getQueryStatement().setCanSeeAuditDB(false);
+      }
+    }
+
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<PartialPath> sourcePathList = statement.getSourcePaths().fullPathList;
     if (sourcePathList != null) {
@@ -305,14 +335,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           checkTimeSeriesPermission(context.userName, sourcePathList, PrivilegeType.READ_SCHEMA);
     }
 
-    final List<PartialPath> paths =
-        Objects.nonNull(statement.getTargetPathList())
-            ? statement.getTargetPathList()
-            : Collections.singletonList(
-                statement
-                    .getBatchGenerationItem()
-                    .getIntoDevice()
-                    .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return checkTimeSeriesPermission(context.userName, paths, PrivilegeType.WRITE_SCHEMA);
     }
@@ -335,6 +357,21 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitAlterLogicalView(
       AlterLogicalViewStatement statement, TreeAccessCheckContext context) {
+
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      statement.setCanSeeAuditDB(true);
+      if (statement.getQueryStatement() != null) {
+        statement.getQueryStatement().setCanSeeAuditDB(true);
+      }
+      return SUCCEED;
+    }
+    if (!checkHasGlobalAuth(context.userName, PrivilegeType.AUDIT)) {
+      statement.setCanSeeAuditDB(false);
+      if (statement.getQueryStatement() != null) {
+        statement.getQueryStatement().setCanSeeAuditDB(false);
+      }
+    }
+
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<PartialPath> sourcePathList = statement.getSourcePaths().fullPathList;
     if (sourcePathList != null) {
@@ -633,6 +670,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCreateTrigger(
       CreateTriggerStatement statement, TreeAccessCheckContext context) {
+    if (TREE_MODEL_AUDIT_DATABASE_PATH.include(statement.getPathPattern())) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
     return checkTriggerManagement(context.userName);
   }
 
@@ -698,7 +739,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       // root.__audit can never be deleted
       if (TREE_MODEL_AUDIT_DATABASE.equals(prefixPath)) {
         return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
     }
     if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
@@ -715,7 +756,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     // root.__audit can never be created or alter
     if (TREE_MODEL_AUDIT_DATABASE_PATH.equals(databaseName)) {
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
     }
 
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
@@ -744,6 +785,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   // ==================================== data related ========================================
   @Override
   public TSStatus visitInsertBase(InsertBaseStatement statement, TreeAccessCheckContext context) {
+
+    for (PartialPath path : statement.getDevicePaths()) {
+      // audit db is read-only
+      if (includeByAuditTreeDB(path)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+    }
+
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return SUCCEED;
+    }
     return checkTimeSeriesPermission(
         context.userName,
         statement.getPaths().stream().distinct().collect(Collectors.toList()),
@@ -752,6 +805,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitInsert(InsertStatement statement, TreeAccessCheckContext context) {
+    // audit db is read-only
+    if (includeByAuditTreeDB(statement.getDevice())) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_DATA);
   }
@@ -764,12 +822,24 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitDeleteData(DeleteDataStatement statement, TreeAccessCheckContext context) {
+    for (PartialPath path : statement.getPaths()) {
+      // audit db is read-only
+      if (includeByAuditTreeDB(path)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+    }
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_DATA);
   }
 
   @Override
   public TSStatus visitQuery(QueryStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      statement.setCanSeeAuditDB(true);
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(statement, context.userName);
     try {
       statement.setAuthorityScope(
           AuthorityChecker.getAuthorizedPathTree(context.userName, PrivilegeType.READ_DATA));
@@ -800,6 +870,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCreateTimeseries(
       CreateTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    // audit db is read-only
+    if (includeByAuditTreeDB(statement.getPath())) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
@@ -807,17 +882,26 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement statement, TreeAccessCheckContext context) {
-    List<PartialPath> checkedPaths = statement.getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
+    // audit db is read-only
+    if (includeByAuditTreeDB(statement.getDevicePath())) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
+    return checkTimeSeriesPermission(
+        context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
   public TSStatus visitCreateMultiTimeSeries(
       CreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    // audit db is read-only
+    for (PartialPath path : statement.getPaths()) {
+      if (includeByAuditTreeDB(path)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+    }
+
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
@@ -825,6 +909,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitInternalCreateMultiTimeSeries(
       InternalCreateMultiTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    // audit db is read-only
+    for (PartialPath path : statement.getDeviceMap().keySet()) {
+      if (includeByAuditTreeDB(path)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+    }
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
@@ -832,6 +923,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitInternalCreateTimeseries(
       InternalCreateTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    // audit db is read-only
+    if (includeByAuditTreeDB(statement.getDevicePath())) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
@@ -839,6 +935,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowTimeSeries(
       ShowTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      statement.setCanSeeAuditDB(true);
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(statement, context.userName);
     if (statement.hasTimeCondition()) {
       try {
         statement.setAuthorityScope(
@@ -857,6 +958,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCountTimeSeries(
       CountTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      statement.setCanSeeAuditDB(true);
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(statement, context.userName);
     if (statement.hasTimeCondition()) {
       try {
         statement.setAuthorityScope(
@@ -875,30 +981,55 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCountLevelTimeSeries(
       CountLevelTimeSeriesStatement countStatement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      countStatement.setCanSeeAuditDB(true);
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(countStatement, context.userName);
     return visitAuthorityInformation(countStatement, context);
   }
 
   @Override
   public TSStatus visitCountNodes(
       CountNodesStatement countStatement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      countStatement.setCanSeeAuditDB(true);
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(countStatement, context.userName);
     return visitAuthorityInformation(countStatement, context);
   }
 
   @Override
   public TSStatus visitShowChildNodes(
       ShowChildNodesStatement showChildNodesStatement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      showChildNodesStatement.setCanSeeAuditDB(true);
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(showChildNodesStatement, context.userName);
     return visitAuthorityInformation(showChildNodesStatement, context);
   }
 
   @Override
   public TSStatus visitShowChildPaths(
       ShowChildPathsStatement showChildPathsStatement, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      showChildPathsStatement.setCanSeeAuditDB(true);
+      return SUCCEED;
+    }
+    setCanSeeAuditDB(showChildPathsStatement, context.userName);
     return visitAuthorityInformation(showChildPathsStatement, context);
   }
 
   @Override
   public TSStatus visitAlterTimeSeries(
       AlterTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    // audit db is read-only
+    if (includeByAuditTreeDB(statement.getPath())) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
@@ -906,6 +1037,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitDeleteTimeSeries(
       DeleteTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    // audit db is read-only
+    for (PartialPath path : statement.getPathPatternList()) {
+      if (includeByAuditTreeDB(path)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+    }
     return checkTimeSeriesPermission(
         context.userName, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
   }
@@ -1205,10 +1343,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   protected TSStatus checkWriteOnReadOnlyPath(PartialPath path) {
-    String[] nodes = path.getNodes();
-    if (nodes.length >= 2 && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1])) {
+    if (includeByAuditTreeDB(path)) {
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
     }
     return SUCCEED;
   }

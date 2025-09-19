@@ -99,11 +99,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(final PathPatternTree patternTree, String userName) {
-    return getSchemaPartition(patternTree, userName, true);
-  }
-
-  private SchemaPartition getSchemaPartition(
+  public SchemaPartition getSchemaPartition(
       final PathPatternTree patternTree, String userName, boolean needAuditDB) {
     patternTree.constructTree();
     final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
@@ -179,13 +175,16 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      final PathPatternTree patternTree, final PathPatternTree scope, final Integer level) {
+      final PathPatternTree patternTree,
+      final PathPatternTree scope,
+      final Integer level,
+      final boolean canSeeAuditDB) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       final TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
-              constructSchemaNodeManagementPartitionReq(patternTree, scope, level));
+              constructSchemaNodeManagementPartitionReq(patternTree, scope, level, canSeeAuditDB));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
     } catch (final ClientManagerException | TException e) {
@@ -413,11 +412,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
-      final PathPatternTree patternTree, final PathPatternTree scope, final Integer level) {
+      final PathPatternTree patternTree,
+      final PathPatternTree scope,
+      final Integer level,
+      boolean needAuditDB) {
     try {
       final TSchemaNodeManagementReq schemaNodeManagementReq =
           new TSchemaNodeManagementReq(patternTree.serialize());
       schemaNodeManagementReq.setScopePatternTree(scope.serialize());
+      schemaNodeManagementReq.setNeedAuditDB(needAuditDB);
       if (null == level) {
         schemaNodeManagementReq.setLevel(-1);
       } else {

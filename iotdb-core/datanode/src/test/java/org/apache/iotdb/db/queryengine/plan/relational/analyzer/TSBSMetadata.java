@@ -446,7 +446,10 @@ public class TSBSMetadata implements Metadata {
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+          PathPatternTree patternTree,
+          PathPatternTree scope,
+          Integer level,
+          boolean canSeeAuditDB) {
         return null;
       }
 

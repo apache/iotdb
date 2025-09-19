@@ -582,7 +582,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTable(final TSchemaPartitionReq req) {
     return configManager.getSchemaPartition(
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())));
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())), true);
   }
 
   @Override
@@ -612,7 +612,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
-    return configManager.getNodePathsPartition(partialPath, scope, req.getLevel());
+    return configManager.getNodePathsPartition(
+        partialPath, scope, req.getLevel(), !req.isSetNeedAuditDB() || req.isNeedAuditDB());
   }
 
   @Override

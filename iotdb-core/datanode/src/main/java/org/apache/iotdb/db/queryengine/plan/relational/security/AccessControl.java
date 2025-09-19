@@ -27,6 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.Collection;
 
 public interface AccessControl {
@@ -192,4 +194,7 @@ public interface AccessControl {
   // ====================================== TREE =============================================
 
   TSStatus checkPermissionBeforeProcess(Statement statement, String userName);
+
+  TSStatus checkFullPathWriteDataPermission(
+      String userName, IDeviceID device, String measurementId);
 }

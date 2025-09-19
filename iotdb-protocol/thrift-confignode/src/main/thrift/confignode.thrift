@@ -232,6 +232,7 @@ struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
   3: optional binary scopePatternTree
+  4: optional bool needAuditDB
 }
 
 struct TSchemaNodeManagementResp {

@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.Collection;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
@@ -130,5 +132,11 @@ public class AllowAllAccessControl implements AccessControl {
   @Override
   public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
     return SUCCEED;
+  }
+
+  @Override
+  public TSStatus checkFullPathWriteDataPermission(
+      String userName, IDeviceID device, String measurementId) {
+    return null;
   }
 }

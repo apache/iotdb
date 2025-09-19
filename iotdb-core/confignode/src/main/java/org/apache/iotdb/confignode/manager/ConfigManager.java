@@ -828,7 +828,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree) {
+  public TSchemaPartitionTableResp getSchemaPartition(
+      final PathPatternTree patternTree, boolean needAuditDB) {
     // Construct empty response
 
     final TSStatus status = confirmLeader();
@@ -843,6 +844,9 @@ public class ConfigManager implements IManager {
     final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(false);
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (final String database : allDatabases) {
+      if (!needAuditDB && TREE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(database)) {
+        continue;
+      }
       try {
         allDatabasePaths.add(PartialPath.getQualifiedDatabasePartialPath(database));
       } catch (final IllegalPathException e) {
@@ -1016,12 +1020,13 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSchemaNodeManagementResp getNodePathsPartition(
-      PartialPath partialPath, PathPatternTree scope, Integer level) {
+      PartialPath partialPath, PathPatternTree scope, Integer level, boolean needAuditDB) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetNodePathsPartitionPlan getNodePathsPartitionPlan = new GetNodePathsPartitionPlan();
       getNodePathsPartitionPlan.setPartialPath(partialPath);
       getNodePathsPartitionPlan.setScope(scope);
+      getNodePathsPartitionPlan.setNeedAuditDB(needAuditDB);
       if (null != level) {
         getNodePathsPartitionPlan.setLevel(level);
       }
@@ -2219,6 +2224,8 @@ public class ConfigManager implements IManager {
             && !path.getDevicePath().hasWildcard()) {
           Map<String, TDatabaseSchema> databaseSchemaMap =
               getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
+          // root.__audit can never be deleted
+          databaseSchemaMap.remove(TREE_MODEL_AUDIT_DATABASE);
           if (!databaseSchemaMap.isEmpty()) {
             deleteDatabaseSchemas.addAll(databaseSchemaMap.values());
             deleteDatabasePatternPaths.add(path);
@@ -2564,7 +2571,13 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       final PathPatternTree patternTree) {
-    return getRelatedSchemaRegionGroup(getSchemaPartition(patternTree).getSchemaPartitionTable());
+    return getRelatedSchemaRegionGroup(patternTree, true);
+  }
+
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      final PathPatternTree patternTree, boolean needAuditDB) {
+    return getRelatedSchemaRegionGroup(
+        getSchemaPartition(patternTree, needAuditDB).getSchemaPartitionTable());
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup4TableModel(
@@ -2596,7 +2609,8 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       final PathPatternTree patternTree) {
-    return getRelatedDataRegionGroup(getSchemaPartition(patternTree).getSchemaPartitionTable());
+    return getRelatedDataRegionGroup(
+        getSchemaPartition(patternTree, false).getSchemaPartitionTable());
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup4TableModel(

@@ -34,4 +34,12 @@ public class Audit {
       new PartialPath(new String[] {"root", TABLE_MODEL_AUDIT_DATABASE, MULTI_LEVEL_PATH_WILDCARD});
 
   private Audit() {}
+
+  /**
+   * @param prefixPath without any * or **
+   */
+  public static boolean includeByAuditTreeDB(PartialPath prefixPath) {
+    String[] nodes = prefixPath.getNodes();
+    return nodes.length >= 2 && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1]);
+  }
 }

@@ -438,7 +438,8 @@ public interface IManager {
    *
    * @return TSchemaPartitionResp
    */
-  TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree);
+  TSchemaPartitionTableResp getSchemaPartition(
+      final PathPatternTree patternTree, boolean needAuditDB);
 
   /**
    * Get SchemaPartition with <databaseName, seriesSlot>.
@@ -468,7 +469,7 @@ public interface IManager {
    * @return TSchemaNodeManagementResp
    */
   TSchemaNodeManagementResp getNodePathsPartition(
-      PartialPath partialPath, PathPatternTree scope, Integer level);
+      PartialPath partialPath, PathPatternTree scope, Integer level, boolean needAuditDB);
 
   /**
    * Get DataPartition.
