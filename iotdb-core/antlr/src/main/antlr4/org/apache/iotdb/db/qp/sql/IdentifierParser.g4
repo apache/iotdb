@@ -46,6 +46,7 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
+    | AVAILABLE
     | BEFORE
     | BEGIN
     | BETWEEN
@@ -264,6 +265,7 @@ keyWords
     | UPDATE
     | UPSERT
     | URI
+    | URLS
     | USED
     | USER
     | USING
