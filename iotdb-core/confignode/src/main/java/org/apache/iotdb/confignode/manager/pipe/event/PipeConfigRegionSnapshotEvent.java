@@ -205,17 +205,20 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
-    return new PipeConfigRegionSnapshotEvent(
-        snapshotPath,
-        templateFilePath,
-        fileType,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userName,
-        skipIfNoPrivileges);
+    PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent =
+        new PipeConfigRegionSnapshotEvent(
+            snapshotPath,
+            templateFilePath,
+            fileType,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userName,
+            skipIfNoPrivileges);
+    pipeConfigRegionSnapshotEvent.setAuthUserName(authUserName);
+    return pipeConfigRegionSnapshotEvent;
   }
 
   @Override
