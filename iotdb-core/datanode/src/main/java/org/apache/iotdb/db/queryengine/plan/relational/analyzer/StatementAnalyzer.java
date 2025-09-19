@@ -220,10 +220,13 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -506,7 +509,7 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
-      if (!node.parseRawExpression(
+      if (!node.parseWhere(
           null,
           table,
           table.getColumnList().stream()
@@ -530,7 +533,8 @@ public class StatementAnalyzer {
                     assignment -> {
                       final Expression parsedColumn =
                           analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getName());
+                                  translationMap, translationMap.getScope(), assignment.getName())
+                              .getRight();
                       if (!(parsedColumn instanceof SymbolReference)
                           || table
                                   .getColumnSchema(((SymbolReference) parsedColumn).getName())
@@ -544,10 +548,15 @@ public class StatementAnalyzer {
                       }
                       attributeNames.add((SymbolReference) parsedColumn);
 
-                      return new UpdateAssignment(
-                          parsedColumn,
+                      final Pair<Type, Expression> expressionPair =
                           analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getValue()));
+                              translationMap, translationMap.getScope(), assignment.getValue());
+                      if (!expressionPair.getLeft().equals(StringType.STRING)
+                          && !expressionPair.getLeft().equals(BinaryType.TEXT)) {
+                        throw new SemanticException(
+                            "Update's attribute value must be STRING or TEXT.");
+                      }
+                      return new UpdateAssignment(parsedColumn, expressionPair.getRight());
                     })
                 .collect(Collectors.toList()));
       }
@@ -567,7 +576,7 @@ public class StatementAnalyzer {
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
       node.parseModEntries(table);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
-      node.parseRawExpression(
+      node.parseWhere(
           null,
           table,
           table.getColumnList().stream()
@@ -4511,7 +4520,7 @@ public class StatementAnalyzer {
       final String tableName = node.getTableName();
 
       if (Objects.isNull(database)) {
-        throw new SemanticException("The database must be set before show devices.");
+        throw new SemanticException("The database must be set.");
       }
 
       if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
@@ -4556,11 +4565,11 @@ public class StatementAnalyzer {
       return translationMap;
     }
 
-    private Expression analyzeAndRewriteExpression(
+    private Pair<Type, Expression> analyzeAndRewriteExpression(
         final TranslationMap translationMap, final Scope scope, final Expression expression) {
-      analyzeExpression(expression, scope);
+      final Type type = analyzeExpression(expression, scope).getType(expression);
       scope.getRelationType().getAllFields();
-      return translationMap.rewrite(expression);
+      return new Pair<>(type, translationMap.rewrite(expression));
     }
 
     @Override
