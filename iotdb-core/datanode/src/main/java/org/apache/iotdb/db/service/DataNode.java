@@ -281,7 +281,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 null);
         String logMessage =
             String.format(
-                "Successfully start the Audit service with configurations (auditableOperationType %s, auditableOperationLevel %s, auditableOperationResult %s ) in DataNode %s",
+                "Successfully start the Audit service with configurations (auditableOperationType %s, auditableOperationLevel %s, auditableOperationResult %s) in DataNode %s",
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationType().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
