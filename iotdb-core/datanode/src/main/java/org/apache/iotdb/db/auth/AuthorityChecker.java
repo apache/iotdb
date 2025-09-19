@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
@@ -63,6 +64,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_COLUMN_HEADERS;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
 
 // Authority checker is SingleTon working at datanode.
@@ -385,7 +387,7 @@ public class AuthorityChecker {
 
     List<ColumnHeader> headerList = new ArrayList<>();
     TsBlockBuilder builder;
-    if (listRoleUser) {
+    if (authResp.tag.equals(ColumnHeaderConstant.ROLE)) {
       headerList.add(new ColumnHeader(authResp.getTag(), TSDataType.TEXT));
       types.add(TSDataType.TEXT);
       builder = new TsBlockBuilder(types);
@@ -394,6 +396,22 @@ public class AuthorityChecker {
         builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
         builder.declarePosition();
       }
+    } else if (authResp.tag.equals(ColumnHeaderConstant.USER)) {
+      headerList = LIST_USER_COLUMN_HEADERS;
+      types =
+          LIST_USER_COLUMN_HEADERS.stream()
+              .map(ColumnHeader::getColumnType)
+              .collect(Collectors.toList());
+      builder = new TsBlockBuilder(types);
+      for (TListUserInfo userinfo : authResp.getUsersInfo()) {
+        builder.getTimeColumnBuilder().writeLong(0L);
+        builder.getColumnBuilder(0).writeLong(userinfo.getUserId());
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(new Binary(userinfo.getUsername(), TSFileConfig.STRING_CHARSET));
+        builder.declarePosition();
+      }
+
     } else {
       headerList = LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
       types =

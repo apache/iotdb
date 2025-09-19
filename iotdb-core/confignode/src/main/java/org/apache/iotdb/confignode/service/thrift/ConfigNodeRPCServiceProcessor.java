@@ -670,6 +670,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
     resp.setTag(dataSet.getTag());
+    resp.setUsersInfo(dataSet.getUsersInfo());
     return resp;
   }
 

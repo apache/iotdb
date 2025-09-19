@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 
 import java.io.ByteArrayOutputStream;
@@ -117,6 +118,15 @@ public class User extends Role {
     resp.setIsOpenIdUser(isOpenIdUser);
     resp.setRoleSet(roleSet);
     return resp;
+  }
+
+  public TListUserInfo convertToListUserInfo( ) {
+    TListUserInfo userInfo = new TListUserInfo();
+    userInfo.setUserId(userId);
+    userInfo.setUsername(name);
+    userInfo.setMaxSessionPerUser(maxSessionPerUser);
+    userInfo.setMinSessionPerUser(minSessionPerUser);
+    return userInfo;
   }
 
   /** -------------- misc ----------------* */

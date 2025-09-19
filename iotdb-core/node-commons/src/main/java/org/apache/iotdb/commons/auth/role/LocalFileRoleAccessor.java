@@ -233,6 +233,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     FileInputStream inputStream = new FileInputStream(userIdFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
+      dataInputStream.readInt(); // read version
       return dataInputStream.readLong();
     } catch (Exception e) {
       throw new IOException(e);
@@ -420,6 +421,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(userInfoProfile);
         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+      IOUtils.writeInt(outputStream, VERSION, encodingBufferLocal);
       IOUtils.writeLong(outputStream, nextUserId, encodingBufferLocal);
       outputStream.flush();
       fileOutputStream.getFD().sync();
