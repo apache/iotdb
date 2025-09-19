@@ -1329,7 +1329,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(node.getQueryType());
     TSStatus status = node.checkStatementIsValid(context.getSession().getUserName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new SemanticException(status.getMessage());
+      throw new AccessDeniedException(status.getMessage());
     }
     accessControl.checkUserCanRunRelationalAuthorStatement(
         context.getSession().getUserName(), node);

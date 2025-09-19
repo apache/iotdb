@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -315,7 +316,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     }
     TSStatus status = statement.checkStatementIsValid(context.getSession().getUserName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new SemanticException(status.getMessage());
+      throw new AccessDeniedException(status.getMessage());
     }
     return new AuthorizerTask(statement);
   }
