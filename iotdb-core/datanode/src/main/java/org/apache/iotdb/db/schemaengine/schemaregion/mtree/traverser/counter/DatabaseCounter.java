@@ -48,9 +48,8 @@ public class DatabaseCounter<N extends IMNode<N>> extends DatabaseTraverser<Void
 
   @Override
   protected Void generateResult(N nextMatchedNode) {
-    if (needAuditDB) {
-      count++;
-    } else {
+    count++;
+    if (!needAuditDB) {
       PartialPath dbName = nextMatchedNode.getAsDatabaseMNode().getPartialPath();
       if (TREE_MODEL_AUDIT_DATABASE_PATH.equals(dbName)) {
         count--;
