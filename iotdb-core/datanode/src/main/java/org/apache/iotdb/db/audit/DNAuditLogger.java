@@ -151,16 +151,16 @@ public class DNAuditLogger extends AbstractAuditLogger {
         });
     insertStatement.setDataTypes(
         new TSDataType[] {
-          TSDataType.TEXT,
-          TSDataType.TEXT,
-          TSDataType.TEXT,
-          TSDataType.TEXT,
-          TSDataType.TEXT,
-          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.STRING,
+          TSDataType.STRING,
+          TSDataType.STRING,
+          TSDataType.STRING,
+          TSDataType.STRING,
           TSDataType.BOOLEAN,
-          TSDataType.TEXT,
-          TSDataType.TEXT,
-          TSDataType.TEXT
+          TSDataType.STRING,
+          TSDataType.STRING,
+          TSDataType.STRING,
         });
     return insertStatement;
   }

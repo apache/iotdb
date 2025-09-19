@@ -270,7 +270,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
         AuditLogFields fields =
             new AuditLogFields(
-                "root",
+                null,
                 -1,
                 null,
                 AuditEventType.CHANGE_AUDIT_OPTION,
@@ -281,7 +281,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 null);
         String logMessage =
             String.format(
-                "Successfully replace enableAuditLog's default value with true in DataNode %s",
+                "Successfully start the Audit service with configurations (auditableOperationType %s, auditableOperationLevel %s, auditableOperationResult %s ) in DataNode %s",
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationType().toString(),
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
                 thisNode);
         DNAuditLogger.getInstance().log(fields, logMessage);
       }
