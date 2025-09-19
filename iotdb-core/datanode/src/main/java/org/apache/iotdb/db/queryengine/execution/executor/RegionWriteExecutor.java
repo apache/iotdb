@@ -591,7 +591,7 @@ public class RegionWriteExecutor {
               final int errorCode = metadataException.getErrorCode();
               if (errorCode != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
                   || errorCode != TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
-                LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+                LOGGER.info(METADATA_ERROR_MSG, metadataException);
               }
               failingStatus.add(
                   RpcUtils.getStatus(
