@@ -40,6 +40,10 @@ import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
@@ -86,6 +90,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -201,6 +206,7 @@ import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -2970,6 +2976,27 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (IllegalPathException | QueryProcessException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     }
+  }
+
+  @Override
+  public TSStatus writeAuditLog(TAuditLogReq req) {
+    AuditLogFields fields =
+        new AuditLogFields(
+            req.getUsername(),
+            req.getUserId(),
+            req.getCliHostname(),
+            AuditEventType.valueOf(req.getAuditEventType()),
+            AuditLogOperation.valueOf(req.getOperationType()),
+            PrivilegeType.valueOf(req.getPrivilegeType()),
+            req.isResult(),
+            req.getDatabase(),
+            req.getSqlString());
+    try {
+      DNAuditLogger.getInstance().logFromCN(fields, req.getLog(), req.getCnId());
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.WRITE_AUDIT_LOG, e.getErrorCode());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public void handleClientExit() {

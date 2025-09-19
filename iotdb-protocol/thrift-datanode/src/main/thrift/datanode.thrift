@@ -246,7 +246,7 @@ struct TUpdateTriggerLocationReq {
 struct TFireTriggerReq {
   1: required string triggerName
   2: required binary tablet
-  3: required byte triggerEvent
+  3: required i8 triggerEvent
 }
 
 struct TFireTriggerResp {
@@ -642,6 +642,21 @@ struct TFetchTimeseriesResp {
   6: optional list<binary> tsDataset
   7: optional bool hasMoreData
 }
+
+struct TAuditLogReq {
+  1: required string username
+  2: required i32 userId
+  3: required string cliHostname
+  4: required string auditEventType
+  5: required string operationType
+  6: required string privilegeType
+  7: required bool result
+  8: required string database
+  9: required string sqlString
+  10: required string log
+  11: required i32 cnId
+}
+
 /**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
@@ -1214,6 +1229,11 @@ service IDataNodeRPCService {
 
   /** to write audit log or other events as time series **/
   common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
+
+  /**
+   * Write an audit log entry to the DataNode's AuditEventLogger
+   */
+  common.TSStatus writeAuditLog(TAuditLogReq req);
 }
 
 service MPPDataExchangeService {

@@ -220,10 +220,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -248,9 +245,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "drop database root.**", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "drop database root.**", null);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());

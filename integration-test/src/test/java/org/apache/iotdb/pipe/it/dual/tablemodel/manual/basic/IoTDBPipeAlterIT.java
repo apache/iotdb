@@ -456,7 +456,6 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAlterPipeSourceAndSink() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-    boolean insertResult = true;
 
     final Consumer<String> handleFailure =
         o -> {
@@ -478,11 +477,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
       fail(e.getMessage());
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-    insertResult = insertResult && TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
-    if (!insertResult) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+    TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
 
     // Check data on receiver
     TableModelUtils.assertData("test", "test", 0, 100, receiverEnv, handleFailure);
@@ -496,12 +492,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
-    insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-    insertResult =
-        insertResult && TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
-    if (!insertResult) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+    TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         TableModelUtils.getQuerySql("test"),

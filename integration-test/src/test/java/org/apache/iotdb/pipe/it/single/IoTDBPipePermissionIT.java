@@ -43,10 +43,8 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT1.class})
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
   @Test
-  public void testSinkPermission() throws Exception {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(env, "create user `thulab` 'passwd'", null)) {
-      return;
-    }
+  public void testSinkPermission() {
+    TestUtils.executeNonQuery(env, "create user `thulab` 'passwd'", null);
 
     // Shall fail if username is specified without password
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -104,38 +102,22 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.createDataBaseAndTable(env, "test1", "test");
 
     // Write some data
-    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
-      return;
-    }
+    TableModelUtils.insertData("test1", "test", 0, 100, env);
 
     // Filter this
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery("test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush", null);
 
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, env);
 
     // Continue, ensure that it won't block
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test1",
-        BaseEnv.TABLE_SQL_DIALECT,
-        env,
-        "grant INSERT on test.test1 to user thulab",
-        null)) {
-      return;
-    }
-    if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
-      return;
-    }
+    TestUtils.executeNonQuery(
+        "test1", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on test.test1 to user thulab", null);
+    TableModelUtils.insertData("test1", "test1", 0, 100, env);
     TableModelUtils.assertCountData("test", "test1", 100, env);
 
     // Clear data, avoid resending
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, env, "drop database test1", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery("test", BaseEnv.TABLE_SQL_DIALECT, env, "drop database test1", null);
 
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -149,17 +131,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.createDataBaseAndTable(env, "test", "test1");
     TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
 
-    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
-      return;
-    }
+    TableModelUtils.insertData("test1", "test", 0, 100, env);
 
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, env);
 
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on any to user thulab", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(
+        "test", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on any to user thulab", null);
 
     TableModelUtils.assertCountData("test", "test", 100, env);
 
@@ -186,6 +164,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
               .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName("thulab"))
               .pipeInfoList
               .size());
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 
@@ -196,24 +176,18 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.createDataBaseAndTable(env, "test", "test");
     TableModelUtils.createDataBaseAndTable(env, "test1", "test");
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         "test",
         BaseEnv.TABLE_SQL_DIALECT,
         env,
         Arrays.asList(
             "create user thulab 'passwD@123456'", "grant INSERT on test.test1 to user thulab"),
-        null)) {
-      return;
-    }
+        null);
 
     // Write some data
-    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
-      return;
-    }
+    TableModelUtils.insertData("test1", "test", 0, 100, env);
 
-    if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
-      return;
-    }
+    TableModelUtils.insertData("test1", "test1", 0, 100, env);
 
     // Use current session, user is root
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);

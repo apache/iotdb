@@ -1434,11 +1434,11 @@ public class DataRegion implements IDataRegionForQuery {
               if (node.isGeneratedByRemoteConsensusLeader()) {
                 // If current node is follower, after request config node and get the answer that
                 // table is exist or not, then tell leader node when table is not exist.
-                try {
-                  TDescTableResp resp =
-                      ConfigNodeClientManager.getInstance()
-                          .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)
-                          .describeTable(getDatabaseName(), tableName, false);
+                TDescTableResp resp;
+                try (ConfigNodeClient client =
+                    ConfigNodeClientManager.getInstance()
+                        .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+                  resp = client.describeTable(getDatabaseName(), tableName, false);
                   tsTable =
                       (resp != null) && (resp.tableInfo != null)
                           ? TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo())
@@ -3297,6 +3297,9 @@ public class DataRegion implements IDataRegionForQuery {
       return Optional.empty();
     }
     if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+      return Optional.empty();
+    }
+    if (databaseName.startsWith(SchemaConstant.AUDIT_DATABASE)) {
       return Optional.empty();
     }
     int lastIndex = databaseName.lastIndexOf("-");

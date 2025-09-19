@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -27,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -90,6 +95,22 @@ public class DataNodeShutdownHook extends Thread {
   @Override
   public void run() {
     logger.info("DataNode exiting...");
+    if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
+      AuditLogFields fields =
+          new AuditLogFields(
+              null,
+              -1,
+              null,
+              AuditEventType.DN_SHUTDOWN,
+              AuditLogOperation.CONTROL,
+              PrivilegeType.SYSTEM,
+              true,
+              null,
+              null);
+      String logMessage = String.format("DataNode %s exiting...", nodeLocation);
+      DNAuditLogger.getInstance().log(fields, logMessage);
+    }
+
     startWatcher();
     // Stop external rpc service firstly.
     ExternalRPCService.getInstance().stop();

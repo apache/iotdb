@@ -1038,6 +1038,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 "Failed to create pipe %s, setting %s is not allowed.",
                 node.getPipeName(), ExtractorAttribute));
       }
+      if (ExtractorAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to create pipe %s, setting %s is not allowed.",
+                node.getPipeName(), ExtractorAttribute));
+      }
     }
 
     // Inject table model into the extractor attributes
@@ -1159,6 +1165,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Map<String, String> extractorAttributes = node.getExtractorAttributes();
     for (final String extractorAttributeKey : extractorAttributes.keySet()) {
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to alter pipe %s, modifying %s is not allowed.",
+                pipeName, extractorAttributeKey));
+      }
+      if (extractorAttributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",

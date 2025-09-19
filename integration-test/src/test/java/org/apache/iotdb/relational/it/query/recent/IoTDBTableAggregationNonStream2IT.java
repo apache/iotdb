@@ -39,7 +39,6 @@ public class IoTDBTableAggregationNonStream2IT extends IoTDBTableAggregationNonS
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(5_000);
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataPartitionAllocationStrategy(SHUFFLE);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableLastCache(false);
     EnvFactory.getEnv().initClusterEnvironment();
     String original = createSqls[2];
     // make 'province', 'city', 'region' be FIELD to cover cases using GroupedAccumulator

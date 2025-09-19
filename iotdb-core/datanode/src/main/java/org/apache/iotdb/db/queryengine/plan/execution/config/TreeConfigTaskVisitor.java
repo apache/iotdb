@@ -570,6 +570,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
                 "Failed to create pipe %s, setting %s is not allowed.",
                 createPipeStatement.getPipeName(), ExtractorAttribute));
       }
+      if (ExtractorAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to create pipe %s, setting %s is not allowed.",
+                createPipeStatement.getPipeName(), ExtractorAttribute));
+      }
     }
 
     // Inject tree model into the extractor attributes
@@ -597,6 +603,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     for (final String extractorAttributeKey :
         alterPipeStatement.getExtractorAttributes().keySet()) {
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to alter pipe %s, modifying %s is not allowed.",
+                alterPipeStatement.getPipeName(), extractorAttributeKey));
+      }
+      if (extractorAttributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",
