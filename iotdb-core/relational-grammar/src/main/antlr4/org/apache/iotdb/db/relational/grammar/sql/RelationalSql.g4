@@ -969,7 +969,7 @@ groupingSet
     ;
 
 namedQuery
-    : name=identifier (columnAliases)? AS '(' query ')'
+    : name=identifier (columnAliases)? AS MATERIALIZED? '(' query ')'
     ;
 
 setQuantifier

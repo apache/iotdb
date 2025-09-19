@@ -28,12 +28,17 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -95,6 +100,10 @@ public class MPPQueryContext {
   private LongConsumer reserveMemoryForSchemaTreeFunc = null;
 
   private boolean userQuery = false;
+
+  private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
+  // If this is a subquery, we do not release CTE query result
+  private boolean subquery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -425,5 +434,29 @@ public class MPPQueryContext {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean isSubquery() {
+    return subquery;
+  }
+
+  public void setSubquery(boolean subquery) {
+    this.subquery = subquery;
+  }
+
+  public void addCteDataStore(Table table, CteDataStore dataStore) {
+    cteDataStores.put(NodeRef.of(table), dataStore);
+  }
+
+  public Map<NodeRef<Table>, CteDataStore> getCteDataStores() {
+    return cteDataStores;
+  }
+
+  public CteDataStore getCteDataStore(Table table) {
+    return cteDataStores.get(NodeRef.of(table));
+  }
+
+  public void setCteDataStores(Map<NodeRef<Table>, CteDataStore> cteDataStores) {
+    this.cteDataStores = cteDataStores;
   }
 }
