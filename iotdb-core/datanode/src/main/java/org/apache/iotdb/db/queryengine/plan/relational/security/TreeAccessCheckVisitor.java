@@ -361,7 +361,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitAlterLogicalView(
       AlterLogicalViewStatement statement, TreeAccessCheckContext context) {
-
     if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
       statement.setCanSeeAuditDB(true);
       if (statement.getQueryStatement() != null) {
@@ -399,6 +398,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitRenameLogicalView(
       RenameLogicalViewStatement statement, TreeAccessCheckContext context) {
+    // audit db is read-only
+    if (includeByAuditTreeDB(statement.getNewName())) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
     return checkTimeSeriesPermission(
         context.userName,
         ImmutableList.of(statement.getOldName(), statement.getNewName()),
