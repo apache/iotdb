@@ -211,10 +211,28 @@ public class CommonDescriptor {
             properties.getProperty(
                 "timestamp_precision_check_enabled",
                 String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
-
     config.setDatanodeTokenTimeoutMS(
         Integer.parseInt(
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
+
+    config.setEnableAuditLog(
+        Boolean.parseBoolean(
+            properties
+                .getProperty("enable_audit_log", String.valueOf(config.isEnableAuditLog()))
+                .trim()));
+    config.setAuditableOperationType(
+        properties.getProperty("auditable_operation_type", "DDL,DML,QUERY,CONTROL").trim());
+    config.setAuditableOperationLevel(
+        properties
+            .getProperty(
+                "auditable_operation_level", config.getAuditableOperationLevel().toString())
+            .trim()
+            .toUpperCase());
+    config.setAuditableOperationResult(
+        properties
+            .getProperty("auditable_operation_result", config.getAuditableOperationResult())
+            .trim()
+            .toUpperCase());
 
     PipeDescriptor.loadPipeProps(config, properties, false);
     loadSubscriptionProps(properties);

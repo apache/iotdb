@@ -295,6 +295,8 @@ public class PartitionCache {
         for (final IDeviceID deviceID : result.getMissedDevices()) {
           if (PathUtils.isStartWith(deviceID, SchemaConstant.SYSTEM_DATABASE)) {
             databaseNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
+          } else if (PathUtils.isStartWith(deviceID, SchemaConstant.AUDIT_DATABASE)) {
+            databaseNamesNeedCreated.add(SchemaConstant.AUDIT_DATABASE);
           } else {
             final PartialPath databaseNameNeedCreated =
                 MetaUtils.getDatabasePathByLevel(
@@ -486,10 +488,15 @@ public class PartitionCache {
               throw new StatementAnalyzeException("Failed to get database Map");
             }
           } else {
-            // check if it is to auto create the system database
+            // check if it is to auto create the system or audit database
             for (IDeviceID deviceID : deviceIDs) {
               if (!deviceID.isTableModel()
                   && deviceID.startWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
+                createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
+                break;
+              }
+              if (!deviceID.isTableModel()
+                  && deviceID.startWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
                 createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
                 break;
               }

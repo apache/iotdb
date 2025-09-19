@@ -175,7 +175,10 @@ class NormalSchemaFetcher {
     if (config.isAutoCreateSchemaEnabled()
         || schemaComputationWithAutoCreation
             .getDevicePath()
-            .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
+            .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)
+        || schemaComputationWithAutoCreation
+            .getDevicePath()
+            .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
       // Check the isAligned value. If the input value is different from the actual value of the
       // existing device, throw exception.
       PartialPath devicePath = schemaComputationWithAutoCreation.getDevicePath();
@@ -334,6 +337,12 @@ class NormalSchemaFetcher {
                   .get(i)
                   .getDevicePath()
                   .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
+      indexOfDevicesNeedAutoCreateSchema.removeIf(
+          i ->
+              !schemaComputationWithAutoCreationList
+                  .get(i)
+                  .getDevicePath()
+                  .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
     }
 
     // [Step 5] Auto Create and process the missing schema

@@ -3299,6 +3299,9 @@ public class DataRegion implements IDataRegionForQuery {
     if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
       return Optional.empty();
     }
+    if (databaseName.startsWith(SchemaConstant.AUDIT_DATABASE)) {
+      return Optional.empty();
+    }
     int lastIndex = databaseName.lastIndexOf("-");
     if (lastIndex == -1) {
       lastIndex = databaseName.length();

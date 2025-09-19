@@ -30,6 +30,9 @@ public class SystemConstant {
 
   public static final String SYSTEM_DATABASE = "root.__system";
   public static final String SYSTEM_PREFIX_KEY = "__system";
+
+  public static final String AUDIT_DATABASE = "root.__audit";
+  public static final String AUDIT_PREFIX_KEY = "__audit";
   public static final String PREFIX_PASSWORD_HISTORY =
       "root." + SYSTEM_PREFIX_KEY + ".password_history";
 

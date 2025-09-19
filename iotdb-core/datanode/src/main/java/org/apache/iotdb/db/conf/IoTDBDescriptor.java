@@ -903,7 +903,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
-
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);

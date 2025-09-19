@@ -68,6 +68,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -354,6 +355,7 @@ public class ConfigManager implements IManager {
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
+  private final CNAuditLogger auditLogger;
 
   private static final String DATABASE = "\tDatabase=";
 
@@ -413,6 +415,7 @@ public class ConfigManager implements IManager {
     this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
     this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
+    this.auditLogger = new CNAuditLogger(this);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
     // LoadManager will register PipeManager as a listener.
@@ -1277,6 +1280,20 @@ public class ConfigManager implements IManager {
   @Override
   public SubscriptionManager getSubscriptionManager() {
     return subscriptionManager;
+  }
+
+  @Override
+  public CNAuditLogger getAuditLogger() {
+    return auditLogger;
+  }
+
+  @Override
+  public TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId) {
+    Map<TConsensusGroupId, Integer> regionLeaderMap =
+        getLoadManager().getLoadCache().getRegionLeaderMap();
+    Integer regionLeaderId = regionLeaderMap.get(regionId);
+    Map<Integer, TDataNodeLocation> dataNodeMap = getNodeManager().getRegisteredDataNodeLocations();
+    return dataNodeMap.get(regionLeaderId);
   }
 
   @Override
