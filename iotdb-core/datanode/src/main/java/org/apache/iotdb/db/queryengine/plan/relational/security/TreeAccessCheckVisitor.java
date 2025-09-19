@@ -145,6 +145,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -1258,19 +1259,42 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
     List<PartialPath> checkedPaths = statement.getPaths();
-    for (PartialPath checkedPath : checkedPaths) {
+    boolean[] pathsNotEndWithMultiLevelWildcard = null;
+    for (int i = 0; i < checkedPaths.size(); i++) {
+      PartialPath checkedPath = checkedPaths.get(i);
       TSStatus status = checkWriteOnReadOnlyPath(checkedPath);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
+      }
+      if (!checkedPath.endWithMultiLevelWildcard()) {
+        pathsNotEndWithMultiLevelWildcard =
+            pathsNotEndWithMultiLevelWildcard == null
+                ? new boolean[checkedPaths.size()]
+                : pathsNotEndWithMultiLevelWildcard;
+        pathsNotEndWithMultiLevelWildcard[i] = true;
       }
     }
     if (checkHasGlobalAuth(context.userName, PrivilegeType.SYSTEM)) {
       return SUCCEED;
     }
+
+    // Using paths end with '**' to check permission
+    List<PartialPath> pathsForCheckingPermissions = checkedPaths;
+    if (pathsNotEndWithMultiLevelWildcard != null) {
+      pathsForCheckingPermissions = new ArrayList<>(checkedPaths.size());
+      for (int i = 0; i < checkedPaths.size(); i++) {
+        if (pathsNotEndWithMultiLevelWildcard[i]) {
+          pathsForCheckingPermissions.add(
+              checkedPaths.get(i).concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+          continue;
+        }
+        pathsForCheckingPermissions.add(checkedPaths.get(i));
+      }
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathOrPatternListPermission(
-            context.userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
+            context.userName, pathsForCheckingPermissions, PrivilegeType.WRITE_SCHEMA),
+        pathsForCheckingPermissions,
         PrivilegeType.WRITE_SCHEMA);
   }
 

@@ -247,7 +247,7 @@ public class IoTDBSeriesPermissionIT {
     resultSetEqualTest(
         "show all ttl",
         showTTLColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        new String[] {"root.**,INF,", "root.test,10000,", "root.test.**,10000,"},
+        new String[] {"root.test,10000,", "root.test.**,10000,"},
         "test1",
         "test123123456");
   }
