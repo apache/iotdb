@@ -767,7 +767,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code
               != TSStatusCode.DATABASE_ALREADY_EXISTS
-                  .getStatusCode() // In tree model, if the user creates a conflict database
+                  .getStatusCode() // If the user creates a conflict database
           // concurrently, for instance, the
           // database created by user is root.db.ss.a, the auto-creation failed database is root.db,
           // we wait till "getOrCreatePartition" to judge if the time series (like root.db.ss.a.e /

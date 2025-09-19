@@ -537,7 +537,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateLastCache(final String database) {
-    DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(database);
+    DataNodeSchemaCache.getInstance().invalidateDatabaseLastCache(database);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -546,7 +546,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
       // req.getFullPath() is a database path
-      DataNodeSchemaCache.getInstance().invalidate(req.getFullPath());
+      DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidate(req.getFullPath());
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -1974,12 +1974,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           || options.contains(CacheClearOptions.QUERY)) {
         storageEngine.clearCache();
       }
-      if (options.contains(CacheClearOptions.TREE_SCHEMA)) {
-        schemaCache.invalidateAll();
+      if (options.contains(CacheClearOptions.QUERY)
+          && options.contains(CacheClearOptions.TREE_SCHEMA)) {
+        schemaCache.getDeviceSchemaCache().invalidateAll();
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
       if (options.contains(CacheClearOptions.QUERY)) {
-        schemaCache.invalidateLastCache(new PartialPath("root.**"));
+        schemaCache.getDeviceSchemaCache().invalidateLastCache();
+      }
+      if (options.contains(CacheClearOptions.TREE_SCHEMA)) {
+        schemaCache.getDeviceSchemaCache().invalidateTreeSchema();
       }
     } catch (final Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());

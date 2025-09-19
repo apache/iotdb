@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -50,11 +51,16 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class DataNodeSchemaCacheTest {
-  DataNodeSchemaCache dataNodeSchemaCache;
+  private DataNodeSchemaCache dataNodeSchemaCache;
   private Map<String, String> s1TagMap;
+  private boolean lastCacheEnabledDefaultValue;
 
   @Before
   public void setUp() throws Exception {
+    lastCacheEnabledDefaultValue = CommonDescriptor.getInstance().getConfig().isLastCacheEnable();
+    if (!lastCacheEnabledDefaultValue) {
+      CommonDescriptor.getInstance().getConfig().setLastCacheEnable(true);
+    }
     dataNodeSchemaCache = DataNodeSchemaCache.getInstance();
     s1TagMap = new HashMap<>();
     s1TagMap.put("k1", "v1");
@@ -62,14 +68,15 @@ public class DataNodeSchemaCacheTest {
 
   @After
   public void tearDown() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setLastCacheEnable(lastCacheEnabledDefaultValue);
     dataNodeSchemaCache.cleanUp();
     ClusterTemplateManager.getInstance().clear();
   }
 
   @Test
   public void testGetSchemaEntity() throws IllegalPathException {
-    PartialPath device1 = new PartialPath("root.sg1.d1");
-    String[] measurements = new String[3];
+    final PartialPath device1 = new PartialPath("root.sg1.d1");
+    final String[] measurements = new String[3];
     measurements[0] = "s1";
     measurements[1] = "s2";
     measurements[2] = "s3";
@@ -82,12 +89,7 @@ public class DataNodeSchemaCacheTest {
             .collect(
                 Collectors.toMap(
                     o -> new PartialPath(o.getNodes()),
-                    o ->
-                        new SchemaCacheEntry(
-                            "root.sg1",
-                            o.getMeasurementSchema(),
-                            o.getTagMap(),
-                            o.isUnderAlignedEntity())));
+                    o -> new SchemaCacheEntry(o.getMeasurementSchema(), o.getTagMap())));
     Assert.assertEquals(
         TSDataType.INT32,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s1")).getTsDataType());
@@ -102,7 +104,7 @@ public class DataNodeSchemaCacheTest {
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
     Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTagMap());
 
-    String[] otherMeasurements = new String[3];
+    final String[] otherMeasurements = new String[3];
     otherMeasurements[0] = "s3";
     otherMeasurements[1] = "s4";
     otherMeasurements[2] = "s5";
@@ -115,12 +117,7 @@ public class DataNodeSchemaCacheTest {
             .collect(
                 Collectors.toMap(
                     o -> new PartialPath(o.getNodes()),
-                    o ->
-                        new SchemaCacheEntry(
-                            "root.sg1",
-                            o.getMeasurementSchema(),
-                            o.getTagMap(),
-                            o.isUnderAlignedEntity())));
+                    o -> new SchemaCacheEntry(o.getMeasurementSchema(), o.getTagMap())));
     Assert.assertEquals(
         TSDataType.BOOLEAN,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
@@ -135,71 +132,9 @@ public class DataNodeSchemaCacheTest {
     Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTagMap());
   }
 
-  @Test
-  public void testLastCache() throws IllegalPathException {
-    // test no cache
-    PartialPath devicePath = new PartialPath("root.sg1.d1");
-    PartialPath seriesPath1 = new PartialPath("root.sg1.d1.s1");
-    PartialPath seriesPath2 = new PartialPath("root.sg1.d1.s2");
-    PartialPath seriesPath3 = new PartialPath("root.sg1.d1.s3");
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath1));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
-    // test no last cache
-    dataNodeSchemaCache.put((ClusterSchemaTree) generateSchemaTree1());
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath1));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
-    // put cache
-    long timestamp = 100;
-    long timestamp2 = 101;
-    TsPrimitiveType value = TsPrimitiveType.getByType(TSDataType.INT32, 101);
-    TsPrimitiveType value2 = TsPrimitiveType.getByType(TSDataType.INT32, 100);
-    TsPrimitiveType value3 = TsPrimitiveType.getByType(TSDataType.INT32, 99);
-
-    // put into last cache when cache not exist
-    TimeValuePair timeValuePair = new TimeValuePair(timestamp, value);
-    dataNodeSchemaCache.updateLastCache(devicePath, "s1", timeValuePair, false, 99L);
-    TimeValuePair cachedTimeValuePair = dataNodeSchemaCache.getLastCache(seriesPath1);
-    Assert.assertNotNull(cachedTimeValuePair);
-    Assert.assertEquals(timestamp, cachedTimeValuePair.getTimestamp());
-    Assert.assertEquals(value, cachedTimeValuePair.getValue());
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
-
-    // same time but low priority
-    TimeValuePair timeValuePair2 = new TimeValuePair(timestamp, value2);
-    dataNodeSchemaCache.updateLastCache(devicePath, "s1", timeValuePair2, false, 100L);
-    TimeValuePair cachedTimeValuePair2 = dataNodeSchemaCache.getLastCache(seriesPath1);
-    Assert.assertNotNull(cachedTimeValuePair2);
-    Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
-    Assert.assertEquals(value, cachedTimeValuePair2.getValue());
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
-
-    // same time but high priority
-    dataNodeSchemaCache.updateLastCache(devicePath, "s1", timeValuePair2, true, 100L);
-    cachedTimeValuePair2 = dataNodeSchemaCache.getLastCache(seriesPath1);
-    Assert.assertNotNull(cachedTimeValuePair2);
-    Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
-    Assert.assertEquals(value2, cachedTimeValuePair2.getValue());
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
-
-    // put into last cache when cache already exist
-    TimeValuePair timeValuePair3 = new TimeValuePair(timestamp2, value3);
-    dataNodeSchemaCache.updateLastCache(devicePath, "s1", timeValuePair3, false, 100L);
-    TimeValuePair cachedTimeValuePair3 = dataNodeSchemaCache.getLastCache(seriesPath1);
-    Assert.assertNotNull(cachedTimeValuePair3);
-    Assert.assertEquals(timestamp2, cachedTimeValuePair3.getTimestamp());
-    Assert.assertEquals(value3, cachedTimeValuePair3.getValue());
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
-  }
-
   private ISchemaTree generateSchemaTree1() throws IllegalPathException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    Map<String, String> s1TagMap = new HashMap<>();
+    final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    final Map<String, String> s1TagMap = new HashMap<>();
     s1TagMap.put("k1", "v1");
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s1"),
@@ -227,7 +162,7 @@ public class DataNodeSchemaCacheTest {
   }
 
   private ISchemaTree generateSchemaTree2() throws IllegalPathException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),
@@ -256,58 +191,81 @@ public class DataNodeSchemaCacheTest {
 
   @Test
   public void testUpdateLastCache() throws IllegalPathException {
-    String database = "root.db";
-    PartialPath device = new PartialPath("root.db.d");
+    final String database = "root.db";
+    final PartialPath device = new PartialPath("root.db.d");
 
-    String[] measurements = new String[] {"s1", "s2", "s3"};
-    MeasurementSchema[] measurementSchemas =
-        new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.INT32),
-          new MeasurementSchema("s2", TSDataType.INT32),
-          new MeasurementSchema("s3", TSDataType.INT32)
-        };
+    final String[] measurements = new String[] {"s1", "s2", "s3"};
 
-    dataNodeSchemaCache.updateLastCache(
+    final MeasurementSchema s1 = new MeasurementSchema("s1", TSDataType.INT32);
+    final MeasurementSchema s2 = new MeasurementSchema("s2", TSDataType.INT32);
+    final MeasurementSchema s3 = new MeasurementSchema("s3", TSDataType.INT32);
+
+    final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
+
+    dataNodeSchemaCache.declareLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1));
+    dataNodeSchemaCache.declareLastCache(
+        database, new MeasurementPath(device.concatNode("s3"), s3));
+
+    // Simulate "s1" revert when the query has failed in calculation
+    dataNodeSchemaCache.updateLastCacheIfExists(
+        database,
+        device,
+        new String[] {"s1"},
+        new TimeValuePair[] {
+          new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+        },
+        false,
+        new MeasurementSchema[] {s1});
+    dataNodeSchemaCache.invalidateLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1));
+
+    // "s2" shall be null since the "null" timeValuePair has not been put
+    dataNodeSchemaCache.updateLastCacheIfExists(
+        database,
+        device,
+        new String[] {"s2"},
+        new TimeValuePair[] {tv1},
+        false,
+        new MeasurementSchema[] {s2});
+
+    dataNodeSchemaCache.updateLastCacheIfExists(
+        database,
+        device,
+        new String[] {"s3"},
+        new TimeValuePair[] {tv1},
+        false,
+        new MeasurementSchema[] {s3});
+
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s1")));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s2")));
+    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s3")));
+
+    final MeasurementSchema[] measurementSchemas = new MeasurementSchema[] {s1, s2, s3};
+
+    dataNodeSchemaCache.updateLastCacheIfExists(
         database,
         device,
         measurements,
-        measurementSchemas,
-        true,
-        index -> new TimeValuePair(1, new TsPrimitiveType.TsInt(1)),
-        index -> index != 1,
-        true,
-        1L);
+        new TimeValuePair[] {
+          new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+          new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+          new TimeValuePair(2, new TsPrimitiveType.TsInt(2))
+        },
+        false,
+        measurementSchemas);
 
-    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s1")));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s2")));
-    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s3")));
-
-    dataNodeSchemaCache.updateLastCache(
-        database,
-        device,
-        measurements,
-        measurementSchemas,
-        true,
-        index -> new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        index -> true,
-        true,
-        1L);
-
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s1")));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s2")));
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s1")));
-    Assert.assertEquals(
-        new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s2")));
-    Assert.assertEquals(
-        new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s3")));
+        dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s3")));
   }
 
   @Test
   public void testPut() throws Exception {
-    ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
-    Template template1 =
+    final ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
+    final Template template1 =
         new Template(
             "t1",
             Arrays.asList("s1", "s2"),
@@ -315,7 +273,7 @@ public class DataNodeSchemaCacheTest {
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
             Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template1.setId(1);
-    Template template2 =
+    final Template template2 =
         new Template(
             "t2",
             Arrays.asList("t1", "t2", "t3"),
@@ -331,22 +289,22 @@ public class DataNodeSchemaCacheTest {
     clusterSchemaTree.appendSingleMeasurementPath(
         new MeasurementPath("root.sg1.d3.s1", TSDataType.FLOAT));
     dataNodeSchemaCache.put(clusterSchemaTree);
-    ClusterSchemaTree d1Tree =
-        dataNodeSchemaCache.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d1"));
-    ClusterSchemaTree d2Tree =
-        dataNodeSchemaCache.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
-    ClusterSchemaTree d3Tree =
-        dataNodeSchemaCache.getMatchedSchemaWithoutTemplate(new PartialPath("root.sg1.d3.s1"));
+    final ClusterSchemaTree d1Tree =
+        dataNodeSchemaCache.getMatchedTemplateSchema(new PartialPath("root.sg1.d1"));
+    final ClusterSchemaTree d2Tree =
+        dataNodeSchemaCache.getMatchedTemplateSchema(new PartialPath("root.sg1.d2"));
+    final ClusterSchemaTree d3Tree =
+        dataNodeSchemaCache.getMatchedNormalSchema(new MeasurementPath("root.sg1.d3.s1"));
     List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(2, measurementPaths.size());
-    for (MeasurementPath measurementPath : measurementPaths) {
+    for (final MeasurementPath measurementPath : measurementPaths) {
       Assert.assertEquals(
           template1.getSchema(measurementPath.getMeasurement()),
           measurementPath.getMeasurementSchema());
     }
     measurementPaths = d2Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(3, measurementPaths.size());
-    for (MeasurementPath measurementPath : measurementPaths) {
+    for (final MeasurementPath measurementPath : measurementPaths) {
       Assert.assertEquals(
           template2.getSchema(measurementPath.getMeasurement()),
           measurementPath.getMeasurementSchema());

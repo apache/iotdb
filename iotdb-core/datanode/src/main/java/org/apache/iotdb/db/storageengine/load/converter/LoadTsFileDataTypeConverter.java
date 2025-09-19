@@ -68,7 +68,7 @@ public class LoadTsFileDataTypeConverter {
       return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
     } catch (Exception e) {
       LOGGER.warn(
-          "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
+          "Failed to convert data types for load statement {}.", loadTsFileTreeStatement, e);
       return Optional.of(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     } finally {

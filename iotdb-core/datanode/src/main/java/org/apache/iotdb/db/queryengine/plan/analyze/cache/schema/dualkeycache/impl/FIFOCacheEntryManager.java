@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FIFOCacheEntryManager<FK, SK, V>
@@ -35,26 +36,33 @@ public class FIFOCacheEntryManager<FK, SK, V>
 
   @Override
   public FIFOCacheEntry<SK, V> createCacheEntry(
-      SK secondKey, V value, ICacheEntryGroup<FK, SK, V, FIFOCacheEntry<SK, V>> cacheEntryGroup) {
+      final SK secondKey,
+      final V value,
+      final ICacheEntryGroup<FK, SK, V, FIFOCacheEntry<SK, V>> cacheEntryGroup) {
     return new FIFOCacheEntry<>(secondKey, value, cacheEntryGroup);
   }
 
   @Override
-  public void access(FIFOCacheEntry<SK, V> cacheEntry) {
+  public void access(final FIFOCacheEntry<SK, V> cacheEntry) {
     // do nothing
   }
 
   @Override
-  public void put(FIFOCacheEntry<SK, V> cacheEntry) {
+  public void put(final FIFOCacheEntry<SK, V> cacheEntry) {
     getNextList(cachePutRoundRobinIndex).add(cacheEntry);
   }
 
   @Override
-  public void invalid(FIFOCacheEntry<SK, V> cacheEntry) {
+  public boolean invalidate(final FIFOCacheEntry<SK, V> cacheEntry) {
+    if (cacheEntry.isInvalidated.getAndSet(true)) {
+      return false;
+    }
+
     cacheEntry.next.pre = cacheEntry.pre;
     cacheEntry.pre.next = cacheEntry.next;
     cacheEntry.next = null;
     cacheEntry.pre = null;
+    return true;
   }
 
   @Override
@@ -87,7 +95,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
     }
   }
 
-  private FIFOLinkedList getNextList(AtomicInteger roundRobinIndex) {
+  private FIFOLinkedList getNextList(final AtomicInteger roundRobinIndex) {
     int listIndex = getNextIndex(roundRobinIndex);
     FIFOLinkedList fifoLinkedList = fifoLinkedLists[listIndex];
     if (fifoLinkedList == null) {
@@ -102,7 +110,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
     return fifoLinkedList;
   }
 
-  private int getNextIndex(AtomicInteger roundRobinIndex) {
+  private int getNextIndex(final AtomicInteger roundRobinIndex) {
     return roundRobinIndex.getAndUpdate(
         currentValue -> {
           currentValue = currentValue + 1;
@@ -122,7 +130,10 @@ public class FIFOCacheEntryManager<FK, SK, V>
     private FIFOCacheEntry<SK, V> pre = null;
     private FIFOCacheEntry<SK, V> next = null;
 
-    private FIFOCacheEntry(SK secondKey, V value, ICacheEntryGroup cacheEntryGroup) {
+    private final AtomicBoolean isInvalidated = new AtomicBoolean(false);
+
+    private FIFOCacheEntry(
+        final SK secondKey, final V value, final ICacheEntryGroup cacheEntryGroup) {
       this.secondKey = secondKey;
       this.value = value;
       this.cacheEntryGroup = cacheEntryGroup;
@@ -144,20 +155,24 @@ public class FIFOCacheEntryManager<FK, SK, V>
     }
 
     @Override
-    public void setBelongedGroup(ICacheEntryGroup belongedGroup) {
+    public void setBelongedGroup(final ICacheEntryGroup belongedGroup) {
       this.cacheEntryGroup = belongedGroup;
     }
 
     @Override
-    public void replaceValue(V newValue) {
+    public void replaceValue(final V newValue) {
       this.value = newValue;
     }
 
     @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      FIFOCacheEntry<?, ?> that = (FIFOCacheEntry<?, ?>) o;
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      final FIFOCacheEntry<?, ?> that = (FIFOCacheEntry<?, ?>) o;
       return Objects.equals(secondKey, that.secondKey)
           && Objects.equals(cacheEntryGroup, that.cacheEntryGroup);
     }
@@ -171,28 +186,40 @@ public class FIFOCacheEntryManager<FK, SK, V>
   private static class FIFOLinkedList<SK, V> {
 
     // head.next is the newest
-    private final FIFOCacheEntry head;
-    private final FIFOCacheEntry tail;
+    private final FIFOCacheEntry<SK, V> head;
+    private final FIFOCacheEntry<SK, V> tail;
 
     public FIFOLinkedList() {
-      head = new FIFOCacheEntry(null, null, null);
-      tail = new FIFOCacheEntry(null, null, null);
+      head = new FIFOCacheEntry<>(null, null, null);
+      tail = new FIFOCacheEntry<>(null, null, null);
       head.next = tail;
       tail.pre = head;
     }
 
-    synchronized void add(FIFOCacheEntry cacheEntry) {
-      cacheEntry.next = head.next;
+    synchronized void add(final FIFOCacheEntry<SK, V> cacheEntry) {
+      FIFOCacheEntry<SK, V> nextEntry;
+
+      do {
+        nextEntry = head.next;
+      } while (nextEntry.isInvalidated.get());
+
+      cacheEntry.next = nextEntry;
       cacheEntry.pre = head;
-      head.next.pre = cacheEntry;
+      nextEntry.pre = cacheEntry;
       head.next = cacheEntry;
     }
 
-    synchronized FIFOCacheEntry evict() {
-      if (tail.pre == head) {
-        return null;
-      }
-      FIFOCacheEntry cacheEntry = tail.pre;
+    synchronized FIFOCacheEntry<SK, V> evict() {
+      FIFOCacheEntry<SK, V> cacheEntry;
+
+      do {
+        cacheEntry = tail.pre;
+        if (cacheEntry == head) {
+          return null;
+        }
+
+      } while (cacheEntry.isInvalidated.compareAndSet(false, true));
+
       cacheEntry.pre.next = cacheEntry.next;
       cacheEntry.next.pre = cacheEntry.pre;
       cacheEntry.next = null;

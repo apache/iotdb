@@ -715,8 +715,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     final TSStatus status = executeStatement(statement);
 
-    // Try to convert data type if the statement is a tree model statement
-    // and the status code is not success
+    // Try to convert the data type and the status code is not success
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())

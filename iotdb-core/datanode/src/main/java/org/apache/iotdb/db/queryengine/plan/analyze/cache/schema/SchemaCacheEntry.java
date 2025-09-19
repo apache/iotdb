@@ -21,48 +21,45 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.ILastCacheContainer;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.LastCacheContainer;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.util.Map;
 
 public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
-  private final String storageGroup;
+  /**
+   * MeasurementSchema takes 75B
+   *
+   * <ul>
+   *   <li>MeasurementSchema
+   *       <ul>
+   *         <li>Object header, 8B
+   *         <li>String measurementId basic, 8 + 8 + 4 + 8 + 4 = 32B
+   *         <li>type, encoding, compressor, 3 B
+   *         <li>encodingConverter, 8 + 8 + 8 = 24B
+   *         <li>props, 8B
+   *       </ul>
+   * </ul>
+   */
+  private static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(SchemaCacheEntry.class) + 75;
 
   private final IMeasurementSchema iMeasurementSchema;
-  private final Map<String, String> tagMap;
-  private final boolean isAligned;
 
-  @SuppressWarnings("java:S3077")
-  private volatile ILastCacheContainer lastCacheContainer = null;
+  private final Map<String, String> tagMap;
 
   public SchemaCacheEntry(
-      String storageGroup,
-      IMeasurementSchema iMeasurementSchema,
-      Map<String, String> tagMap,
-      boolean isAligned) {
-    this.storageGroup = storageGroup.intern();
+      final @Nonnull IMeasurementSchema iMeasurementSchema,
+      final @Nullable Map<String, String> tagMap) {
     this.iMeasurementSchema = iMeasurementSchema;
-    this.isAligned = isAligned;
     this.tagMap = tagMap;
-  }
-
-  public String getSchemaEntryId() {
-    return iMeasurementSchema.getMeasurementId();
-  }
-
-  public String getStorageGroup() {
-    return storageGroup;
-  }
-
-  public IMeasurementSchema getIMeasurementSchema() {
-    return iMeasurementSchema;
   }
 
   @Override
@@ -79,59 +76,10 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
     return iMeasurementSchema.getType();
   }
 
-  public boolean isAligned() {
-    return isAligned;
-  }
-
-  public ILastCacheContainer getLastCacheContainer() {
-    return lastCacheContainer;
-  }
-
-  public int updateLastCache(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-
-    if (lastCacheContainer == null) {
-      synchronized (this) {
-        if (lastCacheContainer == null) {
-          ILastCacheContainer tmp = new LastCacheContainer();
-          int changeSize = tmp.estimateSize();
-          changeSize += tmp.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-          lastCacheContainer = tmp;
-          return changeSize;
-        }
-      }
-    }
-    return lastCacheContainer.updateCachedLast(
-        timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  /**
-   * Total basic 100B
-   *
-   * <ul>
-   *   <li>SchemaCacheEntry Object header, 8B
-   *   <li>isAligned, 1B
-   *   <li>LastCacheContainer reference, 8B
-   *   <li>MeasurementSchema
-   *       <ul>
-   *         <li>Reference, 8B
-   *         <li>Object header, 8B
-   *         <li>String measurementId basic, 8 + 8 + 4 + 8 + 4 = 32B
-   *         <li>type, encoding, compressor, 3 B
-   *         <li>encodingConverter, 8 + 8 + 8 = 24B
-   *         <li>props, 8B
-   *       </ul>
-   * </ul>
-   */
-  public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
-    // each char takes 2B in Java
-    int lastCacheContainerSize =
-        schemaCacheEntry.getLastCacheContainer() == null
-            ? 0
-            : schemaCacheEntry.getLastCacheContainer().estimateSize();
-    return 100
-        + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length()
-        + lastCacheContainerSize;
+  public static int estimateSize(final SchemaCacheEntry schemaCacheEntry) {
+    return INSTANCE_SIZE
+        + 2 * schemaCacheEntry.getSchema().getMeasurementId().length()
+        + (int) RamUsageEstimator.sizeOfMap(schemaCacheEntry.getTagMap());
   }
 
   @Override
@@ -168,13 +116,5 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   @Override
   public boolean isLogicalView() {
     return this.iMeasurementSchema.isLogicalView();
-  }
-
-  public int invalidateLastCache() {
-    if (this.lastCacheContainer == null || this.lastCacheContainer.getCachedLast() == null) {
-      return 0;
-    }
-
-    return this.lastCacheContainer.invalidateLastCache();
   }
 }

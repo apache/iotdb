@@ -166,8 +166,8 @@ public class LastQueryUtil {
 
   public static boolean needUpdateCache(Filter timeFilter) {
     // Update the cache only when, the filter is gt (greater than) or ge (greater than or equal to)
-    return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof TimeGtEq)
-        || (timeFilter instanceof TimeGt);
+    return CACHE_ENABLED
+        && (timeFilter == null || timeFilter instanceof TimeGtEq || timeFilter instanceof TimeGt);
   }
 
   public static boolean needUpdateNullEntry(Filter timeFilter) {

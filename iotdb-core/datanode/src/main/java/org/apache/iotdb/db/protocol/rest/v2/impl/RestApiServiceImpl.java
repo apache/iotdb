@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -110,7 +111,7 @@ public class RestApiServiceImpl extends RestApiService {
 
       PartialPath prefixPath =
           new PartialPath(prefixPathList.getPrefixPaths().toArray(new String[0]));
-      Map<PartialPath, Map<String, TimeValuePair>> resultMap = new HashMap<>();
+      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> resultMap = new HashMap<>();
 
       final String prefixString = prefixPath.toString();
       for (ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
@@ -121,7 +122,7 @@ public class RestApiServiceImpl extends RestApiService {
         region.fillLastQueryMap(prefixPath, resultMap);
       }
       // Check cache first
-      if (!DataNodeSchemaCache.getInstance().getLastCache(resultMap)) {
+      if (!DataNodeSchemaCache.getInstance().getDeviceSchemaCache().getLastCache(resultMap)) {
         IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
         TSLastDataQueryReq tsLastDataQueryReq =
             FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
@@ -169,14 +170,22 @@ public class RestApiServiceImpl extends RestApiService {
       List<Object> timeseries = new ArrayList<>();
       List<Object> valueList = new ArrayList<>();
       List<Object> dataTypeList = new ArrayList<>();
-      for (Map.Entry<PartialPath, Map<String, TimeValuePair>> entry : resultMap.entrySet()) {
-        final String deviceWithPrefix = entry.getKey() + TsFileConstant.PATH_SEPARATOR;
-        for (Map.Entry<String, TimeValuePair> measurementEntry : entry.getValue().entrySet()) {
-          final TimeValuePair tvPair = measurementEntry.getValue();
-          valueList.add(tvPair.getValue().getStringValue());
-          dataTypeList.add(tvPair.getValue().getDataType().name());
-          targetDataSet.addTimestampsItem(tvPair.getTimestamp());
-          timeseries.add(deviceWithPrefix + measurementEntry.getKey());
+      for (Map.Entry<String, Map<PartialPath, Map<String, TimeValuePair>>> entry :
+          resultMap.entrySet()) {
+        for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> device2MeasurementLastEntry :
+            entry.getValue().entrySet()) {
+          final String deviceWithSeparator =
+              device2MeasurementLastEntry.getKey() + TsFileConstant.PATH_SEPARATOR;
+          for (Map.Entry<String, TimeValuePair> measurementEntry :
+              device2MeasurementLastEntry.getValue().entrySet()) {
+            final TimeValuePair tvPair = measurementEntry.getValue();
+            if (tvPair != DeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+              valueList.add(tvPair.getValue().getStringValue());
+              dataTypeList.add(tvPair.getValue().getDataType().name());
+              targetDataSet.addTimestampsItem(tvPair.getTimestamp());
+              timeseries.add(deviceWithSeparator + measurementEntry.getKey());
+            }
+          }
         }
       }
       if (!timeseries.isEmpty()) {

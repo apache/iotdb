@@ -79,7 +79,7 @@ public abstract class AlignedTVList extends TVList {
   // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<BitMap>> bitMaps;
 
-  // not null when constructed by queries for tree model
+  // not null when constructed by queries
   BitMap allValueColDeletedMap;
 
   private final AlignedTVList outer = this;
