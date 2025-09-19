@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.auth.entity;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -78,6 +80,30 @@ public enum PrivilegeType {
   public static int getPrivilegeCount(PrivilegeModelType type) {
     int size = 0;
     for (PrivilegeType item : PrivilegeType.values()) {
+      switch (type) {
+        case TREE:
+          size += item.isPathPrivilege() ? 1 : 0;
+          break;
+        case SYSTEM:
+          size += item.isSystemPrivilege() ? 1 : 0;
+          break;
+        case RELATIONAL:
+          size += item.isRelationalPrivilege() ? 1 : 0;
+          break;
+        default:
+          break;
+      }
+    }
+    return size;
+  }
+
+  @TestOnly
+  public static int getValidPrivilegeCount(PrivilegeModelType type) {
+    int size = 0;
+    for (PrivilegeType item : PrivilegeType.values()) {
+      if (item.isDeprecated()) {
+        continue;
+      }
       switch (type) {
         case TREE:
           size += item.isPathPrivilege() ? 1 : 0;
@@ -160,5 +186,9 @@ public enum PrivilegeType {
 
   public boolean isDeprecated() {
     return this.getReplacedPrivilegeType() != this;
+  }
+
+  public boolean isHided() {
+    return this == AUDIT;
   }
 }

@@ -238,6 +238,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -939,8 +940,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitShowConfiguration(ShowConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
-    return new ShowConfigurationTask((ShowConfigurationStatement) node.getInnerTreeStatement());
+    ShowConfigurationStatement showConfigurationStatement =
+        (ShowConfigurationStatement) node.getInnerTreeStatement();
+    Collection<PrivilegeType> missingPrivileges =
+        AuthorityChecker.checkUserMissingSystemPermissions(
+            context.getSession().getUserName(),
+            Arrays.asList(PrivilegeType.SYSTEM, PrivilegeType.SECURITY, PrivilegeType.AUDIT));
+    showConfigurationStatement.setMissingPrivileges(missingPrivileges);
+    return new ShowConfigurationTask(showConfigurationStatement);
   }
 
   @Override

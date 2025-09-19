@@ -221,7 +221,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
     TSStatus result =
         AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkUserHaveSystemPermissions(username, privileges));
+            AuthorityChecker.checkUserMissingSystemPermissions(username, privileges));
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(result.getMessage());
     }

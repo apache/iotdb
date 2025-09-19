@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -33,12 +35,21 @@ public class ShowConfigurationStatement extends Statement implements IConfigStat
   private final boolean showAllConfigurations;
   private final int nodeId;
   private final boolean withDescription;
+  private Collection<PrivilegeType> missingPrivileges;
 
   public ShowConfigurationStatement(
       boolean showAllConfigurations, int nodeId, boolean withDescription) {
     this.showAllConfigurations = showAllConfigurations;
     this.nodeId = nodeId;
     this.withDescription = withDescription;
+  }
+
+  public Collection<PrivilegeType> getMissingPrivileges() {
+    return missingPrivileges;
+  }
+
+  public void setMissingPrivileges(Collection<PrivilegeType> missingPrivileges) {
+    this.missingPrivileges = missingPrivileges;
   }
 
   public boolean isShowAllConfigurations() {

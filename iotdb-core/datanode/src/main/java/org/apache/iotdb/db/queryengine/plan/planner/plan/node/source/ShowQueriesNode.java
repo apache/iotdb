@@ -95,31 +95,18 @@ public class ShowQueriesNode extends VirtualSourceNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SHOW_QUERIES.serialize(byteBuffer);
-    if (this.allowedUsername != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      ReadWriteIOUtils.write(this.allowedUsername, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
+    ReadWriteIOUtils.write(this.allowedUsername, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SHOW_QUERIES.serialize(stream);
-    if (this.allowedUsername != null) {
-      ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(this.allowedUsername, stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
+    ReadWriteIOUtils.write(this.allowedUsername, stream);
   }
 
   public static ShowQueriesNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    String allowedUsername = null;
-    if (ReadWriteIOUtils.readBoolean(byteBuffer)) {
-      allowedUsername = ReadWriteIOUtils.readString(byteBuffer);
-    }
+    String allowedUsername = ReadWriteIOUtils.readString(byteBuffer);
     return new ShowQueriesNode(planNodeId, null, allowedUsername);
   }
 

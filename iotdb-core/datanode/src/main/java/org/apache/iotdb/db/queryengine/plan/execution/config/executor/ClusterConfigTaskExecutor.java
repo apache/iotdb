@@ -1311,6 +1311,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           appliedProperties,
           showAllConfigurations,
           showConfigurationStatement.withDescription(),
+          showConfigurationStatement.getMissingPrivileges(),
           future);
     } catch (Exception e) {
       future.setException(e);

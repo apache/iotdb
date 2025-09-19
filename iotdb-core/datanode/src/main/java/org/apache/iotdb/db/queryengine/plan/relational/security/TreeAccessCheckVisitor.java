@@ -135,6 +135,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -958,7 +962,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       SetConfigurationStatement setConfigurationStatement, TreeAccessCheckContext context) {
     try {
       return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkUserHaveSystemPermissions(
+          AuthorityChecker.checkUserMissingSystemPermissions(
               context.userName, setConfigurationStatement.getNeededPrivileges()));
     } catch (IOException e) {
       return AuthorityChecker.getTSStatus(false, "Failed to check config item permission");
@@ -1082,6 +1086,30 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowRegion(ShowRegionStatement statement, TreeAccessCheckContext context) {
     return checkGlobalAuth(context.userName, PrivilegeType.MAINTAIN);
+  }
+
+  @Override
+  public TSStatus visitSetSpaceQuota(
+      SetSpaceQuotaStatement setSpaceQuotaStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
+  }
+
+  @Override
+  public TSStatus visitSetThrottleQuota(
+      SetThrottleQuotaStatement setThrottleQuotaStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
+  }
+
+  @Override
+  public TSStatus visitShowThrottleQuota(
+      ShowThrottleQuotaStatement showThrottleQuotaStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
+  }
+
+  @Override
+  public TSStatus visitShowSpaceQuota(
+      ShowSpaceQuotaStatement showSpaceQuotaStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(context.userName, PrivilegeType.SYSTEM);
   }
 
   @Override

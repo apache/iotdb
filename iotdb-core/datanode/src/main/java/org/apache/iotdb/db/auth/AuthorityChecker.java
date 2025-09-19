@@ -366,8 +366,11 @@ public class AuthorityChecker {
     return authorityFetcher.get().checkRole(username, roleName);
   }
 
-  public static Collection<PrivilegeType> checkUserHaveSystemPermissions(
+  public static Collection<PrivilegeType> checkUserMissingSystemPermissions(
       String userName, Collection<PrivilegeType> permissions) {
+    if (SUPER_USER.equals(userName)) {
+      return Collections.emptySet();
+    }
     return authorityFetcher.get().checkUserSysPrivileges(userName, permissions);
   }
 
@@ -429,7 +432,7 @@ public class AuthorityChecker {
   }
 
   private static boolean isIgnoredPrivilege(int i) {
-    return PrivilegeType.values()[i] == PrivilegeType.AUDIT;
+    return PrivilegeType.values()[i].isHided();
   }
 
   private static void appendEntryInfo(String name, TRoleResp resp, TsBlockBuilder builder) {

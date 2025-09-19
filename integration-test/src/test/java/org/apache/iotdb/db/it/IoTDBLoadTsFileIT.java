@@ -564,7 +564,7 @@ public class IoTDBLoadTsFileIT {
 
     assertNonQueryTestFail(
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
-        "No permissions for this operation, please add privilege MANAGE_DATABASE",
+        "No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
 
