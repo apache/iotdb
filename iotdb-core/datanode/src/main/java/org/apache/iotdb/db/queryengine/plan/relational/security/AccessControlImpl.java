@@ -39,14 +39,14 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
-import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl.checkCanSelectAuditTable;
+import static org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor.checkTimeSeriesPermission;
 
 public class AccessControlImpl implements AccessControl {
 
@@ -386,20 +386,18 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public TSStatus checkFullPathWriteDataPermission(
       String userName, IDeviceID device, String measurementId) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return SUCCEED;
-    }
     try {
-      List<PartialPath> paths =
-          Collections.singletonList(new MeasurementPath(device, measurementId));
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathOrPatternListPermission(
-              userName, paths, PrivilegeType.WRITE_DATA),
-          paths,
-          PrivilegeType.WRITE_DATA);
-
+      PartialPath path = new MeasurementPath(device, measurementId);
+      // audit db is read-only
+      if (includeByAuditTreeDB(path)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+      return checkTimeSeriesPermission(
+          userName, Collections.singletonList(path), PrivilegeType.WRITE_DATA);
     } catch (IllegalPathException e) {
-      throw new RuntimeException(e);
+      // should never be here
+      throw new IllegalStateException(e);
     }
   }
 }

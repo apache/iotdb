@@ -858,7 +858,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   // ============================= timeseries related =================================
-  private TSStatus checkTimeSeriesPermission(
+  public static TSStatus checkTimeSeriesPermission(
       String userName, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return SUCCEED;

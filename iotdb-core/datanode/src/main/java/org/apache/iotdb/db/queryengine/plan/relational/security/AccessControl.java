@@ -195,6 +195,7 @@ public interface AccessControl {
 
   TSStatus checkPermissionBeforeProcess(Statement statement, String userName);
 
+  /** called by load */
   TSStatus checkFullPathWriteDataPermission(
       String userName, IDeviceID device, String measurementId);
 }

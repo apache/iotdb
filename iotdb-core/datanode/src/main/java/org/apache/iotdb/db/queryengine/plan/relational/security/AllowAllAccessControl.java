@@ -137,6 +137,6 @@ public class AllowAllAccessControl implements AccessControl {
   @Override
   public TSStatus checkFullPathWriteDataPermission(
       String userName, IDeviceID device, String measurementId) {
-    return null;
+    return SUCCEED;
   }
 }
