@@ -45,7 +45,6 @@ public class DeviceSchemaRequestCache {
   }
 
   public FetchMissingDeviceSchema getOrCreatePendingRequest(FetchDevice statement) {
-
     return pendingRequests.get(statement, k -> new FetchMissingDeviceSchema());
   }
 
