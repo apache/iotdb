@@ -26,14 +26,22 @@ import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -48,8 +56,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -58,7 +68,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.io.IOException;
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader.SCHEMA_FETCHER;
@@ -87,6 +100,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
       new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
 
   private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
       DataNodeDevicePathCache.getInstance();
@@ -172,6 +188,29 @@ public class DNAuditLogger extends AbstractAuditLogger {
           return;
         }
         Statement statement =
+            StatementGenerator.createStatement(
+                "SHOW DATABASES " + SystemConstant.AUDIT_DATABASE, ZoneId.systemDefault());
+        try (final ConfigNodeClient client =
+            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          ShowDatabaseStatement showStatement = (ShowDatabaseStatement) statement;
+          final List<String> databasePathPattern =
+              Arrays.asList(showStatement.getPathPattern().getNodes());
+          final TGetDatabaseReq req =
+              new TGetDatabaseReq(
+                      databasePathPattern, showStatement.getAuthorityScope().serialize())
+                  .setIsTableModel(false);
+          final TShowDatabaseResp resp = client.showDatabase(req);
+          if (resp.getDatabaseInfoMapSize() > 0) {
+            tableViewIsInitialized.set(true);
+            return;
+          }
+        } catch (ClientManagerException | TException | IOException e) {
+          logger.error(
+              "Failed to show database before creating database {} for audit log",
+              SystemConstant.AUDIT_DATABASE);
+        }
+
+        statement =
             StatementGenerator.createStatement(
                 "CREATE DATABASE "
                     + SystemConstant.AUDIT_DATABASE

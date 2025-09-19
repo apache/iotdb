@@ -98,17 +98,16 @@ public class DataNodeShutdownHook extends Thread {
     if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
       AuditLogFields fields =
           new AuditLogFields(
-              "root",
+              null,
               -1,
               null,
-              AuditEventType.DESTROY_KEY,
+              AuditEventType.DN_SHUTDOWN,
               AuditLogOperation.CONTROL,
-              PrivilegeType.SECURITY,
+              PrivilegeType.SYSTEM,
               true,
               null,
               null);
-      String logMessage =
-          String.format("Successfully destroy the tsfile encrypt key in DataNode %s", nodeLocation);
+      String logMessage = String.format("DataNode %s exiting...", nodeLocation);
       DNAuditLogger.getInstance().log(fields, logMessage);
     }
 

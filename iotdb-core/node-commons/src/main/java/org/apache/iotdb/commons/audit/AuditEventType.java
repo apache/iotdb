@@ -45,7 +45,7 @@ public enum AuditEventType {
   LOGIN_REJECT_IP,
   SESSION_ENCRYPT_FAILED,
 
-  NULL;
+  DN_SHUTDOWN;
 
   @Override
   public String toString() {
