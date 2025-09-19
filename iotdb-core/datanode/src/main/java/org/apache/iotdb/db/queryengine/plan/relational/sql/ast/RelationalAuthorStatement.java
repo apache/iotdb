@@ -378,7 +378,7 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_DB:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant/revoke privileges/role of admin user");
+              false, "Cannot grant/revoke privileges of admin user");
         }
         if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
           return AuthorityChecker.getTSStatus(
@@ -391,7 +391,7 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_TB:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant/revoke privileges/role of admin user");
+              false, "Cannot grant/revoke privileges of admin user");
         }
         if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
           return AuthorityChecker.getTSStatus(

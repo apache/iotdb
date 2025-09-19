@@ -365,10 +365,7 @@ public class IoTDBRelationalAuthIT {
         // 1. grant all on user/role
         adminStmt.execute("grant all to " + (isUser ? "user test" : "role test"));
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
-          if (privilegeType.isDeprecated()) {
-            continue;
-          }
-          if (privilegeType == PrivilegeType.AUDIT) {
+          if (privilegeType.isDeprecated() || privilegeType.isHided()) {
             continue;
           }
           if (privilegeType.isRelationalPrivilege()) {
@@ -420,10 +417,9 @@ public class IoTDBRelationalAuthIT {
 
     Set<String> listUserPrivilegeResult = new HashSet<>();
     for (PrivilegeType privilegeType : PrivilegeType.values()) {
-      if (privilegeType == PrivilegeType.SELECT || privilegeType.isDeprecated()) {
-        continue;
-      }
-      if (privilegeType == PrivilegeType.AUDIT) {
+      if (privilegeType == PrivilegeType.SELECT
+          || privilegeType.isDeprecated()
+          || privilegeType.isHided()) {
         continue;
       }
       if (privilegeType.isRelationalPrivilege()) {
@@ -436,10 +432,7 @@ public class IoTDBRelationalAuthIT {
 
     Set<String> listRolePrivilegeResult = new HashSet<>();
     for (PrivilegeType privilegeType : PrivilegeType.values()) {
-      if (privilegeType.isDeprecated()) {
-        continue;
-      }
-      if (privilegeType == PrivilegeType.AUDIT) {
+      if (privilegeType.isDeprecated() || privilegeType.isHided()) {
         continue;
       }
       if (privilegeType.isRelationalPrivilege()) {

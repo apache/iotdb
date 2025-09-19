@@ -2659,7 +2659,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         continue;
       } else if (priv.equalsIgnoreCase("ALL")) {
         for (PrivilegeType type : PrivilegeType.values()) {
-          if (type.isRelationalPrivilege() || type.isDeprecated()) {
+          if (type.isRelationalPrivilege() || type.isDeprecated() || type.isHided()) {
             continue;
           }
           privSet.add(type.toString());

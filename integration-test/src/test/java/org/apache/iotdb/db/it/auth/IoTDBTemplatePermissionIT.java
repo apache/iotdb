@@ -26,8 +26,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,16 +48,16 @@ import static org.apache.iotdb.db.it.utils.TestUtils.revokeUserSeriesPrivilege;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBTemplatePermissionIT {
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123123456");
     executeNonQuery("create database root.test1");
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -81,7 +81,7 @@ public class IoTDBTemplatePermissionIT {
     executeNonQuery("show device templates");
     assertNonQueryTestFail(
         "show nodes in device template t1",
-        "803: No permissions for this operation, please add privilege SYSTEM",
+        "507: Template t1 does not exist",
         "test",
         "test123123456");
     assertNonQueryTestFail(
@@ -96,7 +96,7 @@ public class IoTDBTemplatePermissionIT {
         "test123123456");
     assertNonQueryTestFail(
         "show paths set device template t1",
-        "803: No permissions for this operation, please add privilege SYSTEM",
+        "305: org.apache.iotdb.commons.exception.IoTDBException: Template t1 does not exist",
         "test",
         "test123123456");
   }

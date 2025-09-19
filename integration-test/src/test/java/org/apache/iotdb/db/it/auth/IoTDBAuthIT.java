@@ -977,10 +977,7 @@ public class IoTDBAuthIT {
 
     // 2. USER1 has all privileges on root.**
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isDeprecated()) {
-        continue;
-      }
-      if (item == PrivilegeType.AUDIT) {
+      if (item.isDeprecated() || item.isHided()) {
         continue;
       }
       if (item.isRelationalPrivilege()) {
@@ -1002,10 +999,7 @@ public class IoTDBAuthIT {
 
     // 4. USER2 has all privilegs on root.** with grant option;
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item == PrivilegeType.AUDIT) {
-        continue;
-      }
-      if (item.isRelationalPrivilege() || item.isDeprecated()) {
+      if (item.isRelationalPrivilege() || item.isDeprecated() || item.isHided()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user2 with grant option";
@@ -1057,7 +1051,6 @@ public class IoTDBAuthIT {
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
         ans =
             ",,SYSTEM,false,\n"
-                + ",,AUDIT,false,\n"
                 + ",root.**,READ_DATA,false,\n"
                 + ",root.**,WRITE_DATA,false,\n"
                 + ",root.**,READ_SCHEMA,false,\n"
@@ -1068,6 +1061,7 @@ public class IoTDBAuthIT {
       }
     }
     adminStmt.execute("GRANT ROLE testRole TO user3");
+    adminStmt.execute("REVOKE SECURITY ON root.** FROM USER user3");
     // now user has:
     // 1. MANAGE_ROLE
     // 2. MANAGE_DATABASE with grant option
@@ -1078,7 +1072,6 @@ public class IoTDBAuthIT {
         Statement userStmt = userCon.createStatement()) {
       try {
         // because role's privilege
-        userStmt.execute("GRANT manage_database ON root.** TO USER user1");
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("GRANT READ_DATA ON root.t1.** TO USER user1"));
@@ -1106,13 +1099,7 @@ public class IoTDBAuthIT {
     //    user2 has all privileges without grant option on root.**
     //    user2 has all privileges without grant option on root.t1.**
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isDeprecated()) {
-        continue;
-      }
-      if (item == PrivilegeType.AUDIT) {
-        continue;
-      }
-      if (item.isRelationalPrivilege()) {
+      if (item.isRelationalPrivilege() || item.isDeprecated() || item.isHided()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1 WITH GRANT OPTION";
@@ -1130,14 +1117,7 @@ public class IoTDBAuthIT {
     try {
       // revoke privileges on root.** and root.t1.**
       for (PrivilegeType item : PrivilegeType.values()) {
-        if (item.isDeprecated()) {
-          continue;
-        }
-
-        if (item == PrivilegeType.AUDIT) {
-          continue;
-        }
-        if (item.isRelationalPrivilege()) {
+        if (item.isRelationalPrivilege() || item.isHided() || item.isDeprecated()) {
           continue;
         }
         user1Stmt.execute(String.format("REVOKE %s ON root.** FROM USER user2", item));

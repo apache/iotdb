@@ -454,7 +454,7 @@ public class IoTDBClusterAuthorityIT {
       assertEquals(new HashMap<>(), authorizerResp.getPermissionInfo().getRoleInfo());
       assertEquals(new HashSet<>(), authorizerResp.getPermissionInfo().getUserInfo().getRoleSet());
       assertEquals(
-          PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE),
+          PrivilegeType.getValidPrivilegeCount(PrivilegeModelType.TREE),
           authorizerResp
               .getPermissionInfo()
               .getUserInfo()
@@ -464,7 +464,7 @@ public class IoTDBClusterAuthorityIT {
               .priSet
               .size());
       assertEquals(
-          PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
+          PrivilegeType.getValidPrivilegeCount(PrivilegeModelType.SYSTEM),
           authorizerResp
               .getPermissionInfo()
               .getUserInfo()
@@ -472,7 +472,7 @@ public class IoTDBClusterAuthorityIT {
               .getSysPriSet()
               .size());
       assertEquals(
-          PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
+          PrivilegeType.getValidPrivilegeCount(PrivilegeModelType.SYSTEM),
           authorizerResp
               .getPermissionInfo()
               .getUserInfo()
