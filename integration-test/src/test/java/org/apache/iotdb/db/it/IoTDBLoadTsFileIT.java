@@ -568,7 +568,7 @@ public class IoTDBLoadTsFileIT {
         "test",
         "test123123456");
 
-    grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
+    grantUserSystemPrivileges("test", PrivilegeType.SYSTEM);
 
     assertNonQueryTestFail(
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),

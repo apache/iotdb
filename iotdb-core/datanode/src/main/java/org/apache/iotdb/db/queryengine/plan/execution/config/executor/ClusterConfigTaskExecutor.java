@@ -1773,7 +1773,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       List<Template> templateList;
       // Send request to some API server
-      if (showSchemaTemplateStatement.isCamSeeAll()) {
+      if (showSchemaTemplateStatement.isCanSeeAll()) {
         templateList = ClusterTemplateManager.getInstance().getAllTemplates();
       } else {
         templateList =
@@ -1796,7 +1796,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       // Send request to some API server
       Template template = ClusterTemplateManager.getInstance().getTemplate(req);
-      if (!showNodesInSchemaTemplateStatement.isCamSeeAll()
+      if (!showNodesInSchemaTemplateStatement.isCanSeeAll()
           && template != null
           && ClusterTemplateManager.getInstance()
               .getPathsSetTemplate(req, showNodesInSchemaTemplateStatement.getAuthorityScope())
@@ -1847,7 +1847,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (listPath != null) {
         listPath.removeIf(
             path ->
-                !showPathSetTemplateStatement.isCamSeeAll()
+                !showPathSetTemplateStatement.isCanSeeAll()
                     && showPathSetTemplateStatement
                         .getAuthorityScope()
                         .getOverlappedPathPatterns(path.concatNode(MULTI_LEVEL_PATH_WILDCARD))

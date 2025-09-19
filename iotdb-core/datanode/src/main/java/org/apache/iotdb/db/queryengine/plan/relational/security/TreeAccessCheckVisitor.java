@@ -221,15 +221,15 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   private TSStatus checkTemplateShowRelated(
       ShowSchemaTemplateStatement statement, TreeAccessCheckContext context) {
     if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-      statement.setCamSeeAll(true);
+      statement.setCanSeeAll(true);
       return SUCCEED;
     }
     // own SYSTEM can see all, otherwise can only see PATHS that user has READ_SCHEMA auth
     if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
-      statement.setCamSeeAll(false);
+      statement.setCanSeeAll(false);
       return visitAuthorityInformation(statement, context);
     } else {
-      statement.setCamSeeAll(true);
+      statement.setCanSeeAll(true);
       return SUCCEED;
     }
   }
@@ -736,9 +736,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       AuthorityInformationStatement statement, TreeAccessCheckContext context) {
     // own SYSTEM/MAINTAIN can see all except for root.__audit, otherwise can only see PATHS that
     // user has READ_SCHEMA auth
-    if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)
-        && !AuthorityChecker.checkSystemPermission(
-            context.userName, PrivilegeType.MANAGE_DATABASE)) {
+    if (!checkHasGlobalAuth(context.userName, PrivilegeType.MANAGE_DATABASE)) {
       return visitAuthorityInformation(statement, context);
     } else {
       return SUCCEED;

@@ -1051,7 +1051,6 @@ public class IoTDBAuthIT {
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
         ans =
             ",,SYSTEM,false,\n"
-                + ",,AUDIT,false,\n"
                 + ",root.**,READ_DATA,false,\n"
                 + ",root.**,WRITE_DATA,false,\n"
                 + ",root.**,READ_SCHEMA,false,\n"
@@ -1062,6 +1061,7 @@ public class IoTDBAuthIT {
       }
     }
     adminStmt.execute("GRANT ROLE testRole TO user3");
+    adminStmt.execute("REVOKE SECURITY ON root.** FROM USER user3");
     // now user has:
     // 1. MANAGE_ROLE
     // 2. MANAGE_DATABASE with grant option
@@ -1072,7 +1072,6 @@ public class IoTDBAuthIT {
         Statement userStmt = userCon.createStatement()) {
       try {
         // because role's privilege
-        userStmt.execute("GRANT manage_database ON root.** TO USER user1");
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("GRANT READ_DATA ON root.t1.** TO USER user1"));
