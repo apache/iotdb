@@ -44,7 +44,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
@@ -74,12 +73,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -106,12 +103,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
@@ -120,12 +115,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -149,12 +142,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -184,16 +175,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.ln",
               "create timeseries root.db.d1.s2 with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.db.d1(time, s1) values (2, 2)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -218,16 +207,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.ln0",
               "create timeseries root.db.d1.s3 with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.db.d1(time, s1) values (3, 3)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
@@ -282,12 +269,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -316,12 +301,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
@@ -330,12 +313,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -352,12 +333,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -386,12 +365,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
@@ -400,12 +377,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -422,12 +397,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -456,12 +429,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
@@ -470,12 +441,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -493,12 +462,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -524,12 +491,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
@@ -547,12 +512,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient ignored =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       expectedResSet.add("3,3.0,");
       TestUtils.assertDataEventuallyOnEnv(
@@ -589,7 +552,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      final AtomicInteger succeedNum = new AtomicInteger(0);
       final Thread t =
           new Thread(
               () -> {
@@ -601,12 +563,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
                 }
                 try {
                   for (int i = 0; i < 100; ++i) {
-                    if (TestUtils.tryExecuteNonQueryWithRetry(
+                    TestUtils.executeNonQuery(
                         senderEnv,
                         String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-                        connection)) {
-                      succeedNum.incrementAndGet();
-                    }
+                        connection);
                     Thread.sleep(100);
                   }
                 } catch (InterruptedException ignored) {
@@ -627,15 +587,13 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       t.join();
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "flush", null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum.get() + ","));
+          Collections.singleton("100,"));
     }
   }
 
@@ -648,10 +606,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "insert into root.db.d1(time, s1) values (1, 1)", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          receiverEnv, "insert into root.db.d1(time, s1) values (1, 1)", null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -672,12 +628,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -688,12 +642,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       Thread.sleep(5000);
       TestUtils.assertDataEventuallyOnEnv(
@@ -716,14 +668,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     final int receiverPort = receiverDataNode.getPort();
 
     for (int i = 0; i < 100; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), null);
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -751,30 +699,22 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     }
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 100; i < 200; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        TestUtils.executeNonQuery(
             senderEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection)) {
-          return;
-        }
+            connection);
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", connection)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "flush", connection);
     }
 
     try (Connection connection = receiverEnv.getConnection()) {
       for (int i = 200; i < 300; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection)) {
-          return;
-        }
+            connection);
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", connection)) {
-        return;
-      }
+      TestUtils.executeNonQuery(receiverEnv, "flush", connection);
     }
 
     try (final SyncConfigNodeIServiceClient client =
@@ -803,16 +743,12 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     }
     try (Connection connection = receiverEnv.getConnection()) {
       for (int i = 300; i < 400; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection)) {
-          return;
-        }
+            connection);
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", connection)) {
-        return;
-      }
+      TestUtils.executeNonQuery(receiverEnv, "flush", connection);
     }
 
     final Set<String> expectedResSet = new HashSet<>();
@@ -835,30 +771,22 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (Connection connection = senderEnv.getConnection()) {
       for (int i = 400; i < 500; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        TestUtils.executeNonQuery(
             senderEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection)) {
-          return;
-        }
+            connection);
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", connection)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "flush", connection);
     }
 
     try (Connection connection = receiverEnv.getConnection()) {
       for (int i = 500; i < 600; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
+        TestUtils.executeNonQuery(
             receiverEnv,
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection)) {
-          return;
-        }
+            connection);
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", connection)) {
-        return;
-      }
+      TestUtils.executeNonQuery(receiverEnv, "flush", connection);
     }
 
     for (int i = 400; i < 600; ++i) {

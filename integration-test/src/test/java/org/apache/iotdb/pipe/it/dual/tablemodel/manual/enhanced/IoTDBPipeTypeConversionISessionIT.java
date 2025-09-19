@@ -185,7 +185,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
     builder.deleteCharAt(builder.length() - 1);
     String tableCreation =
         String.format("create table if not exists test (%s)", builder.toString());
-    TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         null,
         "table",
         env,
@@ -205,7 +205,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql), null);
   }
 

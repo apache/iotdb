@@ -43,8 +43,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.fail;
-
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
 public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
@@ -89,26 +87,24 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
-  public void testWithSyncConnector() throws Exception {
-    testWithConnector("iotdb-thrift-sync-connector");
+  public void testWithSyncSink() throws Exception {
+    testWithSink("iotdb-thrift-sync-sink");
   }
 
   @Test
-  public void testWithAsyncConnector() throws Exception {
-    testWithConnector("iotdb-thrift-async-connector");
+  public void testWithAsyncSink() throws Exception {
+    testWithSink("iotdb-thrift-async-sink");
   }
 
-  private void testWithConnector(final String connector) throws Exception {
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+  private void testWithSink(final String sink) throws Exception {
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
             "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"),
-        null)) {
-      return;
-    }
+        null);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -116,35 +112,32 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create user user 'passwd123456'",
               "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"),
-          null)) {
-        fail();
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
+      sourceAttributes.put("source.inclusion", "all");
 
-      connectorAttributes.put("connector", connector);
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.username", "thulab");
-      connectorAttributes.put("connector.password", "passwd123456");
+      sinkAttributes.put("sink", sink);
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.username", "thulab");
+      sinkAttributes.put("sink.password", "passwd123456");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -178,16 +171,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
   @Test
   public void testNoPermission() throws Exception {
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"),
-        null)) {
-      return;
-    }
+            "grant READ on root.ln.** to role `admin`"),
+        null);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -195,42 +186,36 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create user someUser 'passwd'",
-              "create database root.noPermission",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
-          null)) {
-        fail();
-        return;
-      }
+              "create timeseries root.noPermission.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
+          null);
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
+      sourceAttributes.put("source.inclusion", "all");
 
-      connectorAttributes.put("connector", "iotdb-thrift-async-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.username", "thulab");
-      connectorAttributes.put("connector.password", "passwd123456");
+      sinkAttributes.put("sink", "iotdb-thrift-async-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.username", "thulab");
+      sinkAttributes.put("sink.password", "passwd123456");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("1,"));
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show timeseries",
