@@ -72,7 +72,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public FileTimeIndex deserialize(InputStream inputStream) throws IOException {
+  public FileTimeIndex deserialize(InputStream inputStream, IDeviceID.Deserializer deserializer)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 
