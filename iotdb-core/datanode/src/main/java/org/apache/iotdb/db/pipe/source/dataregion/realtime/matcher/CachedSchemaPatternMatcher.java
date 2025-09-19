@@ -191,17 +191,14 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   private Set<DataRegionSourceWithPattern> findUnmatchedSources(
       final Set<DataRegionSourceWithPattern> matchedSources) {
-    final Set<DataRegionSourceWithPattern> unmatchedSources = new HashSet<>();
-    for (final PipeRealtimeDataRegionSource source : sources) {
-      // TODO: improve performance
-      if (!matchedSources.stream()
-          .map(DataRegionSourceWithPattern::getSource)
-          .collect(Collectors.toSet())
-          .contains(source)) {
-        unmatchedSources.add(new DataRegionSourceWithPattern(source));
-      }
-    }
-    return unmatchedSources;
+    final Set<PipeRealtimeDataRegionSource> matched =
+        matchedSources.stream()
+            .map(DataRegionSourceWithPattern::getSource)
+            .collect(Collectors.toSet());
+    return sources.stream()
+        .filter(source -> !matched.contains(source))
+        .map(DataRegionSourceWithPattern::new)
+        .collect(Collectors.toSet());
   }
 
   protected void matchTreeModelEvent(
