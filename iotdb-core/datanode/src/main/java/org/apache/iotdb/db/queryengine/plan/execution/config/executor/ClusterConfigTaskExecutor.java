@@ -1624,8 +1624,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // TODO: send all paths in one RPC
       PathPatternTree authorityScope = showTTLStatement.getAuthorityScope();
       for (PartialPath pathPattern : showTTLStatement.getPaths()) {
+        PartialPath queriedPathPattern = pathPattern;
+        if (!pathPattern.endWithMultiLevelWildcard()) {
+          queriedPathPattern = pathPattern.concatNode(MULTI_LEVEL_PATH_WILDCARD);
+        }
         for (PartialPath overlappedPathPattern :
-            authorityScope.getOverlappedPathPatterns(pathPattern)) {
+            authorityScope.getOverlappedPathPatterns(queriedPathPattern)) {
           TShowTTLReq req = new TShowTTLReq(Arrays.asList(overlappedPathPattern.getNodes()));
           TShowTTLResp resp = client.showTTL(req);
           databaseToTTL.putAll(resp.getPathTTLMap());
