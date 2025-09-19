@@ -194,6 +194,10 @@ public class ConfigurationFileUtils {
     return defaultConfigurationItem == null ? null : defaultConfigurationItem.privilege;
   }
 
+  public static boolean parameterNeedKeepConsistentInCluster(String key) {
+    return false;
+  }
+
   public static void releaseDefault() {
     configuration2DefaultValue = null;
   }
