@@ -768,7 +768,7 @@ public class TestUtils {
       final ResultSet actualResultSet,
       final String expectedHeader,
       final Collection<String> expectedResult) {
-    assertResultSetEqual(actualResultSet, expectedHeader, expectedResult, false);
+    assertResultSetEqual(actualResultSet, expectedHeader, expectedResult, true);
   }
 
   public static void assertResultSetEqual(
