@@ -81,12 +81,14 @@ public class IoTDBTemplateAuthIT {
           "tytytyty");
 
       assertNonQueryTestFail(
-          adminStmt, "create database root.__audit", "803: The database '__audit' is read-only");
+          adminStmt,
+          "create database root.__audit",
+          "803: The database 'root.__audit' is read-only");
 
       assertNonQueryTestFail(
           adminStmt,
           "set device template t1 to root.__audit",
-          "803: The database '__audit' is read-only");
+          "803: The database 'root.__audit' is read-only");
 
       Set<String> retSet = new HashSet<>(Arrays.asList("t1", "t2", "t3"));
 
