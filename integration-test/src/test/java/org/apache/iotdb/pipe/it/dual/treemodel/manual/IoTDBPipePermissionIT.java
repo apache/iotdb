@@ -105,7 +105,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"),
+            "grant WRITE, READ, SYSTEM, SECURITY on root.** to role `admin`"),
         null)) {
       return;
     }
@@ -184,7 +184,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"),
+            "grant READ, SYSTEM on root.ln.** to role `admin`"),
         null)) {
       return;
     }
