@@ -349,6 +349,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitSetConfiguration(
       SetConfigurationStatement setConfigurationStatement, MPPQueryContext context) {
+    setConfigurationStatement.checkSomeParametersKeepConsistentInCluster();
     return new SetConfigurationTask(setConfigurationStatement);
   }
 

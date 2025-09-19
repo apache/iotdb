@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.sys;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -86,5 +87,25 @@ public class SetConfigurationStatement extends Statement implements IConfigState
       neededPrivileges.add(neededPrivilege);
     }
     return neededPrivileges;
+  }
+
+  public void checkSomeParametersKeepConsistentInCluster() {
+    String specialParam = null;
+    for (String key : this.getConfigItems().keySet()) {
+      if (ConfigurationFileUtils.parameterNeedKeepConsistentInCluster(key)) {
+        specialParam = key;
+        break;
+      }
+    }
+    if (specialParam == null) {
+      return;
+    }
+
+    if (nodeId >= 0 || configItems.size() > 1) {
+      throw new SemanticException(
+          "The parameters '"
+              + specialParam
+              + "'  must be consistent across the entire cluster and only one can be set at a time.");
+    }
   }
 }

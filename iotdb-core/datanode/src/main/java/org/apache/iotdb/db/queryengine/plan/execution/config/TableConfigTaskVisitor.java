@@ -934,6 +934,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     } catch (IOException e) {
       throw new AccessDeniedException("Failed to check config item permission");
     }
+    setConfigurationStatement.checkSomeParametersKeepConsistentInCluster();
     return new SetConfigurationTask(setConfigurationStatement);
   }
 
