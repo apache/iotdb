@@ -2840,6 +2840,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitShowAllTTL(IoTDBSqlParser.ShowAllTTLContext ctx) {
     ShowTTLStatement showTTLStatement = new ShowTTLStatement();
     showTTLStatement.addPathPatterns(new PartialPath(SqlConstant.getSingleRootArray()));
+    showTTLStatement.setShowAllTTL(true);
     return showTTLStatement;
   }
 
