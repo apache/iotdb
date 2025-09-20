@@ -128,7 +128,7 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.where = where;
   }
 
-  public boolean parseRawExpression(
+  public boolean parseWhere(
       final Map<String, List<DeviceEntry>> entries,
       final TsTable tableInstance,
       final List<String> attributeColumns,
