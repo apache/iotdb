@@ -1630,15 +1630,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // TODO: send all paths in one RPC
       PathPatternTree authorityScope = showTTLStatement.getAuthorityScope();
       for (PartialPath pathPattern : showTTLStatement.getPaths()) {
-        PartialPath queriedPathPattern = pathPattern;
         if (!pathPattern.endWithMultiLevelWildcard()) {
-          queriedPathPattern = pathPattern.concatNode(MULTI_LEVEL_PATH_WILDCARD);
-        }
-        for (PartialPath overlappedPathPattern :
-            authorityScope.getOverlappedPathPatterns(queriedPathPattern)) {
-          TShowTTLReq req = new TShowTTLReq(Arrays.asList(overlappedPathPattern.getNodes()));
+          TShowTTLReq req = new TShowTTLReq(Arrays.asList(pathPattern.getNodes()));
           TShowTTLResp resp = client.showTTL(req);
           databaseToTTL.putAll(resp.getPathTTLMap());
+          continue;
+        }
+        for (PartialPath overlappedPathPattern :
+            authorityScope.getOverlappedPathPatterns(pathPattern)) {
+          List<String> nodes = Arrays.asList(overlappedPathPattern.getNodes());
+          TShowTTLReq req = new TShowTTLReq(nodes);
+          TShowTTLResp resp = client.showTTL(req);
+          databaseToTTL.putAll(resp.getPathTTLMap());
+          if (showTTLStatement.isShowAllTTL()) {
+            req.setPathPattern(nodes.subList(0, nodes.size() - 1));
+            resp = client.showTTL(req);
+            databaseToTTL.putAll(resp.getPathTTLMap());
+          }
         }
       }
     } catch (ClientManagerException | TException e) {

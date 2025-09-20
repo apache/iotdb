@@ -1303,6 +1303,17 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     if (checkHasGlobalAuth(context.userName, PrivilegeType.SYSTEM)) {
       return SUCCEED;
     }
+    for (PartialPath path : showTTLStatement.getPaths()) {
+      if (path.endWithMultiLevelWildcard()) {
+        continue;
+      }
+      if (!AuthorityChecker.checkFullPathOrPatternPermission(
+          context.userName,
+          path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+          PrivilegeType.READ_SCHEMA)) {
+        return AuthorityChecker.getTSStatus(false, path, PrivilegeType.READ_SCHEMA);
+      }
+    }
     return visitAuthorityInformation(showTTLStatement, context);
   }
 
