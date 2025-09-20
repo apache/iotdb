@@ -203,7 +203,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
             Objects.nonNull(snapshotEvent.getTemplateFile())
                 ? Paths.get(snapshotEvent.getTemplateFile().getPath())
                 : null,
-            snapshotEvent.getFileType());
+            snapshotEvent.getFileType(),
+            snapshotEvent.getAuthUserName());
   }
 
   @Override

@@ -1033,7 +1033,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             Paths.get(fileAbsolutePaths.get(0)),
             fileAbsolutePaths.size() > 1 ? Paths.get(fileAbsolutePaths.get(1)) : null,
             CNSnapshotFileType.deserialize(
-                Byte.parseByte(parameters.get(PipeTransferConfigSnapshotSealReq.FILE_TYPE))));
+                Byte.parseByte(parameters.get(PipeTransferConfigSnapshotSealReq.FILE_TYPE))),
+            parameters.getOrDefault("authUserName", ""));
     if (Objects.isNull(generator)) {
       throw new IOException(
           String.format("The config region snapshots %s cannot be parsed.", fileAbsolutePaths));

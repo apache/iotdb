@@ -103,14 +103,15 @@ public class CNPhysicalPlanGenerator
   private Exception latestException = null;
   private String userName;
 
-  public CNPhysicalPlanGenerator(final Path snapshotFilePath, final CNSnapshotFileType fileType)
+  public CNPhysicalPlanGenerator(
+      final Path snapshotFilePath, final CNSnapshotFileType fileType, final String userName)
       throws IOException {
     if (fileType == CNSnapshotFileType.SCHEMA) {
       logger.warn("schema_template need two files");
       return;
     }
     if (fileType == CNSnapshotFileType.USER_ROLE) {
-      userName = snapshotFilePath.getFileName().toString().split("_role.profile")[0];
+      this.userName = userName;
     }
     snapshotFileType = fileType;
     inputStream = Files.newInputStream(snapshotFilePath);
@@ -200,9 +201,14 @@ public class CNPhysicalPlanGenerator
       int tag = dataInputStream.readInt();
       boolean fromOldVersion = tag < 0;
       String user;
-      if (fromOldVersion) {
+      if (tag < 0) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
+      } else if (tag == 1) {
+        user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       } else {
+        if (isUser) {
+          dataInputStream.readLong(); // skip userId since authorPlan do not demand it.
+        }
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       }
 
@@ -226,7 +232,7 @@ public class CNPhysicalPlanGenerator
       final int privilegeMask = dataInputStream.readInt();
       generateGrantSysPlan(user, isUser, privilegeMask);
 
-      if (fromOldVersion) {
+      if (tag < 0) {
         while (dataInputStream.available() != 0) {
           final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
           final PartialPath priPath;

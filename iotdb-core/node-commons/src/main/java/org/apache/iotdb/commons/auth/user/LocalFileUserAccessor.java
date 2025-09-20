@@ -89,6 +89,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
 
   @Override
   protected void saveEntityName(BufferedOutputStream outputStream, Role role) throws IOException {
+    IOUtils.writeLong(outputStream, ((User) role).getUserId(), encodingBufferLocal);
     super.saveEntityName(outputStream, role);
     IOUtils.writeString(
         outputStream, ((User) role).getPassword(), STRING_ENCODING, encodingBufferLocal);
@@ -101,7 +102,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         SystemFileFactory.INSTANCE.getFile(
             entityDirPath
                 + File.separator
-                + user.getName()
+                + user.getUserId()
                 + ROLE_SUFFIX
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
@@ -123,7 +124,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         SystemFileFactory.INSTANCE.getFile(
             entityDirPath
                 + File.separator
-                + user.getName()
+                + user.getUserId()
                 + ROLE_SUFFIX
                 + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldURoleFile);
@@ -144,14 +145,10 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     FileInputStream inputStream = new FileInputStream(entityFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      boolean fromOldVersion = false;
       int tag = dataInputStream.readInt();
-      if (tag < 0) {
-        fromOldVersion = true;
-      }
       User user = new User();
 
-      if (fromOldVersion) {
+      if (tag < 0) {
         String name =
             IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
         user.setName(name);
@@ -163,8 +160,13 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
               IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
         }
         user.setPrivilegeList(pathPrivilegeList);
+      } else if (tag == 1) {
+        user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        loadPrivileges(dataInputStream, user);
       } else {
         assert (tag == VERSION);
+        user.setUserId(dataInputStream.readLong());
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         loadPrivileges(dataInputStream, user);
@@ -289,6 +291,37 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
       outputStream.flush();
       fileOutputStream.getFD().sync();
 
+    } catch (Exception e) {
+      throw new IOException(e);
+    } finally {
+      encodingBufferLocal.remove();
+    }
+
+    File oldFile =
+        SystemFileFactory.INSTANCE.getFile(
+            entityDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
+    IOUtils.replaceFile(userProfile, oldFile);
+  }
+
+  @TestOnly
+  public void saveUserOldVersion1(User user) throws IOException {
+    File userProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            entityDirPath
+                + File.separator
+                + user.getName()
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
+
+    try (FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
+        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+      // test for version1
+      IOUtils.writeInt(outputStream, 1, encodingBufferLocal);
+      IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
+      IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+      savePrivileges(outputStream, user);
+      outputStream.flush();
+      fileOutputStream.getFD().sync();
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
