@@ -38,7 +38,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 public class ConfigNodeSnapshotParser {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeSnapshotParser.class);

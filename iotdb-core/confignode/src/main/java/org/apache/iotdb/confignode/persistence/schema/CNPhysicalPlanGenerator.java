@@ -103,7 +103,6 @@ public class CNPhysicalPlanGenerator
   private Exception latestException = null;
   private String userName;
 
-
   public CNPhysicalPlanGenerator(
       final Path snapshotFilePath, final CNSnapshotFileType fileType, final String userName)
       throws IOException {

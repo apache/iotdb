@@ -120,7 +120,7 @@ public class User extends Role {
     return resp;
   }
 
-  public TListUserInfo convertToListUserInfo( ) {
+  public TListUserInfo convertToListUserInfo() {
     TListUserInfo userInfo = new TListUserInfo();
     userInfo.setUserId(userId);
     userInfo.setUsername(name);
