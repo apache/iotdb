@@ -111,8 +111,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void initUserId() {
     try {
       long maxUserId = this.accessor.loadUserId();
-      if (maxUserId == -1 || maxUserId < 10000) {
-        nextUserId = 10000;
+      if (maxUserId == -1 || maxUserId < 9999) {
+        nextUserId = 9999;
       } else {
         nextUserId = maxUserId;
       }
@@ -120,7 +120,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       for (Map.Entry<String, Role> userEntry : entityMap.entrySet()) {
         User user = (User) userEntry.getValue();
         if (user.getUserId() == -1) {
-          user.setUserId(nextUserId++);
+          user.setUserId(++nextUserId);
         }
       }
     } catch (IOException e) {
