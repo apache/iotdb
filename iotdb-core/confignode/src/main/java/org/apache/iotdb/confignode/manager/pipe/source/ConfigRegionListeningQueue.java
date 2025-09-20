@@ -136,13 +136,13 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
               && snapshotPath
                   .toFile()
                   .getName()
-                  .equals(AuthorityChecker.SUPER_USER_ID + IoTDBConstant.PROFILE_SUFFIX)
+                  .equals(AuthorityChecker.SUPER_USER_ID_IN_STR + IoTDBConstant.PROFILE_SUFFIX)
           || type == CNSnapshotFileType.USER_ROLE
               && snapshotPath
                   .toFile()
                   .getName()
                   .equals(
-                      AuthorityChecker.SUPER_USER_ID
+                      AuthorityChecker.SUPER_USER_ID_IN_STR
                           + LocalFileUserAccessor.ROLE_SUFFIX
                           + IoTDBConstant.PROFILE_SUFFIX)
           || snapshotPath.toFile().getName().equals("user_id.profile")) {
@@ -165,7 +165,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                   .getPermissionManager()
                   .getUserName(userId));
         } catch (AuthException e) {
-          // ignore
+          LOGGER.warn("Failed to collect user name for user id {}", userId, e);
         }
       }
       events.add(curEvent);

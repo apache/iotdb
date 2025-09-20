@@ -241,7 +241,6 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
 
     List<TListUserInfo> rtlist = new ArrayList<>();
     for (Role r : entityMap.values()) {
-      // System.out.println(r.getRoleId());
       TListUserInfo userInfo = new TListUserInfo();
       userInfo.userId = ((User) r).getUserId();
       userInfo.username = r.getName();

@@ -111,7 +111,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void initUserId() {
     try {
       long maxUserId = this.accessor.loadUserId();
-      if (maxUserId == -1 || maxUserId < 9999) {
+      if (maxUserId < 9999) {
         nextUserId = 9999;
       } else {
         nextUserId = maxUserId;
@@ -124,7 +124,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
         }
       }
     } catch (IOException e) {
-      LOGGER.warn("meet error in load max userId.");
+      LOGGER.warn("meet error in load max userId.", e);
       throw new RuntimeException(e);
     }
   }
@@ -165,8 +165,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
     lock.writeLock(username);
     try {
-      long userid = 0;
-      if (username.equals("root")) {
+      long userid;
+      if (username.equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
         userid = 0;
       } else {
         userid = ++nextUserId;
