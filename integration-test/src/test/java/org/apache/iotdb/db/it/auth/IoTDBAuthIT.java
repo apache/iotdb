@@ -99,7 +99,8 @@ public class IoTDBAuthIT {
 
         ResultSet resultSet = userStmt.executeQuery("LIST USER");
         Assert.assertTrue(resultSet.next());
-        Assert.assertEquals("tempuser", resultSet.getString(1));
+        Assert.assertEquals("10000", resultSet.getString(1));
+        Assert.assertEquals("tempuser", resultSet.getString(2));
         Assert.assertFalse(resultSet.next());
 
         resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER tempuser");
