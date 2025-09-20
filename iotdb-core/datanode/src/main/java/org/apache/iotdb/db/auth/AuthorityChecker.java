@@ -72,6 +72,9 @@ public class AuthorityChecker {
   public static int SUPER_USER_ID = 0;
   public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
 
+  public static int INTERNAL_AUDIT_USER_ID = -1;
+  public static String INTERNAL_AUDIT_USER = "__auditor";
+
   public static String ANY_SCOPE = "any";
 
   public static final TSStatus SUCCEED = RpcUtils.SUCCESS_STATUS;

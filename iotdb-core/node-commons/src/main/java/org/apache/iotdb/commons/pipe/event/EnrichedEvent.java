@@ -78,7 +78,9 @@ public abstract class EnrichedEvent implements Event {
 
   protected volatile boolean shouldReportOnCommit = true;
   protected List<Runnable> onCommittedHooks = new ArrayList<>();
+  protected String userId;
   protected String userName;
+  protected String cliHostname;
   protected boolean skipIfNoPrivileges;
 
   protected EnrichedEvent(
@@ -87,7 +89,9 @@ public abstract class EnrichedEvent implements Event {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -99,7 +103,9 @@ public abstract class EnrichedEvent implements Event {
     this.pipeTaskMeta = pipeTaskMeta;
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
+    this.userId = userId;
     this.userName = userName;
+    this.cliHostname = cliHostname;
     this.skipIfNoPrivileges = skipIfNoPrivileges;
     this.startTime = startTime;
     this.endTime = endTime;
@@ -332,8 +338,16 @@ public abstract class EnrichedEvent implements Event {
     return tablePattern;
   }
 
+  public String getUserId() {
+    return userId;
+  }
+
   public String getUserName() {
     return userName;
+  }
+
+  public String getCliHostname() {
+    return cliHostname;
   }
 
   public boolean isSkipIfNoPrivileges() {
@@ -378,7 +392,9 @@ public abstract class EnrichedEvent implements Event {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime);

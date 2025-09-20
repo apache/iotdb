@@ -82,7 +82,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -92,7 +94,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime,
@@ -144,6 +148,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -161,7 +167,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final boolean needToReport,
-      final String userName) {
+      final String userId,
+      final String userName,
+      final String cliHostname) {
     this(
         isTableModelEvent,
         databaseName,
@@ -176,7 +184,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         null,
         null,
+        userId,
         userName,
+        cliHostname,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -195,6 +205,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         false,
         null,
         0,
+        null,
+        null,
         null,
         null,
         null,
@@ -222,6 +234,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         treePattern,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -231,8 +245,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
     this(
-        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, true,
-        startTime, endTime);
+        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, null,
+        null, true, startTime, endTime);
   }
 
   @Override
@@ -321,7 +335,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -339,7 +355,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);

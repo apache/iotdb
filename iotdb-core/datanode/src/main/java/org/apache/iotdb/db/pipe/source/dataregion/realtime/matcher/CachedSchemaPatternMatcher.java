@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.matcher;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -311,7 +312,9 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       final TablePattern tablePattern = source.getTablePattern();
       if (matchesTablePattern(tablePattern, databaseNameAndTableName)
           && (!source.isSkipIfNoPrivileges()
-              || notFilteredByAccess(source.getUserName(), databaseNameAndTableName))) {
+              || notFilteredByAccess(
+                  new UserEntity(source.getUserId(), source.getUserName(), source.getCliHostname()),
+                  databaseNameAndTableName))) {
         filteredSources.add(source);
       }
     }
@@ -328,12 +331,12 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   private boolean notFilteredByAccess(
-      final String userName, final Pair<String, IDeviceID> databaseNameAndTableName) {
+      final UserEntity userEntity, final Pair<String, IDeviceID> databaseNameAndTableName) {
     return accessControl.checkCanSelectFromTable4Pipe(
-        userName,
+        userEntity.getUsername(),
         new QualifiedObjectName(
-            databaseNameAndTableName.getLeft(),
-            databaseNameAndTableName.getRight().getTableName()));
+            databaseNameAndTableName.getLeft(), databaseNameAndTableName.getRight().getTableName()),
+        userEntity);
   }
 
   @Override

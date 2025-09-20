@@ -508,8 +508,20 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   @Override
+  public IAuditEntity setDatabase(String database) {
+    // Do nothing
+    return this;
+  }
+
+  @Override
   public String getSqlString() {
     return sql;
+  }
+
+  @Override
+  public IAuditEntity setSqlString(String sqlString) {
+    // Do nothing
+    return this;
   }
 
   // ================= Authentication Interfaces =========================

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
@@ -95,7 +96,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
@@ -105,7 +106,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     super(
         endPoints,
         useLeaderCache,
-        username,
+        userEntity,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
@@ -117,7 +118,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     receiverAttributes =
         String.format(
             "%s-%s-%s-%s-%s-%s",
-            Base64.getEncoder().encodeToString((username + ":" + password).getBytes()),
+            Base64.getEncoder()
+                .encodeToString((userEntity.getUsername() + ":" + password).getBytes()),
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             validateTsFile,
@@ -291,7 +293,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           Boolean.toString(shouldReceiverConvertOnTypeMismatch));
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
-      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID,
+          String.valueOf(userEntity.getUserId()));
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, userEntity.getUsername());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, userEntity.getCliHostname());
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,

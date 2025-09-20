@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -392,13 +394,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(
         node,
-        databaseName -> canShowDB(accessControl, context.getSession().getUserName(), databaseName));
+        databaseName ->
+            canShowDB(accessControl, context.getSession().getUserName(), databaseName, context));
   }
 
   public static boolean canShowDB(
-      final AccessControl accessControl, final String userName, final String databaseName) {
+      final AccessControl accessControl,
+      final String userName,
+      final String databaseName,
+      IAuditEntity auditEntity) {
     try {
-      accessControl.checkCanShowOrUseDatabase(userName, databaseName);
+      accessControl.checkCanShowOrUseDatabase(userName, databaseName, auditEntity);
       return true;
     } catch (final AccessDeniedException e) {
       return false;
@@ -878,7 +884,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Predicate<String> checkCanShowTable =
         tableName ->
             canShowTable(
-                accessControl, context.getSession().getUserName(), finalDatabase, tableName);
+                accessControl,
+                context.getSession().getUserName(),
+                finalDatabase,
+                tableName,
+                context);
     return node.isDetails()
         ? new ShowTablesDetailsTask(database, checkCanShowTable)
         : new ShowTablesTask(database, checkCanShowTable);
@@ -888,10 +898,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final AccessControl accessControl,
       final String userName,
       final String databaseName,
-      final String tableName) {
+      final String tableName,
+      IAuditEntity auditEntity) {
     try {
       accessControl.checkCanShowOrDescTable(
-          userName, new QualifiedObjectName(databaseName, tableName));
+          userName, new QualifiedObjectName(databaseName, tableName), auditEntity);
       return true;
     } catch (final AccessDeniedException e) {
       return false;
@@ -1053,18 +1064,26 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // Inject table model into the extractor attributes
     extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-    checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, false);
-    checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, false);
+    checkAndEnrichSourceUser(
+        pipeName,
+        extractorAttributes,
+        new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
+        false);
+    checkAndEnrichSinkUser(
+        pipeName,
+        node.getConnectorAttributes(),
+        new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
+        false);
 
     mayChangeSourcePattern(extractorAttributes);
 
     return new CreatePipeTask(node);
   }
 
-  public static void checkAndEnrichSourceUserName(
+  public static void checkAndEnrichSourceUser(
       final String pipeName,
       final Map<String, String> replacedExtractorAttributes,
-      final String userName,
+      final UserEntity userEntity,
       final boolean isAlter) {
     final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
     final String pluginName =
@@ -1084,7 +1103,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
         PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
         PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
-      replacedExtractorAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
+      replacedExtractorAttributes.put(
+          PipeSourceConstant.SOURCE_IOTDB_USER_ID, String.valueOf(userEntity.getUserId()));
+      replacedExtractorAttributes.put(
+          PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, userEntity.getUsername());
+      replacedExtractorAttributes.put(
+          PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, userEntity.getCliHostname());
     } else if (!extractorParameters.hasAnyAttributes(
         PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
         PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
@@ -1126,10 +1150,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeSourceConstant.SOURCE_TABLE_NAME_KEY);
   }
 
-  public static void checkAndEnrichSinkUserName(
+  public static void checkAndEnrichSinkUser(
       final String pipeName,
       final Map<String, String> connectorAttributes,
-      final String userName,
+      final UserEntity userEntity,
       final boolean isAlter) {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final String pluginName =
@@ -1149,7 +1173,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeSinkConstant.SINK_IOTDB_USER_KEY,
         PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
         PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
-      connectorAttributes.put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, userName);
+      connectorAttributes.put(
+          PipeSinkConstant.SINK_IOTDB_USER_ID, String.valueOf(userEntity.getUserId()));
+      connectorAttributes.put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, userEntity.getUsername());
+      connectorAttributes.put(
+          PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME, userEntity.getCliHostname());
     } else if (!connectorParameters.hasAnyAttributes(
         PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
@@ -1187,12 +1215,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (node.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
+      checkAndEnrichSourceUser(
+          pipeName,
+          extractorAttributes,
+          new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
+          true);
     }
     mayChangeSourcePattern(extractorAttributes);
 
     if (node.isReplaceAllConnectorAttributes()) {
-      checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, true);
+      checkAndEnrichSinkUser(
+          pipeName,
+          node.getConnectorAttributes(),
+          new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
+          true);
     }
 
     return new AlterPipeTask(node, userName);

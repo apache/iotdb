@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.audit;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+
 import java.util.Objects;
 
 /** This class defines the fields of a user entity to be audited. */
-public class UserEntity {
+public class UserEntity implements IAuditEntity {
 
   private final long userId;
 
@@ -62,5 +64,78 @@ public class UserEntity {
   @Override
   public int hashCode() {
     return Objects.hash(userId, username, cliHostname);
+  }
+
+  private AuditEventType auditEventType;
+  private AuditLogOperation auditLogOperation;
+  private PrivilegeType privilegeType;
+  private boolean result;
+  private String database;
+  private String sqlString;
+
+  @Override
+  public AuditEventType getAuditEventType() {
+    return auditEventType;
+  }
+
+  @Override
+  public IAuditEntity setAuditEventType(AuditEventType auditEventType) {
+    this.auditEventType = auditEventType;
+    return this;
+  }
+
+  @Override
+  public AuditLogOperation getAuditLogOperation() {
+    return auditLogOperation;
+  }
+
+  @Override
+  public IAuditEntity setAuditLogOperation(AuditLogOperation auditLogOperation) {
+    this.auditLogOperation = auditLogOperation;
+    return this;
+  }
+
+  @Override
+  public PrivilegeType getPrivilegeType() {
+    return privilegeType;
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeType(PrivilegeType privilegeType) {
+    this.privilegeType = privilegeType;
+    return this;
+  }
+
+  @Override
+  public boolean getResult() {
+    return result;
+  }
+
+  @Override
+  public IAuditEntity setResult(boolean result) {
+    this.result = result;
+    return this;
+  }
+
+  @Override
+  public String getDatabase() {
+    return database;
+  }
+
+  @Override
+  public IAuditEntity setDatabase(String database) {
+    this.database = database;
+    return this;
+  }
+
+  @Override
+  public String getSqlString() {
+    return sqlString;
+  }
+
+  @Override
+  public IAuditEntity setSqlString(String sqlString) {
+    this.sqlString = sqlString;
+    return this;
   }
 }
