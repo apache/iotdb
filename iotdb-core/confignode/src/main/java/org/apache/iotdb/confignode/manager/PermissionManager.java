@@ -141,4 +141,8 @@ public class PermissionManager {
   public TPermissionInfoResp getUser(String username) throws AuthException {
     return authorInfo.getUser(username);
   }
+
+  public String getUserName(long userId) throws AuthException {
+    return authorInfo.getUserName(userId);
+  }
 }

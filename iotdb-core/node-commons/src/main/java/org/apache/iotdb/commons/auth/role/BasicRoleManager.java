@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -33,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +79,10 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
     Role role = entityMap.get(entityName);
     lock.readUnlock(entityName);
     return role;
+  }
+
+  public Role getEntity(long entityId) {
+    return null;
   }
 
   public boolean createRole(String entityName) {
@@ -227,6 +234,21 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
     List<String> rtlist = new ArrayList<>();
     entityMap.forEach((name, item) -> rtlist.add(name));
     rtlist.sort(null);
+    return rtlist;
+  }
+
+  public List<TListUserInfo> listAllEntitiesInfo() {
+
+    List<TListUserInfo> rtlist = new ArrayList<>();
+    for (Role r : entityMap.values()) {
+      TListUserInfo userInfo = new TListUserInfo();
+      userInfo.userId = ((User) r).getUserId();
+      userInfo.username = r.getName();
+      userInfo.maxSessionPerUser = r.getMaxSessionPerUser();
+      userInfo.minSessionPerUser = r.getMinSessionPerUser();
+      rtlist.add(userInfo);
+    }
+    rtlist.sort(Comparator.comparingLong(TListUserInfo::getUserId));
     return rtlist;
   }
 }
