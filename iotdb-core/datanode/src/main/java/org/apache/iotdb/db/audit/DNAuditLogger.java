@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -97,7 +98,13 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.log.node_%s.u_all";
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionInfo sessionInfo =
-      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+      new SessionInfo(
+          0,
+          new UserEntity(
+              AuthorityChecker.SUPER_USER_ID,
+              AuthorityChecker.SUPER_USER,
+              IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+          ZoneId.systemDefault());
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
@@ -106,7 +113,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
       DataNodeDevicePathCache.getInstance();
-  private static AtomicBoolean tableViewIsInitialized = new AtomicBoolean(false);
+  private static final AtomicBoolean tableViewIsInitialized = new AtomicBoolean(false);
 
   private DNAuditLogger() {
     // Empty constructor
@@ -311,7 +318,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
     if (!checkBeforeLog(auditLogFields)) {
       return;
     }
-    int userId = auditLogFields.getUserId();
+    long userId = auditLogFields.getUserId();
     String user = String.valueOf(userId);
     if (userId == -1) {
       user = "none";

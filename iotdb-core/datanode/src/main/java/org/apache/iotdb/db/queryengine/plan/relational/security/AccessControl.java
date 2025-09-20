@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -40,129 +41,152 @@ public interface AccessControl {
    *
    * @param userName name of user
    * @param databaseName without `root.` prefix, like db
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanCreateDatabase(String userName, String databaseName);
+  void checkCanCreateDatabase(String userName, String databaseName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to drop the specified database.
    *
    * @param userName name of user
    * @param databaseName without `root.` prefix, like db
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanDropDatabase(String userName, String databaseName);
+  void checkCanDropDatabase(String userName, String databaseName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to alter the specified database.
    *
    * @param userName name of user
    * @param databaseName without `root.` prefix, like db
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanAlterDatabase(String userName, String databaseName);
+  void checkCanAlterDatabase(String userName, String databaseName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to show or use the specified database.
    *
    * @param userName name of user
    * @param databaseName without `root.` prefix, like db
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanShowOrUseDatabase(final String userName, final String databaseName);
+  void checkCanShowOrUseDatabase(
+      final String userName, final String databaseName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to create the specified table.
    *
    * @param userName name of user
    * @param tableName qualified name of table without `root.` prefix, like db.table1
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanCreateTable(String userName, QualifiedObjectName tableName);
+  void checkCanCreateTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to create the specified table.
    *
    * @param userName name of user
    * @param tableName qualified name of table without `root.` prefix, like db.table1
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanDropTable(String userName, QualifiedObjectName tableName);
+  void checkCanDropTable(String userName, QualifiedObjectName tableName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to alter the specified table.
    *
    * @param userName name of user
    * @param tableName qualified name of table without `root.` prefix, like db.table1
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanAlterTable(String userName, QualifiedObjectName tableName);
+  void checkCanAlterTable(String userName, QualifiedObjectName tableName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to insert into the specified table.
    *
    * @param userName name of user
    * @param tableName qualified name of table without `root.` prefix, like db.table1
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName);
+  void checkCanInsertIntoTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to select from the specified table.
    *
    * @param userName name of user
    * @param tableName qualified name of table without `root.` prefix, like db.table1
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanSelectFromTable(String userName, QualifiedObjectName tableName);
+  void checkCanSelectFromTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to extract certain data from pipe.
    *
    * @param userName name of user
    * @param databaseName the databaseName
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanSelectFromDatabase4Pipe(final String userName, final String databaseName);
+  void checkCanSelectFromDatabase4Pipe(
+      final String userName, final String databaseName, IAuditEntity auditEntity);
 
   // This does not throw exception for performance issues
-  boolean checkCanSelectFromTable4Pipe(final String userName, final QualifiedObjectName tableName);
+  boolean checkCanSelectFromTable4Pipe(
+      final String userName, final QualifiedObjectName tableName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to delete from the specified table.
    *
    * @param userName name of user
    * @param tableName qualified name of table without `root.` prefix, like db.table1
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName);
+  void checkCanDeleteFromTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to show or describe the specified table.
    *
    * @param userName name of user
    * @param tableName qualified name of table without `root.` prefix, like db.table1
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName);
+  void checkCanShowOrDescTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity);
 
   /**
    * Check if user is allowed to create view under the specific tree path.
    *
    * @param userName name of user
    * @param path the tree path scope the view can select from
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanCreateViewFromTreePath(final String userName, final PartialPath path);
+  void checkCanCreateViewFromTreePath(
+      final String userName, final PartialPath path, IAuditEntity auditEntity);
 
   /**
    * Check if user can run relational author statement.
    *
    * @param userName name of user
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
   void checkUserCanRunRelationalAuthorStatement(
-      String userName, RelationalAuthorStatement statement);
+      String userName, RelationalAuthorStatement statement, IAuditEntity auditEntity);
 
   /**
    * Check if user is admin user
@@ -176,9 +200,10 @@ public interface AccessControl {
    * Check if user has global SYSTEM privilege
    *
    * @param userName name of user
+   * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkUserGlobalSysPrivilege(String userName);
+  void checkUserGlobalSysPrivilege(String userName, IAuditEntity auditEntity);
 
   /**
    * Check if user has sepecified global privilege
@@ -189,7 +214,8 @@ public interface AccessControl {
    */
   boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType);
 
-  void checkMissingPrivileges(String username, Collection<PrivilegeType> privilegeTypes);
+  void checkMissingPrivileges(
+      String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity);
 
   // ====================================== TREE =============================================
 

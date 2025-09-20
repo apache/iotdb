@@ -398,7 +398,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         final SessionInfo newSessionInfo =
             new SessionInfo(
                 sessionInfo.getSessionId(),
-                sessionInfo.getUserName(),
+                sessionInfo.getUserEntity(),
                 sessionInfo.getZoneId(),
                 sessionInfo.getDatabaseName().orElse(null),
                 IClientSession.SqlDialect.TABLE);
@@ -408,7 +408,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         final SessionInfo newSessionInfo =
             new SessionInfo(
                 sessionInfo.getSessionId(),
-                sessionInfo.getUserName(),
+                sessionInfo.getUserEntity(),
                 sessionInfo.getZoneId(),
                 sessionInfo.getDatabaseName().orElse(null),
                 IClientSession.SqlDialect.TREE);
