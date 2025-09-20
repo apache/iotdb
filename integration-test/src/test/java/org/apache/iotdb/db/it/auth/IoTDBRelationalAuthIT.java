@@ -72,7 +72,8 @@ public class IoTDBRelationalAuthIT {
           Statement userStmt = userCon.createStatement()) {
         ResultSet resultSet = userStmt.executeQuery("LIST USER");
         Assert.assertTrue(resultSet.next());
-        Assert.assertEquals("testuser", resultSet.getString(1));
+        Assert.assertEquals("10000", resultSet.getString(1));
+        Assert.assertEquals("testuser", resultSet.getString(2));
         Assert.assertFalse(resultSet.next());
       }
       adminStmt.execute("create database testdb");
