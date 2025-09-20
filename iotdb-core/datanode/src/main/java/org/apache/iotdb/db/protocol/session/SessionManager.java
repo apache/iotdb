@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
@@ -33,6 +35,9 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.BasicAuthorityCache;
+import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
+import org.apache.iotdb.db.auth.IAuthorityFetcher;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -58,6 +63,7 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,6 +108,9 @@ public class SessionManager implements SessionManagerMBean {
 
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+
+  private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
+      MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
 
   private static final boolean ENABLE_AUDIT_LOG =
       IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
@@ -157,7 +166,13 @@ public class SessionManager implements SessionManagerMBean {
     try {
       Statement statement = StatementGenerator.createStatement(lastDataQueryReq);
       SessionInfo sessionInfo =
-          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.SUPER_USER_ID,
+                  AuthorityChecker.SUPER_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
 
       queryId = requestQueryId();
       ExecutionResult result =
@@ -541,9 +556,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfo(IClientSession session) {
+    User user = authorityFetcher.get().getUser(session.getUsername());
+    long userId = user == null ? -1 : user.getUserId();
     return new SessionInfo(
         session.getId(),
-        session.getUsername(),
+        new UserEntity(userId, session.getUsername(), session.getClientAddress()),
         session.getZoneId(),
         session.getClientVersion(),
         session.getDatabaseName(),
@@ -555,7 +572,7 @@ public class SessionManager implements SessionManagerMBean {
   public SessionInfo copySessionInfoForTreeModel(final SessionInfo sessionInfo) {
     return new SessionInfo(
         sessionInfo.getSessionId(),
-        sessionInfo.getUserName(),
+        sessionInfo.getUserEntity(),
         ZoneId.systemDefault(),
         sessionInfo.getVersion(),
         sessionInfo.getDatabaseName().orElse(null),
@@ -563,9 +580,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
+    User user = authorityFetcher.get().getUser(session.getUsername());
+    long userId = user == null ? -1 : user.getUserId();
     return new SessionInfo(
         session.getId(),
-        session.getUsername(),
+        new UserEntity(userId, session.getUsername(), session.getClientAddress()),
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
@@ -573,9 +592,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
+    User user = authorityFetcher.get().getUser(session.getUsername());
+    long userId = user == null ? -1 : user.getUserId();
     return new SessionInfo(
         session.getId(),
-        session.getUsername(),
+        new UserEntity(userId, session.getUsername(), session.getClientAddress()),
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
@@ -583,9 +604,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
+    User user = authorityFetcher.get().getUser(session.getUsername());
+    long userId = user == null ? -1 : user.getUserId();
     return new SessionInfo(
         session.getId(),
-        session.getUsername(),
+        new UserEntity(userId, session.getUsername(), session.getClientAddress()),
         ZoneId.systemDefault(),
         session.getClientVersion(),
         databaseName,

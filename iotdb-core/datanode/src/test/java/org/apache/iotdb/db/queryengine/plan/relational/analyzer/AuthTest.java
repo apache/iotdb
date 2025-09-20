@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -58,17 +59,22 @@ public class AuthTest {
   private final QualifiedObjectName testdbTable1 = new QualifiedObjectName(DB1, TABLE1);
 
   private final String userRoot = "root";
+  private final UserEntity userEntityRoot = new UserEntity(-1, userRoot, "");
 
   private final String user1 = "user1";
+  private final UserEntity userEntityUser1 = new UserEntity(-1, user1, "");
 
   private final String user2 = "user2";
+  private final UserEntity userEntityUser2 = new UserEntity(-1, user2, "");
 
   @Test
   public void testQueryRelatedAuth() {
     String sql = String.format("SELECT * FROM %s.%s", DB1, TABLE1);
     ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkTablePrivilege(eq(userRoot), any(), any());
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkTablePrivilege(eq(userRoot), any(), any(), userEntityRoot);
     // user `user1` don't hava testdb.table1's SELECT privilege
     String errorMsg =
         String.format(
@@ -76,11 +82,13 @@ public class AuthTest {
             user1, TableModelPrivilege.SELECT, DB1, TABLE1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
+        .checkTablePrivilege(
+            eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT), userEntityUser1);
     // user `user2` has testdb.table1's SELECT privilege
     Mockito.doNothing()
         .when(authChecker)
-        .checkTablePrivilege(eq(user2), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
+        .checkTablePrivilege(
+            eq(user2), eq(testdbTable1), eq(TableModelPrivilege.SELECT), userEntityUser2);
 
     String userName = userRoot;
     try {
@@ -115,7 +123,9 @@ public class AuthTest {
     String sql = String.format("CREATE DATABASE %s", databaseTest1);
     ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkDatabasePrivilege(eq(userRoot), any(), any());
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkDatabasePrivilege(eq(userRoot), any(), any(), userEntityRoot);
     // user `user1` don't hava test1's CREATE privilege
     String errorMsg =
         String.format(
@@ -123,11 +133,13 @@ public class AuthTest {
             user1, TableModelPrivilege.CREATE, databaseTest1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkDatabasePrivilege(eq(user1), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
+        .checkDatabasePrivilege(
+            eq(user1), eq(databaseTest1), eq(TableModelPrivilege.CREATE), userEntityUser1);
     // user `user2` has test1's CREATE privilege
     Mockito.doNothing()
         .when(authChecker)
-        .checkDatabasePrivilege(eq(user2), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
+        .checkDatabasePrivilege(
+            eq(user2), eq(databaseTest1), eq(TableModelPrivilege.CREATE), userEntityUser2);
 
     String userName = userRoot;
     try {
@@ -156,14 +168,18 @@ public class AuthTest {
     // use database
     String databaseTest2 = "test2";
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(userRoot), any());
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkDatabaseVisibility(eq(userRoot), any(), userEntityRoot);
     // user `user1` can't see DATABASE test1
     errorMsg = String.format("%s has no privileges on DATABASE %s", user1, databaseTest1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkDatabaseVisibility(eq(user1), eq(databaseTest1));
+        .checkDatabaseVisibility(eq(user1), eq(databaseTest1), userEntityUser1);
     // user `user1` can see DATABASE test2
-    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(user1), eq(databaseTest2));
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkDatabaseVisibility(eq(user1), eq(databaseTest2), userEntityUser2);
 
     sql = String.format("USE %s", databaseTest1);
     userName = userRoot;

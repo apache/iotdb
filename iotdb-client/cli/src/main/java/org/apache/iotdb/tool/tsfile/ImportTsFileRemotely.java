@@ -68,7 +68,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
   private static String host;
   private static String port;
 
+  private static String userId = "-1";
   private static String username = SessionConfig.DEFAULT_USER;
+  private static String cliHostname = "";
   private static String password = SessionConfig.DEFAULT_PASSWORD;
   private static boolean validateTsFile;
 
@@ -184,7 +186,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
         Boolean.toString(true));
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, LOAD_STRATEGY);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID, userId);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, cliHostname);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
@@ -339,8 +343,16 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
     ImportTsFileRemotely.port = port;
   }
 
+  public static void setUserId(String userId) {
+    ImportTsFileRemotely.userId = userId;
+  }
+
   public static void setUsername(final String username) {
     ImportTsFileRemotely.username = username;
+  }
+
+  public static void setCliHostname(String cliHostname) {
+    ImportTsFileRemotely.cliHostname = cliHostname;
   }
 
   public static void setPassword(final String password) {

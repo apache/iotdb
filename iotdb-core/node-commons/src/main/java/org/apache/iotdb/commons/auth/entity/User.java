@@ -74,6 +74,10 @@ public class User extends Role {
   }
 
   /** ------------ get func ----------------* */
+  public long getUserId() {
+    return -1;
+  }
+
   public String getPassword() {
     return password;
   }

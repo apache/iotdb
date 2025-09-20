@@ -70,6 +70,8 @@ public class PipeCommitQueueTest {
           null,
           null,
           null,
+          null,
+          null,
           false,
           Long.MIN_VALUE,
           Long.MAX_VALUE);
@@ -90,7 +92,9 @@ public class PipeCommitQueueTest {
         final PipeTaskMeta pipeTaskMeta,
         final TreePattern treePattern,
         final TablePattern tablePattern,
+        final String userId,
         final String userName,
+        final String cliHostname,
         final boolean skipIfNoPrivileges,
         final long startTime,
         final long endTime) {
@@ -100,7 +104,9 @@ public class PipeCommitQueueTest {
           pipeTaskMeta,
           treePattern,
           tablePattern,
+          userId,
           userName,
+          cliHostname,
           skipIfNoPrivileges,
           startTime,
           endTime);
@@ -123,7 +129,9 @@ public class PipeCommitQueueTest {
         final PipeTaskMeta pipeTaskMeta,
         final TreePattern treePattern,
         final TablePattern tablePattern,
+        final String userId,
         final String userName,
+        final String cliHostname,
         final boolean skipIfNoPrivileges,
         final long startTime,
         final long endTime) {

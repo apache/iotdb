@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
@@ -134,7 +135,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             trustStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
-            username,
+            userEntity,
             password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
@@ -151,7 +152,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,

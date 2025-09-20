@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -97,7 +98,13 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.log.node_%s.u_all";
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionInfo sessionInfo =
-      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+      new SessionInfo(
+          0,
+          new UserEntity(
+              AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+              AuthorityChecker.INTERNAL_AUDIT_USER,
+              IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+          ZoneId.systemDefault());
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
@@ -106,7 +113,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
       DataNodeDevicePathCache.getInstance();
-  private static AtomicBoolean tableViewIsInitialized = new AtomicBoolean(false);
+  private static final AtomicBoolean tableViewIsInitialized = new AtomicBoolean(false);
 
   private DNAuditLogger() {
     // Empty constructor
@@ -232,7 +239,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
               new InternalClientSession(
                   String.format(
                       "%s_%s", DNAuditLogger.class.getSimpleName(), SystemConstant.AUDIT_DATABASE));
-          session.setUsername(AuthorityChecker.SUPER_USER);
+          session.setUsername(AuthorityChecker.INTERNAL_AUDIT_USER);
           session.setZoneId(ZoneId.systemDefault());
           session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
           session.setDatabaseName(SystemConstant.AUDIT_DATABASE);
@@ -311,7 +318,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
     if (!checkBeforeLog(auditLogFields)) {
       return;
     }
-    int userId = auditLogFields.getUserId();
+    long userId = auditLogFields.getUserId();
     String user = String.valueOf(userId);
     if (userId == -1) {
       user = "none";

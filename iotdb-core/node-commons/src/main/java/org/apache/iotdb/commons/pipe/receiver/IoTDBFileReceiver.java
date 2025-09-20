@@ -75,7 +75,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   // Used to restore the original thread name when the receiver is closed.
   private String originalThreadName;
 
+  protected long userId = -1;
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+  protected String cliHostname = "";
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
   protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
@@ -285,11 +287,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
+    final String userIdString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID);
+    if (userIdString != null) {
+      userId = Long.parseLong(userIdString);
+    }
     final String usernameString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
     if (usernameString != null) {
       username = usernameString;
     }
+    final String cliHostnameString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME);
     final String passwordString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
     if (passwordString != null) {

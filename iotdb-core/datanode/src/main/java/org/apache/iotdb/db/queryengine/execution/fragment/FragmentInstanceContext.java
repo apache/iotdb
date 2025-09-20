@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -213,7 +214,9 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
-            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault()));
+            id,
+            stateMachine,
+            new SessionInfo(1, new UserEntity(666, "test", "127.0.0.1"), ZoneId.systemDefault()));
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -228,7 +231,7 @@ public class FragmentInstanceContext extends QueryContext {
         new FragmentInstanceContext(
             id,
             stateMachine,
-            new SessionInfo(1, "test", ZoneId.systemDefault()),
+            new SessionInfo(1, new UserEntity(666, "test", "127.0.0.1"), ZoneId.systemDefault()),
             memoryReservationManager);
     instanceContext.initialize();
     instanceContext.start();

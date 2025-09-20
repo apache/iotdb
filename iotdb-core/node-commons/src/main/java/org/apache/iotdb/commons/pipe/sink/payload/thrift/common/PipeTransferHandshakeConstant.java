@@ -25,7 +25,9 @@ public class PipeTransferHandshakeConstant {
   public static final String HANDSHAKE_KEY_CLUSTER_ID = "clusterID";
   public static final String HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH = "convertOnTypeMismatch";
   public static final String HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY = "loadTsFileStrategy";
+  public static final String HANDSHAKE_KEY_USER_ID = "userId";
   public static final String HANDSHAKE_KEY_USERNAME = "username";
+  public static final String HANDSHAKE_KEY_CLI_HOSTNAME = "cliHostname";
   public static final String HANDSHAKE_KEY_PASSWORD = "password";
   public static final String HANDSHAKE_KEY_VALIDATE_TSFILE = "validateTsFile";
   public static final String HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST = "markAsPipeRequest";

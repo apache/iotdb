@@ -63,7 +63,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final boolean shouldPrintMessage;
 
   public PipeHeartbeatEvent(final String dataRegionId, final boolean shouldPrintMessage) {
-    super(null, 0, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(null, 0, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
   }
@@ -79,6 +79,8 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
+        null,
+        null,
         null,
         null,
         null,
@@ -125,7 +127,9 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
