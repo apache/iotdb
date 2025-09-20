@@ -161,12 +161,18 @@ public class CachedSchemaPatternMatcherTest {
                 null,
                 Collections.singletonMap(new StringArrayDeviceID("root.db" + i), measurements));
         final long startTime = System.currentTimeMillis();
-        matcher.match(event).getLeft().forEach(extractor -> extractor.extract(event));
+        matcher
+            .match(event)
+            .getLeft()
+            .forEach(sourceWithPattern -> sourceWithPattern.getSource().extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
       final MockedPipeRealtimeEvent event = new MockedPipeRealtimeEvent(null, null, deviceMap);
       final long startTime = System.currentTimeMillis();
-      matcher.match(event).getLeft().forEach(extractor -> extractor.extract(event));
+      matcher
+          .match(event)
+          .getLeft()
+          .forEach(sourceWithPattern -> sourceWithPattern.getSource().extract(event));
       totalTime += (System.currentTimeMillis() - startTime);
     }
     System.out.println("matcher.getRegisterCount() = " + matcher.getRegisterCount());
@@ -181,7 +187,7 @@ public class CachedSchemaPatternMatcherTest {
   public static class PipeRealtimeDataRegionFakeSource extends PipeRealtimeDataRegionSource {
 
     public PipeRealtimeDataRegionFakeSource() {
-      treePattern = new PrefixTreePattern(null);
+      treePatterns = Collections.singletonList(new PrefixTreePattern(null));
     }
 
     @Override
@@ -201,13 +207,13 @@ public class CachedSchemaPatternMatcherTest {
                     match[0] =
                         match[0]
                             || (k + TsFileConstant.PATH_SEPARATOR + s)
-                                .startsWith(getTreePattern().getPattern());
+                                .startsWith(getTreePatterns().get(0).getPattern());
                   }
                 } else {
                   match[0] =
                       match[0]
-                          || (getTreePattern().getPattern().startsWith(k.toString())
-                              || k.toString().startsWith(getTreePattern().getPattern()));
+                          || (getTreePatterns().get(0).getPattern().startsWith(k.toString())
+                              || k.toString().startsWith(getTreePatterns().get(0).getPattern()));
                 }
               });
       Assert.assertTrue(match[0]);

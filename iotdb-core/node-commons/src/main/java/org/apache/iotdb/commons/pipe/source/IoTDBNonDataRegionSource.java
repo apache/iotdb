@@ -76,8 +76,16 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
       throws Exception {
     super.customize(parameters, configuration);
 
-    final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    final List<TreePattern> patterns = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    // TODO: support multiple path pattern
+    if (patterns.size() != 1) {
+      throw new IllegalArgumentException(
+          String.format(
+              "The path pattern parameters %s is not valid for the source. Only single path pattern is allowed.",
+              parameters));
+    }
 
+    final TreePattern pattern = patterns.get(0);
     if (!(pattern instanceof IoTDBTreePattern
         && (((IoTDBTreePattern) pattern).isPrefix()
             || ((IoTDBTreePattern) pattern).isFullPath()))) {
