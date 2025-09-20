@@ -527,7 +527,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     final CountDatabasePlan plan =
         new CountDatabasePlan(
-            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+            req.getDatabasePathPattern(),
+            scope,
+            req.isSetIsTableModel() && req.isIsTableModel(),
+            !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
     final CountDatabaseResp countDatabaseResp =
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
@@ -547,7 +550,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getDatabasePathPattern(),
             scope,
             req.isSetIsTableModel() && req.isIsTableModel(),
-            false);
+            false,
+            !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
@@ -578,7 +582,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTable(final TSchemaPartitionReq req) {
     return configManager.getSchemaPartition(
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())));
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())), true);
   }
 
   @Override
@@ -608,7 +612,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
-    return configManager.getNodePathsPartition(partialPath, scope, req.getLevel());
+    return configManager.getNodePathsPartition(
+        partialPath, scope, req.getLevel(), !req.isSetNeedAuditDB() || req.isNeedAuditDB());
   }
 
   @Override
@@ -1012,8 +1017,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus killQuery(String queryId, int dataNodeId) {
-    return configManager.killQuery(queryId, dataNodeId);
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername) {
+    return configManager.killQuery(queryId, dataNodeId, allowedUsername);
   }
 
   @Override

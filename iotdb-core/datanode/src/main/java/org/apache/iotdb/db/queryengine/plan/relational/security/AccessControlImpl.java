@@ -21,25 +21,36 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
+import static org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl.checkCanSelectAuditTable;
+import static org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor.checkTimeSeriesPermission;
 
 public class AccessControlImpl implements AccessControl {
+
+  public static final String READ_ONLY_DB_ERROR_MSG = "The database '%s' is read-only.";
 
   private final ITableAuthChecker authChecker;
 
@@ -49,6 +60,13 @@ public class AccessControlImpl implements AccessControl {
       ITableAuthChecker authChecker, StatementVisitor<TSStatus, TreeAccessCheckContext> visitor) {
     this.authChecker = authChecker;
     this.treeAccessCheckVisitor = visitor;
+  }
+
+  private void checkAuditDatabase(String databaseName) {
+    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
+      throw new AccessDeniedException(
+          String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+    }
   }
 
   @Override
@@ -71,34 +89,43 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkCanShowOrUseDatabase(String userName, String databaseName) {
-    // Information_schema is visible to any user
-    if (databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
-      return;
-    }
     authChecker.checkDatabaseVisibility(userName, databaseName);
   }
 
   @Override
   public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
+    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
+    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
+    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER);
   }
 
   @Override
   public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT);
   }
 
@@ -107,7 +134,11 @@ public class AccessControlImpl implements AccessControl {
     if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
     }
-    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
+    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(tableName.getDatabaseName())) {
+      checkCanSelectAuditTable(userName);
+    } else {
+      authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
+    }
   }
 
   @Override
@@ -127,6 +158,7 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
 
@@ -144,6 +176,11 @@ public class AccessControlImpl implements AccessControl {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return;
     }
+
+    if (includeByAuditTreeDB(path)) {
+      checkCanSelectAuditTable(userName);
+    }
+
     TSStatus status =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathOrPatternPermission(
@@ -169,20 +206,12 @@ public class AccessControlImpl implements AccessControl {
     AuthorRType type = statement.getAuthorType();
     switch (type) {
       case CREATE_USER:
-        // admin cannot be created.
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot create user has same name with admin user");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
         return;
       case DROP_USER:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())
-            || statement.getUserName().equals(userName)) {
-          throw new AccessDeniedException("Cannot drop admin user or yourself");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -197,15 +226,11 @@ public class AccessControlImpl implements AccessControl {
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
         return;
       case LIST_USER:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return;
+        if (!hasGlobalPrivilege(userName, PrivilegeType.MANAGE_USER)) {
+          statement.setUserName(userName);
         }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
         return;
       case CREATE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getRoleName())) {
-          throw new AccessDeniedException("Cannot create role has same name with admin user");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -213,9 +238,6 @@ public class AccessControlImpl implements AccessControl {
         return;
 
       case DROP_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot drop role with admin name");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -223,9 +245,6 @@ public class AccessControlImpl implements AccessControl {
         return;
 
       case GRANT_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant role to admin");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -233,24 +252,19 @@ public class AccessControlImpl implements AccessControl {
         return;
 
       case REVOKE_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot revoke role from admin");
-        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
         return;
       case LIST_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (statement.getUserName() != null && !statement.getUserName().equals(userName)) {
+          authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
           return;
         }
-
-        // user can list his roles.
-        if (statement.getUserName() != null && statement.getUserName().equals(userName)) {
-          return;
+        if (!hasGlobalPrivilege(userName, PrivilegeType.MANAGE_ROLE)) {
+          statement.setUserName(userName);
         }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
         return;
       case LIST_ROLE_PRIV:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
@@ -265,10 +279,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_USER_ANY:
       case REVOKE_ROLE_ANY:
       case REVOKE_USER_ANY:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
-        }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -280,10 +291,7 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_ROLE_ALL:
       case GRANT_USER_ALL:
       case REVOKE_USER_ALL:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke all privileges of admin user");
-        }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (TableModelPrivilege privilege : TableModelPrivilege.values()) {
@@ -300,14 +308,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_DB:
       case REVOKE_USER_DB:
       case REVOKE_ROLE_DB:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
-        }
-        if (InformationSchema.INFORMATION_DATABASE.equals(statement.getDatabase())) {
-          throw new SemanticException(
-              "Cannot grant or revoke any privileges to information_schema");
-        }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -321,14 +322,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_TB:
       case REVOKE_USER_TB:
       case REVOKE_ROLE_TB:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
-        }
-        if (InformationSchema.INFORMATION_DATABASE.equals(statement.getDatabase())) {
-          throw new SemanticException(
-              "Cannot grant or revoke any privileges to information_schema");
-        }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -343,10 +337,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_ROLE_SYS:
-        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
-        }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -374,10 +365,39 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName) && !(statement instanceof AuthorStatement)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
+    return AuthorityChecker.SUPER_USER.equals(userName)
+        || AuthorityChecker.checkSystemPermission(userName, privilegeType);
+  }
+
+  @Override
+  public void checkMissingPrivileges(String username, Collection<PrivilegeType> privilegeTypes) {
+    if (AuthorityChecker.SUPER_USER.equals(username)) {
+      return;
     }
+    authChecker.checkGlobalPrivileges(username, privilegeTypes);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
     return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userName));
+  }
+
+  @Override
+  public TSStatus checkFullPathWriteDataPermission(
+      String userName, IDeviceID device, String measurementId) {
+    try {
+      PartialPath path = new MeasurementPath(device, measurementId);
+      // audit db is read-only
+      if (includeByAuditTreeDB(path)) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+      return checkTimeSeriesPermission(
+          userName, Collections.singletonList(path), PrivilegeType.WRITE_DATA);
+    } catch (IllegalPathException e) {
+      // should never be here
+      throw new IllegalStateException(e);
+    }
   }
 }

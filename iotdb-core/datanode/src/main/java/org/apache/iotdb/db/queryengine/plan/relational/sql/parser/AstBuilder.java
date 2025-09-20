@@ -1795,7 +1795,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     List<RelationalSqlParser.SystemPrivilegeContext> privilegeContexts = ctx.systemPrivilege();
     Set<PrivilegeType> privileges = new HashSet<>();
     for (RelationalSqlParser.SystemPrivilegeContext privilege : privilegeContexts) {
-      privileges.add(PrivilegeType.valueOf(privilege.getText().toUpperCase()));
+      PrivilegeType privilegeType = PrivilegeType.valueOf(privilege.getText().toUpperCase());
+      if (privilegeType.isDeprecated()) {
+        throw new SemanticException(
+            "Privilege type "
+                + privilege.getText().toUpperCase()
+                + " is deprecated, use "
+                + privilegeType.getReplacedPrivilegeType()
+                + " to instead it");
+      }
+      privileges.add(privilegeType);
     }
     return privileges;
   }

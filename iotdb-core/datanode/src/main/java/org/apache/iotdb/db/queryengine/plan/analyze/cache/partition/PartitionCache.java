@@ -237,7 +237,8 @@ public class PartitionCache {
       if (!result.isSuccess()) {
         final TGetDatabaseReq req =
             new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-                .setIsTableModel(false);
+                .setIsTableModel(false)
+                .setCanSeeAuditDB(true);
         final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -258,7 +259,8 @@ public class PartitionCache {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-              .setIsTableModel(true);
+              .setIsTableModel(true)
+              .setCanSeeAuditDB(true);
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache

@@ -98,6 +98,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -1182,35 +1183,42 @@ public class NodeManager {
    * @param dataNodeId the DataNode obtains target read, -1 means we will kill all queries on all
    *     DataNodes
    */
-  public TSStatus killQuery(String queryId, int dataNodeId) {
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername) {
     if (dataNodeId < 0) {
-      return killAllQueries();
+      return killAllQueries(allowedUsername);
     } else {
-      return killSpecificQuery(queryId, getRegisteredDataNodeLocations().get(dataNodeId));
+      return killSpecificQuery(
+          queryId, getRegisteredDataNodeLocations().get(dataNodeId), allowedUsername);
     }
   }
 
-  private TSStatus killAllQueries() {
+  private TSStatus killAllQueries(String allowedUsername) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<String, TSStatus> clientHandler =
+    TKillQueryInstanceReq req = new TKillQueryInstanceReq();
+    req.setAllowedUsername(allowedUsername);
+    DataNodeAsyncRequestContext<TKillQueryInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
+            CnToDnAsyncRequestType.KILL_QUERY_INSTANCE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
   }
 
-  private TSStatus killSpecificQuery(String queryId, TDataNodeLocation dataNodeLocation) {
+  private TSStatus killSpecificQuery(
+      String queryId, TDataNodeLocation dataNodeLocation, String allowedUsername) {
     if (dataNodeLocation == null) {
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage(
               "The target DataNode is not existed, please ensure your input <queryId> is correct");
     } else {
+      TKillQueryInstanceReq req = new TKillQueryInstanceReq();
+      req.setQueryId(queryId);
+      req.setAllowedUsername(allowedUsername);
       return (TSStatus)
           SyncDataNodeClientPool.getInstance()
               .sendSyncRequestToDataNodeWithRetry(
                   dataNodeLocation.getInternalEndPoint(),
-                  queryId,
+                  req,
                   CnToDnSyncRequestType.KILL_QUERY_INSTANCE);
     }
   }

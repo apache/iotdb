@@ -20,8 +20,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
@@ -313,5 +315,92 @@ public class RelationalAuthorStatement extends Statement {
 
   public void setOldPassword(String oldPassword) {
     this.oldPassword = oldPassword;
+  }
+
+  public TSStatus checkStatementIsValid(String currentUser) {
+    switch (authorType) {
+      case CREATE_USER:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot create user has same name with admin user");
+        }
+        break;
+      case CREATE_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(roleName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot create role has same name with admin user");
+        }
+        break;
+      case DROP_USER:
+        if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(currentUser)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
+        }
+        break;
+      case DROP_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot drop role with admin name");
+        }
+        break;
+      case GRANT_ROLE_ANY:
+      case GRANT_USER_ANY:
+      case REVOKE_ROLE_ANY:
+      case REVOKE_USER_ANY:
+      case GRANT_USER_SYS:
+      case GRANT_ROLE_SYS:
+      case REVOKE_USER_SYS:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke privileges of admin user");
+        }
+        break;
+      case GRANT_USER_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot grant role to admin");
+        }
+        break;
+      case REVOKE_USER_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot revoke role from admin");
+        }
+        break;
+      case GRANT_ROLE_ALL:
+      case REVOKE_ROLE_ALL:
+      case GRANT_USER_ALL:
+      case REVOKE_USER_ALL:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke all privileges of admin user");
+        }
+        break;
+      case GRANT_USER_DB:
+      case GRANT_ROLE_DB:
+      case REVOKE_USER_DB:
+      case REVOKE_ROLE_DB:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke privileges of admin user");
+        }
+        if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant or revoke any privileges to information_schema");
+        }
+        break;
+      case GRANT_USER_TB:
+      case GRANT_ROLE_TB:
+      case REVOKE_USER_TB:
+      case REVOKE_ROLE_TB:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke privileges of admin user");
+        }
+        if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant or revoke any privileges to information_schema");
+        }
+        break;
+      default:
+        break;
+    }
+    return RpcUtils.SUCCESS_STATUS;
   }
 }

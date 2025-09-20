@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -209,6 +211,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.NotImplementedException;
 
@@ -311,6 +314,10 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
       visitUpdateUser(statement);
     }
+    TSStatus status = statement.checkStatementIsValid(context.getSession().getUserName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new AccessDeniedException(status.getMessage());
+    }
     return new AuthorizerTask(statement);
   }
 
@@ -342,6 +349,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitSetConfiguration(
       SetConfigurationStatement setConfigurationStatement, MPPQueryContext context) {
+    setConfigurationStatement.checkSomeParametersKeepConsistentInCluster();
     return new SetConfigurationTask(setConfigurationStatement);
   }
 

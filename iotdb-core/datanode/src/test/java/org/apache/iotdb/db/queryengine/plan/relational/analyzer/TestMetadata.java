@@ -574,6 +574,11 @@ public class TestMetadata implements Metadata {
       }
 
       @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
+        return TABLE_SCHEMA_PARTITION;
+      }
+
+      @Override
       public SchemaPartition getOrCreateSchemaPartition(
           PathPatternTree patternTree, String userName) {
         return TABLE_SCHEMA_PARTITION;
@@ -609,7 +614,10 @@ public class TestMetadata implements Metadata {
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+          PathPatternTree patternTree,
+          PathPatternTree scope,
+          Integer level,
+          boolean canSeeAuditDB) {
         return null;
       }
 

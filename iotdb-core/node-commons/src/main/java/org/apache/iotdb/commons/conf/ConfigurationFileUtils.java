@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +76,7 @@ public class ConfigurationFileUtils {
           .toString();
   private static final String EFFECTIVE_MODE_PREFIX = "effectiveMode:";
   private static final String DATATYPE_PREFIX = "Datatype:";
+  private static final String PRIVILEGE_PREFIX = "Privilege:";
   private static Map<String, DefaultConfigurationItem> configuration2DefaultValue;
 
   private static final Map<String, String> lastAppliedProperties = new HashMap<>();
@@ -178,6 +181,21 @@ public class ConfigurationFileUtils {
     DefaultConfigurationItem defaultConfigurationItem =
         configuration2DefaultValue.get(parameterName);
     return defaultConfigurationItem == null ? null : defaultConfigurationItem.value;
+  }
+
+  public static PrivilegeType getConfigurationItemPrivilege(String parameterName)
+      throws IOException {
+    parameterName = parameterName.trim();
+    if (configuration2DefaultValue == null) {
+      loadConfigurationDefaultValueFromTemplate();
+    }
+    DefaultConfigurationItem defaultConfigurationItem =
+        configuration2DefaultValue.get(parameterName);
+    return defaultConfigurationItem == null ? null : defaultConfigurationItem.privilege;
+  }
+
+  public static boolean parameterNeedKeepConsistentInCluster(String key) {
+    return false;
   }
 
   public static void releaseDefault() {
@@ -354,6 +372,7 @@ public class ConfigurationFileUtils {
         BufferedReader reader = new BufferedReader(isr)) {
       List<String> independentLines = new ArrayList<>();
       EffectiveModeType effectiveMode = null;
+      PrivilegeType privilege = null;
       StringBuilder description = new StringBuilder();
       String line;
       while ((line = reader.readLine()) != null) {
@@ -369,6 +388,7 @@ public class ConfigurationFileUtils {
         if (line.isEmpty()) {
           description = new StringBuilder();
           effectiveMode = null;
+          privilege = null;
           independentLines.clear();
           continue;
         }
@@ -384,6 +404,12 @@ public class ConfigurationFileUtils {
             independentLines.add(comment);
             continue;
           } else if (comment.startsWith(DATATYPE_PREFIX)) {
+            independentLines.add(comment);
+            continue;
+          } else if (comment.startsWith(PRIVILEGE_PREFIX)) {
+            privilege =
+                PrivilegeType.valueOf(
+                    comment.substring(PRIVILEGE_PREFIX.length()).trim().toUpperCase());
             independentLines.add(comment);
             continue;
           } else {
@@ -406,7 +432,11 @@ public class ConfigurationFileUtils {
           items.put(
               key,
               new DefaultConfigurationItem(
-                  key, value, withDesc ? description.toString().trim() : null, effectiveMode));
+                  key,
+                  value,
+                  withDesc ? description.toString().trim() : null,
+                  effectiveMode,
+                  privilege));
         }
       }
     } catch (IOException e) {
@@ -421,13 +451,19 @@ public class ConfigurationFileUtils {
     public String value;
     public String description;
     public EffectiveModeType effectiveMode;
+    public PrivilegeType privilege;
 
     public DefaultConfigurationItem(
-        String name, String value, String description, EffectiveModeType effectiveMode) {
+        String name,
+        String value,
+        String description,
+        EffectiveModeType effectiveMode,
+        PrivilegeType privilegeType) {
       this.name = name;
       this.value = value;
       this.description = description;
       this.effectiveMode = effectiveMode == null ? EffectiveModeType.UNKNOWN : effectiveMode;
+      this.privilege = privilegeType == null ? PrivilegeType.SYSTEM : privilegeType;
     }
   }
 

@@ -810,54 +810,54 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
             + "  'connector.ip'='127.0.0.1',\n"
             + "  'connector.port'='6668'\n"
             + ")",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "drop pipe testPipe",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertTestFail(
         senderEnv,
         "show pipes",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "stop pipe testPipe",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
 
     assertNonQueryTestFail(
         senderEnv,
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "drop pipePlugin TestProcessor",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertTestFail(
         senderEnv,
         "show pipe plugins",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
 
-    grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.USE_PIPE);
+    grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.SYSTEM);
 
     executeNonQueryWithRetry(
         senderEnv,

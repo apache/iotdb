@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
@@ -527,7 +528,8 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** Get SchemaNodeManagementPartition through matched Database. */
-  public DataSet getSchemaNodeManagementPartition(List<String> matchedDatabases) {
+  public DataSet getSchemaNodeManagementPartition(
+      List<String> matchedDatabases, boolean canSeeAuditDB) {
     SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
     Map<String, SchemaPartitionTable> schemaPartitionMap = new ConcurrentHashMap<>();
 
@@ -535,6 +537,9 @@ public class PartitionInfo implements SnapshotProcessor {
         .filter(this::isDatabaseExisted)
         .forEach(
             database -> {
+              if (!canSeeAuditDB && Audit.TREE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(database)) {
+                return;
+              }
               schemaPartitionMap.put(database, new SchemaPartitionTable());
 
               databasePartitionTables

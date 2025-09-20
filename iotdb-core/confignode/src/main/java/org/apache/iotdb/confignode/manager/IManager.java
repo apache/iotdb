@@ -440,7 +440,8 @@ public interface IManager {
    *
    * @return TSchemaPartitionResp
    */
-  TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree);
+  TSchemaPartitionTableResp getSchemaPartition(
+      final PathPatternTree patternTree, boolean needAuditDB);
 
   /**
    * Get SchemaPartition with <databaseName, seriesSlot>.
@@ -470,7 +471,7 @@ public interface IManager {
    * @return TSchemaNodeManagementResp
    */
   TSchemaNodeManagementResp getNodePathsPartition(
-      PartialPath partialPath, PathPatternTree scope, Integer level);
+      PartialPath partialPath, PathPatternTree scope, Integer level, boolean needAuditDB);
 
   /**
    * Get DataPartition.
@@ -624,7 +625,7 @@ public interface IManager {
   /** TestOnly. Set the target DataNode to the specified status */
   TSStatus setDataNodeStatus(TSetDataNodeStatusReq req);
 
-  TSStatus killQuery(String queryId, int dataNodeId);
+  TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername);
 
   TGetDataNodeLocationsResp getReadableDataNodeLocations();
 

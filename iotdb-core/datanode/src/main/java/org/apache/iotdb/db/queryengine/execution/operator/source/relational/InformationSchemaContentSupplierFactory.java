@@ -180,7 +180,7 @@ public class InformationSchemaContentSupplierFactory {
       super(dataTypes);
       queryExecutions = Coordinator.getInstance().getAllQueryExecutions();
       try {
-        accessControl.checkUserIsAdmin(userName);
+        accessControl.checkUserGlobalSysPrivilege(userName);
       } catch (final AccessDeniedException e) {
         queryExecutions =
             queryExecutions.stream()

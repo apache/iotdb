@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckV
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -54,6 +55,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -69,7 +71,7 @@ public class AuthorityChecker {
 
   public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
 
-  public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public static final TSStatus SUCCEED = RpcUtils.SUCCESS_STATUS;
 
   public static final String ONLY_ADMIN_ALLOWED =
       "No permissions for this operation, only root user is allowed";
@@ -169,15 +171,34 @@ public class AuthorityChecker {
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(errMsg);
   }
 
+  public static TSStatus getTSStatus(Collection<PrivilegeType> missingPrivileges) {
+    return missingPrivileges.isEmpty()
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(
+                NO_PERMISSION_PROMOTION + getMissingAllNeededPrivilegeString(missingPrivileges));
+  }
+
   public static TSStatus getTSStatus(boolean hasPermission, PrivilegeType neededPrivilege) {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + getSatisfyAnyNeededPrivilegeString(
+                        neededPrivilege.getReplacedPrivilegeType()));
   }
 
-  private static String getSatisfyAnyNeededPrivilegeString(List<PrivilegeType> privileges) {
+  private static String getSatisfyAnyNeededPrivilegeString(PrivilegeType... privileges) {
     StringJoiner sj = new StringJoiner("/");
+    for (PrivilegeType privilege : privileges) {
+      sj.add(privilege.toString());
+    }
+    return sj.toString();
+  }
+
+  private static String getMissingAllNeededPrivilegeString(Collection<PrivilegeType> privileges) {
+    StringJoiner sj = new StringJoiner(",");
     for (PrivilegeType privilege : privileges) {
       sj.add(privilege.toString());
     }
@@ -270,7 +291,7 @@ public class AuthorityChecker {
   }
 
   public static boolean checkSystemPermission(String userName, PrivilegeType permission) {
-    return authorityFetcher.get().checkUserSysPrivileges(userName, permission).getCode()
+    return authorityFetcher.get().checkUserSysPrivilege(userName, permission).getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
@@ -345,13 +366,12 @@ public class AuthorityChecker {
     return authorityFetcher.get().checkRole(username, roleName);
   }
 
-  public static TSStatus checkSuperUserOrMaintain(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public static Collection<PrivilegeType> checkUserMissingSystemPermissions(
+      String userName, Collection<PrivilegeType> permissions) {
+    if (SUPER_USER.equals(userName)) {
+      return Collections.emptySet();
     }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
-        PrivilegeType.MAINTAIN);
+    return authorityFetcher.get().checkUserSysPrivileges(userName, permissions);
   }
 
   public static void buildTSBlock(
@@ -396,6 +416,9 @@ public class AuthorityChecker {
   private static void appendPriBuilder(
       String name, String scope, Set<Integer> priv, Set<Integer> grantOpt, TsBlockBuilder builder) {
     for (int i : priv) {
+      if (isIgnoredPrivilege(i)) {
+        continue;
+      }
       builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary(scope, TSFileConfig.STRING_CHARSET));
       builder
@@ -406,6 +429,10 @@ public class AuthorityChecker {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();
     }
+  }
+
+  private static boolean isIgnoredPrivilege(int i) {
+    return PrivilegeType.values()[i].isHided();
   }
 
   private static void appendEntryInfo(String name, TRoleResp resp, TsBlockBuilder builder) {

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface IAuthorityFetcher {
@@ -45,7 +46,10 @@ public interface IAuthorityFetcher {
   TSStatus checkUserPathPrivilegesGrantOpt(
       String username, List<? extends PartialPath> allPath, PrivilegeType permission);
 
-  TSStatus checkUserSysPrivileges(String username, PrivilegeType permissions);
+  TSStatus checkUserSysPrivilege(String username, PrivilegeType permissions);
+
+  Collection<PrivilegeType> checkUserSysPrivileges(
+      String username, Collection<PrivilegeType> permissions);
 
   TSStatus checkUserDBPrivileges(String username, String database, PrivilegeType permission);
 

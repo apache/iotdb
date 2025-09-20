@@ -232,6 +232,7 @@ struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
   3: optional binary scopePatternTree
+  4: optional bool needAuditDB
 }
 
 struct TSchemaNodeManagementResp {
@@ -695,6 +696,7 @@ struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
   3: optional bool isTableModel
+  4: optional bool canSeeAuditDB
 }
 
 struct TShowDatabaseResp {
@@ -1758,7 +1760,7 @@ service IConfigNodeRPCService {
   common.TSStatus removeRegion(TRemoveRegionReq req)
 
   /** Kill query */
-  common.TSStatus killQuery(string queryId, i32 dataNodeId)
+  common.TSStatus killQuery(string queryId, i32 dataNodeId, string allowedUsername)
 
   /** Get all DataNodeLocations of Readable DataNodes */
   TGetDataNodeLocationsResp getReadableDataNodeLocations()

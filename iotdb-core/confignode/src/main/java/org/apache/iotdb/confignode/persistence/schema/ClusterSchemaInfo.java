@@ -134,6 +134,8 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 /**
@@ -323,9 +325,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       databaseReadWriteLock.readLock().lock();
       try {
         final int count =
-            treeModelMTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false)
-                - treeModelMTree.getDatabaseNum(SYSTEM_DATABASE_PATTERN, ALL_MATCH_SCOPE, false)
-                + tableModelMTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false);
+            treeModelMTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false, false)
+                - treeModelMTree.getDatabaseNum(
+                    SYSTEM_DATABASE_PATTERN, ALL_MATCH_SCOPE, false, false)
+                + tableModelMTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false, false);
         if (count >= limit) {
           throw new SchemaQuotaExceededException(limit);
         }
@@ -345,7 +348,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
       result.setCount(
           (plan.isTableModel() ? tableModelMTree : treeModelMTree)
-              .getDatabaseNum(patternPath, plan.getScope(), false));
+              .getDatabaseNum(patternPath, plan.getScope(), false, plan.isCanSeeAuditDB()));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -374,6 +377,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         final TDatabaseSchema schema =
             mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
         schemaMap.put(schema.getName(), schema);
+      }
+
+      // can not see audit db, remove it
+      if (!plan.isCanSeeAuditDB()) {
+        if (plan.isTableModel()) {
+          schemaMap.remove(TABLE_MODEL_AUDIT_DATABASE);
+        } else {
+          schemaMap.remove(TREE_MODEL_AUDIT_DATABASE);
+        }
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));

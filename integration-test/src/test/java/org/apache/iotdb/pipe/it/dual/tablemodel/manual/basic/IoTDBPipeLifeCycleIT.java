@@ -648,28 +648,28 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
             + "  'connector.ip'='127.0.0.1',\n"
             + "  'connector.port'='6668'\n"
             + ")",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipe testPipe",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "stop pipe testPipe",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456",
         null);
@@ -677,14 +677,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
     assertTableNonQueryTestFail(
         senderEnv,
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipePlugin TestProcessor",
-        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456",
         null);
