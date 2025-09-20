@@ -1166,6 +1166,27 @@ public abstract class PipeTaskAgent {
     }
   }
 
+  public void reportHighTransferTime(final String pipeName, final long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).reportHighTransferTime();
+    }
+  }
+
+  public void reportStableTransferTime(final String pipeName, final long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).reportStableTransferTime();
+    }
+  }
+
+  public double getMemoryAdjustFactor(final String pipeName) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null
+        ? 1.0
+        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getMemoryAdjustFactor();
+  }
+
   public int getPipeCount() {
     return pipeMetaKeeper.getPipeMetaCount();
   }
