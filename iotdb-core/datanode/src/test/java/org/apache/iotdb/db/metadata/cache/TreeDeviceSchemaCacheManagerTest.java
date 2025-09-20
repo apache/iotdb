@@ -197,10 +197,10 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
 
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), false);
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s3"), s3), false);
+    treeDeviceSchemaCacheManager.declareLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1));
+    treeDeviceSchemaCacheManager.declareLastCache(
+        database, new MeasurementPath(device.concatNode("s3"), s3));
 
     // Simulate "s1" revert when the query has failed in calculation
     treeDeviceSchemaCacheManager.updateLastCacheIfExists(
@@ -213,8 +213,8 @@ public class TreeDeviceSchemaCacheManagerTest {
         },
         false,
         new MeasurementSchema[] {s1});
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), true);
+    treeDeviceSchemaCacheManager.invalidateLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1));
 
     // "s2" shall be null since the "null" timeValuePair has not been put
     treeDeviceSchemaCacheManager.updateLastCacheIfExists(
@@ -294,12 +294,11 @@ public class TreeDeviceSchemaCacheManagerTest {
         new MeasurementPath("root.sg1.d3.s1", TSDataType.FLOAT));
     treeDeviceSchemaCacheManager.put(clusterSchemaTree);
     final ClusterSchemaTree d1Tree =
-        treeDeviceSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d1"));
+        treeDeviceSchemaCacheManager.getMatchedTemplateSchema(new PartialPath("root.sg1.d1"));
     final ClusterSchemaTree d2Tree =
-        treeDeviceSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
+        treeDeviceSchemaCacheManager.getMatchedTemplateSchema(new PartialPath("root.sg1.d2"));
     final ClusterSchemaTree d3Tree =
-        treeDeviceSchemaCacheManager.getMatchedSchemaWithoutTemplate(
-            new MeasurementPath("root.sg1.d3.s1"));
+        treeDeviceSchemaCacheManager.getMatchedNormalSchema(new MeasurementPath("root.sg1.d3.s1"));
     List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(2, measurementPaths.size());
     for (final MeasurementPath measurementPath : measurementPaths) {
