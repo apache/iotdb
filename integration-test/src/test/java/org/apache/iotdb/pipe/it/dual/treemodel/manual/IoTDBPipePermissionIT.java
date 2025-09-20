@@ -147,8 +147,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "list user",
-          "User,",
-          new HashSet<>(Arrays.asList("root,", "user,", "thulab,")));
+          "UserId,User,",
+          new HashSet<>(Arrays.asList("0,root,", "10001,user,", "10000,thulab,")));
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add(
           "root.ln.wf02.wt01.temperature,null,root.ln,INT64,PLAIN,LZ4,null,null,null,null,BASE,");

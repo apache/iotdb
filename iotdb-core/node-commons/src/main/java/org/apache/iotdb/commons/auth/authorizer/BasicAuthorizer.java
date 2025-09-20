@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -451,6 +452,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public List<TListUserInfo> listAllUsersInfo() {
+    return userManager.listAllEntitiesInfo();
+  }
+
+  @Override
   public List<String> listAllRoles() {
     return roleManager.listAllEntities();
   }
@@ -463,6 +469,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public User getUser(String username) throws AuthException {
     return userManager.getEntity(username);
+  }
+
+  @Override
+  public User getUser(long userId) throws AuthException {
+    return userManager.getEntity(userId);
   }
 
   @Override

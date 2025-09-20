@@ -362,6 +362,14 @@ struct TAuthorizerResp {
   2: optional string tag
   3: optional list<string> memberInfo
   4: optional TPermissionInfoResp permissionInfo
+  5: optional list<TListUserInfo> usersInfo
+}
+
+struct TListUserInfo{
+ 1: required i64 userId
+ 2: required string username
+ 3: required i32 maxSessionPerUser
+ 4: required i32 minSessionPerUser
 }
 
 struct TUserResp {

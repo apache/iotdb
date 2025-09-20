@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -62,6 +63,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -510,13 +512,17 @@ public class AuthorInfo implements SnapshotProcessor {
   public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> userList;
+    final List<TListUserInfo> userInfoList;
     boolean hasPermissionToListOtherUsers = plan.getUserName().isEmpty();
     if (!hasPermissionToListOtherUsers) {
       // userList may be modified later
       userList = new ArrayList<>(1);
       userList.add(plan.getUserName());
+      User user = authorizer.getUser(plan.getUserName());
+      userInfoList = Collections.singletonList(user.convertToListUserInfo());
     } else {
       userList = authorizer.listAllUsers();
+      userInfoList = authorizer.listAllUsersInfo();
     }
     if (!plan.getRoleName().isEmpty()) {
       final Role role = authorizer.getRole(plan.getRoleName());
@@ -527,8 +533,19 @@ public class AuthorInfo implements SnapshotProcessor {
         return result;
       }
       final Iterator<String> itr = userList.iterator();
+      Set<String> toRemove = new HashSet<>();
       while (itr.hasNext()) {
-        User userObj = authorizer.getUser(itr.next());
+        String userName = itr.next();
+        User userObj = authorizer.getUser(userName);
+        if (userObj == null || !userObj.hasRole(plan.getRoleName())) {
+          itr.remove();
+          toRemove.add(userName);
+        }
+      }
+      userInfoList.removeIf(info -> toRemove.contains(info.username));
+      final Iterator<TListUserInfo> userInfoitr = userInfoList.iterator();
+      while (itr.hasNext()) {
+        User userObj = authorizer.getUser(userInfoitr.next().getUsername());
         if (userObj == null || !userObj.hasRole(plan.getRoleName())) {
           itr.remove();
         }
@@ -536,6 +553,7 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     result.setTag(ColumnHeaderConstant.USER);
     result.setMemberInfo(userList);
+    result.setUsersInfo(userInfoList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
   }
@@ -672,6 +690,10 @@ public class AuthorInfo implements SnapshotProcessor {
     result = getUserPermissionInfo(username, ModelType.ALL);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
+  }
+
+  public String getUserName(long userId) throws AuthException {
+    return authorizer.getUser(userId).getName();
   }
 
   @Override

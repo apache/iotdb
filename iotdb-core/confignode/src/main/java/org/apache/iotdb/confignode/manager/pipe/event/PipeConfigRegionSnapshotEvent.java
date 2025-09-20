@@ -60,6 +60,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP = new EnumMap<>(CNSnapshotFileType.class);
   private CNSnapshotFileType fileType;
 
+  private String authUserName = "";
+
   static {
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.ROLE,
@@ -136,6 +138,14 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     this.fileType = type;
   }
 
+  public String getAuthUserName() {
+    return authUserName;
+  }
+
+  public void setAuthUserName(String authUserName) {
+    this.authUserName = authUserName;
+  }
+
   public File getSnapshotFile() {
     return new File(snapshotPath);
   }
@@ -195,17 +205,20 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
-    return new PipeConfigRegionSnapshotEvent(
-        snapshotPath,
-        templateFilePath,
-        fileType,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userName,
-        skipIfNoPrivileges);
+    PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent =
+        new PipeConfigRegionSnapshotEvent(
+            snapshotPath,
+            templateFilePath,
+            fileType,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userName,
+            skipIfNoPrivileges);
+    pipeConfigRegionSnapshotEvent.setAuthUserName(authUserName);
+    return pipeConfigRegionSnapshotEvent;
   }
 
   @Override
