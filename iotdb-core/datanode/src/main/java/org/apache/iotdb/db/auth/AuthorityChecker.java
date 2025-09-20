@@ -69,7 +69,10 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_U
 // It checks permission in local. DCL statement will send to configNode.
 public class AuthorityChecker {
 
+  public static int SUPER_USER_ID = 0;
   public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
+
+  public static String ANY_SCOPE = "any";
 
   public static final TSStatus SUCCEED = RpcUtils.SUCCESS_STATUS;
 

@@ -264,7 +264,8 @@ public class TableHeaderSchemaValidator {
     addColumnSchema(tableSchema.getColumns(), tsTable);
     accessControl.checkCanCreateTable(
         context.getSession().getUserName(),
-        new QualifiedObjectName(database, tableSchema.getTableName()));
+        new QualifiedObjectName(database, tableSchema.getTableName()),
+        context);
     final CreateTableTask createTableTask = new CreateTableTask(tsTable, database, true);
     try {
       final ListenableFuture<ConfigTaskResult> future = createTableTask.execute(configTaskExecutor);
@@ -362,7 +363,7 @@ public class TableHeaderSchemaValidator {
       final MPPQueryContext context) {
     DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     accessControl.checkCanAlterTable(
-        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
     final AlterTableAddColumnTask task =
         new AlterTableAddColumnTask(
             database,

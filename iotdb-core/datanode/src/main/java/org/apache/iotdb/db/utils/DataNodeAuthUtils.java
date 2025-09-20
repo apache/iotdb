@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -79,8 +81,15 @@ public class DataNodeAuthUtils {
                   + AuthUtils.encryptPassword(password)
                   + "' order by time desc limit 1",
               ZoneId.systemDefault());
+
       SessionInfo sessionInfo =
-          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.SUPER_USER_ID,
+                  AuthorityChecker.SUPER_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
 
       queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
@@ -171,7 +180,13 @@ public class DataNodeAuthUtils {
     long queryId = -1;
     try {
       SessionInfo sessionInfo =
-          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.SUPER_USER_ID,
+                  AuthorityChecker.SUPER_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
 
       queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
@@ -218,7 +233,13 @@ public class DataNodeAuthUtils {
     long queryId = -1;
     try {
       SessionInfo sessionInfo =
-          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.SUPER_USER_ID,
+                  AuthorityChecker.SUPER_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
 
       queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =

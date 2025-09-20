@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.auth.entity;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.Arrays;
@@ -190,5 +191,39 @@ public enum PrivilegeType {
 
   public boolean isHided() {
     return this == AUDIT;
+  }
+
+  public AuditLogOperation getAuditLogOperation() {
+    switch (this) {
+      case READ_DATA:
+      case READ_SCHEMA:
+      case SELECT:
+        return AuditLogOperation.QUERY;
+      case CREATE:
+      case DROP:
+      case ALTER:
+      case MANAGE_DATABASE:
+        return AuditLogOperation.DDL;
+      case WRITE_DATA:
+      case WRITE_SCHEMA:
+      case INSERT:
+      case DELETE:
+        return AuditLogOperation.DML;
+      case MANAGE_USER:
+      case MANAGE_ROLE:
+      case USE_TRIGGER:
+      case USE_UDF:
+      case USE_CQ:
+      case USE_PIPE:
+      case USE_MODEL:
+      case EXTEND_TEMPLATE:
+      case MAINTAIN:
+      case SYSTEM:
+      case SECURITY:
+      case AUDIT:
+        return AuditLogOperation.CONTROL;
+      default:
+        throw new IllegalStateException("Unexpected value:" + this);
+    }
   }
 }

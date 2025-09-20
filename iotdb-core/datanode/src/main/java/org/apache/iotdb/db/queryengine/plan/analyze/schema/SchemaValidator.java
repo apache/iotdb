@@ -74,8 +74,8 @@ public class SchemaValidator {
       accessControl.checkCanInsertIntoTable(
           context.getSession().getUserName(),
           new QualifiedObjectName(
-              unQualifyDatabaseName(insertStatement.getDatabase()),
-              insertStatement.getTableName()));
+              unQualifyDatabaseName(insertStatement.getDatabase()), insertStatement.getTableName()),
+          context);
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);
