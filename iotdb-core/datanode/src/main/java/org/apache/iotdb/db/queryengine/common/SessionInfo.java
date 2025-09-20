@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 
@@ -76,6 +77,32 @@ public class SessionInfo {
     this.version = version;
     this.databaseName = databaseName;
     this.sqlDialect = sqlDialect;
+  }
+
+  @TestOnly
+  public SessionInfo(long sessionId, String username, ZoneId zoneId) {
+    this(sessionId, new UserEntity(-1, username, ""), zoneId, null, IClientSession.SqlDialect.TREE);
+  }
+
+  @TestOnly
+  public SessionInfo(
+      long sessionId,
+      String username,
+      ZoneId zoneId,
+      @Nullable String databaseName,
+      IClientSession.SqlDialect sqlDialect) {
+    this(sessionId, new UserEntity(-1, username, ""), zoneId, databaseName, sqlDialect);
+  }
+
+  @TestOnly
+  public SessionInfo(
+      long sessionId,
+      String username,
+      ZoneId zoneId,
+      ClientVersion version,
+      @Nullable String databaseName,
+      IClientSession.SqlDialect sqlDialect) {
+    this(sessionId, new UserEntity(-1, username, ""), zoneId, version, databaseName, sqlDialect);
   }
 
   public long getSessionId() {

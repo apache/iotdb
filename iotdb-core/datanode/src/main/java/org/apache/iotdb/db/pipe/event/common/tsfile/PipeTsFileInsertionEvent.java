@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -114,6 +115,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -133,7 +136,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -143,7 +148,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime,
@@ -399,7 +406,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -417,7 +426,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);
@@ -446,7 +457,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         if (!Coordinator.getInstance()
             .getAccessControl()
             .checkCanSelectFromTable4Pipe(
-                userName, new QualifiedObjectName(getTableModelDatabaseName(), table))) {
+                userName,
+                new QualifiedObjectName(getTableModelDatabaseName(), table),
+                new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
           if (skipIfNoPrivileges) {
             shouldParse4Privilege = true;
           } else {

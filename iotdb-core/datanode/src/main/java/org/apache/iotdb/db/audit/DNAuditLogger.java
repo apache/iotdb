@@ -101,8 +101,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
       new SessionInfo(
           0,
           new UserEntity(
-              AuthorityChecker.SUPER_USER_ID,
-              AuthorityChecker.SUPER_USER,
+              AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+              AuthorityChecker.INTERNAL_AUDIT_USER,
               IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
           ZoneId.systemDefault());
 
@@ -239,7 +239,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
               new InternalClientSession(
                   String.format(
                       "%s_%s", DNAuditLogger.class.getSimpleName(), SystemConstant.AUDIT_DATABASE));
-          session.setUsername(AuthorityChecker.SUPER_USER);
+          session.setUsername(AuthorityChecker.INTERNAL_AUDIT_USER);
           session.setZoneId(ZoneId.systemDefault());
           session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
           session.setDatabaseName(SystemConstant.AUDIT_DATABASE);

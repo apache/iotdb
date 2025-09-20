@@ -276,7 +276,9 @@ public class LoadTsFileTableSchemaCache {
     Coordinator.getInstance()
         .getAccessControl()
         .checkCanInsertIntoTable(
-            context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+            context.getSession().getUserName(),
+            new QualifiedObjectName(database, tableName),
+            context);
 
     if (needToCreateDatabase) {
       autoCreateTableDatabaseIfAbsent(database);
@@ -311,7 +313,7 @@ public class LoadTsFileTableSchemaCache {
 
     Coordinator.getInstance()
         .getAccessControl()
-        .checkCanCreateDatabase(context.getSession().getUserName(), database);
+        .checkCanCreateDatabase(context.getSession().getUserName(), database, context);
     final CreateDBTask task =
         new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);
     try {

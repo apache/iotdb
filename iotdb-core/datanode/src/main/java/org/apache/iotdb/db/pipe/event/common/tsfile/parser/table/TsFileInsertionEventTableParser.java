@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -158,7 +159,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                           .checkCanSelectFromTable4Pipe(
                               userName,
                               new QualifiedObjectName(
-                                  sourceEvent.getTableModelDatabaseName(), tableName));
+                                  sourceEvent.getTableModelDatabaseName(), tableName),
+                              new UserEntity(-1, userName, ""));
                 }
 
                 @Override

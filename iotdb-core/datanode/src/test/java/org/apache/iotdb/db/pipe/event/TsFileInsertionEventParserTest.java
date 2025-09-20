@@ -574,6 +574,8 @@ public class TsFileInsertionEventParserTest {
             null,
             null,
             null,
+            null,
+            null,
             true,
             Long.MIN_VALUE,
             Long.MAX_VALUE);

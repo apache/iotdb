@@ -76,6 +76,9 @@ public class AuthorityChecker {
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
+  public static int INTERNAL_AUDIT_USER_ID = -1;
+  public static String INTERNAL_AUDIT_USER = "__auditor";
+
   public static String ANY_SCOPE = "any";
 
   public static final String ONLY_ADMIN_ALLOWED =

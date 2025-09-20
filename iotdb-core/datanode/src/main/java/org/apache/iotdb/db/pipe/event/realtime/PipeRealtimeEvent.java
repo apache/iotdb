@@ -55,6 +55,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         null,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -67,7 +69,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -80,7 +84,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);
@@ -195,7 +201,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -206,7 +214,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
             pipeTaskMeta,
             treePattern,
             tablePattern,
+            userId,
             userName,
+            cliHostname,
             skipIfNoPrivileges,
             startTime,
             endTime),
@@ -217,7 +227,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);
