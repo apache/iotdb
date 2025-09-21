@@ -201,7 +201,12 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             startUpSleep("restart ConfigNode failed! ");
           }
         }
+        loadSecretKey();
+        loadHardwareCode();
         return;
+      } else {
+        saveSecretKey();
+        saveHardwareCode();
       }
 
       /* Initial startup of Seed-ConfigNode */
@@ -411,6 +416,22 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     LOGGER.error(
         "The current ConfigNode can't send register request to the ConfigNode-leader after all retries!");
     stop();
+  }
+
+  protected void saveSecretKey() {
+    // Do nothing
+  }
+
+  protected void saveHardwareCode() {
+    // Do nothing
+  }
+
+  protected void loadSecretKey() throws IOException {
+    // Do nothing
+  }
+
+  protected void loadHardwareCode() throws IOException {
+    // Do nothing
   }
 
   private TConfigNodeLocation generateConfigNodeLocation(int configNodeId) {
