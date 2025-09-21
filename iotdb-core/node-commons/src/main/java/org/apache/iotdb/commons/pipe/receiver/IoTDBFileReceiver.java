@@ -299,6 +299,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
     final String cliHostnameString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME);
+    if (cliHostnameString != null) {
+      cliHostname = cliHostnameString;
+    }
     final String passwordString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
     if (passwordString != null) {

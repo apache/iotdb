@@ -157,7 +157,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
                 CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
             loadBalanceStrategy,
-            new UserEntity(Long.parseLong(userId), userId, cliHostname),
+            new UserEntity(Long.parseLong(userId), username, cliHostname),
             password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,

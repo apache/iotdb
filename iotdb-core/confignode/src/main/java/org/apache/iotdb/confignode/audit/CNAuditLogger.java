@@ -49,6 +49,9 @@ public class CNAuditLogger extends AbstractAuditLogger {
   }
 
   public void log(AuditLogFields auditLogFields, String log) {
+    if (!IS_AUDIT_LOG_ENABLED) {
+      return;
+    }
     if (!checkBeforeLog(auditLogFields)) {
       return;
     }

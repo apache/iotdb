@@ -118,6 +118,11 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       TableModelPrivilege privilege,
       IAuditEntity auditEntity) {
     checkAuditDatabase(userName, privilege, databaseName, auditEntity);
+    if (userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)
+        && databaseName.equals(TABLE_MODEL_AUDIT_DATABASE)) {
+      // The internal auditor has any privilege to the audit database
+      return;
+    }
 
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       recordAuditLog(
@@ -153,6 +158,9 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       TableModelPrivilege privilege,
       String databaseName,
       IAuditEntity auditEntity) {
+    if (userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
+      return;
+    }
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
       if (privilege == TableModelPrivilege.SELECT) {
         checkCanSelectAuditTable(userName, auditEntity);

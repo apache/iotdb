@@ -96,7 +96,6 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final String AUDIT_LOG_DEVICE = "root.__audit.log.node_%s.u_%s";
   private static final String AUDIT_LOGIN_LOG_DEVICE = "root.__audit.login.node_%s.u_%s";
   private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.log.node_%s.u_all";
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionInfo sessionInfo =
       new SessionInfo(
           0,
@@ -115,12 +114,18 @@ public class DNAuditLogger extends AbstractAuditLogger {
       DataNodeDevicePathCache.getInstance();
   private static final AtomicBoolean tableViewIsInitialized = new AtomicBoolean(false);
 
+  private Coordinator coordinator;
+
   private DNAuditLogger() {
     // Empty constructor
   }
 
   public static DNAuditLogger getInstance() {
     return DNAuditLoggerHolder.INSTANCE;
+  }
+
+  public void setCoordinator(Coordinator coordinator) {
+    DNAuditLoggerHolder.INSTANCE.coordinator = coordinator;
   }
 
   @NotNull
@@ -224,7 +229,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
                     + " WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1",
                 ZoneId.systemDefault());
         ExecutionResult result =
-            COORDINATOR.executeForTreeModel(
+            coordinator.executeForTreeModel(
                 statement,
                 SESSION_MANAGER.requestQueryId(),
                 sessionInfo,
@@ -253,7 +258,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
                   ZoneId.systemDefault(),
                   session);
           TSStatus status =
-              COORDINATOR.executeForTableModel(
+              coordinator.executeForTableModel(
                       stmt,
                       relationSqlParser,
                       session,
@@ -287,7 +292,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
                   ZoneId.systemDefault(),
                   session);
           status =
-              COORDINATOR.executeForTableModel(
+              coordinator.executeForTableModel(
                       stmt,
                       relationSqlParser,
                       session,
@@ -314,6 +319,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
   }
 
   public void log(AuditLogFields auditLogFields, String log) {
+    if (!IS_AUDIT_LOG_ENABLED) {
+      return;
+    }
     createViewIfNecessary();
     if (!checkBeforeLog(auditLogFields)) {
       return;
@@ -335,7 +343,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
       logger.error("Failed to log audit events because ", e);
       return;
     }
-    COORDINATOR.executeForTreeModel(
+    coordinator.executeForTreeModel(
         statement,
         SESSION_MANAGER.requestQueryId(),
         sessionInfo,
@@ -352,7 +360,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
         logger.error("Failed to log audit login events because ", e);
         return;
       }
-      COORDINATOR.executeForTreeModel(
+      coordinator.executeForTreeModel(
           statement,
           SESSION_MANAGER.requestQueryId(),
           sessionInfo,
@@ -373,7 +381,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
             auditLogFields,
             log,
             DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_CN_LOG_DEVICE, nodeId)));
-    COORDINATOR.executeForTreeModel(
+    coordinator.executeForTreeModel(
         statement,
         SESSION_MANAGER.requestQueryId(),
         sessionInfo,

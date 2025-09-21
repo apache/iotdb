@@ -179,8 +179,11 @@ public abstract class IoTDBSource implements PipeExtractor {
     }
 
     userId =
-        parameters.getStringByKeys(
-            PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID, PipeSourceConstant.SOURCE_IOTDB_USER_ID);
+        parameters.getStringOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            "-1");
     userName =
         parameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,

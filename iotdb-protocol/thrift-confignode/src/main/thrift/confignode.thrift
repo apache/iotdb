@@ -377,6 +377,7 @@ struct TUserResp {
   2: required string password
   3: required set<string> roleSet
   4: required bool isOpenIdUser
+  5: required i64 userId
 }
 
 struct TRoleResp {

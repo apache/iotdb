@@ -281,10 +281,11 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     }
 
     userId =
-        Long.parseLong(
-            parameters.getStringByKeys(
+        parameters.getLongOrDefault(
+            Arrays.asList(
                 PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
-                PipeSourceConstant.SOURCE_IOTDB_USER_ID));
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            -1);
 
     userName =
         parameters.getStringByKeys(

@@ -142,7 +142,9 @@ public class WriteBackSink implements PipeConnector {
                 environment.getCreationTime(),
                 environment.getRegionId()));
 
-    String userIdString = parameters.getStringByKeys(CONNECTOR_IOTDB_USER_ID, SINK_IOTDB_USER_ID);
+    String userIdString =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_USER_ID, SINK_IOTDB_USER_ID), "-1");
     String usernameString =
         parameters.getStringByKeys(
             CONNECTOR_IOTDB_USER_KEY,

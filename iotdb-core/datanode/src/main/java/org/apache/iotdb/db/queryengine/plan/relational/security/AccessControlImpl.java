@@ -103,6 +103,11 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanCreateTable(
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    if (userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)
+        && tableName.getDatabaseName().equals(TABLE_MODEL_AUDIT_DATABASE)) {
+      // The internal audit user can create new tables in the audit database
+      return;
+    }
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
       return;
@@ -136,6 +141,11 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanInsertIntoTable(
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    if (userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)
+        && tableName.getDatabaseName().equals(TABLE_MODEL_AUDIT_DATABASE)) {
+      // Only the internal audit user can insert into the audit table
+      return;
+    }
     checkAuditDatabase(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT, auditEntity);
   }
@@ -410,7 +420,7 @@ public class AccessControlImpl implements AccessControl {
     try {
       PartialPath path = new MeasurementPath(device, measurementId);
       // audit db is read-only
-      if (includeByAuditTreeDB(path)) {
+      if (includeByAuditTreeDB(path) && !userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
         return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }

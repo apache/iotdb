@@ -368,4 +368,8 @@ public class IoTDBConstant {
   public static final String TTL_INFINITE = "INF";
 
   public static final String INTEGRATION_TEST_KILL_POINTS = "integrationTestKillPoints";
+
+  // Authority
+  public static final String INTERNAL_AUDIT_USER = "_internal_auditor";
+  public static final int INTERNAL_AUDIT_USER_ID = 4;
 }

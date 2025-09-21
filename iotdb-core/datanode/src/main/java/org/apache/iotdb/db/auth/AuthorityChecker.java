@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
@@ -76,8 +77,8 @@ public class AuthorityChecker {
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-  public static int INTERNAL_AUDIT_USER_ID = -1;
-  public static String INTERNAL_AUDIT_USER = "__auditor";
+  public static final int INTERNAL_AUDIT_USER_ID = IoTDBConstant.INTERNAL_AUDIT_USER_ID;
+  public static final String INTERNAL_AUDIT_USER = IoTDBConstant.INTERNAL_AUDIT_USER;
 
   public static String ANY_SCOPE = "any";
 

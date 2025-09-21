@@ -95,21 +95,19 @@ public class DataNodeShutdownHook extends Thread {
   @Override
   public void run() {
     logger.info("DataNode exiting...");
-    if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
-      AuditLogFields fields =
-          new AuditLogFields(
-              null,
-              -1,
-              null,
-              AuditEventType.DN_SHUTDOWN,
-              AuditLogOperation.CONTROL,
-              PrivilegeType.SYSTEM,
-              true,
-              null,
-              null);
-      String logMessage = String.format("DataNode %s exiting...", nodeLocation);
-      DNAuditLogger.getInstance().log(fields, logMessage);
-    }
+    AuditLogFields fields =
+        new AuditLogFields(
+            null,
+            -1,
+            null,
+            AuditEventType.DN_SHUTDOWN,
+            AuditLogOperation.CONTROL,
+            PrivilegeType.SYSTEM,
+            true,
+            null,
+            null);
+    String logMessage = String.format("DataNode %s exiting...", nodeLocation);
+    DNAuditLogger.getInstance().log(fields, logMessage);
 
     startWatcher();
     // Stop external rpc service firstly.
