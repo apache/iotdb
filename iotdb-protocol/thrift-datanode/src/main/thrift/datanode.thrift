@@ -645,7 +645,7 @@ struct TFetchTimeseriesResp {
 
 struct TAuditLogReq {
   1: required string username
-  2: required i32 userId
+  2: required i64 userId
   3: required string cliHostname
   4: required string auditEventType
   5: required string operationType

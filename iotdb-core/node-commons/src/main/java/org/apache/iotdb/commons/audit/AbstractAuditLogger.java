@@ -27,6 +27,8 @@ import java.util.List;
 
 public class AbstractAuditLogger {
   private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  protected static final boolean IS_AUDIT_LOG_ENABLED = config.isEnableAuditLog();
+
   private static final List<AuditLogOperation> auditLogOperationList =
       config.getAuditableOperationType();
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
@@ -70,11 +71,16 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_U
 // It checks permission in local. DCL statement will send to configNode.
 public class AuthorityChecker {
 
+  public static int SUPER_USER_ID = 0;
   public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
-
   public static String SUPER_USER_ID_IN_STR = "0";
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+  public static final int INTERNAL_AUDIT_USER_ID = IoTDBConstant.INTERNAL_AUDIT_USER_ID;
+  public static final String INTERNAL_AUDIT_USER = IoTDBConstant.INTERNAL_AUDIT_USER;
+
+  public static String ANY_SCOPE = "any";
 
   public static final String ONLY_ADMIN_ALLOWED =
       "No permissions for this operation, only root user is allowed";

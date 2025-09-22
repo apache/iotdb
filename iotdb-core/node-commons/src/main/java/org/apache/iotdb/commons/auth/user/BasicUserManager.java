@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -102,10 +103,49 @@ public abstract class BasicUserManager extends BasicRoleManager {
       admin.getPathPrivilegeList().clear();
       admin.getPathPrivilegeList().add(pathPri);
     } catch (IllegalPathException e) {
-      // This error only leads to  a lack of permissions for list.
-      LOGGER.warn("Got a wrong path for root to init");
+      LOGGER.warn(
+          "Got a wrong path for {} to init",
+          CommonDescriptor.getInstance().getConfig().getAdminName(),
+          e);
     }
-    LOGGER.info("Admin initialized");
+    LOGGER.info(
+        "Internal user {} initialized", CommonDescriptor.getInstance().getConfig().getAdminName());
+  }
+
+  private void initInternalAuditorWhenNecessary() throws AuthException {
+    if (!CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
+      return;
+    }
+    User internalAuditor = this.getEntity(IoTDBConstant.INTERNAL_AUDIT_USER);
+    if (internalAuditor == null) {
+      createUser(
+          IoTDBConstant.INTERNAL_AUDIT_USER,
+          CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+          true,
+          true);
+    }
+    internalAuditor = this.getEntity(IoTDBConstant.INTERNAL_AUDIT_USER);
+    try {
+      PartialPath auditPath = new PartialPath(SystemConstant.AUDIT_DATABASE + ".**");
+      PathPrivilege pathPri = new PathPrivilege(auditPath);
+      for (PrivilegeType item : PrivilegeType.values()) {
+        if (item.isDeprecated()) {
+          continue;
+        }
+        if (item.isSystemPrivilege()) {
+          internalAuditor.grantSysPrivilege(item, false);
+        } else if (item.isRelationalPrivilege()) {
+          internalAuditor.grantAnyScopePrivilege(item, false);
+        } else if (item.isPathPrivilege()) {
+          pathPri.grantPrivilege(item, false);
+        }
+      }
+      internalAuditor.getPathPrivilegeList().clear();
+      internalAuditor.getPathPrivilegeList().add(pathPri);
+    } catch (IllegalPathException e) {
+      LOGGER.warn("Got a wrong path for {} to init", IoTDBConstant.INTERNAL_AUDIT_USER, e);
+    }
+    LOGGER.info("Internal user {} initialized", IoTDBConstant.INTERNAL_AUDIT_USER);
   }
 
   private void initUserId() {
@@ -168,6 +208,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
       long userid;
       if (username.equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
         userid = 0;
+      } else if (username.equals(IoTDBConstant.INTERNAL_AUDIT_USER)) {
+        userid = 4;
       } else {
         userid = ++nextUserId;
       }
@@ -237,6 +279,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void init() throws AuthException {
     this.accessor.reset();
     initAdmin();
+    initInternalAuditorWhenNecessary();
   }
 
   @Override
@@ -254,6 +297,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
     initUserId();
     initAdmin();
+    initInternalAuditorWhenNecessary();
   }
 
   @TestOnly

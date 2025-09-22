@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.deletion;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -53,7 +54,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public PipeDeleteDataNodeEvent(
       final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe);
+    this(deleteDataNode, null, 0, null, null, null, null, null, null, true, isGeneratedByPipe);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -63,7 +64,9 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final boolean isGeneratedByPipe) {
     super(
@@ -72,7 +75,9 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -123,7 +128,9 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -134,7 +141,9 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         isGeneratedByPipe);
   }
@@ -157,7 +166,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
               userName,
               new QualifiedObjectName(
                   ((RelationalDeleteDataNode) deleteDataNode).getDatabaseName(),
-                  entry.getTableName()));
+                  entry.getTableName()),
+              new UserEntity(Long.parseLong(userId), userName, cliHostname));
     }
   }
 

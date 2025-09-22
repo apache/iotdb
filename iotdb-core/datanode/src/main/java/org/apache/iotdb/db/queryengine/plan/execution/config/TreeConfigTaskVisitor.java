@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
@@ -221,8 +222,8 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUserName;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUser;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUser;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -582,15 +583,15 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createPipeStatement
         .getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    checkAndEnrichSourceUserName(
+    checkAndEnrichSourceUser(
         createPipeStatement.getPipeName(),
         createPipeStatement.getExtractorAttributes(),
-        context.getSession().getUserName(),
+        new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
-    checkAndEnrichSinkUserName(
+    checkAndEnrichSinkUser(
         createPipeStatement.getPipeName(),
         createPipeStatement.getConnectorAttributes(),
-        context.getSession().getUserName(),
+        context.getSession().getUserEntity(),
         false);
 
     return new CreatePipeTask(createPipeStatement);
@@ -627,12 +628,19 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
+      checkAndEnrichSourceUser(
+          pipeName,
+          extractorAttributes,
+          new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
+          true);
     }
 
     if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-      checkAndEnrichSinkUserName(
-          pipeName, alterPipeStatement.getConnectorAttributes(), userName, true);
+      checkAndEnrichSinkUser(
+          pipeName,
+          alterPipeStatement.getConnectorAttributes(),
+          context.getSession().getUserEntity(),
+          true);
     }
 
     return new AlterPipeTask(alterPipeStatement);

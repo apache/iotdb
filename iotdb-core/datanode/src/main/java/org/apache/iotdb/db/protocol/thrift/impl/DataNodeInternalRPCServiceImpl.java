@@ -43,6 +43,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -2966,7 +2967,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       InsertRowStatement statement = StatementGenerator.createStatement(req);
       SessionInfo sessionInfo =
-          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.SUPER_USER_ID,
+                  AuthorityChecker.SUPER_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =

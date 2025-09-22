@@ -1296,7 +1296,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 .getDriverContext()
                 .getFragmentInstanceContext()
                 .getSessionInfo()
-                .getUserName()));
+                .getUserEntity()));
   }
 
   @Override

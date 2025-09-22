@@ -153,7 +153,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private boolean shouldExtractInsertion;
   private boolean shouldExtractDeletion;
   private boolean shouldTransferModFile; // Whether to transfer mods
+  protected String userId;
   protected String userName;
+  protected String cliHostname;
   protected boolean skipIfNoPrivileges = true;
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
@@ -371,12 +373,19 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
     }
 
+    userId =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID, PipeSourceConstant.SOURCE_IOTDB_USER_ID);
     userName =
         parameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
             PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    cliHostname =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+            PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
@@ -851,7 +860,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             pipeTaskMeta,
             treePattern,
             tablePattern,
+            userId,
             userName,
+            cliHostname,
             skipIfNoPrivileges,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
@@ -908,7 +919,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             pipeTaskMeta,
             treePattern,
             tablePattern,
+            userId,
             userName,
+            cliHostname,
             skipIfNoPrivileges,
             false);
 

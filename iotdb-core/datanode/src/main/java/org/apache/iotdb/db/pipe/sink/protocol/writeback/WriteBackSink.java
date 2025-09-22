@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.writeback;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -76,13 +77,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_USE_EVENT_USER_NAME_KEY;
@@ -106,6 +111,8 @@ public class WriteBackSink implements PipeConnector {
   private IClientSession treeSession;
   private boolean skipIfNoPrivileges;
   private boolean useEventUserName;
+
+  private UserEntity userEntity;
 
   private static final String TREE_MODEL_DATABASE_NAME_IDENTIFIER = null;
 
@@ -134,13 +141,22 @@ public class WriteBackSink implements PipeConnector {
                 environment.getPipeName(),
                 environment.getCreationTime(),
                 environment.getRegionId()));
-    // Fill in the necessary information. Incomplete information will result in NPE.
-    session.setUsername(
+
+    String userIdString =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_USER_ID, SINK_IOTDB_USER_ID), "-1");
+    String usernameString =
         parameters.getStringByKeys(
             CONNECTOR_IOTDB_USER_KEY,
             SINK_IOTDB_USER_KEY,
             CONNECTOR_IOTDB_USERNAME_KEY,
-            SINK_IOTDB_USERNAME_KEY));
+            SINK_IOTDB_USERNAME_KEY);
+    String cliHostnameString =
+        parameters.getStringByKeys(CONNECTOR_IOTDB_CLI_HOSTNAME, SINK_IOTDB_CLI_HOSTNAME);
+    userEntity = new UserEntity(Long.parseLong(userIdString), usernameString, cliHostnameString);
+
+    // Fill in the necessary information. Incomplete information will result in NPE.
+    session.setUsername(usernameString);
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
 
@@ -436,7 +452,7 @@ public class WriteBackSink implements PipeConnector {
     try {
       Coordinator.getInstance()
           .getAccessControl()
-          .checkCanCreateDatabase(session.getUsername(), database);
+          .checkCanCreateDatabase(userEntity.getUsername(), database, userEntity);
     } catch (final AccessDeniedException e) {
       // Auto create failed, we still check if there are existing databases
       // If there are not, this will be removed by catching database not exists exception

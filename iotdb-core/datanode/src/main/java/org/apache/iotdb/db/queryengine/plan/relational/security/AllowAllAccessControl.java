@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -34,80 +35,66 @@ import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 
 public class AllowAllAccessControl implements AccessControl {
   @Override
-  public void checkCanCreateDatabase(String userName, String databaseName) {
-    // allow anything
+  public void checkCanCreateDatabase(
+      String userName, String databaseName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanDropDatabase(
+      String userName, String databaseName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanAlterDatabase(
+      String userName, String databaseName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanShowOrUseDatabase(
+      String userName, String databaseName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanCreateTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanDropTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanAlterTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanInsertIntoTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanSelectFromTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkCanSelectFromDatabase4Pipe(
+      String userName, String databaseName, IAuditEntity auditEntity) {}
+
+  @Override
+  public boolean checkCanSelectFromTable4Pipe(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    return false;
   }
 
   @Override
-  public void checkCanDropDatabase(String userName, String databaseName) {
-    // allow anything
-  }
+  public void checkCanDeleteFromTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
 
   @Override
-  public void checkCanAlterDatabase(String userName, String databaseName) {
-    // allow anything
-  }
+  public void checkCanShowOrDescTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
 
   @Override
-  public void checkCanShowOrUseDatabase(String userName, String databaseName) {
-    // allow anything
-  }
-
-  @Override
-  public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
-  }
-
-  @Override
-  public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
-  }
-
-  @Override
-  public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
-  }
-
-  @Override
-  public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
-  }
-
-  @Override
-  public void checkCanSelectFromTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
-  }
-
-  @Override
-  public void checkCanSelectFromDatabase4Pipe(String userName, String databaseName) {
-    // allow anything
-  }
-
-  @Override
-  public boolean checkCanSelectFromTable4Pipe(String userName, QualifiedObjectName tableName) {
-    return true;
-  }
-
-  @Override
-  public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
-  }
-
-  @Override
-  public void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
-  }
-
-  @Override
-  public void checkCanCreateViewFromTreePath(String userName, PartialPath path) {
-    // allow anything
-  }
+  public void checkCanCreateViewFromTreePath(
+      String userName, PartialPath path, IAuditEntity auditEntity) {}
 
   @Override
   public void checkUserCanRunRelationalAuthorStatement(
-      String userName, RelationalAuthorStatement statement) {
-    // allow anything
-  }
+      String userName, RelationalAuthorStatement statement, IAuditEntity auditEntity) {}
 
   @Override
   public void checkUserIsAdmin(String userName) {
@@ -115,9 +102,7 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
-  public void checkUserGlobalSysPrivilege(String userName) {
-    // allow anything
-  }
+  public void checkUserGlobalSysPrivilege(String userName, IAuditEntity auditEntity) {}
 
   @Override
   public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
@@ -125,9 +110,8 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
-  public void checkMissingPrivileges(String username, Collection<PrivilegeType> privilegeTypes) {
-    // allow anything
-  }
+  public void checkMissingPrivileges(
+      String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {}
 
   @Override
   public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {

@@ -649,6 +649,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** Cache user. */
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
+    user.setUserId(tPermissionInfoResp.getUserInfo().getUserId());
     List<TPathPrivilege> privilegeList =
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getPrivilegeList();
     user.setName(tPermissionInfoResp.getUserInfo().getPermissionInfo().getName());

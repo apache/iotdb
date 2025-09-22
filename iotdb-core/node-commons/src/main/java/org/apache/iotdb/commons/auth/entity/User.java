@@ -117,6 +117,7 @@ public class User extends Role {
     resp.setPassword(password);
     resp.setIsOpenIdUser(isOpenIdUser);
     resp.setRoleSet(roleSet);
+    resp.setUserId(userId);
     return resp;
   }
 

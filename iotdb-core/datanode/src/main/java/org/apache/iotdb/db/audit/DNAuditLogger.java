@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -95,9 +96,14 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final String AUDIT_LOG_DEVICE = "root.__audit.log.node_%s.u_%s";
   private static final String AUDIT_LOGIN_LOG_DEVICE = "root.__audit.login.node_%s.u_%s";
   private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.log.node_%s.u_all";
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionInfo sessionInfo =
-      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+      new SessionInfo(
+          0,
+          new UserEntity(
+              AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+              AuthorityChecker.INTERNAL_AUDIT_USER,
+              IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+          ZoneId.systemDefault());
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
@@ -106,7 +112,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
       DataNodeDevicePathCache.getInstance();
-  private static AtomicBoolean tableViewIsInitialized = new AtomicBoolean(false);
+  private static final AtomicBoolean tableViewIsInitialized = new AtomicBoolean(false);
+
+  private Coordinator coordinator;
 
   private DNAuditLogger() {
     // Empty constructor
@@ -114,6 +122,10 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   public static DNAuditLogger getInstance() {
     return DNAuditLoggerHolder.INSTANCE;
+  }
+
+  public void setCoordinator(Coordinator coordinator) {
+    DNAuditLoggerHolder.INSTANCE.coordinator = coordinator;
   }
 
   @NotNull
@@ -217,7 +229,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
                     + " WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1",
                 ZoneId.systemDefault());
         ExecutionResult result =
-            COORDINATOR.executeForTreeModel(
+            coordinator.executeForTreeModel(
                 statement,
                 SESSION_MANAGER.requestQueryId(),
                 sessionInfo,
@@ -232,7 +244,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
               new InternalClientSession(
                   String.format(
                       "%s_%s", DNAuditLogger.class.getSimpleName(), SystemConstant.AUDIT_DATABASE));
-          session.setUsername(AuthorityChecker.SUPER_USER);
+          session.setUsername(AuthorityChecker.INTERNAL_AUDIT_USER);
           session.setZoneId(ZoneId.systemDefault());
           session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
           session.setDatabaseName(SystemConstant.AUDIT_DATABASE);
@@ -246,7 +258,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
                   ZoneId.systemDefault(),
                   session);
           TSStatus status =
-              COORDINATOR.executeForTableModel(
+              coordinator.executeForTableModel(
                       stmt,
                       relationSqlParser,
                       session,
@@ -280,7 +292,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
                   ZoneId.systemDefault(),
                   session);
           status =
-              COORDINATOR.executeForTableModel(
+              coordinator.executeForTableModel(
                       stmt,
                       relationSqlParser,
                       session,
@@ -307,11 +319,14 @@ public class DNAuditLogger extends AbstractAuditLogger {
   }
 
   public void log(AuditLogFields auditLogFields, String log) {
+    if (!IS_AUDIT_LOG_ENABLED) {
+      return;
+    }
     createViewIfNecessary();
     if (!checkBeforeLog(auditLogFields)) {
       return;
     }
-    int userId = auditLogFields.getUserId();
+    long userId = auditLogFields.getUserId();
     String user = String.valueOf(userId);
     if (userId == -1) {
       user = "none";
@@ -328,7 +343,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
       logger.error("Failed to log audit events because ", e);
       return;
     }
-    COORDINATOR.executeForTreeModel(
+    coordinator.executeForTreeModel(
         statement,
         SESSION_MANAGER.requestQueryId(),
         sessionInfo,
@@ -345,7 +360,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
         logger.error("Failed to log audit login events because ", e);
         return;
       }
-      COORDINATOR.executeForTreeModel(
+      coordinator.executeForTreeModel(
           statement,
           SESSION_MANAGER.requestQueryId(),
           sessionInfo,
@@ -366,7 +381,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
             auditLogFields,
             log,
             DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_CN_LOG_DEVICE, nodeId)));
-    COORDINATOR.executeForTreeModel(
+    coordinator.executeForTreeModel(
         statement,
         SESSION_MANAGER.requestQueryId(),
         sessionInfo,
