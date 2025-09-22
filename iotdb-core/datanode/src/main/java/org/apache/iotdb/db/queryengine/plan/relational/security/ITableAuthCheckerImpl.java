@@ -45,7 +45,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkDatabaseVisibility(
       String userName, String databaseName, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
@@ -124,7 +124,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       return;
     }
 
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
@@ -163,7 +163,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
       if (privilege == TableModelPrivilege.SELECT) {
-        checkCanSelectAuditTable(userName, auditEntity);
+        checkCanSelectAuditTable(auditEntity);
       } else {
         recordAuditLog(
             auditEntity
@@ -222,7 +222,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       String databaseName,
       TableModelPrivilege privilege,
       IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
@@ -246,7 +246,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       QualifiedObjectName tableName,
       TableModelPrivilege privilege,
       IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
@@ -275,7 +275,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       QualifiedObjectName tableName,
       TableModelPrivilege privilege,
       IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
@@ -301,7 +301,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public boolean checkTablePrivilege4Pipe(
       final String userName, final QualifiedObjectName tableName, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
         || AuthorityChecker.getTSStatus(
                     AuthorityChecker.checkTablePermission(
                         userName,
@@ -333,7 +333,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkTableVisibility(
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
@@ -379,7 +379,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkGlobalPrivilege(
       String userName, TableModelPrivilege privilege, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
@@ -398,7 +398,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkGlobalPrivileges(
       String username, Collection<PrivilegeType> privileges, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(username)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       for (PrivilegeType privilege : privileges) {
         recordAuditLog(
             auditEntity
@@ -420,7 +420,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkGlobalPrivilegeGrantOption(
       String userName, TableModelPrivilege privilege, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
@@ -441,7 +441,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkAnyScopePrivilegeGrantOption(
       String userName, TableModelPrivilege privilege, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
