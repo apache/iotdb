@@ -127,7 +127,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testInternalCreateTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "insert into root.ln.wf01.wt01(time, status0) values(now(), false); flush;",
+        "insert into root.ln.wf01.wt01(time, status0) values(now(), false)",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries root.ln.**",
         "count(timeseries),",
@@ -444,19 +444,12 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, beforeSqlList, null)) {
-      return;
-    }
+    TestUtils.executeNonQueries(senderEnv, beforeSqlList, null);
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, testSql, null)) {
-      return;
-    }
+    TestUtils.tryExecuteNonQuery(receiverEnv, testSql, null);
 
     // Create an idempotent conflict, after sql shall be executed on the same region as testSql
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        senderEnv, Arrays.asList(testSql, afterSql), null)) {
-      return;
-    }
+    TestUtils.executeNonQueries(senderEnv, Arrays.asList(testSql, afterSql), null);
 
     // Assume that the afterSql is executed on receiverEnv
     TestUtils.assertDataEventuallyOnEnv(receiverEnv, afterSqlQuery, expectedHeader, expectedResSet);

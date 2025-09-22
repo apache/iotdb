@@ -1618,9 +1618,9 @@ public class MergeTreeSortOperatorTest {
                   new FakeQueryExecution(1, "20221229_000000_00001_2", "sql1_node2")));
 
       ShowQueriesOperator showQueriesOperator1 =
-          new ShowQueriesOperator(operatorContexts.get(0), planNodeId0, coordinator1);
+          new ShowQueriesOperator(operatorContexts.get(0), planNodeId0, coordinator1, null);
       ShowQueriesOperator showQueriesOperator2 =
-          new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2);
+          new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2, null);
       TreeSortOperator treeSortOperator1 =
           new TreeSortOperator(
               operatorContexts.get(2), showQueriesOperator1, dataTypes, "", comparator);

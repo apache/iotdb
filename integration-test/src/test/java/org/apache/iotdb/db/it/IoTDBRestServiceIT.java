@@ -1399,6 +1399,7 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
+            add(ColumnHeaderConstant.USER_ID);
             add(ColumnHeaderConstant.USER);
           }
         };
@@ -1409,7 +1410,7 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values1, valuesResult.get(1));
   }
 
   public void selectCount(CloseableHttpClient httpClient) {
@@ -2062,6 +2063,7 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
+            add(ColumnHeaderConstant.USER_ID);
             add(ColumnHeaderConstant.USER);
           }
         };
@@ -2072,7 +2074,7 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values1, valuesResult.get(1));
   }
 
   public void selectCountV2(CloseableHttpClient httpClient) {

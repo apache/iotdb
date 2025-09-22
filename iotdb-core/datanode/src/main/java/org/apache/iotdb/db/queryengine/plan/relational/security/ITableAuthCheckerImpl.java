@@ -21,15 +21,36 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.util.Collection;
+
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 
 public class ITableAuthCheckerImpl implements ITableAuthChecker {
 
   @Override
   public void checkDatabaseVisibility(String userName, String databaseName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return;
+    }
+    // Information_schema is visible to any user
+    if (databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
+      return;
+    }
+
+    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
+      if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT)) {
+        return;
+      } else {
+        throw new AccessDeniedException("DATABASE " + databaseName);
+      }
+    }
+
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
       return;
     }
     if (!AuthorityChecker.checkDBVisible(userName, databaseName)) {
@@ -40,9 +61,16 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkDatabasePrivilege(
       String userName, String databaseName, TableModelPrivilege privilege) {
+    checkAuditDatabase(userName, privilege, databaseName);
+
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return;
     }
+
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
+
     TSStatus result =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkDBPermission(
@@ -51,6 +79,27 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             databaseName);
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(result.getMessage());
+    }
+  }
+
+  private static void checkAuditDatabase(
+      String userName, TableModelPrivilege privilege, String databaseName) {
+    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
+      if (privilege == TableModelPrivilege.SELECT) {
+        checkCanSelectAuditTable(userName);
+      } else {
+        throw new AccessDeniedException(
+            String.format("The database '%s' is read-only.", TABLE_MODEL_AUDIT_DATABASE));
+      }
+    }
+  }
+
+  public static void checkCanSelectAuditTable(String userName) {
+    if (!AuthorityChecker.SUPER_USER.equals(userName)
+        && !AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT)) {
+      throw new AccessDeniedException(
+          String.format(
+              "The database '%s' can only be queried by AUDIT admin.", TABLE_MODEL_AUDIT_DATABASE));
     }
   }
 
@@ -135,6 +184,16 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return;
     }
+
+    String databaseName = tableName.getDatabaseName();
+    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)
+        && !AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT)) {
+      throw new AccessDeniedException("TABLE " + tableName);
+    }
+
+    if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
+      return;
+    }
     if (!AuthorityChecker.checkTableVisible(
         userName, tableName.getDatabaseName(), tableName.getObjectName())) {
       throw new AccessDeniedException("TABLE " + tableName);
@@ -150,6 +209,19 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new AccessDeniedException(result.getMessage());
+    }
+  }
+
+  @Override
+  public void checkGlobalPrivileges(String username, Collection<PrivilegeType> privileges) {
+    if (AuthorityChecker.SUPER_USER.equals(username)) {
+      return;
+    }
+    TSStatus result =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkUserMissingSystemPermissions(username, privileges));
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(result.getMessage());
     }

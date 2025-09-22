@@ -2660,12 +2660,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         continue;
       } else if (priv.equalsIgnoreCase("ALL")) {
         for (PrivilegeType type : PrivilegeType.values()) {
-          if (type.isRelationalPrivilege() || type.isAdminPrivilege()) {
+          if (type.isRelationalPrivilege() || type.isDeprecated() || type.isHided()) {
             continue;
           }
           privSet.add(type.toString());
         }
         continue;
+      }
+      PrivilegeType privilegeType = PrivilegeType.valueOf(priv.toUpperCase());
+      if (privilegeType.isDeprecated()) {
+        throw new SemanticException(
+            "Privilege type "
+                + priv.toUpperCase()
+                + " is deprecated, use "
+                + privilegeType.getReplacedPrivilegeType()
+                + " to instead it");
       }
       privSet.add(priv);
     }
@@ -2832,6 +2841,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitShowAllTTL(IoTDBSqlParser.ShowAllTTLContext ctx) {
     ShowTTLStatement showTTLStatement = new ShowTTLStatement();
     showTTLStatement.addPathPatterns(new PartialPath(SqlConstant.getSingleRootArray()));
+    showTTLStatement.setShowAllTTL(true);
     return showTTLStatement;
   }
 

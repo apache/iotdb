@@ -21,7 +21,6 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
@@ -64,9 +63,14 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
+
+import static org.apache.iotdb.commons.auth.utils.AuthUtils.constructAuthorityScope;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -117,7 +121,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUserSysPrivileges(String username, PrivilegeType permission) {
+  public TSStatus checkUserSysPrivilege(String username, PrivilegeType permission) {
     checkCacheAvailable();
     return checkPrivilege(
         username,
@@ -125,6 +129,26 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         (role, union) -> role.checkSysPrivilege(union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
             username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false));
+  }
+
+  @Override
+  public Collection<PrivilegeType> checkUserSysPrivileges(
+      String username, Collection<PrivilegeType> permissions) {
+    checkCacheAvailable();
+    Set<PrivilegeType> missingPrivileges = new HashSet<>();
+    for (PrivilegeType permission : permissions) {
+      TSStatus status =
+          checkPrivilege(
+              username,
+              new PrivilegeUnion(permission, false),
+              (role, union) -> role.checkSysPrivilege(union.getPrivilegeType()),
+              new TCheckUserPrivilegesReq(
+                  username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        missingPrivileges.add(permission);
+      }
+    }
+    return missingPrivileges;
   }
 
   @Override
@@ -317,19 +341,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     PathPatternTree patternTree = new PathPatternTree();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      for (PathPrivilege path : user.getPathPrivilegeList()) {
-        if (path.checkPrivilege(permission)) {
-          patternTree.appendPathPattern(path.getPath());
-        }
-      }
+      constructAuthorityScope(patternTree, user, permission);
       for (String roleName : user.getRoleSet()) {
         Role role = iAuthorCache.getRoleCache(roleName);
         if (role != null) {
-          for (PathPrivilege path : role.getPathPrivilegeList()) {
-            if (path.checkPrivilege(permission)) {
-              patternTree.appendPathPattern(path.getPath());
-            }
-          }
+          constructAuthorityScope(patternTree, role, permission);
         } else {
           return fetchAuthizedPatternTree(username, permission);
         }

@@ -68,6 +68,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -294,6 +295,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
 public class ConfigManager implements IManager {
@@ -354,6 +356,7 @@ public class ConfigManager implements IManager {
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
+  private final CNAuditLogger auditLogger;
 
   private static final String DATABASE = "\tDatabase=";
 
@@ -413,6 +416,7 @@ public class ConfigManager implements IManager {
     this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
     this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
+    this.auditLogger = new CNAuditLogger(this);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
     // LoadManager will register PipeManager as a listener.
@@ -783,6 +787,10 @@ public class ConfigManager implements IManager {
           getClusterSchemaManager()
               .getMatchedDatabaseSchemasByName(
                   deletedPaths, tDeleteReq.isSetIsTableModel() && tDeleteReq.isIsTableModel());
+
+      // remove root.__audit
+      deleteDatabaseSchemaMap.remove(TREE_MODEL_AUDIT_DATABASE);
+
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
@@ -823,7 +831,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree) {
+  public TSchemaPartitionTableResp getSchemaPartition(
+      final PathPatternTree patternTree, boolean needAuditDB) {
     // Construct empty response
 
     final TSStatus status = confirmLeader();
@@ -838,6 +847,9 @@ public class ConfigManager implements IManager {
     final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(false);
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (final String database : allDatabases) {
+      if (!needAuditDB && TREE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(database)) {
+        continue;
+      }
       try {
         allDatabasePaths.add(PartialPath.getQualifiedDatabasePartialPath(database));
       } catch (final IllegalPathException e) {
@@ -1011,12 +1023,13 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSchemaNodeManagementResp getNodePathsPartition(
-      PartialPath partialPath, PathPatternTree scope, Integer level) {
+      PartialPath partialPath, PathPatternTree scope, Integer level, boolean needAuditDB) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetNodePathsPartitionPlan getNodePathsPartitionPlan = new GetNodePathsPartitionPlan();
       getNodePathsPartitionPlan.setPartialPath(partialPath);
       getNodePathsPartitionPlan.setScope(scope);
+      getNodePathsPartitionPlan.setNeedAuditDB(needAuditDB);
       if (null != level) {
         getNodePathsPartitionPlan.setLevel(level);
       }
@@ -1277,6 +1290,20 @@ public class ConfigManager implements IManager {
   @Override
   public SubscriptionManager getSubscriptionManager() {
     return subscriptionManager;
+  }
+
+  @Override
+  public CNAuditLogger getAuditLogger() {
+    return auditLogger;
+  }
+
+  @Override
+  public TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId) {
+    Map<TConsensusGroupId, Integer> regionLeaderMap =
+        getLoadManager().getLoadCache().getRegionLeaderMap();
+    Integer regionLeaderId = regionLeaderMap.get(regionId);
+    Map<Integer, TDataNodeLocation> dataNodeMap = getNodeManager().getRegisteredDataNodeLocations();
+    return dataNodeMap.get(regionLeaderId);
   }
 
   @Override
@@ -1834,10 +1861,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus killQuery(String queryId, int dataNodeId) {
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? nodeManager.killQuery(queryId, dataNodeId)
+        ? nodeManager.killQuery(queryId, dataNodeId, allowedUsername)
         : status;
   }
 
@@ -1986,7 +2013,8 @@ public class ConfigManager implements IManager {
               req.getDatabasePathPattern(),
               scope,
               req.isSetIsTableModel() && req.isIsTableModel(),
-              true);
+              true,
+              !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
@@ -2213,6 +2241,8 @@ public class ConfigManager implements IManager {
             && !path.getDevicePath().hasWildcard()) {
           Map<String, TDatabaseSchema> databaseSchemaMap =
               getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
+          // root.__audit can never be deleted
+          databaseSchemaMap.remove(TREE_MODEL_AUDIT_DATABASE);
           if (!databaseSchemaMap.isEmpty()) {
             deleteDatabaseSchemas.addAll(databaseSchemaMap.values());
             deleteDatabasePatternPaths.add(path);
@@ -2558,7 +2588,13 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       final PathPatternTree patternTree) {
-    return getRelatedSchemaRegionGroup(getSchemaPartition(patternTree).getSchemaPartitionTable());
+    return getRelatedSchemaRegionGroup(patternTree, true);
+  }
+
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      final PathPatternTree patternTree, boolean needAuditDB) {
+    return getRelatedSchemaRegionGroup(
+        getSchemaPartition(patternTree, needAuditDB).getSchemaPartitionTable());
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup4TableModel(
@@ -2590,7 +2626,8 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       final PathPatternTree patternTree) {
-    return getRelatedDataRegionGroup(getSchemaPartition(patternTree).getSchemaPartitionTable());
+    return getRelatedDataRegionGroup(
+        getSchemaPartition(patternTree, false).getSchemaPartitionTable());
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup4TableModel(

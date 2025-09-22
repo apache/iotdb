@@ -30,6 +30,8 @@ import java.util.List;
 
 public class KillQueryStatement extends Statement implements IConfigStatement {
   private final String queryId;
+  // if allowedUsername is null, this statement can kill other user's queries
+  private String allowedUsername;
 
   public KillQueryStatement(String queryId) {
     this.queryId = queryId;
@@ -45,6 +47,14 @@ public class KillQueryStatement extends Statement implements IConfigStatement {
 
   public String getQueryId() {
     return queryId;
+  }
+
+  public String getAllowedUsername() {
+    return allowedUsername;
+  }
+
+  public void setAllowedUsername(String allowedUsername) {
+    this.allowedUsername = allowedUsername;
   }
 
   @Override

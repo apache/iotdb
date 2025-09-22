@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+
+import java.util.Collection;
 
 public interface ITableAuthChecker {
 
@@ -82,6 +85,8 @@ public interface ITableAuthChecker {
    * @throws AccessDeniedException if not allowed
    */
   void checkGlobalPrivilege(String userName, TableModelPrivilege privilege);
+
+  void checkGlobalPrivileges(String username, Collection<PrivilegeType> privileges);
 
   /**
    * Check if user has the specified global privilege

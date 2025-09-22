@@ -28,6 +28,10 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -63,6 +67,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -233,6 +238,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         ConfigNodeInfo.getInstance().storeConfigNodeList();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
+        saveSecretKey();
+        saveHardwareCode();
       } else {
         /* Check encrypt magic string */
         try {
@@ -242,6 +249,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         }
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
+        loadSecretKey();
+        loadHardwareCode();
       }
       // TierManager need DataNodeId to do some operations so the reset method need to be invoked
       // after DataNode adding
@@ -260,6 +269,29 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
+
+      // Start the Audit Service
+      if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
+        AuditLogFields fields =
+            new AuditLogFields(
+                null,
+                -1,
+                null,
+                AuditEventType.CHANGE_AUDIT_OPTION,
+                AuditLogOperation.CONTROL,
+                PrivilegeType.AUDIT,
+                true,
+                null,
+                null);
+        String logMessage =
+            String.format(
+                "Successfully start the Audit service with configurations (auditableOperationType %s, auditableOperationLevel %s, auditableOperationResult %s) in DataNode %s",
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationType().toString(),
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
+                thisNode);
+        DNAuditLogger.getInstance().log(fields, logMessage);
+      }
 
       if (isUsingPipeConsensus()) {
         long dataRegionStartTime = System.currentTimeMillis();
@@ -520,6 +552,22 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
       throw new StartupException("Cannot register to the cluster.");
     }
+  }
+
+  protected void saveSecretKey() {
+    // Do nothing
+  }
+
+  protected void saveHardwareCode() {
+    // Do nothing
+  }
+
+  protected void loadSecretKey() throws IOException {
+    // Do nothing
+  }
+
+  protected void loadHardwareCode() throws IOException {
+    // Do nothing
   }
 
   private void makeRegionsCorrect(List<TRegionReplicaSet> correctRegions) {

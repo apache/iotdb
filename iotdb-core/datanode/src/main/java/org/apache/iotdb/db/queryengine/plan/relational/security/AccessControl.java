@@ -20,11 +20,16 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+import java.util.Collection;
 
 public interface AccessControl {
 
@@ -175,7 +180,22 @@ public interface AccessControl {
    */
   void checkUserGlobalSysPrivilege(String userName);
 
+  /**
+   * Check if user has sepecified global privilege
+   *
+   * @param userName name of user
+   * @param privilegeType needed privilege
+   * @throws AccessDeniedException if not allowed
+   */
+  boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType);
+
+  void checkMissingPrivileges(String username, Collection<PrivilegeType> privilegeTypes);
+
   // ====================================== TREE =============================================
 
   TSStatus checkPermissionBeforeProcess(Statement statement, String userName);
+
+  /** called by load */
+  TSStatus checkFullPathWriteDataPermission(
+      String userName, IDeviceID device, String measurementId);
 }

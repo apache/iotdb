@@ -178,7 +178,7 @@ public class CNPhysicalPlanGeneratorTest {
                 + ".profile");
 
     final CNPhysicalPlanGenerator planGenerator =
-        new CNPhysicalPlanGenerator(roleProfile.toPath(), CNSnapshotFileType.ROLE);
+        new CNPhysicalPlanGenerator(roleProfile.toPath(), CNSnapshotFileType.ROLE, "");
     int count = 0;
     for (ConfigPhysicalPlan authPlan : planGenerator) {
       Assert.assertTrue(answerSet.contains(authPlan.hashCode()));
@@ -260,11 +260,11 @@ public class CNPhysicalPlanGeneratorTest {
                 + File.separator
                 + USER_SNAPSHOT_FILE_NAME
                 + File.separator
-                + userName
+                + 10000
                 + ".profile");
 
     CNPhysicalPlanGenerator planGenerator =
-        new CNPhysicalPlanGenerator(userProfile.toPath(), CNSnapshotFileType.USER);
+        new CNPhysicalPlanGenerator(userProfile.toPath(), CNSnapshotFileType.USER, userName);
     int count = 0;
     // plan 1-4
     for (ConfigPhysicalPlan authPlan : planGenerator) {
@@ -278,10 +278,11 @@ public class CNPhysicalPlanGeneratorTest {
                 + File.separator
                 + USER_SNAPSHOT_FILE_NAME
                 + File.separator
-                + userName
+                + 10000
                 + "_role.profile");
     planGenerator =
-        new CNPhysicalPlanGenerator(roleListProfile.toPath(), CNSnapshotFileType.USER_ROLE);
+        new CNPhysicalPlanGenerator(
+            roleListProfile.toPath(), CNSnapshotFileType.USER_ROLE, userName);
     count = 0;
     // plan 5
     for (ConfigPhysicalPlan authPlan : planGenerator) {
@@ -345,7 +346,7 @@ public class CNPhysicalPlanGeneratorTest {
     }
     planGenerator.checkException();
     Assert.assertEquals(5, count);
-    planGenerator = new CNPhysicalPlanGenerator(ttlInfo.toPath(), CNSnapshotFileType.TTL);
+    planGenerator = new CNPhysicalPlanGenerator(ttlInfo.toPath(), CNSnapshotFileType.TTL, "");
     for (ConfigPhysicalPlan plan : planGenerator) {
       if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
         if (!new PartialPath(((SetTTLPlan) plan).getPathPattern())
@@ -510,7 +511,7 @@ public class CNPhysicalPlanGeneratorTest {
     }
     Assert.assertEquals(8, count);
 
-    planGenerator = new CNPhysicalPlanGenerator(ttlInfo.toPath(), CNSnapshotFileType.TTL);
+    planGenerator = new CNPhysicalPlanGenerator(ttlInfo.toPath(), CNSnapshotFileType.TTL, "");
     for (ConfigPhysicalPlan plan : planGenerator) {
       if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
         if (!new PartialPath(((SetTTLPlan) plan).getPathPattern())

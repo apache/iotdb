@@ -163,6 +163,8 @@ public class ColumnHeaderConstant {
   public static final String COUNT_TIME_PARTITION = "count(timePartition)";
   public static final String START_TIME = "StartTime";
   public static final String ROLE = "Role";
+  public static final String MAX_SESSION_PER_USER = "MaxSessionPerUser";
+  public static final String MIN_SESSION_PER_USER = "MinSessionPerUser";
   public static final String CREATE_TIME = "CreateTime";
   public static final String TSFILE_SIZE = "TsFileSize";
   public static final String COMPRESSION_RATIO = "CompressionRatio";
@@ -279,6 +281,7 @@ public class ColumnHeaderConstant {
 
   // column names for show throttle quota
   public static final String USER = "User";
+  public static final String USER_ID = "UserId";
   public static final String READ_WRITE = "Read/Write";
 
   // column names for show models/trials
@@ -695,6 +698,10 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TABLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TABLE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> LIST_USER_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(USER_ID, TSDataType.INT64), new ColumnHeader(USER, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTablesColumnHeaders =
       ImmutableList.of(

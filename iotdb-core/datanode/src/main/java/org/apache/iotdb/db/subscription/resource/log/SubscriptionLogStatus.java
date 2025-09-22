@@ -68,7 +68,7 @@ class SubscriptionLogStatus {
                         now
                             // introduce randomness
                             - BASE_INTERVAL_IN_MS
-                                * ThreadLocalRandom.current().nextLong(1, count + 1))));
+                                * ThreadLocalRandom.current().nextLong(Math.max(count, 1)))));
     final long last = lastTime.get();
     if (now - last >= allowedInterval) {
       // Use compareAndSet to ensure that only one thread updates at a time,

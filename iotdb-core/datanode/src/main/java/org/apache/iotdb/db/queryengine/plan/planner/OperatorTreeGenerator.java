@@ -2584,7 +2584,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 ShowQueriesOperator.class.getSimpleName());
 
     return new ShowQueriesOperator(
-        operatorContext, node.getPlanNodeId(), Coordinator.getInstance());
+        operatorContext,
+        node.getPlanNodeId(),
+        Coordinator.getInstance(),
+        node.getAllowedUsername());
   }
 
   private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {

@@ -237,7 +237,8 @@ public class PartitionCache {
       if (!result.isSuccess()) {
         final TGetDatabaseReq req =
             new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-                .setIsTableModel(false);
+                .setIsTableModel(false)
+                .setCanSeeAuditDB(true);
         final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -258,7 +259,8 @@ public class PartitionCache {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-              .setIsTableModel(true);
+              .setIsTableModel(true)
+              .setCanSeeAuditDB(true);
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
@@ -295,6 +297,8 @@ public class PartitionCache {
         for (final IDeviceID deviceID : result.getMissedDevices()) {
           if (PathUtils.isStartWith(deviceID, SchemaConstant.SYSTEM_DATABASE)) {
             databaseNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
+          } else if (PathUtils.isStartWith(deviceID, SchemaConstant.AUDIT_DATABASE)) {
+            databaseNamesNeedCreated.add(SchemaConstant.AUDIT_DATABASE);
           } else {
             final PartialPath databaseNameNeedCreated =
                 MetaUtils.getDatabasePathByLevel(
@@ -486,10 +490,15 @@ public class PartitionCache {
               throw new StatementAnalyzeException("Failed to get database Map");
             }
           } else {
-            // check if it is to auto create the system database
+            // check if it is to auto create the system or audit database
             for (IDeviceID deviceID : deviceIDs) {
               if (!deviceID.isTableModel()
                   && deviceID.startWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
+                createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
+                break;
+              }
+              if (!deviceID.isTableModel()
+                  && deviceID.startWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
                 createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
                 break;
               }

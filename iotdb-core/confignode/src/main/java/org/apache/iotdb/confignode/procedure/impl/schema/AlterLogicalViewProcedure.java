@@ -191,7 +191,7 @@ public class AlterLogicalViewProcedure
     patternTree.appendFullPath(viewPath);
     patternTree.constructTree();
     final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        env.getConfigManager().getSchemaPartition(patternTree).schemaPartitionTable;
+        env.getConfigManager().getSchemaPartition(patternTree, false).schemaPartitionTable;
     if (schemaPartitionTable.isEmpty()) {
       throw new ProcedureException(new ViewNotExistException(viewPath.getFullPath()));
     } else {

@@ -54,6 +54,7 @@ public class CreateLogicalViewStatement extends Statement {
 
   // if not null, all related check and generation will be skipped
   private List<ViewExpression> viewExpressions;
+  private boolean canSeeAuditDB;
 
   public CreateLogicalViewStatement() {
     super();
@@ -253,5 +254,13 @@ public class CreateLogicalViewStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateLogicalView(this, context);
+  }
+
+  public boolean isCanSeeAuditDB() {
+    return canSeeAuditDB;
+  }
+
+  public void setCanSeeAuditDB(boolean canSeeAuditDB) {
+    this.canSeeAuditDB = canSeeAuditDB;
   }
 }
