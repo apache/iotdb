@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -82,6 +83,18 @@ public class TableModelStatementMemorySourceVisitor
       return new StatementMemorySource(new TsBlock(0), header);
     }
 
+    final List<String> lines = new ArrayList<>();
+
+    // CTE materialization plan
+    context
+        .getQueryContext()
+        .getCteDistPlans()
+        .forEach(
+            (table, distPlan) -> {
+              lines.add(String.format("CTE '%s' Query", table.getNode().getName()));
+              lines.addAll(distPlan);
+            });
+
     // Generate table model distributed plan
     final TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
@@ -95,11 +108,14 @@ public class TableModelStatementMemorySourceVisitor
                 Coordinator.getInstance().getDataNodeLocationSupplier())
             .generateDistributedPlanWithOptimize(planContext);
 
-    final List<String> lines =
+    if (!lines.isEmpty()) {
+      lines.add("Main Query");
+    }
+    lines.addAll(
         outputNodeWithExchange.accept(
             new PlanGraphPrinter(),
             new PlanGraphPrinter.GraphContext(
-                context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+                context.getQueryContext().getTypeProvider().getTemplatedInfo())));
 
     return getStatementMemorySource(header, lines);
   }
