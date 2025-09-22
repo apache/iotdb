@@ -175,8 +175,7 @@ public interface AccessControl {
    * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanCreateViewFromTreePath(
-      final String userName, final PartialPath path, IAuditEntity auditEntity);
+  void checkCanCreateViewFromTreePath(final PartialPath path, IAuditEntity auditEntity);
 
   /**
    * Check if user can run relational author statement.
@@ -191,10 +190,10 @@ public interface AccessControl {
   /**
    * Check if user is admin user
    *
-   * @param userName name of user
+   * @param auditEntity name of user
    * @throws AccessDeniedException if not allowed
    */
-  void checkUserIsAdmin(String userName);
+  void checkUserIsAdmin(IAuditEntity auditEntity);
 
   /**
    * Check if user has global SYSTEM privilege
@@ -203,7 +202,7 @@ public interface AccessControl {
    * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
-  void checkUserGlobalSysPrivilege(String userName, IAuditEntity auditEntity);
+  void checkUserGlobalSysPrivilege(IAuditEntity auditEntity);
 
   /**
    * Check if user has sepecified global privilege
@@ -212,7 +211,7 @@ public interface AccessControl {
    * @param privilegeType needed privilege
    * @throws AccessDeniedException if not allowed
    */
-  boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType);
+  boolean hasGlobalPrivilege(IAuditEntity auditEntity, PrivilegeType privilegeType);
 
   void checkMissingPrivileges(
       String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity);

@@ -109,7 +109,7 @@ public class AccessControlImpl implements AccessControl {
       return;
     }
     checkAuditDatabase(tableName.getDatabaseName());
-    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+    if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE, auditEntity);
@@ -120,7 +120,7 @@ public class AccessControlImpl implements AccessControl {
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+    if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP, auditEntity);
@@ -131,7 +131,7 @@ public class AccessControlImpl implements AccessControl {
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+    if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER, auditEntity);
@@ -157,7 +157,7 @@ public class AccessControlImpl implements AccessControl {
       return;
     }
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(tableName.getDatabaseName())) {
-      checkCanSelectAuditTable(userName, auditEntity);
+      checkCanSelectAuditTable(auditEntity);
     } else {
       authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT, auditEntity);
     }
@@ -199,20 +199,19 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkCanCreateViewFromTreePath(
-      final String userName, final PartialPath path, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+  public void checkCanCreateViewFromTreePath(final PartialPath path, IAuditEntity auditEntity) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       return;
     }
 
     if (includeByAuditTreeDB(path)) {
-      checkCanSelectAuditTable(userName, auditEntity);
+      checkCanSelectAuditTable(auditEntity);
     }
 
     TSStatus status =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathOrPatternPermission(
-                userName, path, PrivilegeType.READ_SCHEMA),
+                auditEntity.getUsername(), path, PrivilegeType.READ_SCHEMA),
             PrivilegeType.READ_SCHEMA);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(status.getMessage());
@@ -221,7 +220,7 @@ public class AccessControlImpl implements AccessControl {
     status =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathOrPatternPermission(
-                userName, path, PrivilegeType.READ_DATA),
+                auditEntity.getUsername(), path, PrivilegeType.READ_DATA),
             PrivilegeType.READ_DATA);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(status.getMessage());
@@ -234,53 +233,53 @@ public class AccessControlImpl implements AccessControl {
     AuthorRType type = statement.getAuthorType();
     switch (type) {
       case CREATE_USER:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
         return;
       case DROP_USER:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
         return;
       case UPDATE_USER:
       case LIST_USER_PRIV:
-        if (AuthorityChecker.SUPER_USER.equals(userName)
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
             || statement.getUserName().equals(userName)) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
         return;
       case LIST_USER:
-        if (!hasGlobalPrivilege(userName, PrivilegeType.MANAGE_USER)) {
+        if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_USER)) {
           statement.setUserName(userName);
         }
         return;
       case CREATE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
         return;
 
       case DROP_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
         return;
 
       case GRANT_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
         return;
 
       case REVOKE_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
@@ -290,12 +289,12 @@ public class AccessControlImpl implements AccessControl {
           authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
           return;
         }
-        if (!hasGlobalPrivilege(userName, PrivilegeType.MANAGE_ROLE)) {
+        if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_ROLE)) {
           statement.setUserName(userName);
         }
         return;
       case LIST_ROLE_PRIV:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           return;
         }
         if (AuthorityChecker.checkRole(userName, statement.getRoleName())) {
@@ -307,7 +306,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_USER_ANY:
       case REVOKE_ROLE_ANY:
       case REVOKE_USER_ANY:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -319,7 +318,7 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_ROLE_ALL:
       case GRANT_USER_ALL:
       case REVOKE_USER_ALL:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
           return;
         }
         for (TableModelPrivilege privilege : TableModelPrivilege.values()) {
@@ -336,7 +335,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_DB:
       case REVOKE_USER_DB:
       case REVOKE_ROLE_DB:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -351,7 +350,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_TB:
       case REVOKE_USER_TB:
       case REVOKE_ROLE_TB:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -367,7 +366,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_ROLE_SYS:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -381,29 +380,30 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkUserIsAdmin(String userName) {
-    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+  public void checkUserIsAdmin(IAuditEntity entity) {
+    if (AuthorityChecker.SUPER_USER_ID != entity.getUserId()) {
       throw new AccessDeniedException(ONLY_ADMIN_ALLOWED);
     }
   }
 
   @Override
-  public void checkUserGlobalSysPrivilege(String userName, IAuditEntity auditEntity) {
-    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-      authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.SYSTEM, auditEntity);
+  public void checkUserGlobalSysPrivilege(IAuditEntity auditEntity) {
+    if (AuthorityChecker.SUPER_USER_ID != auditEntity.getUserId()) {
+      authChecker.checkGlobalPrivilege(
+          auditEntity.getUsername(), TableModelPrivilege.SYSTEM, auditEntity);
     }
   }
 
   @Override
-  public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
-    return AuthorityChecker.SUPER_USER.equals(userName)
-        || AuthorityChecker.checkSystemPermission(userName, privilegeType);
+  public boolean hasGlobalPrivilege(IAuditEntity entity, PrivilegeType privilegeType) {
+    return AuthorityChecker.SUPER_USER_ID == entity.getUserId()
+        || AuthorityChecker.checkSystemPermission(entity.getUsername(), privilegeType);
   }
 
   @Override
   public void checkMissingPrivileges(
       String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {
-    if (AuthorityChecker.SUPER_USER.equals(username)) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       return;
     }
     authChecker.checkGlobalPrivileges(username, privilegeTypes, auditEntity);

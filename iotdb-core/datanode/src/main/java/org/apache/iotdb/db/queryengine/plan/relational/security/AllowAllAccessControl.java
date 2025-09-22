@@ -89,23 +89,22 @@ public class AllowAllAccessControl implements AccessControl {
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
 
   @Override
-  public void checkCanCreateViewFromTreePath(
-      String userName, PartialPath path, IAuditEntity auditEntity) {}
+  public void checkCanCreateViewFromTreePath(PartialPath path, IAuditEntity auditEntity) {}
 
   @Override
   public void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement, IAuditEntity auditEntity) {}
 
   @Override
-  public void checkUserIsAdmin(String userName) {
+  public void checkUserIsAdmin(IAuditEntity entity) {
     // allow anything
   }
 
   @Override
-  public void checkUserGlobalSysPrivilege(String userName, IAuditEntity auditEntity) {}
+  public void checkUserGlobalSysPrivilege(IAuditEntity auditEntity) {}
 
   @Override
-  public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
+  public boolean hasGlobalPrivilege(IAuditEntity entity, PrivilegeType privilegeType) {
     return true;
   }
 

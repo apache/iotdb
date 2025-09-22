@@ -143,9 +143,9 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.PIPE_PLUGINS:
           return new PipePluginSupplier(dataTypes);
         case InformationSchema.TOPICS:
-          return new TopicSupplier(dataTypes, userEntity.getUsername());
+          return new TopicSupplier(dataTypes, userEntity);
         case InformationSchema.SUBSCRIPTIONS:
-          return new SubscriptionSupplier(dataTypes, userEntity.getUsername());
+          return new SubscriptionSupplier(dataTypes, userEntity);
         case InformationSchema.VIEWS:
           return new ViewsSupplier(dataTypes, userEntity);
         case InformationSchema.MODELS:
@@ -153,15 +153,15 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.FUNCTIONS:
           return new FunctionsSupplier(dataTypes);
         case InformationSchema.CONFIGURATIONS:
-          return new ConfigurationsSupplier(dataTypes, userEntity.getUsername());
+          return new ConfigurationsSupplier(dataTypes, userEntity);
         case InformationSchema.KEYWORDS:
           return new KeywordsSupplier(dataTypes);
         case InformationSchema.NODES:
-          return new NodesSupplier(dataTypes, userEntity.getUsername());
+          return new NodesSupplier(dataTypes, userEntity);
         case InformationSchema.CONFIG_NODES:
-          return new ConfigNodesSupplier(dataTypes, userEntity.getUsername());
+          return new ConfigNodesSupplier(dataTypes, userEntity);
         case InformationSchema.DATA_NODES:
-          return new DataNodesSupplier(dataTypes, userEntity.getUsername());
+          return new DataNodesSupplier(dataTypes, userEntity);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -181,7 +181,7 @@ public class InformationSchemaContentSupplierFactory {
       super(dataTypes);
       queryExecutions = Coordinator.getInstance().getAllQueryExecutions();
       try {
-        accessControl.checkUserGlobalSysPrivilege(userEntity.getUsername(), userEntity);
+        accessControl.checkUserGlobalSysPrivilege(userEntity);
       } catch (final AccessDeniedException e) {
         queryExecutions =
             queryExecutions.stream()
@@ -490,7 +490,7 @@ public class InformationSchemaContentSupplierFactory {
     private RegionSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userEntity.getUsername());
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -640,10 +640,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class TopicSupplier extends TsBlockSupplier {
     private final Iterator<TShowTopicInfo> iterator;
 
-    private TopicSupplier(final List<TSDataType> dataTypes, final String userName)
+    private TopicSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -673,10 +673,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class SubscriptionSupplier extends TsBlockSupplier {
     private final Iterator<TShowSubscriptionInfo> iterator;
 
-    private SubscriptionSupplier(final List<TSDataType> dataTypes, final String userName)
+    private SubscriptionSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -955,10 +955,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class ConfigurationsSupplier extends TsBlockSupplier {
     private final Iterator<Pair<Binary, Binary>> resultIterator;
 
-    private ConfigurationsSupplier(final List<TSDataType> dataTypes, final String userName)
+    private ConfigurationsSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TClusterParameters parameters = client.showVariables().getClusterParameters();
@@ -1062,10 +1062,10 @@ public class InformationSchemaContentSupplierFactory {
     private final Iterator<TDataNodeLocation> dataNodeIterator;
     private final Iterator<TAINodeLocation> aiNodeIterator;
 
-    private NodesSupplier(final List<TSDataType> dataTypes, final String userName)
+    private NodesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         showClusterResp = client.showCluster();
@@ -1156,10 +1156,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class ConfigNodesSupplier extends TsBlockSupplier {
     private final Iterator<TConfigNodeInfo4InformationSchema> configNodeIterator;
 
-    private ConfigNodesSupplier(final List<TSDataType> dataTypes, final String userName)
+    private ConfigNodesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         configNodeIterator =
@@ -1187,10 +1187,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class DataNodesSupplier extends TsBlockSupplier {
     private final Iterator<TDataNodeInfo4InformationSchema> dataNodeIterator;
 
-    private DataNodesSupplier(final List<TSDataType> dataTypes, final String userName)
+    private DataNodesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         dataNodeIterator = client.showDataNodes4InformationSchema().getDataNodesInfoListIterator();
