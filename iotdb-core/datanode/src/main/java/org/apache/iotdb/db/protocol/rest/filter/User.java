@@ -18,8 +18,14 @@
 package org.apache.iotdb.db.protocol.rest.filter;
 
 public class User {
+  // TODO: unify with the real User and UserCache
+  private long userId = -1;
   private String username;
   private String password;
+
+  public long getUserId() {
+    return userId;
+  }
 
   public String getPassword() {
     return password;
