@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -76,7 +77,7 @@ public class CNPhysicalPlanGeneratorTest {
   private static final String TEMPLATE_INFO_FILE_NAME = "template_info.bin";
 
   private static void setupAuthorInfo() {
-    authorInfo = new AuthorInfo(null);
+    authorInfo = new AuthorInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdir();
     }
