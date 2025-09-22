@@ -264,7 +264,7 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        User user = authorityFetcher.get().getUser(session.getUsername());
+        User user = authorityFetcher.get().getUser(username);
         long userId = user == null ? -1 : user.getUserId();
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
