@@ -65,18 +65,22 @@ public class CteMaterializer {
               Table table = tableRef.getNode();
               if (query.isMaterialized()) {
                 CteDataStore dataStore = query.getCteDataStore();
-                if (dataStore == null) {
-                  dataStore = fetchCteQueryResult(table, query, context);
-                  if (dataStore == null) {
-                    // CTE query execution failed. Use inline instead of materialization in the
-                    // outer query
-                    query.setMaterialized(false);
-                  } else {
-                    context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
-                    query.setCteDataStore(dataStore);
-                  }
+                if (dataStore != null) {
+                  context.addCteDataStore(table, dataStore);
+                  return;
                 }
+
+                dataStore = fetchCteQueryResult(table, query, context);
+                if (dataStore == null) {
+                  // CTE query execution failed. Use inline instead of materialization
+                  // in the outer query
+                  query.setMaterialized(false);
+                  return;
+                }
+
+                context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
                 context.addCteDataStore(table, dataStore);
+                query.setCteDataStore(dataStore);
               }
             });
   }
