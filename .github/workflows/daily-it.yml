@@ -3,7 +3,7 @@ name: Daily IT
 on:
   schedule:
     # Run at UTC 19:00 every day (CST 03:00 AM)
-    - cron: '0 19 * * *'
+    - cron: "0 19 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 17 ]
+        java: [8, 17]
     runs-on: [self-hosted, iotdb]
     #      group: self-hosted
     #      labels: iotdb
@@ -31,6 +31,8 @@ jobs:
         with:
           distribution: corretto
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: IT/UT Test
         shell: bash
         run: |
@@ -52,8 +54,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 8, 17 ]
-    runs-on: [ self-hosted, iotdb ]
+        java: [8, 17]
+    runs-on: [self-hosted, iotdb]
     #      group: self-hosted
     #      labels: iotdb
     steps:
@@ -63,6 +65,8 @@ jobs:
         with:
           distribution: corretto
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -88,9 +92,21 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
-        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        os: [ ubuntu-latest ]
+        cluster1:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+          ]
+        os: [ubuntu-latest]
         exclude:
           - cluster1: LightWeightStandaloneMode
             cluster2: LightWeightStandaloneMode
@@ -120,6 +136,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -154,11 +172,11 @@ jobs:
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
-          
+
               if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
-          
+
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
@@ -193,8 +211,15 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
-        os: [ ubuntu-latest ]
+        cluster:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -203,6 +228,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -233,11 +260,11 @@ jobs:
               -am -PMultiClusterIT2DualTreeAutoBasic \
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
-          
+
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
-          
+
               if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
@@ -276,9 +303,21 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
-        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        os: [ ubuntu-latest ]
+        cluster1:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+          ]
+        os: [ubuntu-latest]
         exclude:
           - cluster1: LightWeightStandaloneMode
             cluster2: LightWeightStandaloneMode
@@ -308,6 +347,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -342,7 +383,7 @@ jobs:
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
-          
+
               if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
@@ -381,9 +422,21 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
-        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        os: [ ubuntu-latest ]
+        cluster1:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+          ]
+        os: [ubuntu-latest]
         exclude:
           - cluster1: LightWeightStandaloneMode
             cluster2: LightWeightStandaloneMode
@@ -413,6 +466,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -447,7 +502,7 @@ jobs:
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
-          
+
               if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
@@ -484,11 +539,16 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 17 ]
+        java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [ ScalableSingleNodeMode, PipeConsensusBatchMode, PipeConsensusStreamMode ]
-        cluster2: [ ScalableSingleNodeMode ]
-        os: [ ubuntu-latest ]
+        cluster1:
+          [
+            ScalableSingleNodeMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2: [ScalableSingleNodeMode]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -497,6 +557,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -568,11 +630,11 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 17 ]
+        java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [ ScalableSingleNodeMode ]
-        cluster2: [ ScalableSingleNodeMode ]
-        os: [ ubuntu-latest ]
+        cluster1: [ScalableSingleNodeMode]
+        cluster2: [ScalableSingleNodeMode]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -581,6 +643,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -652,11 +716,16 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 17 ]
+        java: [17]
         # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
-        cluster1: [ ScalableSingleNodeMode, PipeConsensusBatchMode, PipeConsensusStreamMode ]
-        cluster2: [ ScalableSingleNodeMode ]
-        os: [ ubuntu-latest ]
+        cluster1:
+          [
+            ScalableSingleNodeMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2: [ScalableSingleNodeMode]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -665,6 +734,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -684,7 +755,7 @@ jobs:
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
-          
+
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
               -P with-integration-tests \
@@ -736,11 +807,16 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 17 ]
+        java: [17]
         # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
-        cluster1: [ ScalableSingleNodeMode, PipeConsensusBatchMode, PipeConsensusStreamMode ]
-        cluster2: [ ScalableSingleNodeMode ]
-        os: [ ubuntu-latest ]
+        cluster1:
+          [
+            ScalableSingleNodeMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2: [ScalableSingleNodeMode]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -749,6 +825,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -768,7 +846,7 @@ jobs:
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
-          
+
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
               -P with-integration-tests \
@@ -822,8 +900,15 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
-        os: [ ubuntu-latest ]
+        cluster:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -832,6 +917,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -851,7 +938,7 @@ jobs:
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
-          
+
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
               -P with-integration-tests \
@@ -905,8 +992,15 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
-        os: [ ubuntu-latest ]
+        cluster:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -915,6 +1009,8 @@ jobs:
         with:
           distribution: oracle
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -934,7 +1030,7 @@ jobs:
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
-          
+
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
               -P with-integration-tests \
