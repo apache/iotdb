@@ -182,7 +182,6 @@ public abstract class PipeSubtaskExecutor {
     if (subtaskCallbackListeningExecutor != globalSubtaskCallbackListeningExecutor) {
       subtaskCallbackListeningExecutor.shutdown();
     }
-    underlyingThreadPool.shutdown();
   }
 
   public final boolean isShutdown() {
