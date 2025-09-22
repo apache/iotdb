@@ -21,13 +21,13 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
@@ -192,6 +192,12 @@ public class IoTDBConfig {
 
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
+
+  /** Maximum number of pending device schema requests */
+  private volatile int deviceSchemaRequestCacheMaxSize = 500;
+
+  /** Wait time in milliseconds for device schema request cache */
+  private volatile int deviceSchemaRequestCacheWaitTimeMs = 20;
 
   private volatile long dataNodeTableSchemaCacheSize = 1 << 20;
 
@@ -1046,8 +1052,12 @@ public class IoTDBConfig {
       Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
 
   /** Indicates the category collection of audit logs * */
-  private List<AuditLogOperation> auditLogOperation =
-      Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
+  private List<AuditLogOperation> auditableOperationType =
+      Arrays.asList(
+          AuditLogOperation.DML,
+          AuditLogOperation.DDL,
+          AuditLogOperation.QUERY,
+          AuditLogOperation.CONTROL);
 
   /** whether the local write api records audit logs * */
   private boolean enableAuditLogForNativeInsertApi = true;
@@ -1935,6 +1945,28 @@ public class IoTDBConfig {
       return;
     }
     this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
+  }
+
+  public int getDeviceSchemaRequestCacheMaxSize() {
+    return deviceSchemaRequestCacheMaxSize;
+  }
+
+  public void setDeviceSchemaRequestCacheMaxSize(int deviceSchemaRequestCacheMaxSize) {
+    if (deviceSchemaRequestCacheMaxSize < 0) {
+      return;
+    }
+    this.deviceSchemaRequestCacheMaxSize = deviceSchemaRequestCacheMaxSize;
+  }
+
+  public int getDeviceSchemaRequestCacheWaitTimeMs() {
+    return deviceSchemaRequestCacheWaitTimeMs;
+  }
+
+  public void setDeviceSchemaRequestCacheWaitTimeMs(int deviceSchemaRequestCacheWaitTimeMs) {
+    if (deviceSchemaRequestCacheWaitTimeMs < 0) {
+      return;
+    }
+    this.deviceSchemaRequestCacheWaitTimeMs = deviceSchemaRequestCacheWaitTimeMs;
   }
 
   public long getWalMemTableSnapshotThreshold() {
@@ -3732,20 +3764,16 @@ public class IoTDBConfig {
     this.enableAuditLog = enableAuditLog;
   }
 
+  public List<AuditLogOperation> getAuditableOperationType() {
+    return auditableOperationType;
+  }
+
   public List<AuditLogStorage> getAuditLogStorage() {
     return auditLogStorage;
   }
 
   public void setAuditLogStorage(List<AuditLogStorage> auditLogStorage) {
     this.auditLogStorage = auditLogStorage;
-  }
-
-  public List<AuditLogOperation> getAuditLogOperation() {
-    return auditLogOperation;
-  }
-
-  public void setAuditLogOperation(List<AuditLogOperation> auditLogOperation) {
-    this.auditLogOperation = auditLogOperation;
   }
 
   public boolean isEnableAuditLogForNativeInsertApi() {

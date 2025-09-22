@@ -146,15 +146,13 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
               "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -192,7 +190,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
           Collections.singleton("2,"),
           handleFailure);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (3, 3)",
@@ -202,9 +200,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
               "insert into root.db.d1(time, s1) values (7, 7)",
               "insert into root.db.d1(time, s1) values (8, 8)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       TableModelUtils.insertData("test", "test", 50, 100, senderEnv, true);
 
@@ -234,7 +230,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (1, 1)",
@@ -243,9 +239,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
               "insert into root.db.d1(time, s4) values (1, 1)",
               "insert into root.db.d1(time, s5) values (1, 1)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       // Create 5 pipes with different zstd compression levels, p4 and p5 should fail.
 

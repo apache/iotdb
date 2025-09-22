@@ -122,6 +122,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
           .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
       showRegionResp
           .getRegionInfoList()
+          .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+      showRegionResp
+          .getRegionInfoList()
           .forEach(
               regionInfo -> {
                 if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
@@ -173,6 +176,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
         showRegionResp
             .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
@@ -213,6 +219,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
         showRegionResp
             .getRegionInfoList()
             .forEach(
@@ -283,6 +292,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
         showRegionResp
             .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
@@ -334,6 +346,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
         showRegionResp
             .getRegionInfoList()
             .forEach(

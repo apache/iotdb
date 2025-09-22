@@ -40,6 +40,7 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
   // the paths of sources
   private ViewPaths sourcePaths;
   private QueryStatement queryStatement;
+  private boolean canSeeAuditDB;
 
   public AlterLogicalViewStatement() {
     super();
@@ -106,6 +107,14 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
     this.targetPaths.setPrefixOfPathsGroup(prefixPath);
     this.targetPaths.setSuffixOfPathsGroup(suffixPaths);
     this.targetPaths.generateFullPathsFromPathsGroup();
+  }
+
+  public boolean isCanSeeAuditDB() {
+    return canSeeAuditDB;
+  }
+
+  public void setCanSeeAuditDB(boolean canSeeAuditDB) {
+    this.canSeeAuditDB = canSeeAuditDB;
   }
 
   // endregion

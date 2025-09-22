@@ -39,6 +39,7 @@ public class ShowQueriesStatement extends ShowStatement {
 
   private long rowLimit;
   private long rowOffset;
+  private String allowedUsername;
 
   public ShowQueriesStatement() {
     this.statementType = StatementType.SHOW_QUERIES;
@@ -47,6 +48,14 @@ public class ShowQueriesStatement extends ShowStatement {
   @Override
   public boolean isQuery() {
     return true;
+  }
+
+  public String getAllowedUsername() {
+    return allowedUsername;
+  }
+
+  public void setAllowedUsername(String allowedUsername) {
+    this.allowedUsername = allowedUsername;
   }
 
   @Override

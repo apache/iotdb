@@ -22,18 +22,23 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.BasicRoleManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Map;
 
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
@@ -49,6 +54,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   protected String getNoSuchEntityError() {
     return "No such user %s";
   }
+
+  protected long nextUserId = 9999;
 
   /**
    * BasicUserManager Constructor.
@@ -82,7 +89,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
       PathPrivilege pathPri = new PathPrivilege(rootPath);
       for (PrivilegeType item : PrivilegeType.values()) {
-        if (item.isAdminPrivilege()) {
+        if (item.isDeprecated()) {
           continue;
         }
         if (item.isSystemPrivilege()) {
@@ -96,15 +103,85 @@ public abstract class BasicUserManager extends BasicRoleManager {
       admin.getPathPrivilegeList().clear();
       admin.getPathPrivilegeList().add(pathPri);
     } catch (IllegalPathException e) {
-      // This error only leads to  a lack of permissions for list.
-      LOGGER.warn("Got a wrong path for root to init");
+      LOGGER.warn(
+          "Got a wrong path for {} to init",
+          CommonDescriptor.getInstance().getConfig().getAdminName(),
+          e);
     }
-    LOGGER.info("Admin initialized");
+    LOGGER.info(
+        "Internal user {} initialized", CommonDescriptor.getInstance().getConfig().getAdminName());
+  }
+
+  private void initInternalAuditorWhenNecessary() throws AuthException {
+    if (!CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
+      return;
+    }
+    User internalAuditor = this.getEntity(IoTDBConstant.INTERNAL_AUDIT_USER);
+    if (internalAuditor == null) {
+      createUser(
+          IoTDBConstant.INTERNAL_AUDIT_USER,
+          CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+          true,
+          true);
+    }
+    internalAuditor = this.getEntity(IoTDBConstant.INTERNAL_AUDIT_USER);
+    try {
+      PartialPath auditPath = new PartialPath(SystemConstant.AUDIT_DATABASE + ".**");
+      PathPrivilege pathPri = new PathPrivilege(auditPath);
+      for (PrivilegeType item : PrivilegeType.values()) {
+        if (item.isDeprecated()) {
+          continue;
+        }
+        if (item.isSystemPrivilege()) {
+          internalAuditor.grantSysPrivilege(item, false);
+        } else if (item.isRelationalPrivilege()) {
+          internalAuditor.grantAnyScopePrivilege(item, false);
+        } else if (item.isPathPrivilege()) {
+          pathPri.grantPrivilege(item, false);
+        }
+      }
+      internalAuditor.getPathPrivilegeList().clear();
+      internalAuditor.getPathPrivilegeList().add(pathPri);
+    } catch (IllegalPathException e) {
+      LOGGER.warn("Got a wrong path for {} to init", IoTDBConstant.INTERNAL_AUDIT_USER, e);
+    }
+    LOGGER.info("Internal user {} initialized", IoTDBConstant.INTERNAL_AUDIT_USER);
+  }
+
+  private void initUserId() {
+    try {
+      long maxUserId = this.accessor.loadUserId();
+      if (maxUserId < 9999) {
+        nextUserId = 9999;
+      } else {
+        nextUserId = maxUserId;
+      }
+
+      for (Map.Entry<String, Role> userEntry : entityMap.entrySet()) {
+        User user = (User) userEntry.getValue();
+        if (user.getUserId() == -1) {
+          user.setUserId(++nextUserId);
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.warn("meet error in load max userId.", e);
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public User getEntity(String entityName) {
     return (User) super.getEntity(entityName);
+  }
+
+  @Override
+  public User getEntity(long entityId) {
+    for (Map.Entry<String, Role> roleEntry : entityMap.entrySet()) {
+      if (((User) roleEntry.getValue()).getUserId() == entityId) {
+        return (User) roleEntry.getValue();
+      }
+    }
+    return null;
   }
 
   public boolean createUser(
@@ -128,7 +205,17 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
     lock.writeLock(username);
     try {
-      user = new User(username, enableEncrypt ? AuthUtils.encryptPassword(password) : password);
+      long userid;
+      if (username.equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
+        userid = 0;
+      } else if (username.equals(IoTDBConstant.INTERNAL_AUDIT_USER)) {
+        userid = 4;
+      } else {
+        userid = ++nextUserId;
+      }
+      user =
+          new User(
+              username, enableEncrypt ? AuthUtils.encryptPassword(password) : password, userid);
       entityMap.put(username, user);
       return true;
     } finally {
@@ -192,12 +279,25 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void init() throws AuthException {
     this.accessor.reset();
     initAdmin();
+    initInternalAuditorWhenNecessary();
   }
 
   @Override
   public void reset() throws AuthException {
-    super.reset();
+    accessor.reset();
+    entityMap.clear();
+    for (String userId : accessor.listAllEntities()) {
+      try {
+        User user = (User) accessor.loadEntity(userId);
+        entityMap.put(user.getName(), user);
+      } catch (IOException e) {
+        LOGGER.warn("Get exception when load user {}", userId);
+        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      }
+    }
+    initUserId();
     initAdmin();
+    initInternalAuditorWhenNecessary();
   }
 
   @TestOnly

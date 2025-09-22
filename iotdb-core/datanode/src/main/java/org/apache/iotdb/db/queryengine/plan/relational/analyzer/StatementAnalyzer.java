@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -501,7 +502,11 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       accessControl.checkCanInsertIntoTable(
           sessionContext.getUserName(),
-          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+          new UserEntity(
+              sessionContext.getUserId(),
+              sessionContext.getUserName(),
+              sessionContext.getCliHostname()));
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
@@ -561,7 +566,11 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       accessControl.checkCanDeleteFromTable(
           sessionContext.getUserName(),
-          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+          new UserEntity(
+              sessionContext.getUserId(),
+              sessionContext.getUserName(),
+              sessionContext.getCliHostname()));
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
@@ -635,7 +644,13 @@ public class StatementAnalyzer {
             targetTable.getDatabaseName(), targetTable.getObjectName());
       }
       // verify access privileges
-      accessControl.checkCanInsertIntoTable(sessionContext.getUserName(), targetTable);
+      accessControl.checkCanInsertIntoTable(
+          sessionContext.getUserName(),
+          targetTable,
+          new UserEntity(
+              sessionContext.getUserId(),
+              sessionContext.getUserName(),
+              sessionContext.getCliHostname()));
 
       // verify the insert destination columns match the query
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, targetTable);
@@ -757,7 +772,11 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(
               AnalyzeUtils.getDatabaseName(node, queryContext),
-              node.getTable().getName().getSuffix()));
+              node.getTable().getName().getSuffix()),
+          new UserEntity(
+              sessionContext.getUserId(),
+              sessionContext.getUserName(),
+              sessionContext.getCliHostname()));
       AnalyzeUtils.analyzeDelete(node, queryContext);
 
       analysis.setScope(node, ret);
@@ -3056,7 +3075,13 @@ public class StatementAnalyzer {
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
 
       // access control
-      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name);
+      accessControl.checkCanSelectFromTable(
+          sessionContext.getUserName(),
+          name,
+          new UserEntity(
+              sessionContext.getUserId(),
+              sessionContext.getUserName(),
+              sessionContext.getCliHostname()));
 
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
@@ -4479,7 +4504,11 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       accessControl.checkCanSelectFromTable(
           sessionContext.getUserName(),
-          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+          new UserEntity(
+              sessionContext.getUserId(),
+              sessionContext.getUserName(),
+              sessionContext.getCliHostname()));
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
 
       final TsTable table =

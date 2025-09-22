@@ -509,14 +509,12 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
     }
 
     // Insert data on sender
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)",
             "flush"),
-        null)) {
-      fail();
-    }
+        null);
 
     // Check data on receiver
     final Set<String> expectedResSet = new HashSet<>();
@@ -537,24 +535,20 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
     }
 
     // Insert data on sender
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "insert into root.db.d2 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
             "flush"),
-        null)) {
-      fail();
-    }
+        null);
 
     // Insert data on sender
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "insert into root.db.d1 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
             "flush"),
-        null)) {
-      fail();
-    }
+        null);
 
     // Check data on receiver
     expectedResSet.clear();
@@ -567,10 +561,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
         expectedResSet);
 
     // Create database on sender
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        senderEnv, "create timeSeries root.db.d2.at2 int32", null)) {
-      fail();
-    }
+    TestUtils.executeNonQuery(senderEnv, "create timeSeries root.db.d2.at2 int32", null);
 
     // Check database on receiver
     TestUtils.assertDataEventuallyOnEnv(

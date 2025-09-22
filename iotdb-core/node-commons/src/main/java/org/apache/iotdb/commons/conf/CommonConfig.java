@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.PrivilegeLevel;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
@@ -34,6 +36,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -448,6 +453,22 @@ public class CommonConfig {
   // an old password cannot be reused within the given interval if >= 0.
   private long passwordReuseIntervalDays = -1;
   private boolean mayBypassPasswordCheckInException = true;
+
+  /** whether to enable the audit log * */
+  private boolean enableAuditLog = false;
+
+  /** Indicates the category collection of audit logs * */
+  private List<AuditLogOperation> auditableOperationType =
+      Arrays.asList(
+          AuditLogOperation.DML,
+          AuditLogOperation.DDL,
+          AuditLogOperation.QUERY,
+          AuditLogOperation.CONTROL);
+
+  /** The level of privilege required to record audit logs * */
+  private PrivilegeLevel auditableOperationLevel = PrivilegeLevel.GLOBAL;
+
+  private String auditableOperationResult = "SUCCESS, FAIL";
 
   CommonConfig() {
     // Empty constructor
@@ -2618,5 +2639,63 @@ public class CommonConfig {
 
   public void setMayBypassPasswordCheckInException(boolean mayBypassPasswordCheckInException) {
     this.mayBypassPasswordCheckInException = mayBypassPasswordCheckInException;
+  }
+
+  public boolean isEnableAuditLog() {
+    return enableAuditLog;
+  }
+
+  public void setEnableAuditLog(boolean enableAuditLog) {
+    this.enableAuditLog = enableAuditLog;
+  }
+
+  public List<AuditLogOperation> getAuditableOperationType() {
+    return auditableOperationType;
+  }
+
+  public void setAuditableOperationType(String auditableOperationTypeStr) {
+    List<AuditLogOperation> auditableOperationType = new ArrayList<>();
+    if (auditableOperationTypeStr == null || auditableOperationTypeStr.isEmpty()) {
+      this.auditableOperationType = auditableOperationType;
+      return;
+    }
+    String[] operationTypes = auditableOperationTypeStr.split(",");
+    for (String operationType : operationTypes) {
+      try {
+        auditableOperationType.add(AuditLogOperation.valueOf(operationType.trim().toUpperCase()));
+      } catch (IllegalArgumentException e) {
+        logger.warn("Unsupported audit log operation type: {}", operationType);
+        throw new IllegalArgumentException(
+            "Unsupported audit log operation type: " + operationType);
+      }
+    }
+    this.auditableOperationType = auditableOperationType;
+  }
+
+  public PrivilegeLevel getAuditableOperationLevel() {
+    return auditableOperationLevel;
+  }
+
+  public void setAuditableOperationLevel(String auditableOperationLevelStr) {
+    if (auditableOperationLevelStr == null || auditableOperationLevelStr.isEmpty()) {
+      this.auditableOperationLevel = PrivilegeLevel.GLOBAL;
+      return;
+    }
+    try {
+      this.auditableOperationLevel =
+          PrivilegeLevel.valueOf(auditableOperationLevelStr.trim().toUpperCase());
+    } catch (IllegalArgumentException e) {
+      logger.warn("Unsupported audit log operation level: {}", auditableOperationLevelStr);
+      throw new IllegalArgumentException(
+          "Unsupported audit log operation level: " + auditableOperationLevelStr);
+    }
+  }
+
+  public String getAuditableOperationResult() {
+    return auditableOperationResult;
+  }
+
+  public void setAuditableOperationResult(String auditableOperationResult) {
+    this.auditableOperationResult = auditableOperationResult;
   }
 }

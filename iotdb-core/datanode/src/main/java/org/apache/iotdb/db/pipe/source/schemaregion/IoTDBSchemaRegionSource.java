@@ -159,7 +159,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
       if (PathUtils.isTableModelDatabase(database)) {
         Coordinator.getInstance()
             .getAccessControl()
-            .checkCanSelectFromDatabase4Pipe(userName, database);
+            .checkCanSelectFromDatabase4Pipe(userName, database, userEntity);
       }
       return true;
     } catch (final AccessDeniedException e) {
@@ -200,7 +200,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
       final PipeWritePlanEvent event) throws AccessDeniedException {
     final Optional<PlanNode> result =
         TABLE_PRIVILEGE_PARSE_VISITOR.process(
-            ((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userName);
+            ((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userEntity);
     if (result.isPresent()) {
       return Optional.of(
           new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));

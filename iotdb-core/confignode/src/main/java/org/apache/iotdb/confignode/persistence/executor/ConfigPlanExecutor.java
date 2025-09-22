@@ -814,9 +814,10 @@ public class ConfigPlanExecutor {
     }
 
     needMatchedNode.forEach(nodePath -> matchedStorageGroups.add(nodePath.getFullPath()));
+    boolean canSeeAuditDB = getNodePathsPartitionPlan.isNeedAuditDB();
     SchemaNodeManagementResp schemaNodeManagementResp =
         (SchemaNodeManagementResp)
-            partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups);
+            partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups, canSeeAuditDB);
     if (schemaNodeManagementResp.getStatus().getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       schemaNodeManagementResp.setMatchedNode(alreadyMatchedNode);

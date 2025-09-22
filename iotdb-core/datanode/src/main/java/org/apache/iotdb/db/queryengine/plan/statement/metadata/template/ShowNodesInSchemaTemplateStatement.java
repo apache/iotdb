@@ -19,37 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
-public class ShowNodesInSchemaTemplateStatement extends ShowStatement implements IConfigStatement {
-
-  private String templateName;
+public class ShowNodesInSchemaTemplateStatement extends AbstractShowExactTemplate {
 
   public ShowNodesInSchemaTemplateStatement(String templateName) {
-    super();
-    statementType = StatementType.SHOW_NODES_IN_SCHEMA_TEMPLATE;
-    this.templateName = templateName;
+    super(templateName, StatementType.SHOW_NODES_IN_SCHEMA_TEMPLATE);
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowNodesInSchemaTemplate(this, context);
-  }
-
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public void setTemplateName(String templateName) {
-    this.templateName = templateName;
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
   }
 }

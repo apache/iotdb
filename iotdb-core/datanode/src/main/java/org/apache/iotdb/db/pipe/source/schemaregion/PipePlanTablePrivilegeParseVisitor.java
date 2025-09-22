@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -32,37 +33,42 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class PipePlanTablePrivilegeParseVisitor extends PlanVisitor<Optional<PlanNode>, String> {
+public class PipePlanTablePrivilegeParseVisitor
+    extends PlanVisitor<Optional<PlanNode>, IAuditEntity> {
   @Override
-  public Optional<PlanNode> visitPlan(final PlanNode node, final String userName) {
+  public Optional<PlanNode> visitPlan(final PlanNode node, final IAuditEntity auditEntity) {
     return Optional.of(node);
   }
 
   @Override
   public Optional<PlanNode> visitCreateOrUpdateTableDevice(
-      final CreateOrUpdateTableDeviceNode node, final String userName) {
+      final CreateOrUpdateTableDeviceNode node, final IAuditEntity auditEntity) {
     return Coordinator.getInstance()
             .getAccessControl()
             .checkCanSelectFromTable4Pipe(
-                userName, new QualifiedObjectName(node.getDatabase(), node.getTableName()))
+                auditEntity.getUsername(),
+                new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+                auditEntity)
         ? Optional.of(node)
         : Optional.empty();
   }
 
   @Override
   public Optional<PlanNode> visitTableDeviceAttributeUpdate(
-      final TableDeviceAttributeUpdateNode node, final String userName) {
+      final TableDeviceAttributeUpdateNode node, final IAuditEntity auditEntity) {
     return Coordinator.getInstance()
             .getAccessControl()
             .checkCanSelectFromTable4Pipe(
-                userName, new QualifiedObjectName(node.getDatabase(), node.getTableName()))
+                auditEntity.getUsername(),
+                new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+                auditEntity)
         ? Optional.of(node)
         : Optional.empty();
   }
 
   @Override
   public Optional<PlanNode> visitDeleteData(
-      final RelationalDeleteDataNode node, final String userName) {
+      final RelationalDeleteDataNode node, final IAuditEntity auditEntity) {
     final List<TableDeletionEntry> modEntries =
         node.getModEntries().stream()
             .filter(
@@ -70,8 +76,9 @@ public class PipePlanTablePrivilegeParseVisitor extends PlanVisitor<Optional<Pla
                     Coordinator.getInstance()
                         .getAccessControl()
                         .checkCanSelectFromTable4Pipe(
-                            userName,
-                            new QualifiedObjectName(node.getDatabaseName(), entry.getTableName())))
+                            auditEntity.getUsername(),
+                            new QualifiedObjectName(node.getDatabaseName(), entry.getTableName()),
+                            auditEntity))
             .collect(Collectors.toList());
     return !modEntries.isEmpty()
         ? Optional.of(

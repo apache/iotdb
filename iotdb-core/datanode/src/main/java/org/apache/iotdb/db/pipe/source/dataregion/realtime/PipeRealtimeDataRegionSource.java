@@ -133,7 +133,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeID;
   private String taskID;
+  protected long userId;
   protected String userName;
+  protected String cliHostname;
   protected boolean skipIfNoPrivileges = true;
 
   protected PipeRealtimeDataRegionSource() {
@@ -279,12 +281,24 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
               EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
     }
 
+    userId =
+        parameters.getLongOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            -1);
+
     userName =
         parameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
             PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+
+    cliHostname =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+            PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
@@ -527,8 +541,16 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return tablePattern;
   }
 
+  public long getUserId() {
+    return userId;
+  }
+
   public String getUserName() {
     return userName;
+  }
+
+  public String getCliHostname() {
+    return cliHostname;
   }
 
   public boolean isSkipIfNoPrivileges() {

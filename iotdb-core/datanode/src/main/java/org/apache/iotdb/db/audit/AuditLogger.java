@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.audit;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -64,10 +66,16 @@ public class AuditLogger {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<AuditLogStorage> auditLogStorageList = config.getAuditLogStorage();
   private static final SessionInfo sessionInfo =
-      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+      new SessionInfo(
+          0,
+          new UserEntity(
+              AuthorityChecker.SUPER_USER_ID,
+              AuthorityChecker.SUPER_USER,
+              IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+          ZoneId.systemDefault());
 
   private static final List<AuditLogOperation> auditLogOperationList =
-      config.getAuditLogOperation();
+      config.getAuditableOperationType();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
@@ -264,8 +272,7 @@ public class AuditLogger {
       case SHOW_PIPEPLUGINS:
         return AuditLogOperation.QUERY;
       default:
-        logger.error("Unrecognizable operator type ({}) for audit log", type);
-        return AuditLogOperation.NULL;
+        return AuditLogOperation.CONTROL;
     }
   }
 }

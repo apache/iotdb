@@ -40,7 +40,9 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final PipeSnapshotResourceManager resourceManager) {
     super(
@@ -49,7 +51,9 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE);

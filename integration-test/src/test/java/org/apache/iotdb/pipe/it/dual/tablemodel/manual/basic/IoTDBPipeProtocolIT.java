@@ -201,15 +201,12 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
 
-    boolean insertResult = true;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -251,10 +248,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(receiverEnv, "test1", "test1");
-      insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, receiverEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test1", "test1", 0, 100, receiverEnv);
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -298,16 +293,12 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
 
-    boolean insertResult = true;
-
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -338,19 +329,15 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.assertData("test", "test", 0, 100, receiverEnv, handleFailure);
 
-      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
       TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
+
       TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
     }
   }
@@ -411,7 +398,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
 
-    boolean insertResult = true;
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
       if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
         // Use default port for convenience
@@ -429,10 +415,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -464,16 +448,12 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
       TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
 
-      insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
+
       TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
 
       extractorAttributes.replace("realtime.mode", "file");
@@ -488,10 +468,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
+
       TableModelUtils.assertData("test", "test", 0, 400, receiverEnv, handleFailure);
     }
   }

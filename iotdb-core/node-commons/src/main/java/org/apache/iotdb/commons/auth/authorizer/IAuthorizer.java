@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 
 import java.util.List;
 import java.util.Map;
@@ -187,6 +188,14 @@ public interface IAuthorizer extends SnapshotProcessor {
   List<String> listAllUsers();
 
   /**
+   * List existing users info in the database.
+   *
+   * @return A list contains all users' baisc info including userid, username,maxSessionPerUser and
+   *     minSessionPerUser.
+   */
+  List<TListUserInfo> listAllUsersInfo();
+
+  /**
    * List existing roles in the database.
    *
    * @return A list contains all roleNames.
@@ -208,6 +217,14 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @return A user whose name is username or null if such user does not exist.
    */
   User getUser(String username) throws AuthException;
+
+  /**
+   * Find a user by its userId.
+   *
+   * @param userId the index of the user.
+   * @return A user whose id is userId or null if such user does not exist.
+   */
+  User getUser(long userId) throws AuthException;
 
   /**
    * get all user

@@ -713,5 +713,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         : 0L;
   }
 
+  public List<PartialPath> getDevicePaths() {
+    return Collections.singletonList(devicePath);
+  }
+
   protected abstract long calculateBytesUsed();
 }

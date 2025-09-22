@@ -232,6 +232,7 @@ struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
   3: optional binary scopePatternTree
+  4: optional bool needAuditDB
 }
 
 struct TSchemaNodeManagementResp {
@@ -361,6 +362,14 @@ struct TAuthorizerResp {
   2: optional string tag
   3: optional list<string> memberInfo
   4: optional TPermissionInfoResp permissionInfo
+  5: optional list<TListUserInfo> usersInfo
+}
+
+struct TListUserInfo{
+ 1: required i64 userId
+ 2: required string username
+ 3: required i32 maxSessionPerUser
+ 4: required i32 minSessionPerUser
 }
 
 struct TUserResp {
@@ -368,6 +377,7 @@ struct TUserResp {
   2: required string password
   3: required set<string> roleSet
   4: required bool isOpenIdUser
+  5: required i64 userId
 }
 
 struct TRoleResp {
@@ -695,6 +705,7 @@ struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
   3: optional bool isTableModel
+  4: optional bool canSeeAuditDB
 }
 
 struct TShowDatabaseResp {
@@ -1758,7 +1769,7 @@ service IConfigNodeRPCService {
   common.TSStatus removeRegion(TRemoveRegionReq req)
 
   /** Kill query */
-  common.TSStatus killQuery(string queryId, i32 dataNodeId)
+  common.TSStatus killQuery(string queryId, i32 dataNodeId, string allowedUsername)
 
   /** Get all DataNodeLocations of Readable DataNodes */
   TGetDataNodeLocationsResp getReadableDataNodeLocations()

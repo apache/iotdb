@@ -903,7 +903,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
-
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);
@@ -987,6 +986,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "data_node_table_schema_cache_max_size_in_bytes",
                 String.valueOf(conf.getDataNodeTableSchemaCacheSize()))));
+
+    conf.setDeviceSchemaRequestCacheMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_schema_request_cache_max_size",
+                String.valueOf(conf.getDeviceSchemaRequestCacheMaxSize()))));
+
+    conf.setDeviceSchemaRequestCacheWaitTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_schema_request_cache_wait_time_ms",
+                String.valueOf(conf.getDeviceSchemaRequestCacheWaitTimeMs()))));
 
     // Commons
     commonDescriptor.loadCommonProps(properties);

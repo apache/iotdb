@@ -189,7 +189,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                       pipeTaskMeta,
                       treePattern,
                       tablePattern,
+                      userId,
                       userName,
+                      cliHostname,
                       skipIfNoPrivileges,
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
@@ -250,7 +252,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                 pipeTaskMeta,
                 treePattern,
                 tablePattern,
+                userId,
                 userName,
+                cliHostname,
                 skipIfNoPrivileges,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE);
