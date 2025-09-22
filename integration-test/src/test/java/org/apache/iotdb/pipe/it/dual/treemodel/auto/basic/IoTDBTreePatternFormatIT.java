@@ -242,15 +242,13 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
               "insert into root.db.d2(time, s) values (2, 2)",
               "insert into root.db2.d1(time, s) values (3, 3)"),
-          null)) {
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
       final Set<String> expectedResSet = new HashSet<>();
@@ -296,16 +294,14 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
               "insert into root.db.d2(time, s) values (2, 2)",
               "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
               "insert into root.db3.d1(time, s) values (4, 4)"),
-          null)) {
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
       final Set<String> expectedResSet = new HashSet<>();
