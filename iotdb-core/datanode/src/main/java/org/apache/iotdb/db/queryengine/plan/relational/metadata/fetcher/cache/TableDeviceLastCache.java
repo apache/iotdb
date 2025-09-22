@@ -82,8 +82,12 @@ public class TableDeviceLastCache {
 
   private static final Optional<Pair<OptionalLong, TsPrimitiveType[]>> HIT_AND_ALL_NULL =
       Optional.of(new Pair<>(OptionalLong.empty(), null));
+
+  /** This means that the tv pair has been put, and the value is null */
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
+
+  /** This means that the tv pair has been declared, and is ready for the next put. */
   private static final TimeValuePair PLACEHOLDER_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
 

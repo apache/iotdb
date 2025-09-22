@@ -2800,12 +2800,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     final boolean isNeedUpdateLastCache = context.isNeedUpdateLastCache();
     if (isNeedUpdateLastCache) {
       TreeDeviceSchemaCacheManager.getInstance()
-          .updateLastCache(
+          .declareLastCache(
               ((DataDriverContext) operatorContext.getDriverContext())
                   .getDataRegion()
                   .getDatabaseName(),
-              fullPath,
-              false);
+              fullPath);
     }
 
     return Objects.isNull(node.getOutputViewPath())
@@ -2857,13 +2856,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
       for (int i = 0; i < size; ++i) {
         TreeDeviceSchemaCacheManager.getInstance()
-            .updateLastCache(
+            .declareLastCache(
                 databaseName,
                 new MeasurementPath(
                     devicePath.concatNode(unCachedPath.getMeasurementList().get(i)),
                     unCachedPath.getSchemaList().get(i),
-                    true),
-                false);
+                    true));
       }
     }
 
