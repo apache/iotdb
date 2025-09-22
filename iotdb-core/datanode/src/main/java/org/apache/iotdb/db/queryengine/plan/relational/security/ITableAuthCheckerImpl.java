@@ -177,8 +177,9 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
   }
 
-  public static void checkCanSelectAuditTable(String userName, IAuditEntity auditEntity) {
-    if (!AuthorityChecker.SUPER_USER.equals(userName)
+  public static void checkCanSelectAuditTable(IAuditEntity auditEntity) {
+    String userName = auditEntity.getUsername();
+    if (AuthorityChecker.SUPER_USER_ID != auditEntity.getUserId()
         && !AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT)) {
       recordAuditLog(
           auditEntity
