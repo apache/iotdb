@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
-import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -122,7 +122,7 @@ public class PermissionManager {
     return authorInfo.checkUserPrivileges(username, union);
   }
 
-  public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
+  public TAuthizedPatternTreeResp fetchAuthorizedPTree(String username, int permission)
       throws AuthException {
     return authorInfo.generateAuthorizedPTree(username, permission);
   }

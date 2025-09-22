@@ -40,6 +40,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertio
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
@@ -97,18 +98,18 @@ public class AuthorityChecker {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static AccessControlImpl accessControl =
+  private static AccessControl accessControl =
       new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
 
   private AuthorityChecker() {
     // empty constructor
   }
 
-  public static AccessControlImpl getAccessControl() {
+  public static AccessControl getAccessControl() {
     return accessControl;
   }
 
-  public static void setAccessControl(AccessControlImpl accessControl) {
+  public static void setAccessControl(AccessControl accessControl) {
     AuthorityChecker.accessControl = accessControl;
   }
 

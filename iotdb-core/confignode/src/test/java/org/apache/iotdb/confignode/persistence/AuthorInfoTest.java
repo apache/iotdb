@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -67,7 +68,7 @@ public class AuthorInfoTest {
 
   @BeforeClass
   public static void setup() {
-    authorInfo = new AuthorInfo(null);
+    authorInfo = new AuthorInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
