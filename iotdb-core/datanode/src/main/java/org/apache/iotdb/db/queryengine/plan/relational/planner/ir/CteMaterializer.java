@@ -34,12 +34,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -48,6 +51,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -70,7 +74,7 @@ public class CteMaterializer {
                   return;
                 }
 
-                dataStore = fetchCteQueryResult(table, query, context);
+                dataStore = fetchCteQueryResult(table, query, context.getTimeOut());
                 if (dataStore == null) {
                   // CTE query execution failed. Use inline instead of materialization
                   // in the outer query
@@ -81,6 +85,15 @@ public class CteMaterializer {
                 context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
                 context.addCteDataStore(table, dataStore);
                 query.setCteDataStore(dataStore);
+
+                // Explain
+                if (analysis.canSkipExecute(context)) {
+                  List<String> cteDistPlan =
+                      fetchCteExplainResult(table, new Explain(query), context.getTimeOut());
+                  if (cteDistPlan != null) {
+                    context.addCteDistPlan(table, cteDistPlan);
+                  }
+                }
               }
             });
   }
@@ -97,57 +110,95 @@ public class CteMaterializer {
     cteDataStores.clear();
   }
 
-  public static CteDataStore fetchCteQueryResult(
-      Table table, Query query, MPPQueryContext context) {
+  private static <T> T execute(
+      Statement statement, long timeout, String sql, Function<Long, T> func) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     try {
       final ExecutionResult executionResult =
           coordinator.executeForTableModel(
-              query,
+              statement,
               new SqlParser(),
               SessionManager.getInstance().getCurrSession(),
               queryId,
               SessionManager.getInstance()
                   .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
-              "Materialize common table expression",
+              sql,
               LocalExecutionPlanner.getInstance().metadata,
-              context.getTimeOut(),
+              timeout,
               false);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return null;
       }
-
-      // get table schema
-      DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
-      TableSchema tableSchema = getTableSchema(datasetHeader, table.getName().toString());
-
-      CteDataStore cteDataStore = new CteDataStore(query, tableSchema);
-      while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-        final Optional<TsBlock> tsBlock;
-        try {
-          tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-        } catch (final IoTDBException e) {
-          t = e;
-          throw new IoTDBRuntimeException(
-              String.format("Fail to materialize CTE because %s", e.getMessage()),
-              e.getErrorCode(),
-              e.isUserException());
-        }
-        if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-          continue;
-        }
-        if (!cteDataStore.addTsBlock(tsBlock.get())) {
-          return null;
-        }
-      }
-      return cteDataStore;
+      return func.apply(queryId);
     } catch (final Throwable throwable) {
       t = throwable;
     } finally {
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
     return null;
+  }
+
+  private static List<String> fetchCteExplainResult(Table table, Explain explain, long timeout) {
+    return execute(
+        explain,
+        timeout,
+        String.format("Explain query for CTE '%s'", table.getName()),
+        (queryId) -> {
+          List<String> lines = new ArrayList<>();
+          while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+            final Optional<TsBlock> tsBlock;
+            try {
+              tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+            } catch (IoTDBException e) {
+              throw new IoTDBRuntimeException(
+                  String.format("Fail to explain CTE query because %s", e.getMessage()),
+                  e.getErrorCode(),
+                  e.isUserException());
+            }
+            if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+              continue;
+            }
+
+            Column valueColumn = tsBlock.get().getColumn(0);
+            for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
+              lines.add(valueColumn.getBinary(i).toString());
+            }
+          }
+          return lines;
+        });
+  }
+
+  private static CteDataStore fetchCteQueryResult(Table table, Query query, long timeout) {
+    return execute(
+        query,
+        timeout,
+        String.format("Materialize query for CTE '%s'", table.getName()),
+        (queryId) -> {
+          // get table schema
+          DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
+          TableSchema tableSchema = getTableSchema(datasetHeader, table.getName().toString());
+
+          CteDataStore cteDataStore = new CteDataStore(query, tableSchema);
+          while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+            final Optional<TsBlock> tsBlock;
+            try {
+              tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+            } catch (final IoTDBException e) {
+              throw new IoTDBRuntimeException(
+                  String.format("Fail to materialize CTE because %s", e.getMessage()),
+                  e.getErrorCode(),
+                  e.isUserException());
+            }
+            if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+              continue;
+            }
+            if (!cteDataStore.addTsBlock(tsBlock.get())) {
+              return null;
+            }
+          }
+          return cteDataStore;
+        });
   }
 
   private static TableSchema getTableSchema(DatasetHeader datasetHeader, String cteName) {
