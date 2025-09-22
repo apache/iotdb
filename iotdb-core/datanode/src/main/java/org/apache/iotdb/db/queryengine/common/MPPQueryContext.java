@@ -28,12 +28,19 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -425,5 +432,38 @@ public class MPPQueryContext {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  // ================== Plan cache related ==================
+  // the outer list corresponds one-to-one with scanNodes
+  private final List<List<Expression>> metadataExpressionLists = new ArrayList<>();
+  private final List<List<String>> attributeColumnsLists = new ArrayList<>();
+  private final List<Map<Symbol, ColumnSchema>> assignmentsLists = new ArrayList<>();
+
+  // ================== Getter ==================
+  public List<List<Expression>> getMetadataExpressionLists() {
+    return metadataExpressionLists;
+  }
+
+  public List<List<String>> getAttributeColumnsLists() {
+    return attributeColumnsLists;
+  }
+
+  public List<Map<Symbol, ColumnSchema>> getAssignmentsLists() {
+    return assignmentsLists;
+  }
+
+  // ================== Add methods ==================
+  public void addMetadataExpressionList(List<Expression> expressions) {
+    metadataExpressionLists.add(
+        expressions != null ? new ArrayList<>(expressions) : Collections.emptyList());
+  }
+
+  public void addAttributeColumnsList(List<String> columns) {
+    attributeColumnsLists.add(columns != null ? new ArrayList<>(columns) : Collections.emptyList());
+  }
+
+  public void addAssignmentsList(Map<Symbol, ColumnSchema> assignments) {
+    assignmentsLists.add(assignments != null ? assignments : Collections.emptyMap());
   }
 }
