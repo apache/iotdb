@@ -183,6 +183,17 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
       case SCHEMA:
         // Currently do not check tree model mTree
         return Objects.nonNull(((PipeConfigRegionSnapshotEvent) event).getTemplateFile())
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                && permissionManager
+                        .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || Objects.nonNull(userName)
                 && permissionManager
                         .checkUserPrivileges(userName, new PrivilegeUnion(null, false, true))
