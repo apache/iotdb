@@ -199,7 +199,6 @@ public class CNPhysicalPlanGenerator
     try (final DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int tag = dataInputStream.readInt();
-      boolean fromOldVersion = tag < 0;
       String user;
       if (tag < 0) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
@@ -221,6 +220,23 @@ public class CNPhysicalPlanGenerator
         createUser.setPermissions(new HashSet<>());
         createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);
+        if (tag == 2) {
+          final AuthorTreePlan updateUserMaxSession =
+              new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMaxSession);
+          updateUserMaxSession.setMaxSessionPerUser(dataInputStream.readInt());
+          updateUserMaxSession.setUserName(user);
+          updateUserMaxSession.setPermissions(new HashSet<>());
+          updateUserMaxSession.setNodeNameList(new ArrayList<>());
+          planDeque.add(updateUserMaxSession);
+          final AuthorTreePlan updateUserMinSession =
+              new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMinSession);
+          updateUserMinSession.setMinSessionPerUser(dataInputStream.readInt());
+          updateUserMinSession.setUserName(user);
+          updateUserMinSession.setPermissions(new HashSet<>());
+          updateUserMinSession.setNodeNameList(new ArrayList<>());
+          planDeque.add(updateUserMinSession);
+        }
+
       } else {
         final AuthorTreePlan createRole = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
         createRole.setRoleName(user);

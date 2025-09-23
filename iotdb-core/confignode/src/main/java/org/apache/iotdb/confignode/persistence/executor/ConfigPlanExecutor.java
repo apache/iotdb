@@ -467,6 +467,8 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case UpdateUserMaxSession:
+      case UpdateUserMinSession:
       case CreateUserWithRawPassword:
       case CreateUserDep:
       case CreateRoleDep:
@@ -484,6 +486,8 @@ public class ConfigPlanExecutor {
       case RDropUser:
       case RDropRole:
       case RUpdateUser:
+      case RUpdateUserMaxSession:
+      case RUpdateUserMinSession:
       case RGrantUserRole:
       case RGrantRoleAny:
       case RGrantUserAny:

@@ -96,6 +96,13 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   }
 
   @Override
+  protected void saveSessionPerUser(BufferedOutputStream outputStream, Role role)
+      throws IOException {
+    IOUtils.writeInt(outputStream, role.getMaxSessionPerUser(), encodingBufferLocal);
+    IOUtils.writeInt(outputStream, role.getMinSessionPerUser(), encodingBufferLocal);
+  }
+
+  @Override
   protected void saveRoles(Role role) throws IOException {
     User user = (User) role;
     File roleProfile =
@@ -147,7 +154,6 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int tag = dataInputStream.readInt();
       User user = new User();
-
       if (tag < 0) {
         String name =
             IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
@@ -169,6 +175,8 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         user.setUserId(dataInputStream.readLong());
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        user.setMaxSessionPerUser(dataInputStream.readInt());
+        user.setMinSessionPerUser(dataInputStream.readInt());
         loadPrivileges(dataInputStream, user);
       }
 

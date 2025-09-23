@@ -52,6 +52,42 @@ public class AuthorTreePlan extends AuthorPlan {
    * @param password password
    * @param permissions permissions
    * @param grantOpt with grant option, only grant statement can set grantOpt = true
+   * @param maxSessioPerUser maxSessionPerUser of user
+   * @param minSessionPerUser minSessionPerUser of user
+   */
+  public AuthorTreePlan(
+      final ConfigPhysicalPlanType authorType,
+      final String userName,
+      final String roleName,
+      final String password,
+      final String newPassword,
+      final Set<Integer> permissions,
+      final boolean grantOpt,
+      final List<PartialPath> nodeNameList,
+      final Integer maxSessioPerUser,
+      final Integer minSessionPerUser) {
+    super(
+        authorType,
+        userName,
+        roleName,
+        password,
+        newPassword,
+        grantOpt,
+        maxSessioPerUser,
+        minSessionPerUser);
+    this.permissions = permissions;
+    this.nodeNameList = nodeNameList;
+  }
+
+  /**
+   * {@link AuthorTreePlan} Constructor.
+   *
+   * @param authorType author type
+   * @param userName user name
+   * @param roleName role name
+   * @param password password
+   * @param permissions permissions
+   * @param grantOpt with grant option, only grant statement can set grantOpt = true
    * @param nodeNameList node name in Path structure
    */
   public AuthorTreePlan(
@@ -63,7 +99,7 @@ public class AuthorTreePlan extends AuthorPlan {
       final Set<Integer> permissions,
       final boolean grantOpt,
       final List<PartialPath> nodeNameList) {
-    super(authorType, userName, roleName, password, newPassword, grantOpt);
+    super(authorType, userName, roleName, password, newPassword, grantOpt, -1, -1);
     this.permissions = permissions;
     this.nodeNameList = nodeNameList;
   }
@@ -128,6 +164,11 @@ public class AuthorTreePlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
     BasicStructureSerDeUtil.write(newPassword, stream);
+    if (getAuthorType() == ConfigPhysicalPlanType.UpdateUserMaxSession
+        || getAuthorType() == ConfigPhysicalPlanType.UpdateUserMinSession) {
+      BasicStructureSerDeUtil.write(maxSessionPerUser, stream);
+      BasicStructureSerDeUtil.write(minSessionPerUser, stream);
+    }
     if (permissions == null) {
       stream.write((byte) 0);
     } else {
@@ -150,6 +191,11 @@ public class AuthorTreePlan extends AuthorPlan {
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
     newPassword = BasicStructureSerDeUtil.readString(buffer);
+    if (getAuthorType() == ConfigPhysicalPlanType.UpdateUserMaxSession
+        || getAuthorType() == ConfigPhysicalPlanType.UpdateUserMinSession) {
+      maxSessionPerUser = buffer.getInt();
+      minSessionPerUser = buffer.getInt();
+    }
     if (buffer.get() == (byte) 0) {
       this.permissions = null;
     } else {
