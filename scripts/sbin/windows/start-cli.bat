@@ -117,6 +117,7 @@ REM -------------------------------
 REM JVM options
 set JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 set IOTDB_CLI_PARAMS=-Dlogback.configurationFile=%IOTDB_CLI_CONF%\logback-cli.xml
+set JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 --add-opens=java.base/java.lang=ALL-UNNAMED
 
 REM -------------------------------
 REM Run CLI
