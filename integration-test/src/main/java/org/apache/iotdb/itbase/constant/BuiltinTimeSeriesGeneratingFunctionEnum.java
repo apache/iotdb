@@ -74,6 +74,7 @@ public enum BuiltinTimeSeriesGeneratingFunctionEnum {
   EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE("EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE"),
   JEXL("JEXL"),
   MASTER_REPAIR("MASTER_REPAIR"),
+  FORECAST("FORECAST"),
   M4("M4");
 
   private final String functionName;
