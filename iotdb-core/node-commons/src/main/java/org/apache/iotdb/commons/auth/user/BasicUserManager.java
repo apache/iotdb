@@ -40,6 +40,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
+
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
 
@@ -55,7 +57,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return "No such user %s";
   }
 
-  protected long nextUserId = 9999;
+  protected long nextUserId = INTERNAL_USER_END_ID;
 
   /**
    * BasicUserManager Constructor.
@@ -151,11 +153,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void initUserId() {
     try {
       long maxUserId = this.accessor.loadUserId();
-      if (maxUserId < 9999) {
-        nextUserId = 9999;
-      } else {
-        nextUserId = maxUserId;
-      }
+      nextUserId = Math.max(maxUserId, INTERNAL_USER_END_ID);
 
       for (Map.Entry<String, Role> userEntry : entityMap.entrySet()) {
         User user = (User) userEntry.getValue();
