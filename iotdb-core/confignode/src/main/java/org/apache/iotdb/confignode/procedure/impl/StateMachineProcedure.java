@@ -247,6 +247,15 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     return getInitialState();
   }
 
+  @Override
+  public String getCurrentStateForDisplay() {
+    TState state = getCurrentState();
+    if (state != null) {
+      return state.toString();
+    }
+    return "Unknown";
+  }
+
   /**
    * Set the next state for the procedure.
    *

@@ -87,6 +87,7 @@ public class ColumnHeaderConstant {
   public static final String NODE_ID = "NodeID";
   public static final String NODE_TYPE = "NodeType";
   public static final String STATUS = "Status";
+  public static final String PROGRESS = "Progress";
   public static final String INTERNAL_ADDRESS = "InternalAddress";
   public static final String INTERNAL_PORT = "InternalPort";
   public static final String CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
@@ -95,6 +96,11 @@ public class ColumnHeaderConstant {
   public static final String DATA_CONSENSUS_PORT = "DataConsensusPort";
   public static final String SCHEMA_CONSENSUS_PORT = "SchemaConsensusPort";
   public static final String MPP_PORT = "MppPort";
+
+  public static final String PROC_ID = "ProcedureId";
+  public static final String SUBMITTED_TIME = "SubmittedTime";
+  public static final String LAST_UPDATE_TIME = "LastUpdateTime";
+  public static final String PARENT_PROC_ID = "ParentProcId";
 
   // column names for show clusterId statement
   public static final String CLUSTER_ID = "ClusterId";
@@ -114,6 +120,7 @@ public class ColumnHeaderConstant {
   public static final String TRIGGER_NAME = "TriggerName";
   public static final String EVENT = "Event";
   public static final String STATE = "State";
+  public static final String PHASE = "Phase";
   public static final String MODEL_TYPE = "ModelType";
   public static final String CONFIGS = "Configs";
   public static final String PATH_PATTERN = "PathPattern";
@@ -451,6 +458,17 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(INTERNAL_PORT, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showProceduresColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(PROC_ID, TSDataType.INT64),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(PHASE, TSDataType.TEXT),
+          new ColumnHeader(PROGRESS, TSDataType.TEXT),
+          new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
+          new ColumnHeader(LAST_UPDATE_TIME, TSDataType.TEXT),
+          new ColumnHeader(PARENT_PROC_ID, TSDataType.INT64),
+          new ColumnHeader(CLASS_NAME, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
       ImmutableList.of(
