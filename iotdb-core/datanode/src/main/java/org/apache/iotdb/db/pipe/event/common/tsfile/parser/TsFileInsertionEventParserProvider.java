@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -78,7 +79,7 @@ public class TsFileInsertionEventParserProvider {
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionEventParser provide() throws IOException {
+  public TsFileInsertionEventParser provide() throws IOException, IllegalPathException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
@@ -109,6 +110,7 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
+          userName,
           sourceEvent);
     }
 
@@ -144,6 +146,7 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
+          userName,
           sourceEvent);
     }
 
@@ -161,6 +164,7 @@ public class TsFileInsertionEventParserProvider {
             startTime,
             endTime,
             pipeTaskMeta,
+            userName,
             sourceEvent)
         : new TsFileInsertionEventQueryParser(
             pipeName,
@@ -171,6 +175,7 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
+            userName,
             filteredDeviceIsAlignedMap);
   }
 

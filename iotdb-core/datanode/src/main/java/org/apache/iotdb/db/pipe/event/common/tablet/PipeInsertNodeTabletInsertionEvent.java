@@ -268,12 +268,16 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public void throwIfNoPrivilege() {
-    if (skipIfNoPrivileges || !isTableModelEvent()) {
+    if (skipIfNoPrivileges) {
       return;
     }
     if (Objects.nonNull(insertNode.getTargetPath())) {
-      checkTableName(
-          DeviceIDFactory.getInstance().getDeviceID(insertNode.getTargetPath()).getTableName());
+      if (isTableModelEvent()) {
+        checkTableName(
+            DeviceIDFactory.getInstance().getDeviceID(insertNode.getTargetPath()).getTableName());
+      } else {
+
+      }
     } else if (insertNode instanceof InsertRowsNode) {
       for (final String tableName :
           ((InsertRowsNode) insertNode)

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -487,8 +489,16 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             }
           }
         }
-        TreeAccessCheckVisitor.checkTimeSeriesPermission(
-            userName, measurementList, PrivilegeType.READ_DATA);
+        final TSStatus status =
+            TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                userName, measurementList, PrivilegeType.READ_DATA);
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+          if (skipIfNoPrivileges) {
+            shouldParse4Privilege = true;
+          } else {
+            throw new AccessDeniedException(status.getMessage());
+          }
+        }
       }
     } catch (final AccessDeniedException e) {
       throw e;
@@ -732,7 +742,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   this)
               .provide());
       return eventParser.get();
-    } catch (final IOException e) {
+    } catch (final Exception e) {
       close();
 
       final String errorMsg = String.format("Read TsFile %s error.", tsFile.getPath());
