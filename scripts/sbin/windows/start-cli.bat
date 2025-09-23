@@ -79,7 +79,36 @@ REM ----------------------------------------------------------------------------
 :okClasspath
 set PARAMETERS=%*
 
-@REM if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
+@REM -----------------  -pw  -----------------
+set pw_flag=
+set new_parameters=
+
+:process_params
+if "%1"=="" goto done_params
+
+if /I "%1"=="-pw" (
+    shift
+    if "%1"=="" (
+        set pw_flag=-pw
+    ) else (
+        REM If the next parameter is another option, then the password is empty.
+        echo %1 | findstr /B /R "^-">nul
+        if %ERRORLEVEL%==0 (
+            set pw_flag=-pw
+        ) else (
+            set pw_flag=-pw %1
+            shift
+        )
+    )
+    set new_parameters=%new_parameters% %pw_flag%
+) else (
+    set new_parameters=%new_parameters% %1
+    shift
+)
+goto process_params
+
+:done_params
+set PARAMETERS=%new_parameters%
 
 @REM if DEFAULT_SQL_DIALECT is empty, set it to "tree"
 if "%DEFAULT_SQL_DIALECT%" == "" set DEFAULT_SQL_DIALECT=tree
