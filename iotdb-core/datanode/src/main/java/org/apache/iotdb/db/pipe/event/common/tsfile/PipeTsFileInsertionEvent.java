@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -43,6 +45,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -55,8 +58,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -93,6 +98,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
+  private Map<IDeviceID, String[]> treeSchemaMap;
 
   public PipeTsFileInsertionEvent(
       final Boolean isTableModelEvent,
@@ -442,33 +448,47 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public void throwIfNoPrivilege() {
     try {
-      if (!isTableModelEvent() || AuthorityChecker.SUPER_USER.equals(userName)) {
+      if (AuthorityChecker.SUPER_USER.equals(userName)) {
         return;
       }
       if (!waitForTsFileClose()) {
         LOGGER.info("Temporary tsFile {} detected, will skip its transfer.", tsFile);
         return;
       }
-      for (final String table : tableNames) {
-        if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
-            || !tablePattern.matchesTable(table)) {
-          continue;
-        }
-        if (!Coordinator.getInstance()
-            .getAccessControl()
-            .checkCanSelectFromTable4Pipe(
-                userName,
-                new QualifiedObjectName(getTableModelDatabaseName(), table),
-                new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
-          if (skipIfNoPrivileges) {
-            shouldParse4Privilege = true;
-          } else {
-            throw new AccessDeniedException(
-                String.format(
-                    "No privilege for SELECT for user %s at table %s.%s",
-                    userName, tableModelDatabaseName, table));
+      if (isTableModelEvent()) {
+        for (final String table : tableNames) {
+          if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
+              || !tablePattern.matchesTable(table)) {
+            continue;
+          }
+          if (!Coordinator.getInstance()
+              .getAccessControl()
+              .checkCanSelectFromTable4Pipe(
+                  userName,
+                  new QualifiedObjectName(getTableModelDatabaseName(), table),
+                  new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
+            if (skipIfNoPrivileges) {
+              shouldParse4Privilege = true;
+            } else {
+              throw new AccessDeniedException(
+                  String.format(
+                      "No privilege for SELECT for user %s at table %s.%s",
+                      userName, tableModelDatabaseName, table));
+            }
           }
         }
+      } else {
+        final List<MeasurementPath> measurementList = new ArrayList<>();
+        for (final Map.Entry<IDeviceID, String[]> entry : treeSchemaMap.entrySet()) {
+          final IDeviceID deviceID = entry.getKey();
+          for (final String measurement : entry.getValue()) {
+            if (!treePattern.matchesMeasurement(deviceID, measurement)) {
+              measurementList.add(new MeasurementPath(deviceID, measurement));
+            }
+          }
+        }
+        TreeAccessCheckVisitor.checkTimeSeriesPermission(
+            userName, measurementList, PrivilegeType.READ_DATA);
       }
     } catch (final AccessDeniedException e) {
       throw e;
@@ -487,6 +507,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   resource.getTsFilePath(), e.getMessage());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg, e);
+    } finally {
+      // GC useless
+      tableNames = null;
+      treeSchemaMap = null;
     }
   }
 
@@ -531,6 +555,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public void setTableNames(final Set<String> tableNames) {
     this.tableNames = tableNames;
+  }
+
+  public void setTreeSchemaMap(final Map<IDeviceID, String[]> treeSchemaMap) {
+    this.treeSchemaMap = treeSchemaMap;
   }
 
   /////////////////////////// PipeInsertionEvent ///////////////////////////

@@ -2094,9 +2094,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       PipeDataNodeAgent.plugin()
           .validate(
               createPipeStatement.getPipeName(),
-              createPipeStatement.getExtractorAttributes(),
+              createPipeStatement.getSourceAttributes(),
               createPipeStatement.getProcessorAttributes(),
-              createPipeStatement.getConnectorAttributes());
+              createPipeStatement.getSinkAttributes());
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
@@ -2106,7 +2106,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
     // and history are true), the pipe is split into history-only and realtime–only modes.
     final PipeParameters extractorPipeParameters =
-        new PipeParameters(createPipeStatement.getExtractorAttributes());
+        new PipeParameters(createPipeStatement.getSourceAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
         && PipeDataNodeAgent.task().isFullSync(extractorPipeParameters)) {
       try (final ConfigNodeClient configNodeClient =
@@ -2130,7 +2130,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     Boolean.toString(false))))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
 
         final TSStatus realtimeTsStatus = configNodeClient.createPipe(realtimeReq);
         // If creation fails, immediately return with exception
@@ -2157,7 +2157,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     Boolean.toString(true))))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
 
         final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
         // If creation fails, immediately return with exception
@@ -2181,9 +2181,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
               .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
-              .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
+              .setExtractorAttributes(createPipeStatement.getSourceAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-              .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+              .setConnectorAttributes(createPipeStatement.getSinkAttributes());
       final TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus));

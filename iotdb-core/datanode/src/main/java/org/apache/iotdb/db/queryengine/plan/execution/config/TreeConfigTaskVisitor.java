@@ -564,7 +564,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreatePipe(
       final CreatePipeStatement createPipeStatement, final MPPQueryContext context) {
-    for (final String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
+    for (final String ExtractorAttribute : createPipeStatement.getSourceAttributes().keySet()) {
       if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -579,18 +579,18 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       }
     }
 
-    // Inject tree model into the extractor attributes
+    // Inject tree model into the source attributes
     createPipeStatement
-        .getExtractorAttributes()
+        .getSourceAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
     checkAndEnrichSourceUser(
         createPipeStatement.getPipeName(),
-        createPipeStatement.getExtractorAttributes(),
+        createPipeStatement.getSourceAttributes(),
         new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
     checkAndEnrichSinkUser(
         createPipeStatement.getPipeName(),
-        createPipeStatement.getConnectorAttributes(),
+        createPipeStatement.getSinkAttributes(),
         context.getSession().getUserEntity(),
         false);
 

@@ -3964,8 +3964,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final CreatePipeStatement createPipeStatement =
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 
+    final String pipeName = parseIdentifier(ctx.pipeName.getText());
     if (ctx.pipeName != null) {
-      createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      createPipeStatement.setPipeName(pipeName);
     } else {
       throw new SemanticException(
           "Not support for this sql in CREATE PIPE, please enter pipe name.");
@@ -3974,12 +3975,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     createPipeStatement.setIfNotExists(
         ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
 
-    if (ctx.extractorAttributesClause() != null) {
-      createPipeStatement.setExtractorAttributes(
-          parseExtractorAttributesClause(
-              ctx.extractorAttributesClause().extractorAttributeClause()));
+    if (ctx.sourceAttributesClause() != null) {
+      createPipeStatement.setSourceAttributes(
+          parseSourceAttributesClause(ctx.sourceAttributesClause().extractorAttributeClause()));
     } else {
-      createPipeStatement.setExtractorAttributes(new HashMap<>());
+      createPipeStatement.setSourceAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
@@ -3988,15 +3988,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
-    if (ctx.connectorAttributesClause() != null) {
-      createPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(
-              ctx.connectorAttributesClause().connectorAttributeClause()));
+    if (ctx.sinkAttributesClause() != null) {
+      createPipeStatement.setSinkAttributes(
+          parseConnectorAttributesClause(ctx.sinkAttributesClause().connectorAttributeClause()));
     } else {
-      createPipeStatement.setConnectorAttributes(
+      createPipeStatement.setSinkAttributes(
           parseConnectorAttributesClause(
               ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause()));
     }
+
     return createPipeStatement;
   }
 
@@ -4015,7 +4015,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (ctx.alterExtractorAttributesClause() != null) {
       alterPipeStatement.setExtractorAttributes(
-          parseExtractorAttributesClause(
+          parseSourceAttributesClause(
               ctx.alterExtractorAttributesClause().extractorAttributeClause()));
       alterPipeStatement.setReplaceAllExtractorAttributes(
           Objects.nonNull(ctx.alterExtractorAttributesClause().REPLACE()));
@@ -4049,7 +4049,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return alterPipeStatement;
   }
 
-  private Map<String, String> parseExtractorAttributesClause(
+  private Map<String, String> parseSourceAttributesClause(
       List<ExtractorAttributeClauseContext> contexts) {
     final Map<String, String> collectorMap = new HashMap<>();
     for (IoTDBSqlParser.ExtractorAttributeClauseContext context : contexts) {
