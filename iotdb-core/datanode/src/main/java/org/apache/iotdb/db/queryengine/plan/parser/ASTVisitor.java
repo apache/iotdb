@@ -50,7 +50,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExtractorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ProcessorAttributeClauseContext;
@@ -4014,8 +4013,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (ctx.alterSourceAttributesClause() != null) {
       alterPipeStatement.setSourceAttributes(
-          parseSourceAttributesClause(
-              ctx.alterSourceAttributesClause().sourceAttributeClause()));
+          parseSourceAttributesClause(ctx.alterSourceAttributesClause().sourceAttributeClause()));
       alterPipeStatement.setReplaceAllSourceAttributes(
           Objects.nonNull(ctx.alterSourceAttributesClause().REPLACE()));
     } else {
@@ -4036,7 +4034,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (ctx.alterSinkAttributesClause() != null) {
       alterPipeStatement.setSinkAttributes(
-          parseSinkAttributesClause(ctx.alterSinkAttributesClause().SinkAttributeClause()));
+          parseSinkAttributesClause(ctx.alterSinkAttributesClause().sinkAttributeClause()));
       alterPipeStatement.setReplaceAllSinkAttributes(
           Objects.nonNull(ctx.alterSinkAttributesClause().REPLACE()));
     } else {
@@ -4128,7 +4126,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       showPipesStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     }
-    showPipesStatement.setWhereClause(ctx.Sink() != null);
+    showPipesStatement.setWhereClause(ctx.WHERE() != null);
 
     return showPipesStatement;
   }

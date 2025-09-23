@@ -599,8 +599,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterPipe(
       final AlterPipeStatement alterPipeStatement, final MPPQueryContext context) {
 
-    for (final String extractorAttributeKey :
-        alterPipeStatement.getSourceAttributes().keySet()) {
+    for (final String extractorAttributeKey : alterPipeStatement.getSourceAttributes().keySet()) {
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(

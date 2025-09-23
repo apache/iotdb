@@ -2264,12 +2264,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       if (!alterPipeStatement.getSourceAttributes().isEmpty()) {
         // We don't allow changing the extractor plugin type
-        if (alterPipeStatement
-                .getSourceAttributes()
-                .containsKey(PipeSourceConstant.EXTRACTOR_KEY)
-            || alterPipeStatement
-                .getSourceAttributes()
-                .containsKey(PipeSourceConstant.SOURCE_KEY)
+        if (alterPipeStatement.getSourceAttributes().containsKey(PipeSourceConstant.EXTRACTOR_KEY)
+            || alterPipeStatement.getSourceAttributes().containsKey(PipeSourceConstant.SOURCE_KEY)
             || alterPipeStatement.isReplaceAllSourceAttributes()) {
           checkIfSourcePluginChanged(
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
@@ -2317,8 +2313,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (alterPipeStatement.isReplaceAllSinkAttributes()) {
           connectorAttributes = alterPipeStatement.getSinkAttributes();
         } else {
-          final boolean onlyContainsUser =
-              onlyContainsUser(alterPipeStatement.getSinkAttributes());
+          final boolean onlyContainsUser = onlyContainsUser(alterPipeStatement.getSinkAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getSinkParameters()
