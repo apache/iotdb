@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.confignode.manager.pipe.source;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -52,13 +54,23 @@ public class PipeConfigTreePrivilegeParseVisitor
   public Optional<ConfigPhysicalPlan> visitDatabaseSchemaPlan(
       final DatabaseSchemaPlan databaseSchemaPlan, final String userName) {
     return ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
-                .checkUserPrivileges(
-                    userName, new PrivilegeUnion(databaseSchemaPlan.getSchema().getName(), null))
-                .getStatus()
-                .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                    .getConfigManager()
+                    .getPermissionManager()
+                    .checkUserPrivileges(
+                        userName,
+                        new PrivilegeUnion(
+                            PrivilegeType.READ_SCHEMA,
+                            new PartialPath(databaseSchemaPlan.getSchema().getName())))
+                    .getStatus()
+                    .getCode()
+                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || ConfigNode.getInstance()
+                    .getConfigManager()
+                    .getPermissionManager()
+                    .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
+                    .getStatus()
+                    .getCode()
+                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? Optional.of(databaseSchemaPlan)
         : Optional.empty();
   }
