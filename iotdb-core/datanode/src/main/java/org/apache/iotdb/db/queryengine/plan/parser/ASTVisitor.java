@@ -42,7 +42,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConnectorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDatabasesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
@@ -3977,7 +3976,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (ctx.sourceAttributesClause() != null) {
       createPipeStatement.setSourceAttributes(
-          parseSourceAttributesClause(ctx.sourceAttributesClause().extractorAttributeClause()));
+          parseSourceAttributesClause(ctx.sourceAttributesClause().sourceAttributeClause()));
     } else {
       createPipeStatement.setSourceAttributes(new HashMap<>());
     }
@@ -3990,11 +3989,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.sinkAttributesClause() != null) {
       createPipeStatement.setSinkAttributes(
-          parseConnectorAttributesClause(ctx.sinkAttributesClause().connectorAttributeClause()));
+          parseSinkAttributesClause(ctx.sinkAttributesClause().sinkAttributeClause()));
     } else {
       createPipeStatement.setSinkAttributes(
-          parseConnectorAttributesClause(
-              ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause()));
+          parseSinkAttributesClause(
+              ctx.sinkAttributesWithoutWithSinkClause().sinkAttributeClause()));
     }
 
     return createPipeStatement;
@@ -4035,15 +4034,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterPipeStatement.setReplaceAllProcessorAttributes(false);
     }
 
-    if (ctx.alterConnectorAttributesClause() != null) {
-      alterPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(
-              ctx.alterConnectorAttributesClause().connectorAttributeClause()));
-      alterPipeStatement.setReplaceAllConnectorAttributes(
-          Objects.nonNull(ctx.alterConnectorAttributesClause().REPLACE()));
+    if (ctx.alterSinkAttributesClause() != null) {
+      alterPipeStatement.setSinkAttributes(
+          parseSinkAttributesClause(ctx.alterSinkAttributesClause().SinkAttributeClause()));
+      alterPipeStatement.setReplaceAllSinkAttributes(
+          Objects.nonNull(ctx.alterSinkAttributesClause().REPLACE()));
     } else {
-      alterPipeStatement.setConnectorAttributes(new HashMap<>());
-      alterPipeStatement.setReplaceAllConnectorAttributes(false);
+      alterPipeStatement.setSinkAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllSinkAttributes(false);
     }
 
     return alterPipeStatement;
@@ -4071,15 +4069,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return processorMap;
   }
 
-  private Map<String, String> parseConnectorAttributesClause(
-      List<ConnectorAttributeClauseContext> contexts) {
-    final Map<String, String> connectorMap = new HashMap<>();
-    for (IoTDBSqlParser.ConnectorAttributeClauseContext context : contexts) {
-      connectorMap.put(
-          parseStringLiteral(context.connectorKey.getText()),
-          parseStringLiteral(context.connectorValue.getText()));
+  private Map<String, String> parseSinkAttributesClause(
+      List<IoTDBSqlParser.SinkAttributeClauseContext> contexts) {
+    final Map<String, String> SinkMap = new HashMap<>();
+    for (IoTDBSqlParser.SinkAttributeClauseContext context : contexts) {
+      SinkMap.put(
+          parseStringLiteral(context.sinkKey.getText()),
+          parseStringLiteral(context.sinkValue.getText()));
     }
-    return connectorMap;
+    return SinkMap;
   }
 
   @Override
@@ -4130,7 +4128,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       showPipesStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     }
-    showPipesStatement.setWhereClause(ctx.CONNECTOR() != null);
+    showPipesStatement.setWhereClause(ctx.Sink() != null);
 
     return showPipesStatement;
   }
