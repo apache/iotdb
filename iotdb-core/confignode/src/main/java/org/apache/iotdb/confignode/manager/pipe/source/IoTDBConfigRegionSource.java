@@ -79,6 +79,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
       new PipeConfigTreeScopeParseVisitor();
   public static final PipeConfigTableScopeParseVisitor TABLE_SCOPE_PARSE_VISITOR =
       new PipeConfigTableScopeParseVisitor();
+  public static final PipeConfigTreePrivilegeParseVisitor TREE_PRIVILEGE_PARSE_VISITOR =
+      new PipeConfigTreePrivilegeParseVisitor();
   public static final PipeConfigTablePrivilegeParseVisitor TABLE_PRIVILEGE_PARSE_VISITOR =
       new PipeConfigTablePrivilegeParseVisitor();
 
