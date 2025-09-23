@@ -46,6 +46,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
+
 public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventTsFileBatch.class);
@@ -86,7 +88,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
-        if (tablet.getRowSize() == 0) {
+        if (isTabletEmpty(tablet)) {
           continue;
         }
         if (isTableModel) {
@@ -109,7 +111,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
       final Tablet tablet = rawTabletInsertionEvent.convertToTablet();
-      if (tablet.getRowSize() == 0) {
+      if (isTabletEmpty(tablet)) {
         return true;
       }
       if (rawTabletInsertionEvent.isTableModelEvent()) {
