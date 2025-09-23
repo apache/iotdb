@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -410,8 +411,8 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
-    return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userName));
+  public TSStatus checkPermissionBeforeProcess(Statement statement, UserEntity userEntity) {
+    return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userEntity));
   }
 
   @Override

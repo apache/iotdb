@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -153,16 +154,18 @@ public class AuthorityChecker {
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
     try {
-      return accessControl.checkPermissionBeforeProcess(statement, session.getUsername());
+      return accessControl.checkPermissionBeforeProcess(
+          statement,
+          new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()));
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
   }
 
-  public static TSStatus checkAuthority(Statement statement, String userName) {
+  public static TSStatus checkAuthority(Statement statement, UserEntity userEntity) {
     long startTime = System.nanoTime();
     try {
-      return accessControl.checkPermissionBeforeProcess(statement, userName);
+      return accessControl.checkPermissionBeforeProcess(statement, userEntity);
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
