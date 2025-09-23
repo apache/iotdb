@@ -73,8 +73,13 @@ while true; do
             shift 2
             ;;
         -pw)
-            passwd_param="-pw $2"
-            shift 2
+            if [ -n "$2" ] && [[ ! "$2" =~ ^- ]]; then
+                passwd_param="-pw $2"
+                shift 2
+            else
+                passwd_param="-pw"
+                shift
+            fi
         ;;
         -h)
             host_param="-h $2"
@@ -104,7 +109,7 @@ while true; do
     esac
 done
 
-PARAMETERS="$host_param $port_param $user_param $sql_dialect_param $PARAMETERS $passwd_param"
+PARAMETERS="$host_param $port_param $user_param $passwd_param $sql_dialect_param $PARAMETERS"
 
 if [ -z "${IOTDB_INCLUDE}" ]; then
   #do nothing
