@@ -73,12 +73,17 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader.SCHEMA_FETCHER;
 
 public class DNAuditLogger extends AbstractAuditLogger {
   private static final Logger logger = LoggerFactory.getLogger(DNAuditLogger.class);
+
+  // TODO: @zhujt20 Optimize the following stupid retry
+  private static final int INSERT_RETRY_COUNT = 5;
+  private static final int INSERT_RETRY_INTERVAL_MS = 2000;
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String LOG = "log";
@@ -343,30 +348,42 @@ public class DNAuditLogger extends AbstractAuditLogger {
       logger.error("Failed to log audit events because ", e);
       return;
     }
-    coordinator.executeForTreeModel(
-        statement,
-        SESSION_MANAGER.requestQueryId(),
-        sessionInfo,
-        "",
-        ClusterPartitionFetcher.getInstance(),
-        SCHEMA_FETCHER);
-    AuditEventType type = auditLogFields.getAuditType();
-    if (isLoginEvent(type)) {
-      try {
-        statement.setDevicePath(
-            DEVICE_PATH_CACHE.getPartialPath(
-                String.format(AUDIT_LOGIN_LOG_DEVICE, dataNodeId, user)));
-      } catch (IllegalPathException e) {
-        logger.error("Failed to log audit login events because ", e);
+    for (int retry = 0; retry < INSERT_RETRY_COUNT; retry++) {
+      ExecutionResult insertResult =
+          coordinator.executeForTreeModel(
+              statement,
+              SESSION_MANAGER.requestQueryId(),
+              sessionInfo,
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              SCHEMA_FETCHER);
+      if (insertResult.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return;
       }
-      coordinator.executeForTreeModel(
-          statement,
-          SESSION_MANAGER.requestQueryId(),
-          sessionInfo,
-          "",
-          ClusterPartitionFetcher.getInstance(),
-          SCHEMA_FETCHER);
+      try {
+        TimeUnit.MILLISECONDS.sleep(INSERT_RETRY_INTERVAL_MS);
+      } catch (InterruptedException e) {
+        logger.error("Audit log insertion retry sleep was interrupted", e);
+      }
+    }
+    AuditEventType type = auditLogFields.getAuditType();
+    if (isLoginEvent(type)) {
+      // TODO: @wenyanshi-123 Reactivate the following codes in the future
+      //      try {
+      //        statement.setDevicePath(
+      //            DEVICE_PATH_CACHE.getPartialPath(
+      //                String.format(AUDIT_LOGIN_LOG_DEVICE, dataNodeId, user)));
+      //      } catch (IllegalPathException e) {
+      //        logger.error("Failed to log audit login events because ", e);
+      //        return;
+      //      }
+      //      coordinator.executeForTreeModel(
+      //          statement,
+      //          SESSION_MANAGER.requestQueryId(),
+      //          sessionInfo,
+      //          "",
+      //          ClusterPartitionFetcher.getInstance(),
+      //          SCHEMA_FETCHER);
     }
   }
 
@@ -381,13 +398,24 @@ public class DNAuditLogger extends AbstractAuditLogger {
             auditLogFields,
             log,
             DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_CN_LOG_DEVICE, nodeId)));
-    coordinator.executeForTreeModel(
-        statement,
-        SESSION_MANAGER.requestQueryId(),
-        sessionInfo,
-        "",
-        ClusterPartitionFetcher.getInstance(),
-        SCHEMA_FETCHER);
+    for (int retry = 0; retry < INSERT_RETRY_COUNT; retry++) {
+      ExecutionResult insertResult =
+          coordinator.executeForTreeModel(
+              statement,
+              SESSION_MANAGER.requestQueryId(),
+              sessionInfo,
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              SCHEMA_FETCHER);
+      if (insertResult.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(INSERT_RETRY_INTERVAL_MS);
+      } catch (InterruptedException e) {
+        logger.error("Audit log insertion retry sleep was interrupted", e);
+      }
+    }
   }
 
   private static class DNAuditLoggerHolder {
