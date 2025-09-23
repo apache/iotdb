@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -85,7 +86,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private boolean isWithMod;
   private File modFile;
   private final File sharedModFile;
-  private boolean shouldParse4Privilege = false;
 
   protected final boolean isLoaded;
   protected final boolean isGeneratedByPipe;
@@ -588,11 +588,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @FunctionalInterface
   public interface TabletInsertionEventConsumer {
-    void consume(final PipeRawTabletInsertionEvent event);
+    void consume(final PipeRawTabletInsertionEvent event) throws IllegalPathException;
   }
 
   public void consumeTabletInsertionEventsWithRetry(
-      final TabletInsertionEventConsumer consumer, final String callerName) throws PipeException {
+      final TabletInsertionEventConsumer consumer, final String callerName) throws Exception {
     final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
     final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
     int tabletEventCount = 0;
@@ -747,7 +747,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  public long count(final boolean skipReportOnCommit) throws IOException {
+  public long count(final boolean skipReportOnCommit) throws Exception {
     AtomicLong count = new AtomicLong();
 
     if (shouldParseTime()) {

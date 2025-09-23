@@ -323,7 +323,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         TreeAccessCheckVisitor.checkTimeSeriesPermission(
             userName, measurementList, PrivilegeType.READ_DATA);
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-      throw new AccessDeniedException(status.getMessage());
+      if (skipIfNoPrivileges) {
+        shouldParse4Privilege = true;
+      } else {
+        throw new AccessDeniedException(status.getMessage());
+      }
     }
   }
 
@@ -472,13 +476,18 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         case INSERT_ROW:
         case INSERT_TABLET:
           eventParsers.add(
-              new TabletInsertionEventTreePatternParser(pipeTaskMeta, this, node, treePattern));
+              new TabletInsertionEventTreePatternParser(
+                  pipeTaskMeta, this, node, treePattern, skipIfNoPrivileges ? userName : null));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
             eventParsers.add(
                 new TabletInsertionEventTreePatternParser(
-                    pipeTaskMeta, this, insertRowNode, treePattern));
+                    pipeTaskMeta,
+                    this,
+                    insertRowNode,
+                    treePattern,
+                    skipIfNoPrivileges ? userName : null));
           }
           break;
         case RELATIONAL_INSERT_ROW:

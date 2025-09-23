@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.connection;
 
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -115,7 +116,8 @@ public class PipeEventCollector implements EventCollector {
     }
   }
 
-  private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
+  private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent)
+      throws IllegalPathException {
     if (sourceEvent.shouldParseTimeOrPattern()) {
       collectParsedRawTableEvent(sourceEvent.parseEventWithPatternOrTime());
     } else {

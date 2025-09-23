@@ -328,13 +328,14 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
-  public void convertToTabletWithFilteredRowsForTest() {
+  public void convertToTabletWithFilteredRowsForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L),
             insertRowNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet1 = container1.convertToTablet();
     Assert.assertEquals(0, tablet1.getRowSize());
     boolean isAligned1 = container1.isAligned();
@@ -345,7 +346,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L),
             insertRowNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet2 = container2.convertToTablet();
     Assert.assertEquals(1, tablet2.getRowSize());
     boolean isAligned2 = container2.isAligned();
@@ -356,7 +358,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L),
             insertTabletNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet3 = container3.convertToTablet();
     Assert.assertEquals(3, tablet3.getRowSize());
     boolean isAligned3 = container3.isAligned();
@@ -367,7 +370,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L),
             insertTabletNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet4 = container4.convertToTablet();
     Assert.assertEquals(0, tablet4.getRowSize());
     boolean isAligned4 = container4.isAligned();
