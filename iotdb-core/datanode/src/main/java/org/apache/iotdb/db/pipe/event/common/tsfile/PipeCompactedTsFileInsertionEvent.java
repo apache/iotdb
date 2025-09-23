@@ -31,7 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -202,7 +201,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
           PipeCompactedTsFileInsertionEvent.this.pipeName,
           PipeCompactedTsFileInsertionEvent.this.creationTime,
           PipeCompactedTsFileInsertionEvent.this.pipeTaskMeta,
-          Collections.emptyList(), // PipePattern is not needed for dummy event
+          null, // PipePattern is not needed for dummy event
           null,
           null,
           null,

@@ -50,7 +50,7 @@ public interface PipeDataRegionMatcher {
    * @param event the event to be matched
    * @return pair of matched extractors and unmatched extractors.
    */
-  Pair<Set<DataRegionSourceWithPattern>, Set<DataRegionSourceWithPattern>> match(
+  Pair<Set<PipeRealtimeDataRegionSource>, Set<PipeRealtimeDataRegionSource>> match(
       PipeRealtimeEvent event);
 
   /** Clear all the registered extractors and internal data structures. */

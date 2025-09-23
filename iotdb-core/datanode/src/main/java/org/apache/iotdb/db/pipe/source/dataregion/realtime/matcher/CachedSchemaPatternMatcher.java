@@ -49,7 +49,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -64,7 +63,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
   protected final Set<PipeRealtimeDataRegionSource> sources;
 
-  protected final Cache<IDeviceID, Set<DataRegionSourceWithPattern>> deviceToSourcesCache;
+  protected final Cache<IDeviceID, Set<PipeRealtimeDataRegionSource>> deviceToSourcesCache;
   protected final Cache<Pair<String, IDeviceID>, Set<PipeRealtimeDataRegionSource>>
       databaseAndTableToSourcesCache;
 
@@ -130,21 +129,19 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   @Override
-  public Pair<Set<DataRegionSourceWithPattern>, Set<DataRegionSourceWithPattern>> match(
+  public Pair<Set<PipeRealtimeDataRegionSource>, Set<PipeRealtimeDataRegionSource>> match(
       final PipeRealtimeEvent event) {
-    final Set<DataRegionSourceWithPattern> matchedSources = new HashSet<>();
+    final Set<PipeRealtimeDataRegionSource> matchedSources = new HashSet<>();
 
     lock.readLock().lock();
     try {
       if (sources.isEmpty()) {
-        return new Pair<>(matchedSources, Collections.EMPTY_SET);
+        return new Pair<>(matchedSources, sources);
       }
 
       // HeartbeatEvent will be assigned to all sources
       if (event.getEvent() instanceof PipeHeartbeatEvent) {
-        return new Pair<>(
-            sources.stream().map(DataRegionSourceWithPattern::new).collect(Collectors.toSet()),
-            Collections.EMPTY_SET);
+        return new Pair<>(sources, Collections.EMPTY_SET);
       }
 
       // TODO: consider table pattern?
@@ -152,7 +149,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       if (event.getEvent() instanceof PipeDeleteDataNodeEvent) {
         sources.stream()
             .filter(PipeRealtimeDataRegionSource::shouldExtractDeletion)
-            .forEach(source -> matchedSources.add(new DataRegionSourceWithPattern(source)));
+            .forEach(matchedSources::add);
         return new Pair<>(matchedSources, findUnmatchedSources(matchedSources));
       }
 
@@ -190,24 +187,23 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
   }
 
-  private Set<DataRegionSourceWithPattern> findUnmatchedSources(
-      final Set<DataRegionSourceWithPattern> matchedSources) {
-    final Set<PipeRealtimeDataRegionSource> matched =
-        matchedSources.stream()
-            .map(DataRegionSourceWithPattern::getSource)
-            .collect(Collectors.toSet());
-    return sources.stream()
-        .filter(source -> !matched.contains(source))
-        .map(DataRegionSourceWithPattern::new)
-        .collect(Collectors.toSet());
+  private Set<PipeRealtimeDataRegionSource> findUnmatchedSources(
+      final Set<PipeRealtimeDataRegionSource> matchedSources) {
+    final Set<PipeRealtimeDataRegionSource> unmatchedSources = new HashSet<>();
+    for (final PipeRealtimeDataRegionSource source : sources) {
+      if (!matchedSources.contains(source)) {
+        unmatchedSources.add(source);
+      }
+    }
+    return unmatchedSources;
   }
 
   protected void matchTreeModelEvent(
       final IDeviceID device,
       final String[] measurements,
-      final Set<DataRegionSourceWithPattern> matchedSources) {
+      final Set<PipeRealtimeDataRegionSource> matchedSources) {
     // 1. try to get matched sources from cache, if not success, match them by device
-    final Set<DataRegionSourceWithPattern> sourcesFilteredByDevice =
+    final Set<PipeRealtimeDataRegionSource> sourcesFilteredByDevice =
         deviceToSourcesCache.get(device, this::filterSourcesByDevice);
     // this would not happen
     if (sourcesFilteredByDevice == null) {
@@ -237,22 +233,23 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
               return;
             }
 
-            final TreePattern pattern = source.getTreePattern();
-            if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(device)) {
-              // The pattern can match all measurements of the device.
-              matchedSources.add(source);
-            } else {
-              for (final String measurement : measurements) {
-                // Ignore null measurement for partial insert
-                if (measurement == null) {
-                  continue;
-                }
+            for (final TreePattern pattern : source.getTreePatterns()) {
+              if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(device)) {
+                // The pattern can match all measurements of the device.
+                matchedSources.add(source);
+              } else {
+                for (final String measurement : measurements) {
+                  // Ignore null measurement for partial insert
+                  if (measurement == null) {
+                    continue;
+                  }
 
-                if (pattern.matchesMeasurement(device, measurement)) {
-                  matchedSources.add(source);
-                  // There would be no more matched sources because the measurements are
-                  // unique
-                  break;
+                  if (pattern.matchesMeasurement(device, measurement)) {
+                    matchedSources.add(source);
+                    // There would be no more matched sources because the measurements are
+                    // unique
+                    break;
+                  }
                 }
               }
             }
@@ -260,8 +257,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
   }
 
-  protected Set<DataRegionSourceWithPattern> filterSourcesByDevice(final IDeviceID device) {
-    final Set<DataRegionSourceWithPattern> filteredSources = new HashSet<>();
+  protected Set<PipeRealtimeDataRegionSource> filterSourcesByDevice(final IDeviceID device) {
+    final Set<PipeRealtimeDataRegionSource> filteredSources = new HashSet<>();
 
     for (final PipeRealtimeDataRegionSource source : sources) {
       // Return if the source only extract deletion
@@ -270,14 +267,13 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       }
 
       final List<TreePattern> treePatterns = source.getTreePatterns();
-      for (final TreePattern treePattern : treePatterns) {
-        if (Objects.isNull(treePattern)
-            || (treePattern.isTreeModelDataAllowedToBeCaptured()
-                && treePattern.mayOverlapWithDevice(device))) {
-          filteredSources.add(new DataRegionSourceWithPattern(source, treePattern, null));
-          // match the first pattern for one source
-          break;
-        }
+      if (Objects.isNull(treePatterns)
+          || treePatterns.stream()
+              .anyMatch(
+                  treePattern ->
+                      (treePattern.isTreeModelDataAllowedToBeCaptured()
+                          && treePattern.mayOverlapWithDevice(device)))) {
+        filteredSources.add(source);
       }
     }
 
@@ -287,7 +283,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   protected void matchTableModelEvent(
       final String databaseName,
       final IDeviceID tableName,
-      final Set<DataRegionSourceWithPattern> matchedSources) {
+      final Set<PipeRealtimeDataRegionSource> matchedSources) {
     // this would not happen
     if (databaseName == null) {
       LOGGER.warn(
@@ -305,10 +301,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
           new Exception());
       return;
     }
-    matchedSources.addAll(
-        sourcesFilteredByDatabaseAndTable.stream()
-            .map(DataRegionSourceWithPattern::new)
-            .collect(Collectors.toSet()));
+    matchedSources.addAll(sourcesFilteredByDatabaseAndTable);
   }
 
   protected Set<PipeRealtimeDataRegionSource> filterSourcesByDatabaseAndTable(
