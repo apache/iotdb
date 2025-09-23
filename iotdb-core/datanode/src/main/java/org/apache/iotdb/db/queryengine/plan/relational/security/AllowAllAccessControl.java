@@ -32,6 +32,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 
@@ -121,7 +122,7 @@ public class AllowAllAccessControl implements AccessControl {
 
   @Override
   public TSStatus checkFullPathWriteDataPermission(
-      IAuditEntity entity, IDeviceID device, String measurementId) {
+      IAuditEntity auditEntity, IDeviceID device, String measurementId) {
     return SUCCEED;
   }
 
@@ -131,7 +132,7 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
-  public TSStatus checkCanAlterTemplate(IAuditEntity entity) {
+  public TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject) {
     return SUCCEED;
   }
 

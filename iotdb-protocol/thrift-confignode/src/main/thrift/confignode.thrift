@@ -29,6 +29,13 @@ struct TSystemConfigurationResp {
   4: optional TCQConfig cqConfig
 }
 
+struct TAuditConfig {
+  1: required bool enableAuditLog
+  2: optional string auditableOperationType
+  3: optional string auditableOperationLevel
+  4: optional string auditableOperationResult
+}
+
 struct TGlobalConfig {
   1: required string dataRegionConsensusProtocolClass
   2: required string schemaRegionConsensusProtocolClass
@@ -109,6 +116,7 @@ struct TRuntimeConfiguration {
   5: required list<binary> allPipeInformation
   6: optional string clusterId
   7: optional binary tableInfo
+  8: required TAuditConfig auditConfig
 }
 
 struct TDataNodeRegisterReq {

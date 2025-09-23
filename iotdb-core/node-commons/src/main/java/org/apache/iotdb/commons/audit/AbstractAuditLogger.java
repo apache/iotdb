@@ -24,51 +24,68 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import java.util.List;
+import java.util.function.Supplier;
 
-public class AbstractAuditLogger {
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
-  protected static final boolean IS_AUDIT_LOG_ENABLED = config.isEnableAuditLog();
+public abstract class AbstractAuditLogger {
 
-  private static final List<AuditLogOperation> auditLogOperationList =
-      config.getAuditableOperationType();
+  public static final String AUDIT_LOG_NODE_ID = "node_id";
+  public static final String AUDIT_LOG_USER_ID = "user_id";
+  public static final String AUDIT_LOG_USERNAME = "username";
+  public static final String AUDIT_LOG_CLI_HOSTNAME = "cli_hostname";
+  public static final String AUDIT_LOG_AUDIT_EVENT_TYPE = "audit_event_type";
+  public static final String AUDIT_LOG_OPERATION_TYPE = "operation_type";
+  public static final String AUDIT_LOG_PRIVILEGE_TYPE = "privilege_type";
+  public static final String AUDIT_LOG_PRIVILEGE_LEVEL = "privilege_level";
+  public static final String AUDIT_LOG_RESULT = "result";
+  public static final String AUDIT_LOG_DATABASE = "database";
+  public static final String AUDIT_LOG_SQL_STRING = "sql_string";
+  public static final String AUDIT_LOG_LOG = "log";
 
-  private static final PrivilegeLevel auditablePrivilegeLevel = config.getAuditableOperationLevel();
+  private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
+  protected static final boolean IS_AUDIT_LOG_ENABLED = CONFIG.isEnableAuditLog();
+  private static final List<AuditLogOperation> AUDITABLE_OPERATION_TYPE =
+      CONFIG.getAuditableOperationType();
+  private static final PrivilegeLevel AUDITABLE_OPERATION_LEVEL =
+      CONFIG.getAuditableOperationLevel();
+  private static final String AUDITABLE_OPERATION_RESULT = CONFIG.getAuditableOperationResult();
 
-  private static final String auditableOperationResult = config.getAuditableOperationResult();
+  public abstract void log(IAuditEntity auditLogFields, Supplier<String> log);
 
-  void log(AuditLogFields auditLogFields, String log) {
-    // do nothing
-  }
-
-  public boolean checkBeforeLog(AuditLogFields auditLogFields) {
+  public boolean noNeedInsertAuditLog(IAuditEntity auditLogFields) {
     String username = auditLogFields.getUsername();
     String address = auditLogFields.getCliHostname();
-    AuditEventType type = auditLogFields.getAuditType();
-    AuditLogOperation operation = auditLogFields.getOperationType();
-    PrivilegeType privilegeType = auditLogFields.getPrivilegeType();
-    PrivilegeLevel privilegeLevel = judgePrivilegeLevel(privilegeType);
-    boolean result = auditLogFields.isResult();
+    AuditEventType type = auditLogFields.getAuditEventType();
+    AuditLogOperation operation = auditLogFields.getAuditLogOperation();
+    boolean result = auditLogFields.getResult();
 
     // to do: check whether this event should be logged.
     // if whitelist or blacklist is used, only ip on the whitelist or blacklist can be logged
 
-    if (auditLogOperationList == null || !auditLogOperationList.contains(operation)) {
-      return false;
+    if (AUDITABLE_OPERATION_TYPE == null || !AUDITABLE_OPERATION_TYPE.contains(operation)) {
+      return true;
     }
-    if (auditablePrivilegeLevel == PrivilegeLevel.OBJECT
-        && privilegeLevel == PrivilegeLevel.GLOBAL) {
-      return false;
+    if (auditLogFields.getPrivilegeTypes() != null) {
+      for (PrivilegeType privilegeType : auditLogFields.getPrivilegeTypes()) {
+        PrivilegeLevel privilegeLevel = judgePrivilegeLevel(privilegeType);
+        if (AUDITABLE_OPERATION_LEVEL == PrivilegeLevel.OBJECT
+            && privilegeLevel == PrivilegeLevel.GLOBAL) {
+          return true;
+        }
+      }
     }
-    if (result && !auditableOperationResult.contains("SUCCESS")) {
-      return false;
+    if (result && !AUDITABLE_OPERATION_RESULT.contains("SUCCESS")) {
+      return true;
     }
-    if (!result && !auditableOperationResult.contains("FAIL")) {
-      return false;
+    if (!result && !AUDITABLE_OPERATION_RESULT.contains("FAIL")) {
+      return true;
     }
-    return true;
+    return false;
   }
 
   public static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {
+    if (type == null) {
+      return PrivilegeLevel.GLOBAL;
+    }
     switch (type) {
       case READ_DATA:
       case DROP:

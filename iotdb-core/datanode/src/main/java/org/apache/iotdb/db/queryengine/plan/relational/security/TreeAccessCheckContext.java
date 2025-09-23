@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
+import java.util.Collections;
+import java.util.List;
+
 public class TreeAccessCheckContext implements IAuditEntity {
 
   private final UserEntity userEntity;
@@ -50,7 +53,7 @@ public class TreeAccessCheckContext implements IAuditEntity {
 
   private AuditEventType auditEventType;
   private AuditLogOperation auditLogOperation;
-  private PrivilegeType privilegeType;
+  private List<PrivilegeType> privilegeTypeList;
   private boolean result;
   private String database;
   private String sqlString;
@@ -78,13 +81,24 @@ public class TreeAccessCheckContext implements IAuditEntity {
   }
 
   @Override
-  public PrivilegeType getPrivilegeType() {
-    return privilegeType;
+  public List<PrivilegeType> getPrivilegeTypes() {
+    return privilegeTypeList;
+  }
+
+  @Override
+  public String getPrivilegeTypeString() {
+    return privilegeTypeList.toString();
   }
 
   @Override
   public IAuditEntity setPrivilegeType(PrivilegeType privilegeType) {
-    this.privilegeType = privilegeType;
+    this.privilegeTypeList = Collections.singletonList(privilegeType);
+    return this;
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeTypes(List<PrivilegeType> privilegeTypes) {
+    this.privilegeTypeList = privilegeTypes;
     return this;
   }
 

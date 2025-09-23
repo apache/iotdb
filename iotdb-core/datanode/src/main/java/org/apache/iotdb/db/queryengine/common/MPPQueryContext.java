@@ -38,7 +38,9 @@ import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -439,7 +441,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   private AuditLogOperation auditLogOperation;
 
-  private PrivilegeType privilegeType;
+  private List<PrivilegeType> privilegeTypeList;
+
+  private String databaseName;
 
   private boolean result;
 
@@ -481,13 +485,24 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   @Override
-  public PrivilegeType getPrivilegeType() {
-    return privilegeType;
+  public List<PrivilegeType> getPrivilegeTypes() {
+    return privilegeTypeList;
+  }
+
+  @Override
+  public String getPrivilegeTypeString() {
+    return privilegeTypeList.toString();
   }
 
   @Override
   public IAuditEntity setPrivilegeType(PrivilegeType privilegeType) {
-    this.privilegeType = privilegeType;
+    this.privilegeTypeList = Collections.singletonList(privilegeType);
+    return this;
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeTypes(List<PrivilegeType> privilegeTypes) {
+    this.privilegeTypeList = privilegeTypes;
     return this;
   }
 
@@ -504,12 +519,12 @@ public class MPPQueryContext implements IAuditEntity {
 
   @Override
   public String getDatabase() {
-    return session.getDatabaseName().orElse("");
+    return databaseName;
   }
 
   @Override
   public IAuditEntity setDatabase(String database) {
-    // Do nothing
+    this.databaseName = database;
     return this;
   }
 
