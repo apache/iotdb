@@ -28,6 +28,8 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.List;
+
 /**
  * The data model used to record the Event and the data model of the DataRegion corresponding to the
  * source data, so this type requires some specifications .
@@ -61,7 +63,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -77,7 +79,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -97,7 +99,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -111,7 +113,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -61,7 +62,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         committerKey.getPipeName(),
         committerKey.getCreationTime(),
         anyOfOriginalEvents.getPipeTaskMeta(),
-        anyOfOriginalEvents.getTreePattern(),
+        anyOfOriginalEvents.getTreePatterns(),
         anyOfOriginalEvents.getTablePattern(),
         anyOfOriginalEvents.getUserId(),
         anyOfOriginalEvents.getUserName(),
@@ -201,7 +202,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
           PipeCompactedTsFileInsertionEvent.this.pipeName,
           PipeCompactedTsFileInsertionEvent.this.creationTime,
           PipeCompactedTsFileInsertionEvent.this.pipeTaskMeta,
-          null, // PipePattern is not needed for dummy event
+          Collections.emptyList(), // PipePattern is not needed for dummy event
           null,
           null,
           null,
@@ -238,7 +239,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         final String pipeName,
         final long creationTime,
         final PipeTaskMeta pipeTaskMeta,
-        final TreePattern treePattern,
+        final List<TreePattern> treePatterns,
         final TablePattern tablePattern,
         final String userId,
         final String userName,

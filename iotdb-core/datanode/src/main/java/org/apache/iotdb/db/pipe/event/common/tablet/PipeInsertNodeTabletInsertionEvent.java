@@ -124,7 +124,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -136,7 +136,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -236,7 +236,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -251,7 +251,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -364,7 +364,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
         final PartialPath devicePartialPath = insertNode.getTargetPath();
         return Objects.isNull(devicePartialPath)
-            || treePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceIDAsFullDevice());
+            || treePatterns.stream()
+                .anyMatch(
+                    treePattern ->
+                        treePattern.mayOverlapWithDevice(
+                            devicePartialPath.getIDeviceIDAsFullDevice()));
       }
 
       if (insertNode instanceof InsertRowsNode) {
@@ -373,8 +377,13 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
                 .anyMatch(
                     insertRowNode ->
                         Objects.isNull(insertRowNode.getTargetPath())
-                            || treePattern.mayOverlapWithDevice(
-                                insertRowNode.getTargetPath().getIDeviceIDAsFullDevice()));
+                            || treePatterns.stream()
+                                .anyMatch(
+                                    treePattern ->
+                                        treePattern.mayOverlapWithDevice(
+                                            insertRowNode
+                                                .getTargetPath()
+                                                .getIDeviceIDAsFullDevice())));
       }
 
       return true;
@@ -447,14 +456,19 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
-          eventParsers.add(
-              new TabletInsertionEventTreePatternParser(pipeTaskMeta, this, node, treePattern));
+          treePatterns.forEach(
+              treePattern ->
+                  eventParsers.add(
+                      new TabletInsertionEventTreePatternParser(
+                          pipeTaskMeta, this, node, treePattern)));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
-            eventParsers.add(
-                new TabletInsertionEventTreePatternParser(
-                    pipeTaskMeta, this, insertRowNode, treePattern));
+            treePatterns.forEach(
+                treePattern ->
+                    eventParsers.add(
+                        new TabletInsertionEventTreePatternParser(
+                            pipeTaskMeta, this, insertRowNode, treePattern)));
           }
           break;
         case RELATIONAL_INSERT_ROW:

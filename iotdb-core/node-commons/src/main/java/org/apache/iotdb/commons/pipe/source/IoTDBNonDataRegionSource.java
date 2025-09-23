@@ -43,6 +43,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -53,7 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @TableModel
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
-  protected IoTDBTreePattern treePattern;
+  protected List<TreePattern> treePatterns;
   protected TablePattern tablePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
@@ -94,7 +95,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    treePattern = (IoTDBTreePattern) pattern;
+    treePatterns = Collections.singletonList((IoTDBTreePattern) pattern);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
   }
 
@@ -187,7 +188,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                       pipeName,
                       creationTime,
                       pipeTaskMeta,
-                      treePattern,
+                      treePatterns,
                       tablePattern,
                       userId,
                       userName,
@@ -250,7 +251,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                 pipeName,
                 creationTime,
                 pipeTaskMeta,
-                treePattern,
+                treePatterns,
                 tablePattern,
                 userId,
                 userName,

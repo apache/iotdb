@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,7 +58,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
       String pipeName,
       long creationTime,
       PipeTaskMeta pipeTaskMeta,
-      TreePattern treePattern,
+      List<TreePattern> treePatterns,
       TablePattern tablePattern,
       String userId,
       String userName,
@@ -70,7 +71,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -132,7 +133,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
       String pipeName,
       long creationTime,
       PipeTaskMeta pipeTaskMeta,
-      TreePattern treePattern,
+      List<TreePattern> treePatterns,
       TablePattern tablePattern,
       String userId,
       String userName,

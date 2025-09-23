@@ -55,15 +55,19 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
@@ -85,7 +89,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected final boolean isGeneratedByPipeConsensus;
   protected final boolean isGeneratedByHistoricalExtractor;
   private final AtomicBoolean isClosed;
-  private final AtomicReference<TsFileInsertionEventParser> eventParser;
+  private final AtomicReference<List<TsFileInsertionEventParser>> eventParsers;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -134,7 +138,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -146,7 +150,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -212,7 +216,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     // and can be sent.
     isClosed.set(resource.isClosed());
 
-    this.eventParser = new AtomicReference<>(null);
+    this.eventParsers = new AtomicReference<>(Collections.emptyList());
 
     addOnCommittedHook(
         () -> {
@@ -404,7 +408,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -424,7 +428,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -505,7 +509,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
 
     try {
-      return getDeviceSet().stream().anyMatch(treePattern::mayOverlapWithDevice);
+      return getDeviceSet().stream()
+          .anyMatch(
+              device ->
+                  treePatterns.stream()
+                      .anyMatch(treePattern -> treePattern.mayOverlapWithDevice(device)));
     } catch (final Exception e) {
       LOGGER.info(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
@@ -611,7 +619,43 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         return Collections.emptyList();
       }
       waitForResourceEnough4Parsing(timeoutMs);
-      return initEventParser().toTabletInsertionEvents();
+      return () -> {
+        final Iterator<TsFileInsertionEventParser> parserIterator = initEventParsers().iterator();
+        return new Iterator<TabletInsertionEvent>() {
+          private TsFileInsertionEventParser currentParser = null;
+          private Iterator<TabletInsertionEvent> currentEventIterator = Collections.emptyIterator();
+
+          private void closeCurrentParser() {
+            if (Objects.nonNull(currentParser)) {
+              currentParser.close();
+              currentParser = null;
+            }
+          }
+
+          @Override
+          public boolean hasNext() {
+            while (!currentEventIterator.hasNext() && parserIterator.hasNext()) {
+              closeCurrentParser();
+              currentParser = parserIterator.next();
+              currentEventIterator = currentParser.toTabletInsertionEvents().iterator();
+            }
+
+            if (!currentEventIterator.hasNext()) {
+              closeCurrentParser();
+            }
+
+            return currentEventIterator.hasNext();
+          }
+
+          @Override
+          public TabletInsertionEvent next() {
+            if (!hasNext()) {
+              throw new NoSuchElementException();
+            }
+            return currentEventIterator.next();
+          }
+        };
+      };
     } catch (final Exception e) {
       close();
 
@@ -685,36 +729,47 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return isGeneratedByHistoricalExtractor;
   }
 
-  private TsFileInsertionEventParser initEventParser() {
+  private List<TsFileInsertionEventParser> initEventParsers() {
     try {
-      eventParser.compareAndSet(
-          null,
-          new TsFileInsertionEventParserProvider(
-                  pipeName,
-                  creationTime,
-                  tsFile,
-                  treePattern,
-                  tablePattern,
-                  startTime,
-                  endTime,
-                  pipeTaskMeta,
-                  // Do not parse privilege if it should not be parsed
-                  // To avoid renaming of the tsFile database
-                  shouldParse4Privilege ? userName : null,
-                  this)
-              .provide());
-      return eventParser.get();
-    } catch (final IOException e) {
+      eventParsers.compareAndSet(
+          Collections.emptyList(),
+          treePatterns.stream()
+              .map(
+                  treePattern -> {
+                    try {
+                      // Call the method that throws a checked exception
+                      return new TsFileInsertionEventParserProvider(
+                              pipeName,
+                              creationTime,
+                              tsFile,
+                              treePattern,
+                              tablePattern,
+                              startTime,
+                              endTime,
+                              pipeTaskMeta,
+                              shouldParse4Privilege ? userName : null,
+                              this)
+                          .provide();
+                    } catch (final IOException e) {
+                      // Wrap the checked exception in an unchecked one
+                      throw new UncheckedIOException(e);
+                    }
+                  })
+              .collect(Collectors.toList()));
+      return eventParsers.get();
+    } catch (final UncheckedIOException e) { // Catch the unchecked wrapper
       close();
 
+      // Unwrap the original IOException
+      final IOException cause = e.getCause();
       final String errorMsg = String.format("Read TsFile %s error.", tsFile.getPath());
-      LOGGER.warn(errorMsg, e);
-      throw new PipeException(errorMsg, e);
+      LOGGER.warn(errorMsg, cause);
+      throw new PipeException(errorMsg, cause);
     }
   }
 
   public long count(final boolean skipReportOnCommit) throws IOException {
-    AtomicLong count = new AtomicLong();
+    final AtomicLong count = new AtomicLong();
 
     if (shouldParseTime()) {
       try {
@@ -732,19 +787,24 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
     }
 
-    try (final TsFileInsertionPointCounter counter =
-        new TsFileInsertionPointCounter(tsFile, treePattern)) {
-      return counter.count();
+    for (final TreePattern treePattern : treePatterns) {
+      try (final TsFileInsertionPointCounter counter =
+          new TsFileInsertionPointCounter(tsFile, treePattern)) {
+        count.addAndGet(counter.count());
+      }
     }
+    return count.get();
   }
 
   /** Release the resource of {@link TsFileInsertionEventParser}. */
   @Override
   public void close() {
-    eventParser.getAndUpdate(
-        parser -> {
-          if (Objects.nonNull(parser)) {
-            parser.close();
+    eventParsers.getAndUpdate(
+        parsers -> {
+          if (Objects.nonNull(parsers)) {
+            for (final TsFileInsertionEventParser parser : parsers) {
+              parser.close();
+            }
           }
           return null;
         });
@@ -755,8 +815,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, eventParser=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), eventParser)
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, eventParsers=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), eventParsers)
         + " - "
         + super.toString();
   }
@@ -787,7 +847,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.isWithMod,
         this.modFile,
         this.sharedModFile,
-        this.eventParser);
+        this.eventParsers);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -796,7 +856,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final boolean isWithMod;
     private final File modFile;
     private final File sharedModFile; // unused now
-    private final AtomicReference<TsFileInsertionEventParser> eventParser;
+    private final AtomicReference<List<TsFileInsertionEventParser>> eventParsers;
     private final String pipeName;
 
     private PipeTsFileInsertionEventResource(
@@ -807,14 +867,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final boolean isWithMod,
         final File modFile,
         final File sharedModFile,
-        final AtomicReference<TsFileInsertionEventParser> eventParser) {
+        final AtomicReference<List<TsFileInsertionEventParser>> eventParsers) {
       super(isReleased, referenceCount);
       this.pipeName = pipeName;
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
       this.sharedModFile = sharedModFile;
-      this.eventParser = eventParser;
+      this.eventParsers = eventParsers;
     }
 
     @Override
@@ -827,10 +887,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         }
 
         // close event parser
-        eventParser.getAndUpdate(
-            parser -> {
-              if (Objects.nonNull(parser)) {
-                parser.close();
+        eventParsers.getAndUpdate(
+            parsers -> {
+              if (Objects.nonNull(parsers)) {
+                for (final TsFileInsertionEventParser parser : parsers) {
+                  parser.close();
+                }
               }
               return null;
             });

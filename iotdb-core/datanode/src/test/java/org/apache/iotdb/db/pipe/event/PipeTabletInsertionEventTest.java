@@ -40,6 +40,7 @@ import org.junit.Test;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collections;
 
 public class PipeTabletInsertionEventTest {
 
@@ -280,14 +281,16 @@ public class PipeTabletInsertionEventTest {
     Assert.assertFalse(isAligned2);
 
     PipeRawTabletInsertionEvent event3 =
-        new PipeRawTabletInsertionEvent(tablet1, false, new PrefixTreePattern(pattern));
+        new PipeRawTabletInsertionEvent(
+            tablet1, false, Collections.singletonList(new PrefixTreePattern(pattern)));
     Tablet tablet3 = event3.convertToTablet();
     boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertFalse(isAligned3);
 
     PipeRawTabletInsertionEvent event4 =
-        new PipeRawTabletInsertionEvent(tablet2, false, new PrefixTreePattern(pattern));
+        new PipeRawTabletInsertionEvent(
+            tablet2, false, Collections.singletonList(new PrefixTreePattern(pattern)));
     Tablet tablet4 = event4.convertToTablet();
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
@@ -313,14 +316,16 @@ public class PipeTabletInsertionEventTest {
     Assert.assertTrue(isAligned2);
 
     PipeRawTabletInsertionEvent event3 =
-        new PipeRawTabletInsertionEvent(tablet1, true, new PrefixTreePattern(pattern));
+        new PipeRawTabletInsertionEvent(
+            tablet1, true, Collections.singletonList(new PrefixTreePattern(pattern)));
     Tablet tablet3 = event3.convertToTablet();
     boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertTrue(isAligned3);
 
     PipeRawTabletInsertionEvent event4 =
-        new PipeRawTabletInsertionEvent(tablet2, true, new PrefixTreePattern(pattern));
+        new PipeRawTabletInsertionEvent(
+            tablet2, true, Collections.singletonList(new PrefixTreePattern(pattern)));
     Tablet tablet4 = event4.convertToTablet();
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);

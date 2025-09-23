@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -67,7 +68,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final TsFileEpoch tsFileEpoch,
       final Map<IDeviceID, String[]> device2Measurements,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -82,7 +83,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         event != null ? event.getPipeName() : null,
         event != null ? event.getCreationTime() : 0,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -199,7 +200,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -212,7 +213,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
             pipeName,
             creationTime,
             pipeTaskMeta,
-            treePattern,
+            treePatterns,
             tablePattern,
             userId,
             userName,
@@ -225,7 +226,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         // If null is not passed, the field will not be GCed and may cause OOM.
         null,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,

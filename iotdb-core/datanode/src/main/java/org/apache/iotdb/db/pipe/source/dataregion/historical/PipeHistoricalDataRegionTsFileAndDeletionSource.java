@@ -865,7 +865,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             pipeName,
             creationTime,
             pipeTaskMeta,
-            treePatterns.get(0), // TODO
+            treePatterns,
             tablePattern,
             userId,
             userName,
@@ -924,7 +924,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             pipeName,
             creationTime,
             pipeTaskMeta,
-            treePatterns.get(0), // TODO
+            treePatterns,
             tablePattern,
             userId,
             userName,

@@ -67,7 +67,7 @@ public abstract class EnrichedEvent implements Event {
   public static final long INITIAL_RETRY_INTERVAL_FOR_IOTV2 = 500L;
   protected long retryInterval = INITIAL_RETRY_INTERVAL_FOR_IOTV2;
 
-  protected final TreePattern treePattern;
+  protected final List<TreePattern> treePatterns;
   protected final TablePattern tablePattern;
 
   protected final long startTime;
@@ -87,7 +87,7 @@ public abstract class EnrichedEvent implements Event {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -101,7 +101,7 @@ public abstract class EnrichedEvent implements Event {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.treePattern = treePattern;
+    this.treePatterns = treePatterns;
     this.tablePattern = tablePattern;
     this.userId = userId;
     this.userName = userName;
@@ -111,9 +111,11 @@ public abstract class EnrichedEvent implements Event {
     this.endTime = endTime;
 
     isPatternParsed =
-        (treePattern == null || treePattern.isRoot())
-            && (tablePattern == null
-                || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
+        Objects.isNull(treePatterns)
+            || ((treePatterns.stream()
+                    .allMatch(treePattern -> treePattern == null || treePattern.isRoot()))
+                && (tablePattern == null
+                    || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern()));
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
   }
 
@@ -327,11 +329,17 @@ public abstract class EnrichedEvent implements Event {
    */
   // TODO: consider tablePattern
   public final String getTreePatternString() {
-    return treePattern != null ? treePattern.getPattern() : null;
+    // TODO: handle multiple patterns
+    return treePatterns.isEmpty() ? null : treePatterns.get(0).getPattern();
   }
 
   public final TreePattern getTreePattern() {
-    return treePattern;
+    // TODO: handle multiple patterns
+    return treePatterns.isEmpty() ? null : treePatterns.get(0);
+  }
+
+  public final List<TreePattern> getTreePatterns() {
+    return treePatterns;
   }
 
   public final TablePattern getTablePattern() {
@@ -390,7 +398,7 @@ public abstract class EnrichedEvent implements Event {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -523,8 +531,8 @@ public abstract class EnrichedEvent implements Event {
         + commitId
         + "', replicateIndexForIoTV2="
         + replicateIndexForIoTV2
-        + ", treePattern='"
-        + treePattern
+        + ", treePatterns='"
+        + treePatterns
         + "', tablePattern='"
         + tablePattern
         + "', startTime="
@@ -559,8 +567,8 @@ public abstract class EnrichedEvent implements Event {
         + "', replicateIndexForIoTV2="
         + replicateIndexForIoTV2
         + ", treePattern='"
-        + treePattern
-        + "', tablePattern='"
+        + treePatterns
+        + "', tablePatterns='"
         + tablePattern
         + "', startTime="
         + startTime
