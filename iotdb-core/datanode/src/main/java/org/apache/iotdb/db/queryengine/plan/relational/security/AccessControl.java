@@ -223,5 +223,5 @@ public interface AccessControl {
 
   /** called by load */
   TSStatus checkFullPathWriteDataPermission(
-      String userName, IDeviceID device, String measurementId);
+      IAuditEntity auditEntity, IDeviceID device, String measurementId);
 }

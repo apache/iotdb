@@ -417,16 +417,17 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public TSStatus checkFullPathWriteDataPermission(
-      String userName, IDeviceID device, String measurementId) {
+      IAuditEntity auditEntity, IDeviceID device, String measurementId) {
     try {
       PartialPath path = new MeasurementPath(device, measurementId);
       // audit db is read-only
-      if (includeByAuditTreeDB(path) && !userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
+      if (includeByAuditTreeDB(path)
+          && !auditEntity.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
         return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
       return checkTimeSeriesPermission(
-          userName, Collections.singletonList(path), PrivilegeType.WRITE_DATA);
+          auditEntity, Collections.singletonList(path), PrivilegeType.WRITE_DATA);
     } catch (IllegalPathException e) {
       // should never be here
       throw new IllegalStateException(e);

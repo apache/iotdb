@@ -292,7 +292,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
                 thisNode);
-        DNAuditLogger.getInstance().log(fields, logMessage);
+        DNAuditLogger.getInstance().log(fields, () -> logMessage);
       }
 
       if (isUsingPipeConsensus()) {

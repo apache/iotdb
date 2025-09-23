@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -151,11 +152,11 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // check WRITE_DATA permission of timeseries
           long startTime = System.nanoTime();
           try {
-            String userName = loadTsFileAnalyzer.context.getSession().getUserName();
+            UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
             TSStatus status =
                 AuthorityChecker.getAccessControl()
                     .checkFullPathWriteDataPermission(
-                        userName, device, timeseriesMetadata.getMeasurementId());
+                        userEntity, device, timeseriesMetadata.getMeasurementId());
             if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               throw new AuthException(
                   TSStatusCode.representOf(status.getCode()), status.getMessage());
