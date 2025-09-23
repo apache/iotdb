@@ -161,6 +161,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitNode(StatementNode node, TreeAccessCheckContext context) {
+    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
+      return SUCCEED;
+    }
     return AuthorityChecker.getTSStatus(false, "Only the admin user can perform this operation");
   }
 
