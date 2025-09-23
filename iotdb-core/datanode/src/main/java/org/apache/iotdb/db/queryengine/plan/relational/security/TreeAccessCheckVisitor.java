@@ -82,9 +82,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.LoadModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.UnloadModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -123,8 +128,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
@@ -560,6 +567,36 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
+  public TSStatus visitCreateTraining(
+      CreateTrainingStatement createTrainingStatement, TreeAccessCheckContext context) {
+    return checkModelManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitUnloadModel(
+      UnloadModelStatement unloadModelStatement, TreeAccessCheckContext context) {
+    return checkModelManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitLoadModel(
+      LoadModelStatement loadModelStatement, TreeAccessCheckContext context) {
+    return checkModelManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowAIDevices(
+      ShowAIDevicesStatement showAIDevicesStatement, TreeAccessCheckContext context) {
+    return checkModelManagement(context.userName);
+  }
+
+  @Override
+  public TSStatus visitShowLoadedModels(
+      ShowLoadedModelsStatement showLoadedModelsStatement, TreeAccessCheckContext context) {
+    return SUCCEED;
+  }
+
+  @Override
   public TSStatus visitShowModels(ShowModelsStatement statement, TreeAccessCheckContext context) {
     return SUCCEED;
   }
@@ -830,6 +867,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitExplainAnalyze(
       ExplainAnalyzeStatement statement, TreeAccessCheckContext context) {
     return statement.getQueryStatement().accept(this, context);
+  }
+
+  @Override
+  public TSStatus visitExplain(ExplainStatement explainStatement, TreeAccessCheckContext context) {
+    return explainStatement.getQueryStatement().accept(this, context);
   }
 
   // ============================= timeseries related =================================
@@ -1253,6 +1295,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return SUCCEED;
   }
 
+  @Override
+  public TSStatus visitLoadConfiguration(
+      LoadConfigurationStatement loadConfigurationStatement, TreeAccessCheckContext context) {
+    return checkOnlySuperUser(context.userName);
+  }
+
   // ======================== TTL related ===========================
   @Override
   public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
@@ -1397,5 +1445,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     if (!checkHasGlobalAuth(userName, PrivilegeType.AUDIT)) {
       statement.setCanSeeAuditDB(false);
     }
+  }
+
+  private TSStatus checkOnlySuperUser(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return SUCCEED;
+    }
+    return AuthorityChecker.getTSStatus(false, "Only the admin user can perform this operation");
   }
 }
