@@ -600,7 +600,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       final AlterPipeStatement alterPipeStatement, final MPPQueryContext context) {
 
     for (final String extractorAttributeKey :
-        alterPipeStatement.getExtractorAttributes().keySet()) {
+        alterPipeStatement.getSourceAttributes().keySet()) {
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -619,11 +619,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterPipeStatement.setUserName(userName);
 
     final String pipeName = alterPipeStatement.getPipeName();
-    final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
+    final Map<String, String> extractorAttributes = alterPipeStatement.getSourceAttributes();
 
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
-    if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
+    if (alterPipeStatement.isReplaceAllSourceAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
       checkAndEnrichSourceUser(
@@ -633,10 +633,10 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           true);
     }
 
-    if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
+    if (alterPipeStatement.isReplaceAllSinkAttributes()) {
       checkAndEnrichSinkUser(
           pipeName,
-          alterPipeStatement.getConnectorAttributes(),
+          alterPipeStatement.getSinkAttributes(),
           context.getSession().getUserEntity(),
           true);
     }

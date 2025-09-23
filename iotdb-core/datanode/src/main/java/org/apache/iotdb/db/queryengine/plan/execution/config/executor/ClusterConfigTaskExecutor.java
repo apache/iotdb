@@ -2262,29 +2262,29 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> processorAttributes;
     final Map<String, String> connectorAttributes;
     try {
-      if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+      if (!alterPipeStatement.getSourceAttributes().isEmpty()) {
         // We don't allow changing the extractor plugin type
         if (alterPipeStatement
-                .getExtractorAttributes()
+                .getSourceAttributes()
                 .containsKey(PipeSourceConstant.EXTRACTOR_KEY)
             || alterPipeStatement
-                .getExtractorAttributes()
+                .getSourceAttributes()
                 .containsKey(PipeSourceConstant.SOURCE_KEY)
-            || alterPipeStatement.isReplaceAllExtractorAttributes()) {
+            || alterPipeStatement.isReplaceAllSourceAttributes()) {
           checkIfSourcePluginChanged(
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
-              new PipeParameters(alterPipeStatement.getExtractorAttributes()));
+              new PipeParameters(alterPipeStatement.getSourceAttributes()));
         }
-        if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-          extractorAttributes = alterPipeStatement.getExtractorAttributes();
+        if (alterPipeStatement.isReplaceAllSourceAttributes()) {
+          extractorAttributes = alterPipeStatement.getSourceAttributes();
         } else {
           final boolean onlyContainsUser =
-              onlyContainsUser(alterPipeStatement.getExtractorAttributes());
+              onlyContainsUser(alterPipeStatement.getSourceAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getSourceParameters()
               .addOrReplaceEquivalentAttributes(
-                  new PipeParameters(alterPipeStatement.getExtractorAttributes()));
+                  new PipeParameters(alterPipeStatement.getSourceAttributes()));
           extractorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
           if (onlyContainsUser) {
@@ -2313,17 +2313,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
       }
 
-      if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
-        if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-          connectorAttributes = alterPipeStatement.getConnectorAttributes();
+      if (!alterPipeStatement.getSinkAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllSinkAttributes()) {
+          connectorAttributes = alterPipeStatement.getSinkAttributes();
         } else {
           final boolean onlyContainsUser =
-              onlyContainsUser(alterPipeStatement.getConnectorAttributes());
+              onlyContainsUser(alterPipeStatement.getSinkAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getSinkParameters()
               .addOrReplaceEquivalentAttributes(
-                  new PipeParameters(alterPipeStatement.getConnectorAttributes()));
+                  new PipeParameters(alterPipeStatement.getSinkAttributes()));
           connectorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
           if (onlyContainsUser) {
@@ -2349,11 +2349,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TAlterPipeReq(
               pipeName,
               alterPipeStatement.getProcessorAttributes(),
-              alterPipeStatement.getConnectorAttributes(),
+              alterPipeStatement.getSinkAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
-              alterPipeStatement.isReplaceAllConnectorAttributes());
-      req.setExtractorAttributes(alterPipeStatement.getExtractorAttributes());
-      req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllExtractorAttributes());
+              alterPipeStatement.isReplaceAllSinkAttributes());
+      req.setExtractorAttributes(alterPipeStatement.getSourceAttributes());
+      req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllSourceAttributes());
       req.setIfExistsCondition(alterPipeStatement.hasIfExistsCondition());
       req.setIsTableModel(alterPipeStatement.isTableModel());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);

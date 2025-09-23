@@ -4012,15 +4012,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     alterPipeStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
 
-    if (ctx.alterExtractorAttributesClause() != null) {
-      alterPipeStatement.setExtractorAttributes(
+    if (ctx.alterSourceAttributesClause() != null) {
+      alterPipeStatement.setSourceAttributes(
           parseSourceAttributesClause(
-              ctx.alterExtractorAttributesClause().extractorAttributeClause()));
-      alterPipeStatement.setReplaceAllExtractorAttributes(
-          Objects.nonNull(ctx.alterExtractorAttributesClause().REPLACE()));
+              ctx.alterSourceAttributesClause().sourceAttributeClause()));
+      alterPipeStatement.setReplaceAllSourceAttributes(
+          Objects.nonNull(ctx.alterSourceAttributesClause().REPLACE()));
     } else {
-      alterPipeStatement.setExtractorAttributes(new HashMap<>());
-      alterPipeStatement.setReplaceAllExtractorAttributes(false);
+      alterPipeStatement.setSourceAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllSourceAttributes(false);
     }
 
     if (ctx.alterProcessorAttributesClause() != null) {
@@ -4048,12 +4048,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private Map<String, String> parseSourceAttributesClause(
-      List<ExtractorAttributeClauseContext> contexts) {
+      List<IoTDBSqlParser.SourceAttributeClauseContext> contexts) {
     final Map<String, String> collectorMap = new HashMap<>();
-    for (IoTDBSqlParser.ExtractorAttributeClauseContext context : contexts) {
+    for (IoTDBSqlParser.SourceAttributeClauseContext context : contexts) {
       collectorMap.put(
-          parseStringLiteral(context.extractorKey.getText()),
-          parseStringLiteral(context.extractorValue.getText()));
+          parseStringLiteral(context.sourceKey.getText()),
+          parseStringLiteral(context.sourceValue.getText()));
     }
     return collectorMap;
   }
