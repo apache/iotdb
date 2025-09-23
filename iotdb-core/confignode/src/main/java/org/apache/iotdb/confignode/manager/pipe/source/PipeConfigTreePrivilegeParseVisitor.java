@@ -63,103 +63,87 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateDatabase(
       final DatabaseSchemaPlan createDatabasePlan, final String userName) {
-    return visitDatabaseSchemaPlan(createDatabasePlan, userName);
+    return canReadSysSchema(createDatabasePlan.getSchema().getName(), userName)
+        ? Optional.of(createDatabasePlan)
+        : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitAlterDatabase(
       final DatabaseSchemaPlan alterDatabasePlan, final String userName) {
-    return visitDatabaseSchemaPlan(alterDatabasePlan, userName);
-  }
-
-  public Optional<ConfigPhysicalPlan> visitDatabaseSchemaPlan(
-      final DatabaseSchemaPlan databaseSchemaPlan, final String userName) {
-    try {
-      return manager
-                      .checkUserPrivileges(
-                          userName,
-                          new PrivilegeUnion(
-                              new PartialPath(databaseSchemaPlan.getSchema().getName()),
-                              PrivilegeType.READ_SCHEMA))
-                      .getStatus()
-                      .getCode()
-                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              || manager
-                      .checkUserPrivileges(
-                          userName,
-                          new PrivilegeUnion(
-                              new PartialPath(databaseSchemaPlan.getSchema().getName())
-                                  .concatNode(MULTI_LEVEL_PATH_WILDCARD),
-                              PrivilegeType.READ_SCHEMA))
-                      .getStatus()
-                      .getCode()
-                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              || manager
-                      .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
-                      .getStatus()
-                      .getCode()
-                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          ? Optional.of(databaseSchemaPlan)
-          : Optional.empty();
-    } catch (final IllegalPathException e) {
-      LOGGER.warn(
-          "Un-parse-able database name encountered during privilege trimming, please check", e);
-      return Optional.empty();
-    }
+    return canReadSysSchema(alterDatabasePlan.getSchema().getName(), userName)
+        ? Optional.of(alterDatabasePlan)
+        : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
       final DeleteDatabasePlan deleteDatabasePlan, final String userName) {
-    try {
-      return manager
-                      .checkUserPrivileges(
-                          userName,
-                          new PrivilegeUnion(
-                              new PartialPath(deleteDatabasePlan.getName()),
-                              PrivilegeType.READ_SCHEMA))
-                      .getStatus()
-                      .getCode()
-                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              || manager
-                      .checkUserPrivileges(
-                          userName,
-                          new PrivilegeUnion(
-                              new PartialPath(deleteDatabasePlan.getName())
-                                  .concatNode(MULTI_LEVEL_PATH_WILDCARD),
-                              PrivilegeType.READ_SCHEMA))
-                      .getStatus()
-                      .getCode()
-                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              || manager
-                      .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
-                      .getStatus()
-                      .getCode()
-                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          ? Optional.of(deleteDatabasePlan)
-          : Optional.empty();
-    } catch (final IllegalPathException e) {
-      LOGGER.warn(
-          "Un-parse-able database name encountered during privilege trimming, please check", e);
-      return Optional.empty();
-    }
+    return canReadSysSchema(deleteDatabasePlan.getName(), userName)
+        ? Optional.of(deleteDatabasePlan)
+        : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateSchemaTemplate(
-      final CreateSchemaTemplatePlan createSchemaTemplatePlan, final String userName) {}
+      final CreateSchemaTemplatePlan createSchemaTemplatePlan, final String userName) {
+    return canReadSysSchema(createSchemaTemplatePlan.getName(), userName)
+            ? Optional.of(createSchemaTemplatePlan)
+            : Optional.empty();
+  }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitSetSchemaTemplate(
-      final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan, final String userName) {}
+      final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan, final String userName) {
+    return canReadSysSchema(commitSetSchemaTemplatePlan.getPath(), userName)
+            ? Optional.of(commitSetSchemaTemplatePlan)
+            : Optional.empty();
+  }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeUnsetSchemaTemplate(
-      final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan, final String userName) {}
+      final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan, final String userName) {
+    return canReadSysSchema(pipeUnsetSchemaTemplatePlan.getPath(), userName)
+            ? Optional.of(pipeUnsetSchemaTemplatePlan)
+            : Optional.empty();
+  }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitExtendSchemaTemplate(
-      final ExtendSchemaTemplatePlan extendSchemaTemplatePlan, final String userName) {}
+      final ExtendSchemaTemplatePlan extendSchemaTemplatePlan, final String userName) {
+    return canReadSysSchema(extendSchemaTemplatePlan.getName(), userName)
+            ? Optional.of(extendSchemaTemplatePlan)
+            : Optional.empty();
+  }
+
+  public boolean canReadSysSchema(final String path, final String userName) {
+    try {
+      return manager
+                  .checkUserPrivileges(
+                      userName,
+                      new PrivilegeUnion(new PartialPath(path), PrivilegeType.READ_SCHEMA))
+                  .getStatus()
+                  .getCode()
+              == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || manager
+                  .checkUserPrivileges(
+                      userName,
+                      new PrivilegeUnion(
+                          new PartialPath(path).concatNode(MULTI_LEVEL_PATH_WILDCARD),
+                          PrivilegeType.READ_SCHEMA))
+                  .getStatus()
+                  .getCode()
+              == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || manager
+                  .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
+                  .getStatus()
+                  .getCode()
+              == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    } catch (final IllegalPathException e) {
+      LOGGER.warn("Un-parse-able path name encountered during privilege trimming, please check", e);
+      return false;
+    }
+  }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantUser(
