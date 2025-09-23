@@ -189,7 +189,6 @@ public class FragmentInstanceManager {
                       instance.isExplainAnalyze(),
                       exchangeManager);
                 } catch (Throwable t) {
-                  clearFIRelatedResources(instanceId);
                   // deal with
                   if (t instanceof IllegalStateException
                       && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
@@ -202,6 +201,7 @@ public class FragmentInstanceManager {
                     logger.warn("error when create FragmentInstanceExecution.", t);
                     stateMachine.failed(t);
                   }
+                  clearFIRelatedResources(instanceId);
                   return null;
                 }
               });
@@ -280,7 +280,6 @@ public class FragmentInstanceManager {
                     false,
                     exchangeManager);
               } catch (Throwable t) {
-                clearFIRelatedResources(instanceId);
                 // deal with
                 if (t instanceof IllegalStateException
                     && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
@@ -293,6 +292,7 @@ public class FragmentInstanceManager {
                   logger.warn("Execute error caused by ", t);
                   stateMachine.failed(t);
                 }
+                clearFIRelatedResources(instanceId);
                 return null;
               }
             });
