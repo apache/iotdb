@@ -18,6 +18,7 @@
 package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -30,7 +31,8 @@ public class AuthorizationHandler {
 
   public Response checkAuthority(SecurityContext securityContext, Statement statement) {
     String userName = securityContext.getUserPrincipal().getName();
-    TSStatus status = AuthorityChecker.checkAuthority(statement, userName);
+    // TODO: Enter the real UserEntity
+    TSStatus status = AuthorityChecker.checkAuthority(statement, new UserEntity(-1, userName, ""));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return Response.ok()
           .entity(new ExecutionStatus().code(status.getCode()).message(status.getMessage()))

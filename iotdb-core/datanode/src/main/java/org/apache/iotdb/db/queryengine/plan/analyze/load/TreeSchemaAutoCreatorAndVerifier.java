@@ -323,7 +323,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
     // 1.check Authority
     TSStatus status =
         AuthorityChecker.checkAuthority(
-            statement, loadTsFileAnalyzer.context.getSession().getUserName());
+            statement, loadTsFileAnalyzer.context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
     }
