@@ -207,6 +207,29 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setNodeNameList(new ArrayList<>());
     answerSet.add(plan.hashCode());
 
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMaxSession);
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    plan.setMaxSessionPerUser(-1);
+    authorInfo.authorNonQuery(plan);
+    answerSet.add(plan.hashCode());
+
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMinSession);
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    plan.setMinSessionPerUser(-1);
+    authorInfo.authorNonQuery(plan);
+    answerSet.add(plan.hashCode());
+
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
+    plan.setPassword(AuthUtils.encryptPassword("password123456"));
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    answerSet.add(plan.hashCode());
+
     plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
     plan.setRoleName("role1");
     plan.setPermissions(new HashSet<>());
@@ -272,7 +295,7 @@ public class CNPhysicalPlanGeneratorTest {
       Assert.assertTrue(answerSet.contains(authPlan.hashCode()));
       count++;
     }
-    Assert.assertEquals(4, count);
+    Assert.assertEquals(6, count);
     final File roleListProfile =
         SystemFileFactory.INSTANCE.getFile(
             snapshotDir
