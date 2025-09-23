@@ -104,7 +104,7 @@ while true; do
     esac
 done
 
-PARAMETERS="$host_param $port_param $user_param $passwd_param $sql_dialect_param $PARAMETERS"
+PARAMETERS="$host_param $port_param $user_param $sql_dialect_param $PARAMETERS $passwd_param"
 
 if [ -z "${IOTDB_INCLUDE}" ]; then
   #do nothing

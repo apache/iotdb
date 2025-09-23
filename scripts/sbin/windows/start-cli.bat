@@ -92,8 +92,8 @@ set h_parameter=-h 127.0.0.1
 set sql_dialect__parameter=-sql_dialect %DEFAULT_SQL_DIALECT%
 
 @REM Added parameters when default parameters are missing
-echo %PARAMETERS% | findstr /c:"-sql_dialect ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%sql_dialect__parameter% %PARAMETERS%)
 echo %PARAMETERS% | findstr /c:"-pw ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%pw_parameter% %PARAMETERS%)
+echo %PARAMETERS% | findstr /c:"-sql_dialect ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%sql_dialect__parameter% %PARAMETERS%)
 echo %PARAMETERS% | findstr /c:"-u ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%u_parameter% %PARAMETERS%)
 echo %PARAMETERS% | findstr /c:"-p ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%p_parameter% %PARAMETERS%)
 echo %PARAMETERS% | findstr /c:"-h ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%h_parameter% %PARAMETERS%)
