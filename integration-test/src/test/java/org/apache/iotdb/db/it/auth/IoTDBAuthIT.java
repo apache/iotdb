@@ -1579,8 +1579,8 @@ public class IoTDBAuthIT {
   public void testChangeBackPassword() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("ALTER USER root SET PASSWORD 'newPassword'");
-      statement.execute("ALTER USER root SET PASSWORD 'root'");
+      statement.execute("ALTER USER root SET PASSWORD 'newPassword666888'");
+      statement.execute("ALTER USER root SET PASSWORD 'rootHasANewPassword123'");
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
