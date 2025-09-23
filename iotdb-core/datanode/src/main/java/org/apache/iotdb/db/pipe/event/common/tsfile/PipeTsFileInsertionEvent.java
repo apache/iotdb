@@ -644,10 +644,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
-      // Skip if is table events and tree model
-      if (Objects.isNull(userName) && isTableModelEvent()) {
-        return Collections.emptyList();
-      }
       waitForResourceEnough4Parsing(timeoutMs);
       return initEventParser().toTabletInsertionEvents();
     } catch (final Exception e) {
