@@ -81,7 +81,11 @@ public class DataNodeInternalClient {
       session.setSqlDialect(sessionInfo.getSqlDialect());
 
       SESSION_MANAGER.supplySession(
-          session, sessionInfo.getUserName(), sessionInfo.getZoneId(), ClientVersion.V_1_0);
+          session,
+          sessionInfo.getUserId(),
+          sessionInfo.getUserName(),
+          sessionInfo.getZoneId(),
+          ClientVersion.V_1_0);
 
       LOGGER.info("User: {}, opens internal Session-{}.", sessionInfo.getUserName(), session);
     } catch (Exception e) {

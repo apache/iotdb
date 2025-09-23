@@ -101,6 +101,7 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
       SESSION_MANAGER.registerSession(restClientSession);
       SESSION_MANAGER.supplySession(
           SESSION_MANAGER.getCurrSession(),
+          user.getUserId(),
           user.getUsername(),
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0);
