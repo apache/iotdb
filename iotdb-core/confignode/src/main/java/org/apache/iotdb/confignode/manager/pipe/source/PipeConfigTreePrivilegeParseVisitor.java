@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.source;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
@@ -35,13 +36,24 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnse
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
+import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Optional;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class PipeConfigTreePrivilegeParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, String> {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeConfigTreePrivilegeParseVisitor.class);
+  private static final PermissionManager manager =
+      ConfigNode.getInstance().getConfigManager().getPermissionManager();
+
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
       final ConfigPhysicalPlan plan, final String context) {
@@ -62,51 +74,75 @@ public class PipeConfigTreePrivilegeParseVisitor
 
   public Optional<ConfigPhysicalPlan> visitDatabaseSchemaPlan(
       final DatabaseSchemaPlan databaseSchemaPlan, final String userName) {
-    return ConfigNode.getInstance()
-                    .getConfigManager()
-                    .getPermissionManager()
-                    .checkUserPrivileges(
-                        userName,
-                        new PrivilegeUnion(
-                            PrivilegeType.READ_SCHEMA,
-                            new PartialPath(databaseSchemaPlan.getSchema().getName())))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || ConfigNode.getInstance()
-                    .getConfigManager()
-                    .getPermissionManager()
-                    .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? Optional.of(databaseSchemaPlan)
-        : Optional.empty();
+    try {
+      return manager
+                      .checkUserPrivileges(
+                          userName,
+                          new PrivilegeUnion(
+                              new PartialPath(databaseSchemaPlan.getSchema().getName()),
+                              PrivilegeType.READ_SCHEMA))
+                      .getStatus()
+                      .getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || manager
+                      .checkUserPrivileges(
+                          userName,
+                          new PrivilegeUnion(
+                              new PartialPath(databaseSchemaPlan.getSchema().getName())
+                                  .concatNode(MULTI_LEVEL_PATH_WILDCARD),
+                              PrivilegeType.READ_SCHEMA))
+                      .getStatus()
+                      .getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || manager
+                      .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
+                      .getStatus()
+                      .getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          ? Optional.of(databaseSchemaPlan)
+          : Optional.empty();
+    } catch (final IllegalPathException e) {
+      LOGGER.warn(
+          "Un-parse-able database name encountered during privilege trimming, please check", e);
+      return Optional.empty();
+    }
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
       final DeleteDatabasePlan deleteDatabasePlan, final String userName) {
-    return ConfigNode.getInstance()
-                    .getConfigManager()
-                    .getPermissionManager()
-                    .checkUserPrivileges(
-                        userName,
-                        new PrivilegeUnion(
-                            PrivilegeType.READ_SCHEMA,
-                            new PartialPath(deleteDatabasePlan.getName())))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || ConfigNode.getInstance()
-                    .getConfigManager()
-                    .getPermissionManager()
-                    .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? Optional.of(deleteDatabasePlan)
-        : Optional.empty();
+    try {
+      return manager
+                      .checkUserPrivileges(
+                          userName,
+                          new PrivilegeUnion(
+                              new PartialPath(deleteDatabasePlan.getName()),
+                              PrivilegeType.READ_SCHEMA))
+                      .getStatus()
+                      .getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || manager
+                      .checkUserPrivileges(
+                          userName,
+                          new PrivilegeUnion(
+                              new PartialPath(deleteDatabasePlan.getName())
+                                  .concatNode(MULTI_LEVEL_PATH_WILDCARD),
+                              PrivilegeType.READ_SCHEMA))
+                      .getStatus()
+                      .getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || manager
+                      .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
+                      .getStatus()
+                      .getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          ? Optional.of(deleteDatabasePlan)
+          : Optional.empty();
+    } catch (final IllegalPathException e) {
+      LOGGER.warn(
+          "Un-parse-able database name encountered during privilege trimming, please check", e);
+      return Optional.empty();
+    }
   }
 
   @Override
@@ -151,9 +187,7 @@ public class PipeConfigTreePrivilegeParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitUserPlan(
       final AuthorTreePlan plan, final String userName) {
-    return ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
+    return manager
                 .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                 .getStatus()
                 .getCode()
@@ -164,9 +198,7 @@ public class PipeConfigTreePrivilegeParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitRolePlan(
       final AuthorTreePlan plan, final String userName) {
-    return ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
+    return manager
                 .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
                 .getStatus()
                 .getCode()
