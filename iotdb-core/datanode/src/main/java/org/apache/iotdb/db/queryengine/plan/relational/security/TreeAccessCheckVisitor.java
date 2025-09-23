@@ -161,10 +161,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitNode(StatementNode node, TreeAccessCheckContext context) {
-    if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
-      return SUCCEED;
-    }
-    return AuthorityChecker.getTSStatus(false, "Only the admin user can perform this operation");
+    throw new IllegalStateException("Each operation should have permission check.");
   }
 
   @Override
@@ -229,7 +226,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return SUCCEED;
     }
     // own SYSTEM can see all, otherwise can only see PATHS that user has READ_SCHEMA auth
-    if (!AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)) {
+    if (!checkHasGlobalAuth(context.userName, PrivilegeType.SYSTEM)) {
       statement.setCanSeeAll(false);
       return visitAuthorityInformation(statement, context);
     } else {
@@ -289,11 +286,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
       return SUCCEED;
     }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)
-            || AuthorityChecker.checkSystemPermission(
-                context.userName, PrivilegeType.EXTEND_TEMPLATE),
-        PrivilegeType.SYSTEM);
+    return checkGlobalAuth(context.userName, PrivilegeType.EXTEND_TEMPLATE);
   }
 
   // ============================= timeseries view related ===============
@@ -451,7 +444,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         }
 
       case LIST_ROLE:
-        if (AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.MANAGE_ROLE)) {
+        if (checkHasGlobalAuth(context.userName, PrivilegeType.MANAGE_ROLE)) {
           return SUCCEED;
         }
         // list roles of other user is not allowed
@@ -685,10 +678,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return SUCCEED;
     }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
-            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER),
-        PrivilegeType.SYSTEM);
+    return checkGlobalAuth(userName, PrivilegeType.USE_TRIGGER);
   }
 
   // ============================== database related ===========================
@@ -738,11 +728,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
       return SUCCEED;
     }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(context.userName, PrivilegeType.SYSTEM)
-            || AuthorityChecker.checkSystemPermission(
-                context.userName, PrivilegeType.MANAGE_DATABASE),
-        PrivilegeType.SYSTEM);
+    return checkGlobalAuth(context.userName, PrivilegeType.MANAGE_DATABASE);
   }
 
   private TSStatus checkCreateOrAlterDatabasePermission(String userName, PartialPath databaseName) {
@@ -756,10 +742,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return SUCCEED;
     }
 
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)
-            || AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
-        PrivilegeType.SYSTEM);
+    return checkGlobalAuth(userName, PrivilegeType.MANAGE_DATABASE);
   }
 
   private TSStatus checkShowOrCountDatabasePermission(
