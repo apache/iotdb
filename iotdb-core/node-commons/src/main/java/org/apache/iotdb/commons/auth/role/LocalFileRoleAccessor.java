@@ -150,6 +150,12 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     role.setObjectPrivilegeMap(objectPrivilegeMap);
   }
 
+  protected void saveSessionPerUser(BufferedOutputStream outputStream, Role role)
+      throws IOException {
+    // Just used in LocalFileUserAccessor.java.
+    // Do nothing.
+  }
+
   protected void saveRoles(Role role) throws IOException {
     // Just used in LocalFileUserAccessor.java.
     // Do nothing.
@@ -191,13 +197,9 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     FileInputStream inputStream = new FileInputStream(entityFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      boolean fromOldVersion = false;
       int tag = dataInputStream.readInt();
-      if (tag < 0) {
-        fromOldVersion = true;
-      }
 
-      if (fromOldVersion) {
+      if (tag < 0) {
         String name =
             IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
         Role role = new Role(name);
@@ -208,6 +210,11 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
               IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
         }
         role.setPrivilegeList(pathPrivilegeList);
+        return role;
+      } else if (tag == 1) {
+        entityName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+        Role role = new Role(entityName);
+        loadPrivileges(dataInputStream, role);
         return role;
       } else {
         assert tag == VERSION;
@@ -266,6 +273,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
       saveEntityVersion(outputStream);
       saveEntityName(outputStream, entity);
+      saveSessionPerUser(outputStream, entity);
       savePrivileges(outputStream, entity);
       outputStream.flush();
       fileOutputStream.getFD().sync();

@@ -131,6 +131,8 @@ public enum ConfigPhysicalPlanType {
   @Deprecated
   ListRoleUsers((short) 637),
   CreateUserWithRawPassword((short) 638),
+  UpdateUserMaxSession((short) 639),
+  UpdateUserMinSession((short) 640),
 
   /** Table Author */
   RCreateUser((short) 641),
@@ -164,6 +166,8 @@ public enum ConfigPhysicalPlanType {
   RListRole((short) 670),
   RListUserPrivilege((short) 671),
   RListRolePrivilege((short) 672),
+  RUpdateUserMaxSession((short) 673),
+  RUpdateUserMinSession((short) 674),
 
   /** Function. */
   CreateFunction((short) 700),
