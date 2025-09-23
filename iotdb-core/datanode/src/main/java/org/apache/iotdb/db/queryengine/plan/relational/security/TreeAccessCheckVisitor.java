@@ -703,7 +703,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowStorageGroup(
+  public TSStatus visitShowDatabase(
       ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
     if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
       return SUCCEED;
@@ -713,7 +713,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitCountStorageGroup(
+  public TSStatus visitCountDatabase(
       CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
     if (AuthorityChecker.SUPER_USER.equals(context.userName)) {
       return SUCCEED;
@@ -723,7 +723,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitDeleteStorageGroup(
+  public TSStatus visitDeleteDatabase(
       DeleteDatabaseStatement statement, TreeAccessCheckContext context) {
     for (String prefixPath : statement.getPrefixPath()) {
       // root.__audit can never be deleted
