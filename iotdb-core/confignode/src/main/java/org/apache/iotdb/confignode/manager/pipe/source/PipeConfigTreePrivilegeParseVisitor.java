@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 
 public class PipeConfigTreePrivilegeParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, String> {
@@ -63,7 +64,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateDatabase(
       final DatabaseSchemaPlan createDatabasePlan, final String userName) {
-    return canReadSysSchema(createDatabasePlan.getSchema().getName(), userName)
+    return canReadSysSchema(createDatabasePlan.getSchema().getName(), userName, true)
         ? Optional.of(createDatabasePlan)
         : Optional.empty();
   }
@@ -71,7 +72,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitAlterDatabase(
       final DatabaseSchemaPlan alterDatabasePlan, final String userName) {
-    return canReadSysSchema(alterDatabasePlan.getSchema().getName(), userName)
+    return canReadSysSchema(alterDatabasePlan.getSchema().getName(), userName, true)
         ? Optional.of(alterDatabasePlan)
         : Optional.empty();
   }
@@ -79,7 +80,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
       final DeleteDatabasePlan deleteDatabasePlan, final String userName) {
-    return canReadSysSchema(deleteDatabasePlan.getName(), userName)
+    return canReadSysSchema(deleteDatabasePlan.getName(), userName, true)
         ? Optional.of(deleteDatabasePlan)
         : Optional.empty();
   }
@@ -87,44 +88,84 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateSchemaTemplate(
       final CreateSchemaTemplatePlan createSchemaTemplatePlan, final String userName) {
-    return canReadSysSchema(createSchemaTemplatePlan.getName(), userName)
-            ? Optional.of(createSchemaTemplatePlan)
-            : Optional.empty();
+    return canShowSchemaTemplate(createSchemaTemplatePlan.getTemplate().getName(), userName)
+        ? Optional.of(createSchemaTemplatePlan)
+        : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitSetSchemaTemplate(
       final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan, final String userName) {
-    return canReadSysSchema(commitSetSchemaTemplatePlan.getPath(), userName)
-            ? Optional.of(commitSetSchemaTemplatePlan)
-            : Optional.empty();
+    return canReadSysSchema(commitSetSchemaTemplatePlan.getPath(), userName, false)
+        ? Optional.of(commitSetSchemaTemplatePlan)
+        : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeUnsetSchemaTemplate(
       final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan, final String userName) {
-    return canReadSysSchema(pipeUnsetSchemaTemplatePlan.getPath(), userName)
-            ? Optional.of(pipeUnsetSchemaTemplatePlan)
-            : Optional.empty();
+    return canReadSysSchema(pipeUnsetSchemaTemplatePlan.getPath(), userName, false)
+        ? Optional.of(pipeUnsetSchemaTemplatePlan)
+        : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitExtendSchemaTemplate(
       final ExtendSchemaTemplatePlan extendSchemaTemplatePlan, final String userName) {
-    return canReadSysSchema(extendSchemaTemplatePlan.getName(), userName)
-            ? Optional.of(extendSchemaTemplatePlan)
-            : Optional.empty();
+    return canShowSchemaTemplate(
+            extendSchemaTemplatePlan.getTemplateExtendInfo().getTemplateName(), userName)
+        ? Optional.of(extendSchemaTemplatePlan)
+        : Optional.empty();
   }
 
-  public boolean canReadSysSchema(final String path, final String userName) {
+  public boolean canShowSchemaTemplate(final String templateName, final String userName) {
     try {
       return manager
-                  .checkUserPrivileges(
-                      userName,
-                      new PrivilegeUnion(new PartialPath(path), PrivilegeType.READ_SCHEMA))
+                  .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
                   .getStatus()
                   .getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || ConfigNode.getInstance()
+              .getConfigManager()
+              .getClusterSchemaManager()
+              .getPathsSetTemplate(templateName, ALL_MATCH_SCOPE)
+              .getPathList()
+              .stream()
+              .anyMatch(
+                  path -> {
+                    try {
+                      return manager
+                              .checkUserPrivileges(
+                                  userName,
+                                  new PrivilegeUnion(
+                                      new PartialPath(path).concatNode(MULTI_LEVEL_PATH_WILDCARD),
+                                      PrivilegeType.READ_SCHEMA))
+                              .getStatus()
+                              .getCode()
+                          == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+                    } catch (final IllegalPathException e) {
+                      throw new RuntimeException(e);
+                    }
+                  });
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Un-parse-able path name encountered during template privilege trimming, please check",
+          e);
+      return false;
+    }
+  }
+
+  public boolean canReadSysSchema(
+      final String path, final String userName, final boolean canSkipMulti) {
+    try {
+      return canSkipMulti
+              && manager
+                      .checkUserPrivileges(
+                          userName,
+                          new PrivilegeUnion(new PartialPath(path), PrivilegeType.READ_SCHEMA))
+                      .getStatus()
+                      .getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()
           || manager
                   .checkUserPrivileges(
                       userName,
