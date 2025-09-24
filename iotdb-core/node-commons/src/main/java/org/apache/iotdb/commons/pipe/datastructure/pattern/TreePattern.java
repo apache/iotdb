@@ -152,6 +152,9 @@ public abstract class TreePattern {
 
   private static List<TreePattern> parseMultiplePatterns(
       final String pattern, final Function<String, TreePattern> patternSupplier) {
+    if (pattern.isEmpty()) {
+      return Collections.singletonList(patternSupplier.apply(pattern));
+    }
     final List<TreePattern> patterns = new ArrayList<>();
     // Support comma-separated multiple patterns
     for (final String singlePattern : pattern.split(",")) {
