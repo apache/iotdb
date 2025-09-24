@@ -49,13 +49,18 @@ public class ActivateTemplateStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
+    return getPaths(path);
+  }
+
+  public static List<PartialPath> getPaths(final PartialPath devicePath) {
     ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
-    Pair<Template, PartialPath> templateSetInfo = clusterTemplateManager.checkTemplateSetInfo(path);
+    Pair<Template, PartialPath> templateSetInfo =
+        clusterTemplateManager.checkTemplateSetInfo(devicePath);
     if (templateSetInfo == null) {
       return Collections.emptyList();
     }
     return templateSetInfo.left.getSchemaMap().keySet().stream()
-        .map(path::concatAsMeasurementPath)
+        .map(devicePath::concatAsMeasurementPath)
         .collect(Collectors.toList());
   }
 
