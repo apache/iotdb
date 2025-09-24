@@ -33,11 +33,16 @@ import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
 public class ConfigNodeConfig {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeConfig.class);
 
   /** ClusterName, the default value "defaultCluster" will be changed after join cluster. */
   private volatile String clusterName = "defaultCluster";
@@ -1185,7 +1190,7 @@ public class ConfigNodeConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        e.printStackTrace();
+        LOGGER.warn("Failed to get field {}", configField, e);
       }
     }
     return configMessage.toString();

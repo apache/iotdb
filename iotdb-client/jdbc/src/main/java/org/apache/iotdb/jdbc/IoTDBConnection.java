@@ -280,11 +280,10 @@ public class IoTDBConnection implements Connection {
         }
       }
 
-      Statement stmt = this.createStatement();
-      String sql = "USE " + arg0;
-      boolean rs;
+      PreparedStatement stmt = this.prepareStatement("USE ?");
+      stmt.setString(1, arg0);
       try {
-        rs = stmt.execute(sql);
+        stmt.execute();
       } catch (SQLException e) {
         stmt.close();
         logger.error("Use database error: {}", e.getMessage());
@@ -352,11 +351,10 @@ public class IoTDBConnection implements Connection {
         }
       }
 
-      Statement stmt = this.createStatement();
-      String sql = "USE " + arg0;
-      boolean rs;
+      PreparedStatement stmt = this.prepareStatement("USE ?");
+      stmt.setString(1, arg0);
       try {
-        rs = stmt.execute(sql);
+        stmt.execute();
       } catch (SQLException e) {
         stmt.close();
         logger.error("Use database error: {}", e.getMessage());
