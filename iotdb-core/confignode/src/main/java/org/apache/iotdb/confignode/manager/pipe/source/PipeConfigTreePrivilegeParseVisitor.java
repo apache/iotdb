@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
@@ -235,7 +236,24 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteTimeSeries(
       final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, final String userName) {
-    return Optional.empty();
+    try {
+      final PathPatternTree intersectedTree =
+          PathPatternTree.deserialize(pipeDeleteTimeSeriesPlan.getPatternTreeBytes())
+              .intersectWithFullPathPrefixTree(
+                  ConfigNode.getInstance()
+                      .getConfigManager()
+                      .getPermissionManager()
+                      .fetchAuthorizedPTree(userName, PrivilegeType.READ_SCHEMA.ordinal())
+                      .getPathPatternTree());
+      return !intersectedTree.isEmpty()
+          ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
+          : Optional.empty();
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
+          e);
+      return Optional.empty();
+    }
   }
 
   @Override
