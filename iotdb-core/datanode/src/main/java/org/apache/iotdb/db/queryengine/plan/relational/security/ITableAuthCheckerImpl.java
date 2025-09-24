@@ -20,7 +20,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.AuditEventType;
-import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -188,22 +187,19 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setResult(false),
           TABLE_MODEL_AUDIT_DATABASE);
       AUDIT_LOGGER.log(
-          new AuditLogFields(
-              userName,
-              auditEntity.getUserId(),
-              auditEntity.getCliHostname(),
-              AuditEventType.OBJECT_AUTHENTICATION,
-              AuditLogOperation.QUERY,
-              PrivilegeType.SELECT,
-              false,
-              TABLE_MODEL_AUDIT_DATABASE,
-              auditEntity.getSqlString()),
-          String.format(
-              OBJECT_AUTHENTICATION_AUDIT_STR,
-              userName,
-              auditEntity.getUserId(),
-              TABLE_MODEL_AUDIT_DATABASE,
-              false));
+          auditEntity
+              .setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION)
+              .setAuditLogOperation(AuditLogOperation.QUERY)
+              .setPrivilegeType(PrivilegeType.SELECT)
+              .setResult(false)
+              .setDatabase(TABLE_MODEL_AUDIT_DATABASE),
+          () ->
+              String.format(
+                  OBJECT_AUTHENTICATION_AUDIT_STR,
+                  userName,
+                  auditEntity.getUserId(),
+                  TABLE_MODEL_AUDIT_DATABASE,
+                  false));
       throw new AccessDeniedException(
           String.format(
               "The database '%s' can only be queried by AUDIT admin.", TABLE_MODEL_AUDIT_DATABASE));
@@ -483,21 +479,13 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
 
   private static void recordAuditLog(IAuditEntity auditEntity, String auditObject) {
     AUDIT_LOGGER.log(
-        new AuditLogFields(
-            auditEntity.getUsername(),
-            auditEntity.getUserId(),
-            auditEntity.getCliHostname(),
-            AuditEventType.OBJECT_AUTHENTICATION,
-            auditEntity.getAuditLogOperation(),
-            auditEntity.getPrivilegeType(),
-            auditEntity.getResult(),
-            auditEntity.getDatabase(),
-            auditEntity.getSqlString()),
-        String.format(
-            OBJECT_AUTHENTICATION_AUDIT_STR,
-            auditEntity.getUsername(),
-            auditEntity.getUserId(),
-            auditObject,
-            true));
+        auditEntity.setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION),
+        () ->
+            String.format(
+                OBJECT_AUTHENTICATION_AUDIT_STR,
+                auditEntity.getUsername(),
+                auditEntity.getUserId(),
+                auditObject,
+                true));
   }
 }
