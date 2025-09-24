@@ -431,7 +431,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     return isAligned;
   }
 
-  public Tablet convertToTablet() throws IllegalPathException {
+  public Tablet convertToTablet() {
     if (!shouldParseTimeOrPattern()) {
       return tablet;
     }
@@ -440,7 +440,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   /////////////////////////// event parser ///////////////////////////
 
-  private TabletInsertionEventParser initEventParser() throws IllegalPathException {
+  private TabletInsertionEventParser initEventParser() {
     if (eventParser == null) {
       eventParser =
           tablet.getDeviceId().startsWith("root.")
