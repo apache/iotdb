@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -449,7 +450,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
                   tablet,
                   isAligned,
                   treePattern,
-                  skipIfNoPrivileges ? userName : null)
+                  skipIfNoPrivileges
+                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
+                      : null)
               : new TabletInsertionEventTablePatternParser(
                   pipeTaskMeta, this, tablet, isAligned, tablePattern);
     }

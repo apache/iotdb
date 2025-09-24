@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -54,7 +55,7 @@ public class TsFileInsertionEventParserProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
-  private final String userName;
+  private final IAuditEntity entity;
 
   public TsFileInsertionEventParserProvider(
       final String pipeName,
@@ -65,7 +66,7 @@ public class TsFileInsertionEventParserProvider {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final String userName,
+      final IAuditEntity entity,
       final PipeTsFileInsertionEvent sourceEvent) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
@@ -75,7 +76,7 @@ public class TsFileInsertionEventParserProvider {
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.userName = userName;
+    this.entity = entity;
     this.sourceEvent = sourceEvent;
   }
 
@@ -94,7 +95,7 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          userName,
+          entity,
           sourceEvent);
     }
 
@@ -110,7 +111,7 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          userName,
+          entity,
           sourceEvent);
     }
 
@@ -146,7 +147,7 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          userName,
+          entity,
           sourceEvent);
     }
 
@@ -164,7 +165,7 @@ public class TsFileInsertionEventParserProvider {
             startTime,
             endTime,
             pipeTaskMeta,
-            userName,
+            entity,
             sourceEvent)
         : new TsFileInsertionEventQueryParser(
             pipeName,
@@ -175,7 +176,7 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            userName,
+            entity,
             filteredDeviceIsAlignedMap);
   }
 
