@@ -314,14 +314,17 @@ public class PipeConfigTreePrivilegeParseVisitor
       final PathPatternTree thisPatternTree = new PathPatternTree();
       thisPatternTree.appendPathPattern(partialPath);
       thisPatternTree.constructTree();
-      final PathPatternTree intersectionList =
+      final PathPatternTree intersectedTree =
           thisPatternTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userName));
+      if (!skip && !thisPatternTree.equals(intersectedTree)) {
+        throw new AccessDeniedException("Not has privilege to transfer plan: " + setTTLPlan);
+      }
       // The intersectionList is either a singleton list or an empty list, because the pipe
       // pattern and TTL path are each either a prefix path or a full path
-      return !intersectionList.isEmpty()
+      return !intersectedTree.isEmpty()
           ? Optional.of(
               new SetTTLPlan(
-                  intersectionList.getAllPathPatterns().get(0).getNodes(), setTTLPlan.getTTL()))
+                  intersectedTree.getAllPathPatterns().get(0).getNodes(), setTTLPlan.getTTL()))
           : Optional.empty();
     } catch (final AuthException e) {
       if (skip) {
