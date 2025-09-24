@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -93,6 +94,15 @@ public class CteMaterializer {
                   if (cteDistPlan != null) {
                     context.addCteDistPlan(table, cteDistPlan);
                   }
+                } else if (context.isExplainAnalyze()) {
+                  List<String> cteDistPlan =
+                      fetchCteExplainAnalyzeResult(
+                          table,
+                          new ExplainAnalyze(query, context.isVerbose()),
+                          context.getTimeOut());
+                  if (cteDistPlan != null) {
+                    context.addCteDistPlan(table, cteDistPlan);
+                  }
                 }
               }
             });
@@ -144,6 +154,37 @@ public class CteMaterializer {
         explain,
         timeout,
         String.format("Explain query for CTE '%s'", table.getName()),
+        (queryId) -> {
+          List<String> lines = new ArrayList<>();
+          while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+            final Optional<TsBlock> tsBlock;
+            try {
+              tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+            } catch (IoTDBException e) {
+              throw new IoTDBRuntimeException(
+                  String.format("Fail to explain CTE query because %s", e.getMessage()),
+                  e.getErrorCode(),
+                  e.isUserException());
+            }
+            if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+              continue;
+            }
+
+            Column valueColumn = tsBlock.get().getColumn(0);
+            for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
+              lines.add(valueColumn.getBinary(i).toString());
+            }
+          }
+          return lines;
+        });
+  }
+
+  private static List<String> fetchCteExplainAnalyzeResult(
+      Table table, ExplainAnalyze explainAnalyze, long timeout) {
+    return execute(
+        explainAnalyze,
+        timeout,
+        String.format("Explain analyze query for CTE '%s'", table.getName()),
         (queryId) -> {
           List<String> lines = new ArrayList<>();
           while (coordinator.getQueryExecution(queryId).hasNextResult()) {
