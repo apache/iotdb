@@ -43,6 +43,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   protected final String pipeName;
   protected final long creationTime;
+  protected final String userName;
 
   protected final TreePattern treePattern; // used to filter data
   protected final TablePattern tablePattern; // used to filter data
@@ -70,9 +71,11 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
+      final String userName,
       final PipeInsertionEvent sourceEvent) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
+    this.userName = userName;
 
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;

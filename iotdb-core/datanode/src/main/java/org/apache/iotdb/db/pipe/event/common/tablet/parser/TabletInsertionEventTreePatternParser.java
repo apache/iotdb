@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -28,9 +31,11 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -44,14 +49,18 @@ import java.util.function.BiConsumer;
 public class TabletInsertionEventTreePatternParser extends TabletInsertionEventParser {
 
   private final TreePattern pattern;
+  private final String userName;
 
   public TabletInsertionEventTreePatternParser(
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final InsertNode insertNode,
-      final TreePattern pattern) {
+      final TreePattern pattern,
+      final String userName)
+      throws IllegalPathException {
     super(pipeTaskMeta, sourceEvent);
     this.pattern = pattern;
+    this.userName = userName;
 
     if (insertNode instanceof InsertRowNode) {
       parse((InsertRowNode) insertNode);
@@ -68,17 +77,20 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
       final EnrichedEvent sourceEvent,
       final Tablet tablet,
       final boolean isAligned,
-      final TreePattern pattern) {
+      final TreePattern pattern,
+      final String userName)
+      throws IllegalPathException {
     super(pipeTaskMeta, sourceEvent);
     this.pattern = pattern;
+    this.userName = userName;
 
     parse(tablet, isAligned);
   }
 
   @TestOnly
   public TabletInsertionEventTreePatternParser(
-      final InsertNode insertNode, final TreePattern pattern) {
-    this(null, null, insertNode, pattern);
+      final InsertNode insertNode, final TreePattern pattern) throws IllegalPathException {
+    this(null, null, insertNode, pattern, null);
   }
 
   @Override
@@ -89,12 +101,14 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
   @Override
   protected void generateColumnIndexMapper(
       final String[] originMeasurementList,
-      final Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
+      final Integer[] originColumnIndex2FilteredColumnIndexMapperList)
+      throws IllegalPathException {
     final int originColumnSize = originMeasurementList.length;
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
-    if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
+    if (Objects.isNull(userName)
+        && (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId))) {
       for (int i = 0; i < originColumnSize; i++) {
         originColumnIndex2FilteredColumnIndexMapperList[i] = i;
       }
@@ -113,7 +127,14 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
           continue;
         }
 
-        if (pattern.matchesMeasurement(deviceId, measurement)) {
+        if (pattern.matchesMeasurement(deviceId, measurement)
+            && (Objects.isNull(userName)
+                || TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                            userName,
+                            Collections.singletonList(new MeasurementPath(deviceId, measurement)),
+                            PrivilegeType.READ_DATA)
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
         }
       }
