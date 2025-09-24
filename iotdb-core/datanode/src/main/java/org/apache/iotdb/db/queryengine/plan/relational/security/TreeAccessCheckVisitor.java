@@ -884,7 +884,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowStorageGroup(
+  public TSStatus visitShowDatabase(
       ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.QUERY);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
@@ -897,7 +897,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitCountStorageGroup(
+  public TSStatus visitCountDatabase(
       CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       return SUCCEED;
@@ -907,7 +907,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitDeleteStorageGroup(
+  public TSStatus visitDeleteDatabase(
       DeleteDatabaseStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
     for (String prefixPath : statement.getPrefixPath()) {
