@@ -156,13 +156,6 @@ public abstract class BasicUserManager extends BasicRoleManager {
       } else {
         nextUserId = maxUserId;
       }
-
-      for (Map.Entry<String, Role> userEntry : entityMap.entrySet()) {
-        User user = (User) userEntry.getValue();
-        if (user.getUserId() == -1) {
-          user.setUserId(++nextUserId);
-        }
-      }
     } catch (IOException e) {
       LOGGER.warn("meet error in load max userId.", e);
       throw new RuntimeException(e);
@@ -286,16 +279,23 @@ public abstract class BasicUserManager extends BasicRoleManager {
   public void reset() throws AuthException {
     accessor.reset();
     entityMap.clear();
+    initUserId();
     for (String userId : accessor.listAllEntities()) {
       try {
         User user = (User) accessor.loadEntity(userId);
+        if (user.getUserId() == -1) {
+          if (user.getName().equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
+            user.setUserId(0);
+          } else {
+            user.setUserId(++nextUserId);
+          }
+        }
         entityMap.put(user.getName(), user);
       } catch (IOException e) {
         LOGGER.warn("Get exception when load user {}", userId);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }
-    initUserId();
     initAdmin();
     initInternalAuditorWhenNecessary();
   }
