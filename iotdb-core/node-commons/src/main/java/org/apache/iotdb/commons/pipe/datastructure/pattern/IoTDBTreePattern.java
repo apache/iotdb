@@ -33,9 +33,12 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class IoTDBTreePattern extends TreePattern {
 
@@ -61,6 +64,17 @@ public class IoTDBTreePattern extends TreePattern {
       final int[] filteredIndexes, final List<T> originalList) {
     return Objects.nonNull(originalList)
         ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
+        : null;
+  }
+
+  public static <T> List<T> applyReversedIndexesOnList(
+      final List<Integer> filteredIndexes, final List<T> originalList) {
+    final Set<Integer> indexes = new HashSet<>(filteredIndexes);
+    return Objects.nonNull(originalList)
+        ? IntStream.range(0, originalList.size())
+            .filter(index -> !indexes.contains(index)) // 保留不在排除列表中的下标
+            .mapToObj(originalList::get)
+            .collect(Collectors.toList())
         : null;
   }
 

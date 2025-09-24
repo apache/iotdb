@@ -26,7 +26,9 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -207,6 +209,33 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         context.setResult(true),
         () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public static List<MeasurementPath> getIntersectedPaths4Pipe(
+      final List<MeasurementPath> paths, final TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.QUERY).setPrivilegeType(PrivilegeType.READ_DATA);
+    if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
+      recordObjectAuthenticationAuditLog(
+          context.setResult(true),
+          () -> paths.stream().distinct().collect(Collectors.toList()).toString());
+      return paths;
+    }
+    try {
+      final PathPatternTree originalTree = new PathPatternTree();
+      paths.forEach(originalTree::appendPathPattern);
+      originalTree.constructTree();
+      final PathPatternTree tree =
+          AuthorityChecker.getAuthorizedPathTree(context.getUsername(), PrivilegeType.READ_DATA);
+      recordObjectAuthenticationAuditLog(
+          context.setResult(true),
+          () -> paths.stream().distinct().collect(Collectors.toList()).toString());
+      return originalTree.intersectWithFullPathPrefixTree(tree).getAllPathPatterns(true);
+    } catch (AuthException e) {
+      recordObjectAuthenticationAuditLog(
+          context.setResult(false),
+          () -> paths.stream().distinct().collect(Collectors.toList()).toString());
+      return Collections.emptyList();
+    }
   }
 
   // ====================== template related =================================
@@ -1082,6 +1111,20 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             permission);
     recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
     return result;
+  }
+
+  public static List<Integer> checkTimeSeriesPermission4Pipe(
+      IAuditEntity context, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
+    context.setPrivilegeType(permission);
+    if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
+      recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+      return Collections.emptyList();
+    }
+    final List<Integer> results =
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.getUsername(), checkedPaths, permission);
+    recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+    return results;
   }
 
   @Override
