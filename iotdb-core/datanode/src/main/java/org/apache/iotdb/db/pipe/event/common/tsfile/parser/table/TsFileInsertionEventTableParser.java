@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -160,16 +159,16 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                 }
 
                 private boolean hasTablePrivilege(final String tableName) {
-                  return Objects.isNull(userName)
+                  return Objects.isNull(entity)
                       || Objects.isNull(sourceEvent)
                       || Objects.isNull(sourceEvent.getTableModelDatabaseName())
                       || Coordinator.getInstance()
                           .getAccessControl()
                           .checkCanSelectFromTable4Pipe(
-                              userName,
+                              entity.getUsername(),
                               new QualifiedObjectName(
                                   sourceEvent.getTableModelDatabaseName(), tableName),
-                              new UserEntity(-1, userName, ""));
+                              entity);
                 }
 
                 @Override

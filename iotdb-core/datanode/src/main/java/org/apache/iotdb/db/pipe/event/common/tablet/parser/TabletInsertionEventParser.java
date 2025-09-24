@@ -112,7 +112,7 @@ public abstract class TabletInsertionEventParser {
 
   //////////////////////////// parse ////////////////////////////
 
-  protected void parse(final InsertRowNode insertRowNode) throws IllegalPathException {
+  protected void parse(final InsertRowNode insertRowNode) {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -285,7 +285,7 @@ public abstract class TabletInsertionEventParser {
     }
   }
 
-  protected void parse(final Tablet tablet, final boolean isAligned) throws IllegalPathException {
+  protected void parse(final Tablet tablet, final boolean isAligned) {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -394,8 +394,7 @@ public abstract class TabletInsertionEventParser {
 
   protected abstract void generateColumnIndexMapper(
       final String[] originMeasurementList,
-      final Integer[] originColumnIndex2FilteredColumnIndexMapperList)
-      throws IllegalPathException;
+      final Integer[] originColumnIndex2FilteredColumnIndexMapperList);
 
   private List<Integer> generateRowIndexList(final long[] originTimestampColumn) {
     final int rowCount = originTimestampColumn.length;

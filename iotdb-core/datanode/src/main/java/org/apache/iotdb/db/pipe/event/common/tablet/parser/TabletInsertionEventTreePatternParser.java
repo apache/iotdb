@@ -79,8 +79,7 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
       final Tablet tablet,
       final boolean isAligned,
       final TreePattern pattern,
-      final IAuditEntity entity)
-      throws IllegalPathException {
+      final IAuditEntity entity) {
     super(pipeTaskMeta, sourceEvent);
     this.pattern = pattern;
     this.entity = entity;
@@ -102,8 +101,7 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
   @Override
   protected void generateColumnIndexMapper(
       final String[] originMeasurementList,
-      final Integer[] originColumnIndex2FilteredColumnIndexMapperList)
-      throws IllegalPathException {
+      final Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
@@ -128,15 +126,19 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
           continue;
         }
 
-        if (pattern.matchesMeasurement(deviceId, measurement)
-            && (Objects.isNull(entity)
-                || TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                            entity,
-                            Collections.singletonList(new MeasurementPath(deviceId, measurement)),
-                            PrivilegeType.READ_DATA)
-                        .getCode()
-                    == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
-          originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
+        try {
+          if (pattern.matchesMeasurement(deviceId, measurement)
+              && (Objects.isNull(entity)
+                  || TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                              entity,
+                              Collections.singletonList(new MeasurementPath(deviceId, measurement)),
+                              PrivilegeType.READ_DATA)
+                          .getCode()
+                      == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+            originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
+          }
+        } catch (final IllegalPathException e) {
+          throw new RuntimeException(e);
         }
       }
     }
