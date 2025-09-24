@@ -172,8 +172,20 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   }
 
   private TsBlock buildResult() throws FragmentInstanceFetchException {
+    // CTE materialization
+    List<String> analyzeResult = new ArrayList<>();
+    mppQueryContext
+        .getCteDistPlans()
+        .forEach(
+            (table, distPlan) -> {
+              analyzeResult.add(String.format("CTE '%s' Query", table.getNode().getName()));
+              analyzeResult.addAll(distPlan);
+            });
 
-    List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+    if (!analyzeResult.isEmpty()) {
+      analyzeResult.add("Main Query");
+    }
+    analyzeResult.addAll(buildFragmentInstanceStatistics(instances, verbose));
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();

@@ -31,7 +31,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
-import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
@@ -148,10 +147,7 @@ public class FragmentInstanceExecution {
     statistics.setQueryStatistics(context.getQueryStatistics().toThrift());
     statistics.setState(getInstanceState().toString());
     IDataRegionForQuery dataRegionForQuery = context.getDataRegion();
-    if (dataRegionForQuery instanceof VirtualDataRegion) {
-      // We don't need to output the region having ExplainAnalyzeOperator only.
-      return false;
-    }
+
     statistics.setDataRegion(context.getDataRegion().getDataRegionId());
     statistics.setIp(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
     statistics.setStartTimeInMS(context.getStartTime());
