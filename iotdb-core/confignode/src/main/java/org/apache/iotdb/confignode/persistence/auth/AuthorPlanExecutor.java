@@ -54,7 +54,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -450,7 +449,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
       userList = new ArrayList<>(1);
       userList.add(plan.getUserName());
       User user = authorizer.getUser(plan.getUserName());
-      userInfoList = Collections.singletonList(user.convertToListUserInfo());
+      userInfoList = new ArrayList<>(1);
+      userInfoList.add(user.convertToListUserInfo());
     } else {
       userList = authorizer.listAllUsers();
       userInfoList = authorizer.listAllUsersInfo();
@@ -474,13 +474,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         }
       }
       userInfoList.removeIf(info -> toRemove.contains(info.username));
-      final Iterator<TListUserInfo> userInfoitr = userInfoList.iterator();
-      while (itr.hasNext()) {
-        User userObj = authorizer.getUser(userInfoitr.next().getUsername());
-        if (userObj == null || !userObj.hasRole(plan.getRoleName())) {
-          itr.remove();
-        }
-      }
     }
     result.setTag(ColumnHeaderConstant.USER);
     result.setMemberInfo(userList);

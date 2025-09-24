@@ -505,7 +505,7 @@ class AutoCreateSchemaExecutor {
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       final Statement statement, final MPPQueryContext context) {
     final TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
@@ -546,7 +546,7 @@ class AutoCreateSchemaExecutor {
   private void internalActivateTemplate(PartialPath devicePath, MPPQueryContext context) {
     ActivateTemplateStatement statement = new ActivateTemplateStatement(devicePath);
     TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
@@ -564,7 +564,7 @@ class AutoCreateSchemaExecutor {
     InternalBatchActivateTemplateStatement statement =
         new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate);
     TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
