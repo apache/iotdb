@@ -82,7 +82,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
   public static final PipeConfigTablePrivilegeParseVisitor TABLE_PRIVILEGE_PARSE_VISITOR =
       new PipeConfigTablePrivilegeParseVisitor();
   // Local for exception
-  public PipeConfigTreePrivilegeParseVisitor treePrivilegeParseVisitor;
+  private PipeConfigTreePrivilegeParseVisitor treePrivilegeParseVisitor;
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
   private CNPhysicalPlanGenerator parser;
 

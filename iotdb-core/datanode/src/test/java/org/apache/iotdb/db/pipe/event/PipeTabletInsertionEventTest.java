@@ -264,7 +264,7 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
-  public void convertToTabletForTest() {
+  public void convertToTabletForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(insertRowNode, new PrefixTreePattern(pattern));
     Tablet tablet1 = container1.convertToTablet();
@@ -295,7 +295,7 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
-  public void convertToAlignedTabletForTest() {
+  public void convertToAlignedTabletForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(
             insertRowNodeAligned, new PrefixTreePattern(pattern));

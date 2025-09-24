@@ -89,7 +89,7 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
 
   @TestOnly
   public TabletInsertionEventTreePatternParser(
-      final InsertNode insertNode, final TreePattern pattern) {
+      final InsertNode insertNode, final TreePattern pattern) throws IllegalPathException {
     this(null, null, insertNode, pattern, null);
   }
 
