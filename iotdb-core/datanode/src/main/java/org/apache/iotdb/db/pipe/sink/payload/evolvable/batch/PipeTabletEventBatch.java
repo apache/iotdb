@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -118,7 +117,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    *     exceptions and do not return {@code false} here.
    */
   protected abstract boolean constructBatch(final TabletInsertionEvent event)
-      throws WALPipeException, IOException, IllegalPathException;
+      throws WALPipeException, IOException;
 
   public boolean shouldEmit() {
     final long diff = System.currentTimeMillis() - firstEventProcessingTime;
