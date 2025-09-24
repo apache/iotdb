@@ -120,7 +120,7 @@ public class AllowAllAccessControl implements AccessControl {
 
   @Override
   public TSStatus checkFullPathWriteDataPermission(
-      String userName, IDeviceID device, String measurementId) {
+      IAuditEntity auditEntity, IDeviceID device, String measurementId) {
     return SUCCEED;
   }
 }
