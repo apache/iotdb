@@ -47,7 +47,7 @@ public class PermissionManager {
   private final ConfigManager configManager;
   private final AuthorInfo authorInfo;
 
-  public PermissionManager(ConfigManager configManager, AuthorInfo authorInfo) {
+  public PermissionManager(final ConfigManager configManager, final AuthorInfo authorInfo) {
     this.configManager = configManager;
     this.authorInfo = authorInfo;
   }
