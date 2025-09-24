@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.confignode.manager.pipe.source;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -44,6 +46,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -55,6 +58,11 @@ public class PipeConfigTreePrivilegeParseVisitor
       LoggerFactory.getLogger(PipeConfigTreePrivilegeParseVisitor.class);
   private static final PermissionManager manager =
       ConfigNode.getInstance().getConfigManager().getPermissionManager();
+  private boolean skip;
+
+  PipeConfigTreePrivilegeParseVisitor(final boolean skip) {
+    this.skip = skip;
+  }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
@@ -237,29 +245,60 @@ public class PipeConfigTreePrivilegeParseVisitor
   public Optional<ConfigPhysicalPlan> visitPipeDeleteTimeSeries(
       final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, final String userName) {
     try {
+      final PathPatternTree originalTree =
+          PathPatternTree.deserialize(pipeDeleteTimeSeriesPlan.getPatternTreeBytes());
       final PathPatternTree intersectedTree =
-          PathPatternTree.deserialize(pipeDeleteTimeSeriesPlan.getPatternTreeBytes())
-              .intersectWithFullPathPrefixTree(
-                  ConfigNode.getInstance()
-                      .getConfigManager()
-                      .getPermissionManager()
-                      .fetchAuthorizedPTree(userName, PrivilegeType.READ_SCHEMA.ordinal())
-                      .getPathPatternTree());
+          originalTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userName));
+      if (!skip && !originalTree.equals(intersectedTree)) {
+        throw new AccessDeniedException(
+            "Not has privilege to transfer plan: " + pipeDeleteTimeSeriesPlan);
+      }
       return !intersectedTree.isEmpty()
           ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
           : Optional.empty();
-    } catch (final Exception e) {
+    } catch (final IOException e) {
       LOGGER.warn(
           "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
           e);
       return Optional.empty();
+    } catch (final AuthException e) {
+      if (skip) {
+        return Optional.empty();
+      } else {
+        throw new AccessDeniedException(
+            "Not has privilege to transfer plan: " + pipeDeleteTimeSeriesPlan);
+      }
     }
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteLogicalView(
       final PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan, final String userName) {
-    return Optional.empty();
+    try {
+      final PathPatternTree originalTree =
+          PathPatternTree.deserialize(pipeDeleteLogicalViewPlan.getPatternTreeBytes());
+      final PathPatternTree intersectedTree =
+          originalTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userName));
+      if (!skip && !originalTree.equals(intersectedTree)) {
+        throw new AccessDeniedException(
+            "Not has privilege to transfer plan: " + pipeDeleteLogicalViewPlan);
+      }
+      return !intersectedTree.isEmpty()
+          ? Optional.of(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
+          : Optional.empty();
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
+          e);
+      return Optional.empty();
+    } catch (final AuthException e) {
+      if (skip) {
+        return Optional.empty();
+      } else {
+        throw new AccessDeniedException(
+            "Not has privilege to transfer plan: " + pipeDeleteLogicalViewPlan);
+      }
+    }
   }
 
   @Override
@@ -270,6 +309,33 @@ public class PipeConfigTreePrivilegeParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitTTL(final SetTTLPlan setTTLPlan, final String userName) {
-    return Optional.empty();
+    try {
+      final PartialPath partialPath = new PartialPath(setTTLPlan.getPathPattern());
+      final PathPatternTree thisPatternTree = new PathPatternTree();
+      thisPatternTree.appendPathPattern(partialPath);
+      thisPatternTree.constructTree();
+      final PathPatternTree intersectionList =
+          thisPatternTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userName));
+      // The intersectionList is either a singleton list or an empty list, because the pipe
+      // pattern and TTL path are each either a prefix path or a full path
+      return !intersectionList.isEmpty()
+          ? Optional.of(
+              new SetTTLPlan(
+                  intersectionList.getAllPathPatterns().get(0).getNodes(), setTTLPlan.getTTL()))
+          : Optional.empty();
+    } catch (final AuthException e) {
+      if (skip) {
+        return Optional.empty();
+      } else {
+        throw new AccessDeniedException("Not has privilege to transfer plan: " + setTTLPlan);
+      }
+    }
+  }
+
+  private PathPatternTree getAuthorizedPTree(final String userName) throws AuthException {
+    return ConfigNode.getInstance()
+        .getConfigManager()
+        .getPermissionManager()
+        .fetchRawAuthorizedPTree(userName, PrivilegeType.READ_SCHEMA);
   }
 }
