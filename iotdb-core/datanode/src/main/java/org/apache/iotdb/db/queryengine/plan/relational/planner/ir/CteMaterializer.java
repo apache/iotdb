@@ -212,6 +212,19 @@ public class CteMaterializer {
     final Map<String, Integer> columnNameIndexMap = datasetHeader.getColumnNameIndexMap();
     final List<ColumnSchema> columnSchemaList = new ArrayList<>();
 
+    // If CTE query returns empty result set, columnNameIndexMap is null
+    if (columnNameIndexMap == null) {
+      for (int i = 0; i < columnNames.size(); i++) {
+        columnSchemaList.add(
+            new ColumnSchema(
+                columnNames.get(i),
+                TypeFactory.getType(columnDataTypes.get(i)),
+                false,
+                TsTableColumnCategory.FIELD));
+      }
+      return new TableSchema(cteName, columnSchemaList);
+    }
+
     // build name -> type map
     Map<String, TSDataType> columnNameDataTypeMap =
         IntStream.range(0, columnNames.size())
