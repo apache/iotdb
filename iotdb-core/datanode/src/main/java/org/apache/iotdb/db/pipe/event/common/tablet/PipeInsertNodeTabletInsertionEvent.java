@@ -456,19 +456,30 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
-          treePatterns.forEach(
-              treePattern ->
-                  eventParsers.add(
-                      new TabletInsertionEventTreePatternParser(
-                          pipeTaskMeta, this, node, treePattern)));
-          break;
-        case INSERT_ROWS:
-          for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
+          if (treePatterns.isEmpty()) {
+            eventParsers.add(
+                new TabletInsertionEventTreePatternParser(pipeTaskMeta, this, node, null));
+          } else {
             treePatterns.forEach(
                 treePattern ->
                     eventParsers.add(
                         new TabletInsertionEventTreePatternParser(
-                            pipeTaskMeta, this, insertRowNode, treePattern)));
+                            pipeTaskMeta, this, node, treePattern)));
+          }
+          break;
+        case INSERT_ROWS:
+          for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
+            if (treePatterns.isEmpty()) {
+              eventParsers.add(
+                  new TabletInsertionEventTreePatternParser(
+                      pipeTaskMeta, this, insertRowNode, null));
+            } else {
+              treePatterns.forEach(
+                  treePattern ->
+                      eventParsers.add(
+                          new TabletInsertionEventTreePatternParser(
+                              pipeTaskMeta, this, insertRowNode, treePattern)));
+            }
           }
           break;
         case RELATIONAL_INSERT_ROW:

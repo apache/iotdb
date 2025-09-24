@@ -44,10 +44,9 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.record.Tablet;
 
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -414,55 +413,19 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    return () -> {
-      final Iterator<TabletInsertionEventParser> parsers = initEventParsers().iterator();
-      return new Iterator<TabletInsertionEvent>() {
-        Iterator<TabletInsertionEvent> current = Collections.emptyIterator();
-
-        @Override
-        public boolean hasNext() {
-          while (!current.hasNext() && parsers.hasNext()) {
-            current = parsers.next().processRowByRow(consumer).iterator();
-          }
-          return current.hasNext();
-        }
-
-        @Override
-        public TabletInsertionEvent next() {
-          if (!hasNext()) {
-            throw new NoSuchElementException();
-          }
-          return current.next();
-        }
-      };
-    };
+    return initEventParsers().stream()
+        .map(tabletInsertionEventParser -> tabletInsertionEventParser.processRowByRow(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    return () -> {
-      final Iterator<TabletInsertionEventParser> parsers = initEventParsers().iterator();
-      return new Iterator<TabletInsertionEvent>() {
-        Iterator<TabletInsertionEvent> current = Collections.emptyIterator();
-
-        @Override
-        public boolean hasNext() {
-          while (!current.hasNext() && parsers.hasNext()) {
-            current = parsers.next().processTablet(consumer).iterator();
-          }
-          return current.hasNext();
-        }
-
-        @Override
-        public TabletInsertionEvent next() {
-          if (!hasNext()) {
-            throw new NoSuchElementException();
-          }
-          return current.next();
-        }
-      };
-    };
+    return initEventParsers().stream()
+        .map(tabletInsertionEventParser -> tabletInsertionEventParser.processTablet(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -485,12 +448,16 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     if (Objects.isNull(eventParsers)) {
       eventParsers =
           tablet.getDeviceId().startsWith("root.")
-              ? treePatterns.stream()
-                  .map(
-                      treePattern ->
-                          new TabletInsertionEventTreePatternParser(
-                              pipeTaskMeta, this, tablet, isAligned, treePattern))
-                  .collect(Collectors.toList())
+              ? (treePatterns.isEmpty()
+                  ? Collections.singletonList(
+                      new TabletInsertionEventTreePatternParser(
+                          pipeTaskMeta, this, tablet, isAligned, null))
+                  : treePatterns.stream()
+                      .map(
+                          treePattern ->
+                              new TabletInsertionEventTreePatternParser(
+                                  pipeTaskMeta, this, tablet, isAligned, treePattern))
+                      .collect(Collectors.toList()))
               : Collections.singletonList(
                   new TabletInsertionEventTablePatternParser(
                       pipeTaskMeta, this, tablet, isAligned, tablePattern));
