@@ -62,7 +62,7 @@ public class PipeConfigTreePrivilegeParseVisitor
       LoggerFactory.getLogger(PipeConfigTreePrivilegeParseVisitor.class);
   private static final PermissionManager manager =
       ConfigNode.getInstance().getConfigManager().getPermissionManager();
-  private boolean skip;
+  private final boolean skip;
 
   PipeConfigTreePrivilegeParseVisitor(final boolean skip) {
     this.skip = skip;
@@ -71,7 +71,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
       final ConfigPhysicalPlan plan, final String context) {
-    return Optional.empty();
+    return Optional.of(plan);
   }
 
   @Override
