@@ -101,7 +101,7 @@ public abstract class EnrichedEvent implements Event {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.treePatterns = treePatterns;
+    this.treePatterns = Objects.nonNull(treePatterns) ? treePatterns : Collections.emptyList();
     this.tablePattern = tablePattern;
     this.userId = userId;
     this.userName = userName;
