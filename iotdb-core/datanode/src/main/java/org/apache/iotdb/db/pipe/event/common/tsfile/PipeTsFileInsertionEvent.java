@@ -491,7 +491,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         }
         final TSStatus status =
             TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                userName, measurementList, PrivilegeType.READ_DATA);
+                new UserEntity(Long.parseLong(userId), userName, cliHostname),
+                measurementList,
+                PrivilegeType.READ_DATA);
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
           if (skipIfNoPrivileges) {
             shouldParse4Privilege = true;
@@ -734,7 +736,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   pipeTaskMeta,
                   // Do not parse privilege if it should not be parsed
                   // To avoid renaming of the tsFile database
-                  shouldParse4Privilege ? userName : null,
+                  shouldParse4Privilege
+                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
+                      : null,
                   this)
               .provide());
       return eventParser.get();

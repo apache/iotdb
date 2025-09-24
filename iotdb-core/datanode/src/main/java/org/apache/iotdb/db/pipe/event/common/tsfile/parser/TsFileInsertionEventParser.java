@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -43,7 +44,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   protected final String pipeName;
   protected final long creationTime;
-  protected final String userName;
+  protected IAuditEntity entity;
 
   protected final TreePattern treePattern; // used to filter data
   protected final TablePattern tablePattern; // used to filter data
@@ -71,11 +72,11 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final String userName,
+      final IAuditEntity entity,
       final PipeInsertionEvent sourceEvent) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
-    this.userName = userName;
+    this.entity = entity;
 
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;

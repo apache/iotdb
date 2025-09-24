@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -102,7 +103,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final String userName,
+      final IAuditEntity entity,
       final PipeInsertionEvent sourceEvent)
       throws IOException, IllegalPathException {
     super(
@@ -113,7 +114,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         startTime,
         endTime,
         pipeTaskMeta,
-        userName,
+        entity,
         sourceEvent);
 
     this.startTime = startTime;
@@ -443,9 +444,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           }
 
           if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())
-              && (Objects.isNull(userName)
+              && (Objects.isNull(entity)
                   || TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                              userName,
+                              entity,
                               Collections.singletonList(
                                   new MeasurementPath(
                                       currentDevice, chunkHeader.getMeasurementID())),
