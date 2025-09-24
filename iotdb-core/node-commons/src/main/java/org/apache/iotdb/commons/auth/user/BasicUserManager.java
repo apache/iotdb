@@ -39,6 +39,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
+
+
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
 
@@ -54,7 +57,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return "No such user %s";
   }
 
-  protected long nextUserId = 9999;
+  protected long nextUserId = INTERNAL_USER_END_ID;
 
   /**
    * BasicUserManager Constructor.
@@ -108,11 +111,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void initUserId() {
     try {
       long maxUserId = this.accessor.loadUserId();
-      if (maxUserId < 9999) {
-        nextUserId = 9999;
-      } else {
-        nextUserId = maxUserId;
-      }
+      nextUserId = Math.max(maxUserId, INTERNAL_USER_END_ID);
 
       for (Map.Entry<String, Role> userEntry : entityMap.entrySet()) {
         User user = (User) userEntry.getValue();
@@ -240,16 +239,23 @@ public abstract class BasicUserManager extends BasicRoleManager {
   public void reset() throws AuthException {
     accessor.reset();
     entityMap.clear();
+    initUserId();
     for (String userId : accessor.listAllEntities()) {
       try {
         User user = (User) accessor.loadEntity(userId);
+        if (user.getUserId() == -1) {
+          if (user.getName().equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
+            user.setUserId(0);
+          } else {
+            user.setUserId(++nextUserId);
+          }
+        }
         entityMap.put(user.getName(), user);
       } catch (IOException e) {
         LOGGER.warn("Get exception when load user {}", userId);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }
-    initUserId();
     initAdmin();
   }
 
