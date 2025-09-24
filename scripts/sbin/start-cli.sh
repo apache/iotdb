@@ -73,8 +73,13 @@ while true; do
             shift 2
             ;;
         -pw)
-            passwd_param="-pw $2"
-            shift 2
+            if [ -n "$2" ] && [[ ! "$2" =~ ^- ]]; then
+                passwd_param="-pw $2"
+                shift 2
+            else
+                passwd_param="-pw"
+                shift
+            fi
         ;;
         -h)
             host_param="-h $2"
@@ -158,6 +163,7 @@ JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 
 set -o noglob
 iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-cli.xml"
+echo $PARAMETERS
 exec "$JAVA" $JVM_OPTS $iotdb_cli_params $illegal_access_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
 exit $?

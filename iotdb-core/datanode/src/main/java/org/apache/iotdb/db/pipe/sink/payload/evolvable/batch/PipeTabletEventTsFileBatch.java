@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -44,6 +45,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
 public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
@@ -77,7 +80,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  protected boolean constructBatch(final TabletInsertionEvent event) {
+  protected boolean constructBatch(final TabletInsertionEvent event) throws IllegalPathException {
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
@@ -85,7 +88,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
-        if (tablet.getRowSize() == 0) {
+        if (isTabletEmpty(tablet)) {
           continue;
         }
         if (isTableModel) {
@@ -108,7 +111,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
       final Tablet tablet = rawTabletInsertionEvent.convertToTablet();
-      if (tablet.getRowSize() == 0) {
+      if (isTabletEmpty(tablet)) {
         return true;
       }
       if (rawTabletInsertionEvent.isTableModelEvent()) {

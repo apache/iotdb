@@ -52,7 +52,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
+public class PipeConfigTreePatternParseVisitorTest {
 
   private final IoTDBTreePattern prefixPathPattern = new IoTDBTreePattern("root.db.device.**");
   private final IoTDBTreePattern fullPathPattern = new IoTDBTreePattern("root.db.device.s1");
