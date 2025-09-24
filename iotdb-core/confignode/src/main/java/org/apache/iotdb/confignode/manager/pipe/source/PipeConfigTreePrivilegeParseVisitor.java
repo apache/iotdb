@@ -41,12 +41,16 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -304,27 +308,39 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeactivateTemplate(
       final PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan, final String userName) {
-    return Optional.empty();
+    try {
+      final Map<PartialPath, List<Template>> newTemplateSetInfo = new HashMap<>();
+      for (final Map.Entry<PartialPath, List<Template>> templateEntry :
+          pipeDeactivateTemplatePlan.getTemplateSetInfo().entrySet()) {
+        for (final PartialPath intersectedPath :
+            getAllIntersectedPatterns(
+                templateEntry.getKey(), userName, pipeDeactivateTemplatePlan)) {
+          newTemplateSetInfo.put(intersectedPath, templateEntry.getValue());
+        }
+      }
+      return !newTemplateSetInfo.isEmpty()
+          ? Optional.of(new PipeDeactivateTemplatePlan(newTemplateSetInfo))
+          : Optional.empty();
+    } catch (final AuthException e) {
+      if (skip) {
+        return Optional.empty();
+      } else {
+        throw new AccessDeniedException(
+            "Not has privilege to transfer plan: " + pipeDeactivateTemplatePlan);
+      }
+    }
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitTTL(final SetTTLPlan setTTLPlan, final String userName) {
     try {
-      final PartialPath partialPath = new PartialPath(setTTLPlan.getPathPattern());
-      final PathPatternTree thisPatternTree = new PathPatternTree();
-      thisPatternTree.appendPathPattern(partialPath);
-      thisPatternTree.constructTree();
-      final PathPatternTree intersectedTree =
-          thisPatternTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userName));
-      if (!skip && !thisPatternTree.equals(intersectedTree)) {
-        throw new AccessDeniedException("Not has privilege to transfer plan: " + setTTLPlan);
-      }
+      final List<PartialPath> paths =
+          getAllIntersectedPatterns(
+              new PartialPath(setTTLPlan.getPathPattern()), userName, setTTLPlan);
       // The intersectionList is either a singleton list or an empty list, because the pipe
       // pattern and TTL path are each either a prefix path or a full path
-      return !intersectedTree.isEmpty()
-          ? Optional.of(
-              new SetTTLPlan(
-                  intersectedTree.getAllPathPatterns().get(0).getNodes(), setTTLPlan.getTTL()))
+      return !paths.isEmpty()
+          ? Optional.of(new SetTTLPlan(paths.get(0).getNodes(), setTTLPlan.getTTL()))
           : Optional.empty();
     } catch (final AuthException e) {
       if (skip) {
@@ -333,6 +349,20 @@ public class PipeConfigTreePrivilegeParseVisitor
         throw new AccessDeniedException("Not has privilege to transfer plan: " + setTTLPlan);
       }
     }
+  }
+
+  private List<PartialPath> getAllIntersectedPatterns(
+      final PartialPath partialPath, final String userName, final ConfigPhysicalPlan plan)
+      throws AuthException {
+    final PathPatternTree thisPatternTree = new PathPatternTree();
+    thisPatternTree.appendPathPattern(partialPath);
+    thisPatternTree.constructTree();
+    final PathPatternTree intersectedTree =
+        thisPatternTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userName));
+    if (!skip && !thisPatternTree.equals(intersectedTree)) {
+      throw new AccessDeniedException("Not has privilege to transfer plan: " + plan);
+    }
+    return intersectedTree.getAllPathPatterns();
   }
 
   private PathPatternTree getAuthorizedPTree(final String userName) throws AuthException {
