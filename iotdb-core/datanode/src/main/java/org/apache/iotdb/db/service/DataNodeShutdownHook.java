@@ -107,7 +107,7 @@ public class DataNodeShutdownHook extends Thread {
             null,
             null);
     String logMessage = String.format("DataNode %s exiting...", nodeLocation);
-    DNAuditLogger.getInstance().log(fields, logMessage);
+    DNAuditLogger.getInstance().log(fields, () -> logMessage);
 
     startWatcher();
     // Stop external rpc service firstly.
