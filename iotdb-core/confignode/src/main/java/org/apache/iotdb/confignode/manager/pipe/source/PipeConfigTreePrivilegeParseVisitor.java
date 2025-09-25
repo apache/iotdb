@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnse
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
-import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -60,8 +59,6 @@ public class PipeConfigTreePrivilegeParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, String> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConfigTreePrivilegeParseVisitor.class);
-  private static final PermissionManager manager =
-      ConfigNode.getInstance().getConfigManager().getPermissionManager();
   private final boolean skip;
 
   PipeConfigTreePrivilegeParseVisitor(final boolean skip) {
@@ -133,7 +130,9 @@ public class PipeConfigTreePrivilegeParseVisitor
 
   public boolean canShowSchemaTemplate(final String templateName, final String userName) {
     try {
-      return manager
+      return ConfigNode.getInstance()
+                  .getConfigManager()
+                  .getPermissionManager()
                   .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
                   .getStatus()
                   .getCode()
@@ -147,7 +146,9 @@ public class PipeConfigTreePrivilegeParseVisitor
               .anyMatch(
                   path -> {
                     try {
-                      return manager
+                      return ConfigNode.getInstance()
+                              .getConfigManager()
+                              .getPermissionManager()
                               .checkUserPrivileges(
                                   userName,
                                   new PrivilegeUnion(
@@ -172,14 +173,18 @@ public class PipeConfigTreePrivilegeParseVisitor
       final String path, final String userName, final boolean canSkipMulti) {
     try {
       return canSkipMulti
-              && manager
+              && ConfigNode.getInstance()
+                      .getConfigManager()
+                      .getPermissionManager()
                       .checkUserPrivileges(
                           userName,
                           new PrivilegeUnion(new PartialPath(path), PrivilegeType.READ_SCHEMA))
                       .getStatus()
                       .getCode()
                   == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || manager
+          || ConfigNode.getInstance()
+                  .getConfigManager()
+                  .getPermissionManager()
                   .checkUserPrivileges(
                       userName,
                       new PrivilegeUnion(
@@ -188,7 +193,9 @@ public class PipeConfigTreePrivilegeParseVisitor
                   .getStatus()
                   .getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || manager
+          || ConfigNode.getInstance()
+                  .getConfigManager()
+                  .getPermissionManager()
                   .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
                   .getStatus()
                   .getCode()
@@ -225,7 +232,9 @@ public class PipeConfigTreePrivilegeParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitUserPlan(
       final AuthorTreePlan plan, final String userName) {
-    return manager
+    return ConfigNode.getInstance()
+                .getConfigManager()
+                .getPermissionManager()
                 .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                 .getStatus()
                 .getCode()
@@ -236,7 +245,9 @@ public class PipeConfigTreePrivilegeParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitRolePlan(
       final AuthorTreePlan plan, final String userName) {
-    return manager
+    return ConfigNode.getInstance()
+                .getConfigManager()
+                .getPermissionManager()
                 .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
                 .getStatus()
                 .getCode()
