@@ -794,7 +794,7 @@ public class TestUtils {
       final ResultSet actualResultSet,
       final String expectedHeader,
       final Collection<String> expectedResult) {
-    assertResultSetEqual(actualResultSet, expectedHeader, expectedResult, true);
+    assertResultSetEqual(actualResultSet, expectedHeader, expectedResult, false);
   }
 
   public static void assertResultSetEqual(
@@ -1466,7 +1466,7 @@ public class TestUtils {
 
   public static void assertDataEventuallyOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
-    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 120);
   }
 
   public static void assertDataEventuallyOnEnv(

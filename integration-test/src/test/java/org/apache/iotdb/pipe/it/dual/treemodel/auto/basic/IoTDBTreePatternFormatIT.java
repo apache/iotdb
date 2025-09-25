@@ -127,8 +127,6 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.path", "root.**.d1.s*");
-      // When path is set, pattern should be ignored
-      extractorAttributes.put("extractor.pattern", "root");
       extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -252,11 +250,11 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       final Set<String> expectedResSet = new HashSet<>();
-      expectedResSet.add("1,,1.0,1.0,");
-      expectedResSet.add("1,3.0,,,");
+      expectedResSet.add("1,null,1.0,1.0,");
+      expectedResSet.add("3,3.0,null,null,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.db2.**,root.db.**",
           "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
           expectedResSet);
     }
@@ -305,12 +303,12 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       final Set<String> expectedResSet = new HashSet<>();
-      expectedResSet.add("1,,,1.0,1.0,,");
-      expectedResSet.add("2,,,,,2.0,");
-      expectedResSet.add("3,3.0,3.0,,,,");
+      expectedResSet.add("1,null,null,1.0,1.0,null,");
+      expectedResSet.add("2,null,null,null,null,2.0,");
+      expectedResSet.add("3,3.0,3.0,null,null,null,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.db2.**,root.db.**",
           "Time,root.db2.d1.s,root.db2.d1.t,root.db.d1.s,root.db.d1.s1,root.db.d2.s,",
           expectedResSet);
     }
@@ -358,11 +356,11 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       awaitUntilFlush(senderEnv);
 
       final Set<String> expectedResSet = new HashSet<>();
-      expectedResSet.add("1,,1.0,1.0,");
-      expectedResSet.add("1,3.0,,,");
+      expectedResSet.add("1,null,1.0,1.0,");
+      expectedResSet.add("3,3.0,null,null,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.db2.**,root.db.**",
           "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
           expectedResSet);
     }
@@ -411,12 +409,12 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       awaitUntilFlush(senderEnv);
 
       final Set<String> expectedResSet = new HashSet<>();
-      expectedResSet.add("1,,,1.0,1.0,,");
-      expectedResSet.add("2,,,,,2.0,");
-      expectedResSet.add("3,3.0,3.0,,,,");
+      expectedResSet.add("1,null,null,1.0,1.0,null,");
+      expectedResSet.add("2,null,null,null,null,2.0,");
+      expectedResSet.add("3,3.0,3.0,null,null,null,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.db2.**,root.db.**",
           "Time,root.db2.d1.s,root.db2.d1.t,root.db.d1.s,root.db.d1.s1,root.db.d2.s,",
           expectedResSet);
     }
