@@ -480,7 +480,7 @@ public class WriteBackSink implements PipeConnector {
       PipeLogger.log(
           LOGGER::warn,
           "Session {}: Failed to check authority for statement {}, username = {}, response = {}.",
-          session.getClientPort(),
+          session.getClientAddress() + ":" + session.getClientPort(),
           statement.getType().name(),
           session.getUsername(),
           permissionCheckStatus);
