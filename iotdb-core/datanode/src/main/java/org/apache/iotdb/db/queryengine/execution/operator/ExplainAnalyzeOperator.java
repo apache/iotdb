@@ -32,6 +32,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperato
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
 import org.apache.iotdb.db.queryengine.statistics.StatisticLine;
@@ -45,6 +47,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,20 +175,10 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   }
 
   private TsBlock buildResult() throws FragmentInstanceFetchException {
-    // CTE materialization
-    List<String> analyzeResult = new ArrayList<>();
-    mppQueryContext
-        .getCteDistPlans()
-        .forEach(
-            (table, distPlan) -> {
-              analyzeResult.add(String.format("CTE '%s' Query", table.getNode().getName()));
-              analyzeResult.addAll(distPlan);
-            });
-
-    if (!analyzeResult.isEmpty()) {
-      analyzeResult.add("Main Query");
-    }
-    analyzeResult.addAll(buildFragmentInstanceStatistics(instances, verbose));
+    Map<NodeRef<Table>, Pair<Integer, List<String>>> cteAnalyzeResults =
+        mppQueryContext.getCteExplainResults();
+    List<String> mainAnalyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+    List<String> analyzeResult = mergeAnalyzeResults(cteAnalyzeResults, mainAnalyzeResult);
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
@@ -197,6 +190,47 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       builder.declarePosition();
     }
     return builder.build();
+  }
+
+  private List<String> mergeAnalyzeResults(
+      Map<NodeRef<Table>, Pair<Integer, List<String>>> cteAnalyzeResults,
+      List<String> mainAnalyzeResult) {
+    if (cteAnalyzeResults.isEmpty()) {
+      return mainAnalyzeResult;
+    }
+
+    final int maxLineLength =
+        Math.max(
+            cteAnalyzeResults.values().stream().mapToInt(p -> p.left).max().orElse(0),
+            fragmentInstanceStatisticsDrawer.getMaxLineLength());
+
+    List<String> analyzeResult = new ArrayList<>();
+    cteAnalyzeResults.forEach(
+        (table, pair) -> {
+          analyzeResult.add(String.format("CTE '%s' Query", table.getNode().getName()));
+          for (String line : pair.right) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(line);
+            for (int i = 0; i < maxLineLength - line.length(); i++) {
+              sb.append(" ");
+            }
+            analyzeResult.add(sb.toString());
+          }
+          analyzeResult.add("");
+        });
+
+    analyzeResult.add("Main Query");
+    mainAnalyzeResult.forEach(
+        line -> {
+          StringBuilder sb = new StringBuilder();
+          sb.append(line);
+          for (int i = 0; i < maxLineLength - line.length(); i++) {
+            sb.append(" ");
+          }
+          analyzeResult.add(sb.toString());
+        });
+
+    return analyzeResult;
   }
 
   @Override

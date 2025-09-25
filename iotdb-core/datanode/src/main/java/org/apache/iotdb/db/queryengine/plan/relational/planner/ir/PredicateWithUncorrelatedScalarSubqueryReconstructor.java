@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.ExplainType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -111,6 +112,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
               "Try to Fetch Uncorrelated Scalar Subquery Result for Predicate",
               LocalExecutionPlanner.getInstance().metadata,
               context.getCteDataStores(),
+              ExplainType.NONE,
               context.getTimeOut(),
               false);
 

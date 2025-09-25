@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
+import org.apache.iotdb.db.queryengine.common.ExplainType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -330,10 +331,16 @@ public class Coordinator {
   }
 
   /**
-   * This method is specifically called in fetchUncorrelatedSubqueryResultForPredicate. When
-   * uncorrelated scalar subquery is handled in SubqueryPlanner, we try to fold it and get constant
-   * value. Since CTE could be used in the subquery, we should add CTE materialization result into
+   * This method is specifically used following subquery:
+   *
+   * <p>1. When uncorrelated scalar subquery is handled
+   * (fetchUncorrelatedSubqueryResultForPredicate), we try to fold it and get constant value. Since
+   * CTE might be referenced, we need to add CTE materialization result into subquery's
    * MPPQueryContext.
+   *
+   * <p>2. When CTE subquery is handled (fetchCteQueryResult), the main query, however, might be
+   * 'Explain' or 'Explain Analyze' statement. So we need to keep explain/explain analyze results
+   * along with CTE query dataset.
    */
   public ExecutionResult executeForTableModel(
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
@@ -344,6 +351,7 @@ public class Coordinator {
       String sql,
       Metadata metadata,
       Map<NodeRef<Table>, CteDataStore> cteDataStoreMap,
+      ExplainType explainType,
       long timeOut,
       boolean userQuery) {
     return execution(
@@ -352,8 +360,9 @@ public class Coordinator {
         sql,
         userQuery,
         ((queryContext, startTime) -> {
-          queryContext.setCteDataStores(cteDataStoreMap);
           queryContext.setSubquery(true);
+          queryContext.setCteDataStores(cteDataStoreMap);
+          queryContext.setExplainType(explainType);
           return createQueryExecutionForTableModel(
               statement,
               sqlParser,

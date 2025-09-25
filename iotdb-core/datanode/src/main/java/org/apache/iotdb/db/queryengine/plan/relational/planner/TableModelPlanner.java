@@ -152,7 +152,7 @@ public class TableModelPlanner implements IPlanner {
               metadata,
               distributionPlanOptimizers,
               dataNodeLocationSupplier);
-      return planner.plan();
+      return planner.plan(context);
     } finally {
       if (analysis.isQuery()) {
         long distributionPlanCost = System.nanoTime() - startTime;
