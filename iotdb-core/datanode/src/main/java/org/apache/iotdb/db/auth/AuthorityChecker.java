@@ -159,7 +159,7 @@ public class AuthorityChecker {
   }
 
   public static IAuditEntity createIAuditEntity(String userName, IClientSession clientSession) {
-    if (clientSession != null) {
+    if (clientSession != null && clientSession.getUsername() != null) {
       return new UserEntity(
           clientSession.getUserId(), clientSession.getUsername(), clientSession.getClientAddress());
     } else if (userName != null) {
