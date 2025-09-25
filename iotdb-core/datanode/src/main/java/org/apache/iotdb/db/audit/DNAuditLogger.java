@@ -244,12 +244,15 @@ public class DNAuditLogger extends AbstractAuditLogger {
             || result.status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
 
           if (auditLogTtlInDays > 0) {
+            long auditLogTtlInMs;
+            if (auditLogTtlInDays == Long.MAX_VALUE) {
+              auditLogTtlInMs = Long.MAX_VALUE;
+            } else {
+              auditLogTtlInMs = auditLogTtlInDays * 24 * 3600 * 1000;
+            }
             statement =
                 StatementGenerator.createStatement(
-                    "SET TTL TO "
-                        + AUDIT_LOG_DEVICE_PATH
-                        + " "
-                        + auditLogTtlInDays * 24 * 3600 * 1000,
+                    "SET TTL TO " + AUDIT_LOG_DEVICE_PATH + " " + auditLogTtlInMs,
                     ZoneId.systemDefault());
             coordinator.executeForTreeModel(
                 statement,
