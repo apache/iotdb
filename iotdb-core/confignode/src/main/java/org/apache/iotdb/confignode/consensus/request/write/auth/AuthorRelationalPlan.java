@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -190,10 +191,15 @@ public class AuthorRelationalPlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(userName, stream);
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
-    if (getAuthorType() == ConfigPhysicalPlanType.UpdateUserMaxSession
-        || getAuthorType() == ConfigPhysicalPlanType.UpdateUserMinSession) {
+    ConfigPhysicalPlanType authorType = getAuthorType();
+    if (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
+        || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
       BasicStructureSerDeUtil.write(maxSessionPerUser, stream);
       BasicStructureSerDeUtil.write(minSessionPerUser, stream);
+    }
+    if (authorType == ConfigPhysicalPlanType.RDropUserV2
+        || authorType == ConfigPhysicalPlanType.RUpdateUserV2) {
+      BasicStructureSerDeUtil.write(executedByUserId, stream);
     }
     BasicStructureSerDeUtil.write(databaseName, stream);
     BasicStructureSerDeUtil.write(tableName, stream);
@@ -210,10 +216,15 @@ public class AuthorRelationalPlan extends AuthorPlan {
     userName = BasicStructureSerDeUtil.readString(buffer);
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
-    if (getAuthorType() == ConfigPhysicalPlanType.UpdateUserMaxSession
-        || getAuthorType() == ConfigPhysicalPlanType.UpdateUserMinSession) {
+    ConfigPhysicalPlanType authorType = getAuthorType();
+    if (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
+        || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
       maxSessionPerUser = buffer.getInt();
       minSessionPerUser = buffer.getInt();
+    }
+    if (authorType == ConfigPhysicalPlanType.RDropUserV2
+        || authorType == ConfigPhysicalPlanType.RUpdateUserV2) {
+      executedByUserId = buffer.getLong();
     }
     databaseName = BasicStructureSerDeUtil.readString(buffer);
     tableName = BasicStructureSerDeUtil.readString(buffer);

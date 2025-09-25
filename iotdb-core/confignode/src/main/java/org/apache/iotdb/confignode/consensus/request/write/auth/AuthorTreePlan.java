@@ -194,9 +194,7 @@ public class AuthorTreePlan extends AuthorPlan {
       BasicStructureSerDeUtil.write(minSessionPerUser, stream);
     }
     if (authorType == ConfigPhysicalPlanType.DropUserV2
-        || authorType == ConfigPhysicalPlanType.RDropUserV2
-        || authorType == ConfigPhysicalPlanType.UpdateUserV2
-        || authorType == ConfigPhysicalPlanType.RUpdateUserV2) {
+        || authorType == ConfigPhysicalPlanType.UpdateUserV2) {
       BasicStructureSerDeUtil.write(executedByUserId, stream);
     }
     if (permissions == null) {
@@ -228,9 +226,7 @@ public class AuthorTreePlan extends AuthorPlan {
       minSessionPerUser = buffer.getInt();
     }
     if (authorType == ConfigPhysicalPlanType.DropUserV2
-        || authorType == ConfigPhysicalPlanType.RDropUserV2
-        || authorType == ConfigPhysicalPlanType.UpdateUserV2
-        || authorType == ConfigPhysicalPlanType.RUpdateUserV2) {
+        || authorType == ConfigPhysicalPlanType.UpdateUserV2) {
       executedByUserId = buffer.getLong();
     }
     if (buffer.get() == (byte) 0) {

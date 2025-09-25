@@ -135,8 +135,6 @@ public enum ConfigPhysicalPlanType {
   CreateUserWithRawPassword((short) 638),
   UpdateUserMaxSession((short) 639),
   UpdateUserMinSession((short) 640),
-  DropUserV2((short) 641),
-  UpdateUserV2((short) 642),
 
   /** Table Author */
   RCreateUser((short) 641),
@@ -174,8 +172,12 @@ public enum ConfigPhysicalPlanType {
   RListRolePrivilege((short) 672),
   RUpdateUserMaxSession((short) 673),
   RUpdateUserMinSession((short) 674),
-  RUpdateUserV2((short) 675),
-  RDropUserV2((short) 676),
+
+  DropUserV2((short) 675),
+  UpdateUserV2((short) 676),
+
+  RUpdateUserV2((short) 677),
+  RDropUserV2((short) 678),
 
   /** Function. */
   CreateFunction((short) 700),
