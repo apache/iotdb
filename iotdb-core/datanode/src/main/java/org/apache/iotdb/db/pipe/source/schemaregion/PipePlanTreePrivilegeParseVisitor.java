@@ -66,7 +66,7 @@ public class PipePlanTreePrivilegeParseVisitor
 
   private final boolean skip;
 
-  PipePlanTreePrivilegeParseVisitor(final boolean skip) {
+  public PipePlanTreePrivilegeParseVisitor(final boolean skip) {
     this.skip = skip;
   }
 
