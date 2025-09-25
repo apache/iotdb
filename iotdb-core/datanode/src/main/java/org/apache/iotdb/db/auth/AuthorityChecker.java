@@ -100,7 +100,7 @@ public class AuthorityChecker {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static AccessControl accessControl =
+  private static volatile AccessControl accessControl =
       new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
 
   private AuthorityChecker() {
