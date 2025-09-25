@@ -182,6 +182,8 @@ public class WriteBackSink implements PipeConnector {
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
             CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE);
+
+    SESSION_MANAGER.registerSession(session);
   }
 
   @Override
@@ -356,8 +358,8 @@ public class WriteBackSink implements PipeConnector {
   @Override
   public void close() throws Exception {
     if (session != null) {
-      SESSION_MANAGER.removeCurrSession();
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
     }
   }
 
