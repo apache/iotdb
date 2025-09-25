@@ -483,7 +483,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
                   this,
                   node,
                   treePattern,
-                  skipIfNoPrivileges
+                  shouldParse4Privilege
                       ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
                       : null));
           break;
@@ -495,7 +495,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
                     this,
                     insertRowNode,
                     treePattern,
-                    skipIfNoPrivileges
+                    shouldParse4Privilege
                         ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
                         : null));
           }
