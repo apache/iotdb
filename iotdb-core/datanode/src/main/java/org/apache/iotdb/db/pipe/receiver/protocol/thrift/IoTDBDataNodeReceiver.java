@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -660,8 +661,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     // We may be able to skip the alter logical view's exception parsing because
     // the "AlterLogicalViewNode" is itself idempotent
     if (req.getPlanNode() instanceof AlterLogicalViewNode) {
-      final TSStatus status =
-          ((AlterLogicalViewNode) req.getPlanNode()).checkPermissionBeforeProcess(username);
+      AlterLogicalViewNode node = (AlterLogicalViewNode) req.getPlanNode();
+      IAuditEntity entity = AuthorityChecker.createIAuditEntity(username, null);
+      TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkCanAlterView(entity, node.getSourcePaths(), node.getTargetPaths());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,
@@ -992,8 +996,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return;
     }
 
-    Coordinator.getInstance()
-        .getAccessControl()
+    AuthorityChecker.getAccessControl()
         .checkCanCreateDatabase(username, database, new UserEntity(userId, username, cliHostname));
     final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);

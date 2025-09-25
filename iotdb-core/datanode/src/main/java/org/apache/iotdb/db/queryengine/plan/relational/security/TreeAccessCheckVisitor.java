@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -290,10 +291,14 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitAlterSchemaTemplate(
       AlterSchemaTemplateStatement alterSchemaTemplateStatement, TreeAccessCheckContext context) {
-    if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
+    return checkCanAlterTemplate(context.getUserEntity());
+  }
+
+  public TSStatus checkCanAlterTemplate(IAuditEntity entity) {
+    if (AuthorityChecker.SUPER_USER.equals(entity.getUsername())) {
       return SUCCEED;
     }
-    return checkGlobalAuth(context.getUsername(), PrivilegeType.EXTEND_TEMPLATE);
+    return checkGlobalAuth(entity.getUsername(), PrivilegeType.EXTEND_TEMPLATE);
   }
 
   // ============================= timeseries view related ===============
@@ -773,7 +778,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return checkGlobalAuth(context.getUsername(), PrivilegeType.MANAGE_DATABASE);
   }
 
-  private TSStatus checkCreateOrAlterDatabasePermission(String userName, PartialPath databaseName) {
+  protected TSStatus checkCreateOrAlterDatabasePermission(
+      String userName, PartialPath databaseName) {
     // root.__audit can never be created or alter
     if (TREE_MODEL_AUDIT_DATABASE_PATH.equals(databaseName)) {
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())

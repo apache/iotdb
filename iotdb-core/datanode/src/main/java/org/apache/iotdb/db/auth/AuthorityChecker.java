@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -148,6 +149,17 @@ public class AuthorityChecker {
   public static SettableFuture<ConfigTaskResult> operatePermission(
       RelationalAuthorStatement authorStatement) {
     return authorityFetcher.get().operatePermission(authorStatement);
+  }
+
+  public static IAuditEntity createIAuditEntity(String userName, IClientSession clientSession) {
+    if (clientSession != null) {
+      return new UserEntity(
+          clientSession.getUserId(), clientSession.getUsername(), clientSession.getClientAddress());
+    } else if (userName != null) {
+      return new UserEntity(AuthorityChecker.getUserId(userName).orElse(-1L), userName, "");
+    } else {
+      return new UserEntity(-1, "unknown", "");
+    }
   }
 
   /** Check whether specific Session has the authorization to given plan. */

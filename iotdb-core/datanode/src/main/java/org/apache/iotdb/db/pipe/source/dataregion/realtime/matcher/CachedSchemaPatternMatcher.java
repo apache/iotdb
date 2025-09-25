@@ -23,15 +23,14 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -59,7 +58,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   protected static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   protected final ReentrantReadWriteLock lock;
-  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
   protected final Set<PipeRealtimeDataRegionSource> sources;
 
   protected final Cache<IDeviceID, Set<PipeRealtimeDataRegionSource>> deviceToSourcesCache;
@@ -332,11 +330,13 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   private boolean notFilteredByAccess(
       final UserEntity userEntity, final Pair<String, IDeviceID> databaseNameAndTableName) {
-    return accessControl.checkCanSelectFromTable4Pipe(
-        userEntity.getUsername(),
-        new QualifiedObjectName(
-            databaseNameAndTableName.getLeft(), databaseNameAndTableName.getRight().getTableName()),
-        userEntity);
+    return AuthorityChecker.getAccessControl()
+        .checkCanSelectFromTable4Pipe(
+            userEntity.getUsername(),
+            new QualifiedObjectName(
+                databaseNameAndTableName.getLeft(),
+                databaseNameAndTableName.getRight().getTableName()),
+            userEntity);
   }
 
   @Override

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface AccessControl {
 
@@ -171,7 +172,6 @@ public interface AccessControl {
   /**
    * Check if user is allowed to create view under the specific tree path.
    *
-   * @param userName name of user
    * @param path the tree path scope the view can select from
    * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
@@ -199,7 +199,6 @@ public interface AccessControl {
   /**
    * Check if user has global SYSTEM privilege
    *
-   * @param userName name of user
    * @param auditEntity records necessary info for audit log
    * @throws AccessDeniedException if not allowed
    */
@@ -208,7 +207,6 @@ public interface AccessControl {
   /**
    * Check if user has sepecified global privilege
    *
-   * @param userName name of user
    * @param privilegeType needed privilege
    * @throws AccessDeniedException if not allowed
    */
@@ -223,5 +221,12 @@ public interface AccessControl {
 
   /** called by load */
   TSStatus checkFullPathWriteDataPermission(
-      String userName, IDeviceID device, String measurementId);
+      IAuditEntity entity, IDeviceID device, String measurementId);
+
+  TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName);
+
+  TSStatus checkCanAlterTemplate(IAuditEntity entity);
+
+  TSStatus checkCanAlterView(
+      IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths);
 }

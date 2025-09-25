@@ -41,7 +41,6 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -454,8 +453,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             || !tablePattern.matchesTable(table)) {
           continue;
         }
-        if (!Coordinator.getInstance()
-            .getAccessControl()
+        if (!AuthorityChecker.getAccessControl()
             .checkCanSelectFromTable4Pipe(
                 userName,
                 new QualifiedObjectName(getTableModelDatabaseName(), table),
