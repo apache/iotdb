@@ -58,6 +58,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +69,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class CteMaterializer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CteMaterializer.class);
   private static String CTE_MATERIALIZATION_FAILURE_WARNING =
       "***** CTE MATERIALIZATION failed! INLINE mode is adopted in main query *****";
 
@@ -148,15 +151,15 @@ public class CteMaterializer {
         try {
           tsBlock = execution.getBatchResult();
         } catch (final IoTDBException e) {
-          throw new IoTDBRuntimeException(
-              String.format("Fail to materialize CTE because %s", e.getMessage()),
-              e.getErrorCode(),
-              e.isUserException());
+          LOGGER.warn("Fail to materialize CTE because {}", e.getMessage());
+          return null;
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           continue;
         }
         if (!cteDataStore.addTsBlock(tsBlock.get())) {
+          LOGGER.warn(
+              "Fail to materialize CTE because the data size exceeded memory or the row count threshold");
           if (context.isExplainAnalyze()) {
             handleCteExplainAnalyzeResults(
                 context, queryId, table, CTE_MATERIALIZATION_FAILURE_WARNING);
