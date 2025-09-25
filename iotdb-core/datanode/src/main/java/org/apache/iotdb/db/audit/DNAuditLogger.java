@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -96,6 +97,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final String AUDIT_LOG_DEVICE = "root.__audit.log.node_%s.u_%s";
   private static final String AUDIT_LOGIN_LOG_DEVICE = "root.__audit.login.node_%s.u_%s";
   private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.log.node_%s.u_all";
+  private static final String AUDIT_LOG_DEVICE_PATH = "root.__audit.log.**";
+  private static final long auditLogTtlInDays =
+      CommonDescriptor.getInstance().getConfig().getAuditLogTtlInDays();
   private static final SessionInfo sessionInfo =
       new SessionInfo(
           0,
@@ -238,6 +242,23 @@ public class DNAuditLogger extends AbstractAuditLogger {
                 SCHEMA_FETCHER);
         if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || result.status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+
+          if (auditLogTtlInDays > 0) {
+            statement =
+                StatementGenerator.createStatement(
+                    "SET TTL TO "
+                        + AUDIT_LOG_DEVICE_PATH
+                        + " "
+                        + auditLogTtlInDays * 24 * 3600 * 1000,
+                    ZoneId.systemDefault());
+            coordinator.executeForTreeModel(
+                statement,
+                SESSION_MANAGER.requestQueryId(),
+                sessionInfo,
+                "",
+                ClusterPartitionFetcher.getInstance(),
+                SCHEMA_FETCHER);
+          }
 
           SqlParser relationSqlParser = new SqlParser();
           IClientSession session =

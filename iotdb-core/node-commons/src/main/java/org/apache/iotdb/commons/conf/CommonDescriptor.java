@@ -233,6 +233,11 @@ public class CommonDescriptor {
             .getProperty("auditable_operation_result", config.getAuditableOperationResult())
             .trim()
             .toUpperCase());
+    config.setAuditLogTtlInDays(
+        Long.parseLong(
+            properties
+                .getProperty("audit_log_ttl_in_days", String.valueOf(config.getAuditLogTtlInDays()))
+                .trim()));
 
     PipeDescriptor.loadPipeProps(config, properties, false);
     loadSubscriptionProps(properties);
