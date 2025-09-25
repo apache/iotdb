@@ -216,6 +216,9 @@ public class IoTDBConstant {
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
 
+  public static final String CTE_QUERY = "CTE Query";
+  public static final String MAIN_QUERY = "Main Query";
+
   // sdt parameters
   public static final String LOSS = "loss";
   public static final String SDT = "sdt";
@@ -301,6 +304,7 @@ public class IoTDBConstant {
   public static final String SETTLE_SUFFIX = ".settle";
   public static final String MODS_SETTLE_FILE_SUFFIX = ".mods.settle";
   public static final String BLANK = "";
+  public static final String SPACE = " ";
 
   // write ahead log
   public static final String WAL_FILE_PREFIX = "_";
