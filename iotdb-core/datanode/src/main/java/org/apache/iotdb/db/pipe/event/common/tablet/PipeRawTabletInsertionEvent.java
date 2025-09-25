@@ -450,7 +450,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
                   tablet,
                   isAligned,
                   treePattern,
-                  skipIfNoPrivileges
+                  shouldParse4Privilege
                       ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
                       : null)
               : new TabletInsertionEventTablePatternParser(
