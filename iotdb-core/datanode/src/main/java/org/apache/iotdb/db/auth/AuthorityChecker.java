@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -63,6 +64,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -126,6 +128,11 @@ public class AuthorityChecker {
   public static boolean invalidateCache(String username, String roleName) {
     PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
+  }
+
+  public static Optional<Long> getUserId(String username) {
+    User user = authorityFetcher.get().getUser(username);
+    return Optional.ofNullable(user == null ? null : user.getUserId());
   }
 
   public static TSStatus checkUser(String userName, String password) {
