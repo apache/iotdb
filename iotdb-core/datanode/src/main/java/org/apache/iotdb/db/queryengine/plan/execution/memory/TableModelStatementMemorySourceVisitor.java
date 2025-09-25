@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanGenerator;
@@ -36,14 +37,20 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BLANK;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CTE_QUERY;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAIN_QUERY;
 import static org.apache.iotdb.db.queryengine.common.header.DatasetHeader.EMPTY_HEADER;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor.getStatementMemorySource;
@@ -83,19 +90,6 @@ public class TableModelStatementMemorySourceVisitor
       return new StatementMemorySource(new TsBlock(0), header);
     }
 
-    final List<String> lines = new ArrayList<>();
-
-    // CTE materialization plan
-    context
-        .getQueryContext()
-        .getCteExplainResults()
-        .forEach(
-            (table, pair) -> {
-              lines.add(String.format("CTE '%s' Query", table.getNode().getName()));
-              lines.addAll(pair.getRight());
-              lines.add("");
-            });
-
     // Generate table model distributed plan
     final TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
@@ -109,14 +103,15 @@ public class TableModelStatementMemorySourceVisitor
                 Coordinator.getInstance().getDataNodeLocationSupplier())
             .generateDistributedPlanWithOptimize(planContext);
 
-    if (!lines.isEmpty()) {
-      lines.add("Main Query");
-    }
-    lines.addAll(
+    List<String> mainExplainResult =
         outputNodeWithExchange.accept(
             new PlanGraphPrinter(),
             new PlanGraphPrinter.GraphContext(
-                context.getQueryContext().getTypeProvider().getTemplatedInfo())));
+                context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+
+    Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
+        context.getQueryContext().getCteExplainResults();
+    List<String> lines = mergeExplainResults(cteExplainResults, mainExplainResult);
 
     return getStatementMemorySource(header, lines);
   }
@@ -133,5 +128,25 @@ public class TableModelStatementMemorySourceVisitor
       final CountDevice node, final TableModelStatementMemorySourceContext context) {
     return new StatementMemorySource(
         node.getTsBlock(context.getAnalysis()), node.getDataSetHeader());
+  }
+
+  private List<String> mergeExplainResults(
+      Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults,
+      List<String> mainExplainResult) {
+    if (cteExplainResults.isEmpty()) {
+      return mainExplainResult;
+    }
+
+    List<String> analyzeResult = new ArrayList<>();
+    cteExplainResults.forEach(
+        (table, pair) -> {
+          analyzeResult.add(String.format("%s : '%s'", CTE_QUERY, table.getNode().getName()));
+          analyzeResult.addAll(pair.getRight());
+          analyzeResult.add(BLANK);
+        });
+    analyzeResult.add(MAIN_QUERY);
+    analyzeResult.addAll(mainExplainResult);
+
+    return analyzeResult;
   }
 }

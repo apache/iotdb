@@ -67,6 +67,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class CteMaterializer {
+  private static String CTE_MATERIALIZATION_FAILURE_WARNING =
+      "***** CTE MATERIALIZATION failed! INLINE mode is adopted in main query *****";
 
   private static final Coordinator coordinator = Coordinator.getInstance();
 
@@ -136,7 +138,6 @@ public class CteMaterializer {
       }
       // query execution
       QueryExecution execution = (QueryExecution) coordinator.getQueryExecution(queryId);
-
       // get table schema
       DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
       TableSchema tableSchema = getTableSchema(datasetHeader, table.getName().toString());
@@ -156,32 +157,20 @@ public class CteMaterializer {
           continue;
         }
         if (!cteDataStore.addTsBlock(tsBlock.get())) {
+          if (context.isExplainAnalyze()) {
+            handleCteExplainAnalyzeResults(
+                context, queryId, table, CTE_MATERIALIZATION_FAILURE_WARNING);
+          }
           return null;
         }
       }
 
-      DistributedQueryPlan distributedQueryPlan = execution.getDistributedPlan();
-      if (distributedQueryPlan != null) {
-        if (context.isExplainAnalyze()) {
-          FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
-              new FragmentInstanceStatisticsDrawer();
-          fragmentInstanceStatisticsDrawer.renderPlanStatistics(context);
-          fragmentInstanceStatisticsDrawer.renderDispatchCost(context);
-
-          List<String> lines =
-              getCteExplainAnalyzeLines(
-                  fragmentInstanceStatisticsDrawer,
-                  distributedQueryPlan.getInstances(),
-                  context.isVerbose());
-          int maxLineLength = fragmentInstanceStatisticsDrawer.getMaxLineLength();
-          context.addCteExplainResult(table, new Pair<>(maxLineLength, lines));
-        } else if (context.isExplain()) {
-          List<String> lines = distributedQueryPlan.getPlanText();
-          context.addCteExplainResult(table, new Pair<>(-1, lines));
-        }
-      } else {
-        context.addCteExplainResult(table, new Pair<>(0, ImmutableList.of()));
+      if (context.isExplainAnalyze()) {
+        handleCteExplainAnalyzeResults(context, queryId, table, null);
+      } else if (context.isExplain()) {
+        handleCteExplainResults(context, queryId, table);
       }
+
       return cteDataStore;
     } catch (final Throwable throwable) {
       t = throwable;
@@ -251,5 +240,50 @@ public class CteMaterializer {
     List<StatisticLine> statisticLines =
         fragmentInstanceStatisticsDrawer.renderFragmentInstances(instances, allStatistics, verbose);
     return statisticLines.stream().map(StatisticLine::getValue).collect(Collectors.toList());
+  }
+
+  private static void handleCteExplainAnalyzeResults(
+      MPPQueryContext context, long queryId, Table table, String warnMessage) {
+    QueryExecution execution = (QueryExecution) coordinator.getQueryExecution(queryId);
+    DistributedQueryPlan distributedQueryPlan = execution.getDistributedPlan();
+    if (distributedQueryPlan == null) {
+      context.addCteExplainResult(table, new Pair<>(0, ImmutableList.of()));
+      return;
+    }
+
+    FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
+        new FragmentInstanceStatisticsDrawer();
+    fragmentInstanceStatisticsDrawer.renderPlanStatistics(context);
+    fragmentInstanceStatisticsDrawer.renderDispatchCost(context);
+
+    try {
+      List<String> lines =
+          getCteExplainAnalyzeLines(
+              fragmentInstanceStatisticsDrawer,
+              distributedQueryPlan.getInstances(),
+              context.isVerbose());
+      int maxLineLength = fragmentInstanceStatisticsDrawer.getMaxLineLength();
+      if (warnMessage != null) {
+        lines.add(warnMessage);
+        maxLineLength = Math.max(maxLineLength, warnMessage.length());
+      }
+      context.addCteExplainResult(table, new Pair<>(maxLineLength, lines));
+    } catch (FragmentInstanceFetchException e) {
+      throw new IoTDBRuntimeException(
+          "Failed to fetch fragment instance statistics",
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+  }
+
+  private static void handleCteExplainResults(MPPQueryContext context, long queryId, Table table) {
+    QueryExecution execution = (QueryExecution) coordinator.getQueryExecution(queryId);
+    DistributedQueryPlan distributedQueryPlan = execution.getDistributedPlan();
+    if (distributedQueryPlan == null) {
+      context.addCteExplainResult(table, new Pair<>(0, ImmutableList.of()));
+      return;
+    }
+
+    List<String> lines = distributedQueryPlan.getPlanText();
+    context.addCteExplainResult(table, new Pair<>(-1, lines));
   }
 }
