@@ -635,10 +635,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        ConfigPhysicalPlanType.values()[
+            req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()];
+    switch (configPhysicalPlanType) {
+      case UpdateUser:
+        configPhysicalPlanType = ConfigPhysicalPlanType.UpdateUserV2;
+        break;
+      case DropUser:
+        configPhysicalPlanType = ConfigPhysicalPlanType.DropUserV2;
+        break;
+    }
     return configManager.operatePermission(
         new AuthorTreePlan(
-            ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+            configPhysicalPlanType,
             req.getUserName(),
             req.getRoleName(),
             req.getPassword(),
@@ -681,17 +691,28 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        ConfigPhysicalPlanType.values()[
+            req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()];
+    switch (configPhysicalPlanType) {
+      case RUpdateUser:
+        configPhysicalPlanType = ConfigPhysicalPlanType.UpdateUserV2;
+        break;
+      case RDropUser:
+        configPhysicalPlanType = ConfigPhysicalPlanType.DropUserV2;
+        break;
+    }
     return configManager.operatePermission(
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+            configPhysicalPlanType,
             req.getUserName(),
             req.getRoleName(),
             req.getDatabase(),
             req.getTable(),
             req.getPermissions(),
             req.isGrantOpt(),
-            req.getPassword()));
+            req.getPassword(),
+            req.getExecutedByUserID()));
   }
 
   @Override

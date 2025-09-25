@@ -2510,7 +2510,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Alter Password
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER_V2);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
     return authorStatement;
@@ -2693,7 +2693,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitDropUser(IoTDBSqlParser.DropUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorType.DROP_USER_V2);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.DROP_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     return authorStatement;
   }

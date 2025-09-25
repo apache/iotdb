@@ -173,12 +173,6 @@ public enum ConfigPhysicalPlanType {
   RUpdateUserMaxSession((short) 673),
   RUpdateUserMinSession((short) 674),
 
-  DropUserV2((short) 675),
-  UpdateUserV2((short) 676),
-
-  RUpdateUserV2((short) 677),
-  RDropUserV2((short) 678),
-
   /** Function. */
   CreateFunction((short) 700),
   DropTreeModelFunction((short) 701),
@@ -324,6 +318,14 @@ public enum ConfigPhysicalPlanType {
   ConsumerGroupHandleMetaChange((short) 1901),
 
   ShowSubscription((short) 2000),
+
+  DropUserV2((short) 2100),
+  UpdateUserV2((short) 2101),
+
+  RUpdateUserV2((short) 2102),
+  RDropUserV2((short) 2103),
+
+  EnableSeparationOfAdminPowers((short) 2200),
 
   /** Test Only. */
   TestOnly((short) 30000),

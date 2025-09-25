@@ -62,7 +62,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         this.setType(StatementType.DELETE_ROLE);
         break;
       case DROP_USER:
-      case DROP_USER_V2:
         this.setType(StatementType.DELETE_USER);
         break;
       case GRANT_ROLE:
@@ -84,7 +83,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         this.setType(StatementType.REVOKE_USER_PRIVILEGE);
         break;
       case UPDATE_USER:
-      case UPDATE_USER_V2:
         this.setType(StatementType.MODIFY_PASSWORD);
         break;
       case GRANT_USER_ROLE:
@@ -201,7 +199,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case CREATE_USER:
       case CREATE_ROLE:
       case DROP_USER:
-      case DROP_USER_V2:
       case DROP_ROLE:
       case GRANT_ROLE:
       case GRANT_USER:
@@ -210,7 +207,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
       case REVOKE_USER_ROLE:
       case UPDATE_USER:
-      case UPDATE_USER_V2:
         queryType = QueryType.WRITE;
         break;
       case LIST_USER:
@@ -238,9 +234,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   public TSStatus onSuccess() {
     if (authorType == AuthorType.CREATE_USER) {
       return onCreateUserSuccess();
-    } else if (authorType == AuthorType.UPDATE_USER || authorType == AuthorType.UPDATE_USER_V2) {
+    } else if (authorType == AuthorType.UPDATE_USER) {
       return onUpdateUserSuccess();
-    } else if (authorType == AuthorType.DROP_USER || authorType == AuthorType.DROP_USER_V2) {
+    } else if (authorType == AuthorType.DROP_USER) {
       return onDropUserSuccess();
     }
     return null;
@@ -294,7 +290,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
         break;
       case DROP_USER:
-      case DROP_USER_V2:
         if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(currentUser)) {
           return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
         }

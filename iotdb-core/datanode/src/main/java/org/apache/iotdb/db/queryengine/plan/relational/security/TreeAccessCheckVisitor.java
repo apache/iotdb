@@ -426,7 +426,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     switch (authorType) {
       case CREATE_USER:
       case DROP_USER:
-      case DROP_USER_V2:
         return checkGlobalAuth(context.getUsername(), PrivilegeType.MANAGE_USER);
       case UPDATE_USER:
         // users can change passwords of themselves

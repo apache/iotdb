@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 public enum AuthorType {
   CREATE_USER,
   CREATE_ROLE,
-  @Deprecated
   DROP_USER,
   DROP_ROLE,
   GRANT_ROLE,
@@ -31,14 +30,11 @@ public enum AuthorType {
   REVOKE_USER,
   REVOKE_ROLE,
   REVOKE_USER_ROLE,
-  @Deprecated
   UPDATE_USER,
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIVILEGE,
   LIST_ROLE_PRIVILEGE,
-  DROP_USER_V2,
-  UPDATE_USER_V2,
   ;
 
   /**
@@ -79,10 +75,6 @@ public enum AuthorType {
         return LIST_USER_PRIVILEGE;
       case 14:
         return LIST_ROLE_PRIVILEGE;
-      case 15:
-        return DROP_USER_V2;
-      case 16:
-        return UPDATE_USER_V2;
       default:
         return null;
     }
@@ -125,10 +117,6 @@ public enum AuthorType {
         return 13;
       case LIST_ROLE_PRIVILEGE:
         return 14;
-      case DROP_USER_V2:
-        return 15;
-      case UPDATE_USER_V2:
-        return 16;
       default:
         return -1;
     }
