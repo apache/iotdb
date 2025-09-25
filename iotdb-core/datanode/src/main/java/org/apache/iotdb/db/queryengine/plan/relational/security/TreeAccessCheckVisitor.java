@@ -1109,7 +1109,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                 context.getUsername(), checkedPaths, permission),
             checkedPaths,
             permission);
-    recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+    if (!AuthorityChecker.INTERNAL_AUDIT_USER.equals(context.getUsername())) {
+      // Skip internal auditor
+      recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+    }
     return result;
   }
 
@@ -1199,6 +1202,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitInternalCreateTimeseries(
       InternalCreateTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.DDL);
     // audit db is read-only
     if (includeByAuditTreeDB(statement.getDevicePath())
         && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
