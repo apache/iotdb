@@ -566,9 +566,9 @@ public abstract class EnrichedEvent implements Event {
         + commitId
         + "', replicateIndexForIoTV2="
         + replicateIndexForIoTV2
-        + ", treePattern='"
+        + ", treePatterns='"
         + treePatterns
-        + "', tablePatterns='"
+        + "', tablePattern='"
         + tablePattern
         + "', startTime="
         + startTime
