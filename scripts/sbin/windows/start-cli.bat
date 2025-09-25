@@ -84,9 +84,7 @@ set PARAMETERS=%host_param% %port_param% %user_param% %passwd_param% %sql_dialec
 REM -------------------------------
 REM Set IOTDB_HOME
 if not defined IOTDB_HOME (
-    pushd %~dp0..\..
-    set IOTDB_HOME=%CD%
-    popd
+    for %%I in ("%~dp0..\..") do set "IOTDB_HOME=%%~fI"
 )
 
 REM CLI configuration
@@ -95,11 +93,7 @@ set MAIN_CLASS=org.apache.iotdb.cli.Cli
 
 REM -------------------------------
 REM CLASSPATH setup
-if exist "%IOTDB_HOME%\lib" (
-    set CLASSPATH=%IOTDB_HOME%\lib\*
-) else (
-    set CLASSPATH=%IOTDB_HOME%\..\lib\*
-)
+set CLASSPATH=%IOTDB_HOME%\lib\*
 
 REM -------------------------------
 REM JAVA executable
@@ -115,12 +109,10 @@ if defined JAVA_HOME (
 
 REM -------------------------------
 REM JVM options
-set JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 set IOTDB_CLI_PARAMS=-Dlogback.configurationFile=%IOTDB_CLI_CONF%\logback-cli.xml
 set JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 --add-opens=java.base/java.lang=ALL-UNNAMED
 
 REM -------------------------------
 REM Run CLI
-echo %PARAMETERS%
 "%JAVA%" %JVM_OPTS% %IOTDB_CLI_PARAMS% -cp "%CLASSPATH%" %MAIN_CLASS% %PARAMETERS%
 exit /b %ERRORLEVEL%
