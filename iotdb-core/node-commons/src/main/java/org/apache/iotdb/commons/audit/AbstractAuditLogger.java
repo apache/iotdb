@@ -55,8 +55,8 @@ public abstract class AbstractAuditLogger {
     }
     for (PrivilegeType privilegeType : auditLogFields.getPrivilegeTypes()) {
       PrivilegeLevel privilegeLevel = judgePrivilegeLevel(privilegeType);
-      if (AUDITABLE_OPERATION_LEVEL == PrivilegeLevel.GLOBAL
-          && privilegeLevel == PrivilegeLevel.OBJECT) {
+      if (AUDITABLE_OPERATION_LEVEL == PrivilegeLevel.OBJECT
+          && privilegeLevel == PrivilegeLevel.GLOBAL) {
         return true;
       }
     }

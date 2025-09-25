@@ -154,6 +154,7 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanSelectFromTable(
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    auditEntity.setDatabase(tableName.getDatabaseName());
     if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
     }
