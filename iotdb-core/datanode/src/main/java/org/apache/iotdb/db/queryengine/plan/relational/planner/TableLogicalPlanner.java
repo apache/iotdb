@@ -317,7 +317,7 @@ public class TableLogicalPlanner {
 
     int columnNumber = 0;
     // TODO perfect the logic of outputDescriptor
-    if (queryContext.isExplainAnalyze()) {
+    if (queryContext.isExplainAnalyze() && !queryContext.isSubquery()) {
       outputs.add(new Symbol(ColumnHeaderConstant.EXPLAIN_ANALYZE));
       names.add(ColumnHeaderConstant.EXPLAIN_ANALYZE);
       columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT));
