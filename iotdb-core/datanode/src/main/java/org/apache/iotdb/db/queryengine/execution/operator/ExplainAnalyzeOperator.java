@@ -59,6 +59,11 @@ import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BLANK;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CTE_QUERY;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAIN_QUERY;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SPACE;
+
 public class ExplainAnalyzeOperator implements ProcessOperator {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.EXPLAIN_ANALYZE_LOGGER_NAME);
@@ -145,7 +150,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       for (int i = 0;
           i < fragmentInstanceStatisticsDrawer.getMaxLineLength() - line.getValue().length();
           i++) {
-        sb.append(" ");
+        sb.append(SPACE);
       }
       analyzeResult.add(sb.toString());
     }
@@ -207,25 +212,25 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     List<String> analyzeResult = new ArrayList<>();
     cteAnalyzeResults.forEach(
         (table, pair) -> {
-          analyzeResult.add(String.format("CTE '%s' Query", table.getNode().getName()));
+          analyzeResult.add(String.format("%s : '%s'", CTE_QUERY, table.getNode().getName()));
           for (String line : pair.right) {
             StringBuilder sb = new StringBuilder();
             sb.append(line);
             for (int i = 0; i < maxLineLength - line.length(); i++) {
-              sb.append(" ");
+              sb.append(SPACE);
             }
             analyzeResult.add(sb.toString());
           }
-          analyzeResult.add("");
+          analyzeResult.add(BLANK);
         });
 
-    analyzeResult.add("Main Query");
+    analyzeResult.add(MAIN_QUERY);
     mainAnalyzeResult.forEach(
         line -> {
           StringBuilder sb = new StringBuilder();
           sb.append(line);
           for (int i = 0; i < maxLineLength - line.length(); i++) {
-            sb.append(" ");
+            sb.append(SPACE);
           }
           analyzeResult.add(sb.toString());
         });
