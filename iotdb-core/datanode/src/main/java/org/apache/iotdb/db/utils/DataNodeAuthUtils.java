@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -74,7 +74,7 @@ public class DataNodeAuthUtils {
       Statement statement =
           StatementGenerator.createStatement(
               "SELECT password from "
-                  + SystemConstant.PREFIX_PASSWORD_HISTORY
+                  + DNAuditLogger.PREFIX_PASSWORD_HISTORY
                   + ".`_"
                   + username
                   + "` where oldPassword='"
@@ -86,8 +86,8 @@ public class DataNodeAuthUtils {
           new SessionInfo(
               0,
               new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
                   IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
               ZoneId.systemDefault());
 
@@ -160,7 +160,7 @@ public class DataNodeAuthUtils {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     try {
       insertRowStatement.setDevicePath(
-          new PartialPath(SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`"));
+          new PartialPath(DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`"));
       insertRowStatement.setTime(timeToRecord);
       insertRowStatement.setMeasurements(new String[] {"password", "oldPassword"});
       insertRowStatement.setValues(
@@ -183,8 +183,8 @@ public class DataNodeAuthUtils {
           new SessionInfo(
               0,
               new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
                   IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
               ZoneId.systemDefault());
 
@@ -217,7 +217,7 @@ public class DataNodeAuthUtils {
     DeleteTimeSeriesStatement deleteTimeSeriesStatement = new DeleteTimeSeriesStatement();
     try {
       PartialPath devicePath =
-          new PartialPath(SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`");
+          new PartialPath(DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`");
       deleteTimeSeriesStatement.setPathPatternList(
           Arrays.asList(
               devicePath.concatAsMeasurementPath("password"),
@@ -236,8 +236,8 @@ public class DataNodeAuthUtils {
           new SessionInfo(
               0,
               new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
                   IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
               ZoneId.systemDefault());
 

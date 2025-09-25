@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -33,6 +32,7 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.BasicAuthorityCache;
 import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
@@ -152,7 +152,7 @@ public class SessionManager implements SessionManagerMBean {
     lastDataQueryReq.setSessionId(0);
     lastDataQueryReq.setPaths(
         Collections.singletonList(
-            SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
+            DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
 
     long queryId = -1;
     try {

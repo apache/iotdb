@@ -276,8 +276,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         DNAuditLogger.getInstance().setCoordinator(Coordinator.getInstance());
         AuditLogFields fields =
             new AuditLogFields(
-                null,
                 -1,
+                null,
                 null,
                 AuditEventType.CHANGE_AUDIT_OPTION,
                 AuditLogOperation.CONTROL,
