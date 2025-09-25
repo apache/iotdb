@@ -123,4 +123,9 @@ public class AllowAllAccessControl implements AccessControl {
       String userName, IDeviceID device, String measurementId) {
     return SUCCEED;
   }
+
+  @Override
+  public TSStatus allowUserToLogin(String userName) {
+    return SUCCEED;
+  }
 }

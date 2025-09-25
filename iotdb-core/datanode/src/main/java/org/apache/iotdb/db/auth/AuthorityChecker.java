@@ -133,7 +133,11 @@ public class AuthorityChecker {
   }
 
   public static TSStatus checkUser(String userName, String password) {
-    return authorityFetcher.get().checkUser(userName, password);
+    TSStatus status = authorityFetcher.get().checkUser(userName, password);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    return accessControl.allowUserToLogin(userName);
   }
 
   public static SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {

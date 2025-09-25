@@ -47,6 +47,7 @@ import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATA
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
+import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl.checkCanSelectAuditTable;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor.checkTimeSeriesPermission;
 
@@ -431,5 +432,10 @@ public class AccessControlImpl implements AccessControl {
       // should never be here
       throw new IllegalStateException(e);
     }
+  }
+
+  @Override
+  public TSStatus allowUserToLogin(String userName) {
+    return SUCCEED;
   }
 }

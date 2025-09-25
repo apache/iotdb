@@ -224,4 +224,7 @@ public interface AccessControl {
   /** called by load */
   TSStatus checkFullPathWriteDataPermission(
       String userName, IDeviceID device, String measurementId);
+
+  // ====================================== COMMON =============================================
+  TSStatus allowUserToLogin(String userName);
 }
