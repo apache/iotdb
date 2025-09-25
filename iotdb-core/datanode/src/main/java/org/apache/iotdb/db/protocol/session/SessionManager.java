@@ -264,8 +264,10 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
+        User user = authorityFetcher.get().getUser(username);
+        long userId = user == null ? -1 : user.getUserId();
         session.setSqlDialect(sqlDialect);
-        supplySession(session, username, ZoneId.of(zoneId), clientVersion);
+        supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
         if (timeToExpire != null && timeToExpire != Long.MAX_VALUE) {
           DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -534,10 +536,12 @@ public class SessionManager implements SessionManagerMBean {
   /** must be called after registerSession()) will mark the session login. */
   public void supplySession(
       IClientSession session,
+      long userId,
       String username,
       ZoneId zoneId,
       IoTDBConstant.ClientVersion clientVersion) {
     session.setId(sessionIdGenerator.incrementAndGet());
+    session.setUserId(userId);
     session.setUsername(username);
     session.setZoneId(zoneId);
     session.setClientVersion(clientVersion);
@@ -556,11 +560,9 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfo(IClientSession session) {
-    User user = authorityFetcher.get().getUser(session.getUsername());
-    long userId = user == null ? -1 : user.getUserId();
     return new SessionInfo(
         session.getId(),
-        new UserEntity(userId, session.getUsername(), session.getClientAddress()),
+        new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
         session.getZoneId(),
         session.getClientVersion(),
         session.getDatabaseName(),
@@ -580,11 +582,9 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
-    User user = authorityFetcher.get().getUser(session.getUsername());
-    long userId = user == null ? -1 : user.getUserId();
     return new SessionInfo(
         session.getId(),
-        new UserEntity(userId, session.getUsername(), session.getClientAddress()),
+        new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
@@ -592,11 +592,9 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
-    User user = authorityFetcher.get().getUser(session.getUsername());
-    long userId = user == null ? -1 : user.getUserId();
     return new SessionInfo(
         session.getId(),
-        new UserEntity(userId, session.getUsername(), session.getClientAddress()),
+        new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
@@ -604,11 +602,9 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
-    User user = authorityFetcher.get().getUser(session.getUsername());
-    long userId = user == null ? -1 : user.getUserId();
     return new SessionInfo(
         session.getId(),
-        new UserEntity(userId, session.getUsername(), session.getClientAddress()),
+        new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
         ZoneId.systemDefault(),
         session.getClientVersion(),
         databaseName,

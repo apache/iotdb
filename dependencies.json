@@ -157,7 +157,6 @@
         "org.osgi:osgi.core",
         "org.ow2.asm:asm",
         "org.reactivestreams:reactive-streams",
-        "org.reflections:reflections",
         "org.slf4j:slf4j-api",
         "org.slf4j:slf4j-reload4j",
         "org.tukaani:xz",

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertio
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
@@ -97,18 +99,18 @@ public class AuthorityChecker {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static AccessControlImpl accessControl =
+  private static AccessControl accessControl =
       new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
 
   private AuthorityChecker() {
     // empty constructor
   }
 
-  public static AccessControlImpl getAccessControl() {
+  public static AccessControl getAccessControl() {
     return accessControl;
   }
 
-  public static void setAccessControl(AccessControlImpl accessControl) {
+  public static void setAccessControl(AccessControl accessControl) {
     AuthorityChecker.accessControl = accessControl;
   }
 
@@ -152,16 +154,18 @@ public class AuthorityChecker {
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
     try {
-      return accessControl.checkPermissionBeforeProcess(statement, session.getUsername());
+      return accessControl.checkPermissionBeforeProcess(
+          statement,
+          new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()));
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
   }
 
-  public static TSStatus checkAuthority(Statement statement, String userName) {
+  public static TSStatus checkAuthority(Statement statement, UserEntity userEntity) {
     long startTime = System.nanoTime();
     try {
-      return accessControl.checkPermissionBeforeProcess(statement, userName);
+      return accessControl.checkPermissionBeforeProcess(statement, userEntity);
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }

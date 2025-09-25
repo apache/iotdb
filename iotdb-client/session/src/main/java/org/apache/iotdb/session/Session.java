@@ -3227,7 +3227,7 @@ public class Session implements ISession {
     request.addToSizeList(tablet.getRowSize());
   }
 
-  // sample some records and judge weather need to add too many null values to convert to tablet.
+  // sample some records and judge whether need to add too many null values to convert to tablet.
   private boolean judgeConvertOfOneDevice(List<List<String>> measurementsList) {
     int size = measurementsList.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);

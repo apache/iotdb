@@ -443,6 +443,7 @@
                 <groupId>org.reflections</groupId>
                 <artifactId>reflections</artifactId>
                 <version>${reflections.version}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>com.github.moquette-io.moquette</groupId>

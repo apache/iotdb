@@ -6,20 +6,20 @@ on:
   push:
     branches:
       - master
-      - 'rel/*'
-      - 'rc/*'
+      - "rel/*"
+      - "rc/*"
     paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "docs/**"
+      - "site/**"
   pull_request:
     branches:
       - master
-      - 'rel/*'
-      - 'rc/*'
-      - 'force_ci/**'
+      - "rel/*"
+      - "rc/*"
+      - "force_ci/**"
     paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "docs/**"
+      - "site/**"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -38,15 +38,17 @@ jobs:
       fail-fast: false
       matrix:
         java: [8]
-        os: [ ubuntu-latest ]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: corretto
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Compiler Test
         shell: bash
         run: |

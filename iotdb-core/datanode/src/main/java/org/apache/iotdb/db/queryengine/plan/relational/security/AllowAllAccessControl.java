@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -89,23 +90,22 @@ public class AllowAllAccessControl implements AccessControl {
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
 
   @Override
-  public void checkCanCreateViewFromTreePath(
-      String userName, PartialPath path, IAuditEntity auditEntity) {}
+  public void checkCanCreateViewFromTreePath(PartialPath path, IAuditEntity auditEntity) {}
 
   @Override
   public void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement, IAuditEntity auditEntity) {}
 
   @Override
-  public void checkUserIsAdmin(String userName) {
+  public void checkUserIsAdmin(IAuditEntity entity) {
     // allow anything
   }
 
   @Override
-  public void checkUserGlobalSysPrivilege(String userName, IAuditEntity auditEntity) {}
+  public void checkUserGlobalSysPrivilege(IAuditEntity auditEntity) {}
 
   @Override
-  public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
+  public boolean hasGlobalPrivilege(IAuditEntity entity, PrivilegeType privilegeType) {
     return true;
   }
 
@@ -114,7 +114,7 @@ public class AllowAllAccessControl implements AccessControl {
       String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {}
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
+  public TSStatus checkPermissionBeforeProcess(Statement statement, UserEntity userEntity) {
     return SUCCEED;
   }
 
