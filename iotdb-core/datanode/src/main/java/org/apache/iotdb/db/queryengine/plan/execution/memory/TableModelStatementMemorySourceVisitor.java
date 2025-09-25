@@ -88,11 +88,12 @@ public class TableModelStatementMemorySourceVisitor
     // CTE materialization plan
     context
         .getQueryContext()
-        .getCteDistPlans()
+        .getCteExplainResults()
         .forEach(
-            (table, distPlan) -> {
+            (table, pair) -> {
               lines.add(String.format("CTE '%s' Query", table.getNode().getName()));
-              lines.addAll(distPlan);
+              lines.addAll(pair.getRight());
+              lines.add("");
             });
 
     // Generate table model distributed plan

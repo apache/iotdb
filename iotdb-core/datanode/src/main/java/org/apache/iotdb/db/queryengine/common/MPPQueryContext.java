@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -88,8 +89,8 @@ public class MPPQueryContext implements IAuditEntity {
 
   private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
-  private boolean isExplainAnalyze = false;
-  // used only in table model for cte query
+  // explainType & isVerbose are used by cte query in table model
+  private ExplainType explainType = ExplainType.NONE;
   private boolean isVerbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
@@ -111,7 +112,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
-  private Map<NodeRef<Table>, List<String>> cteDistPlans = new HashMap<>();
+  // table -> (maxLineLength, explain/explain analyze lines)
+  private final Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
+      new HashMap<>();
   private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
   // If this is a subquery, we do not release CTE query result
   private boolean subquery = false;
@@ -295,12 +298,20 @@ public class MPPQueryContext implements IAuditEntity {
     return session.getZoneId();
   }
 
-  public void setExplainAnalyze(boolean explainAnalyze) {
-    isExplainAnalyze = explainAnalyze;
+  public void setExplainType(ExplainType explainType) {
+    this.explainType = explainType;
+  }
+
+  public ExplainType getExplainType() {
+    return explainType;
   }
 
   public boolean isExplainAnalyze() {
-    return isExplainAnalyze;
+    return explainType == ExplainType.EXPLAIN_ANALYZE;
+  }
+
+  public boolean isExplain() {
+    return explainType == ExplainType.EXPLAIN;
   }
 
   public void setVerbose(boolean verbose) {
@@ -480,12 +491,12 @@ public class MPPQueryContext implements IAuditEntity {
     this.cteDataStores = cteDataStores;
   }
 
-  public void addCteDistPlan(Table table, List<String> cteDistPlan) {
-    cteDistPlans.put(NodeRef.of(table), cteDistPlan);
+  public void addCteExplainResult(Table table, Pair<Integer, List<String>> cteExplainResult) {
+    cteExplainResults.put(NodeRef.of(table), cteExplainResult);
   }
 
-  public Map<NodeRef<Table>, List<String>> getCteDistPlans() {
-    return cteDistPlans;
+  public Map<NodeRef<Table>, Pair<Integer, List<String>>> getCteExplainResults() {
+    return cteExplainResults;
   }
 
   // ================= Authentication Interfaces =========================
