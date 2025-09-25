@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -34,6 +37,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.BasicAuthorityCache;
 import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
@@ -87,6 +91,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedExce
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
+  private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
 
   // When the client abnormally exits, we can still know who to disconnect
   /** currSession can be only used in client-thread model services. */
@@ -256,6 +261,8 @@ public class SessionManager implements SessionManagerMBean {
     }
 
     TSStatus loginStatus = AuthorityChecker.checkUser(username, password);
+    User user = authorityFetcher.get().getUser(username);
+    long userId = user == null ? -1 : user.getUserId();
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
       if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
@@ -264,8 +271,6 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        User user = authorityFetcher.get().getUser(username);
-        long userId = user == null ? -1 : user.getUserId();
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
@@ -315,21 +320,35 @@ public class SessionManager implements SessionManagerMBean {
             openSessionResp.getMessage(),
             username,
             session);
-        if (ENABLE_AUDIT_LOG) {
-          AuditLogger.log(
-              String.format(
-                  "%s: Login status: %s. User : %s, opens Session-%s",
-                  IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session),
-              AUTHOR_STATEMENT);
-        }
+        AUDIT_LOGGER.log(
+            new AuditLogFields(
+                username,
+                userId,
+                session.getClientAddress(),
+                AuditEventType.LOGIN,
+                AuditLogOperation.CONTROL,
+                null,
+                true,
+                "",
+                ""),
+            String.format(
+                "%s: Login status: %s. User : %s, opens Session-%s",
+                IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session));
       }
     } else {
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format("User %s opens Session failed with an incorrect password", username),
-            AUTHOR_STATEMENT);
-      }
-      openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
+      AUDIT_LOGGER.log(
+          new AuditLogFields(
+              username,
+              userId,
+              session.getClientAddress(),
+              AuditEventType.LOGIN,
+              AuditLogOperation.CONTROL,
+              null,
+              false,
+              "",
+              ""),
+          String.format("code:%d,%s", loginStatus.getCode(), loginStatus.getMessage()));
+      openSessionResp.sessionId(-1).setMessage("Authentication failed.").setCode(loginStatus.code);
     }
 
     return openSessionResp;
@@ -353,11 +372,37 @@ public class SessionManager implements SessionManagerMBean {
                 session, session1),
             AUTHOR_STATEMENT);
       }
+      AUDIT_LOGGER.log(
+          new AuditLogFields(
+              session.getUsername(),
+              session.getUserId(),
+              session.getClientAddress(),
+              AuditEventType.LOGOUT,
+              AuditLogOperation.CONTROL,
+              null,
+              false,
+              "",
+              ""),
+          String.format(
+              "The client-%s is trying to close another session %s, pls check if it's a bug",
+              session, session1));
       return false;
     } else {
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(String.format("Session-%s is closing", session), AUTHOR_STATEMENT);
       }
+      AUDIT_LOGGER.log(
+          new AuditLogFields(
+              session.getUsername(),
+              session.getUserId(),
+              session.getClientAddress(),
+              AuditEventType.LOGOUT,
+              AuditLogOperation.CONTROL,
+              null,
+              true,
+              "",
+              ""),
+          String.format("Session-%s is closing", session));
       return true;
     }
   }

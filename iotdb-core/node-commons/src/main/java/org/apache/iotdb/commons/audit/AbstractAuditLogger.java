@@ -69,6 +69,9 @@ public class AbstractAuditLogger {
   }
 
   public static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {
+    if (type == null) {
+      return null;
+    }
     switch (type) {
       case READ_DATA:
       case DROP:
