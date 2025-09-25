@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -125,6 +126,10 @@ public class AuthorityChecker {
   public static boolean invalidateCache(String username, String roleName) {
     PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
+  }
+
+  public static User getUser(String username) {
+    return authorityFetcher.get().getUser(username);
   }
 
   public static TSStatus checkUser(String userName, String password) {

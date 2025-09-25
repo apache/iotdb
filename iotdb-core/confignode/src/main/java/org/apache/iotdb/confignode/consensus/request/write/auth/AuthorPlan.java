@@ -34,6 +34,9 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
   protected int maxSessionPerUser;
   protected int minSessionPerUser;
 
+  // Used for read plans or some write plans whose type name ends with 'V2'
+  protected long executedByUserId;
+
   public AuthorPlan(final ConfigPhysicalPlanType type) {
     super(type);
   }
@@ -117,6 +120,14 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
 
   public void setUserName(final String userName) {
     this.userName = userName;
+  }
+
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
   }
 
   @Override

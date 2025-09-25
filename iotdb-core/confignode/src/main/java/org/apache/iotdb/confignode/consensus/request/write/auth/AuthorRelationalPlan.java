@@ -76,11 +76,34 @@ public class AuthorRelationalPlan extends AuthorPlan {
       final Set<Integer> permissions,
       final boolean grantOpt,
       final String password) {
+    this(
+        authorType,
+        userName,
+        roleName,
+        databaseName,
+        tableName,
+        permissions,
+        grantOpt,
+        password,
+        0);
+  }
+
+  public AuthorRelationalPlan(
+      final ConfigPhysicalPlanType authorType,
+      final String userName,
+      final String roleName,
+      final String databaseName,
+      final String tableName,
+      final Set<Integer> permissions,
+      final boolean grantOpt,
+      final String password,
+      final long executedByUserId) {
     super(authorType, userName, roleName, password, "", grantOpt, -1, -1);
 
     this.databaseName = databaseName;
     this.tableName = tableName;
     this.permissions = permissions;
+    this.executedByUserId = executedByUserId;
   }
 
   public AuthorRelationalPlan(

@@ -645,7 +645,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getNewPassword(),
             req.getPermissions(),
             req.isGrantOpt(),
-            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
+            req.getExecutedByUserID()));
   }
 
   @Override
@@ -665,7 +666,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                     req.getNewPassword(),
                     req.getPermissions(),
                     req.isGrantOpt(),
-                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
+                    req.getExecutedByUserID()));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
