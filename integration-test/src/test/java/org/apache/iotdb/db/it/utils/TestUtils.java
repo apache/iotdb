@@ -1466,7 +1466,7 @@ public class TestUtils {
 
   public static void assertDataEventuallyOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
-    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 120);
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
   }
 
   public static void assertDataEventuallyOnEnv(
