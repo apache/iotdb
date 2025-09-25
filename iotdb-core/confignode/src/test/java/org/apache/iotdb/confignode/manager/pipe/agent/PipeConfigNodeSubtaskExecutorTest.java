@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtaskExecutor;
+import org.apache.iotdb.confignode.service.ConfigNode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -35,6 +37,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.HashMap;
+import java.util.Objects;
 
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -46,6 +49,9 @@ public class PipeConfigNodeSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
+    if (Objects.isNull(ConfigNode.getInstance().getConfigManager())) {
+      ConfigNode.getInstance().setConfigManager(new ConfigManager());
+    }
     executor = new PipeConfigNodeSubtaskExecutor(new Object());
 
     subtask =
