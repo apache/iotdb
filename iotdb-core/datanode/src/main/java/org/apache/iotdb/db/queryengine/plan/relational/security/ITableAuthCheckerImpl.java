@@ -242,6 +242,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       QualifiedObjectName tableName,
       TableModelPrivilege privilege,
       IAuditEntity auditEntity) {
+    auditEntity.setDatabase(tableName.getDatabaseName());
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
@@ -329,6 +330,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkTableVisibility(
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    auditEntity.setDatabase(tableName.getDatabaseName());
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       recordAuditLog(
           auditEntity
@@ -477,7 +479,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
         auditObject);
   }
 
-  private static void recordAuditLog(IAuditEntity auditEntity, String auditObject) {
+  public static void recordAuditLog(IAuditEntity auditEntity, String auditObject) {
     AUDIT_LOGGER.log(
         auditEntity.setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION),
         () ->

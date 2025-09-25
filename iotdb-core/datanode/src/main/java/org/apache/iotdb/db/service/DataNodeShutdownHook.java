@@ -97,8 +97,8 @@ public class DataNodeShutdownHook extends Thread {
     logger.info("DataNode exiting...");
     AuditLogFields fields =
         new AuditLogFields(
-            null,
             -1,
+            null,
             null,
             AuditEventType.DN_SHUTDOWN,
             AuditLogOperation.CONTROL,

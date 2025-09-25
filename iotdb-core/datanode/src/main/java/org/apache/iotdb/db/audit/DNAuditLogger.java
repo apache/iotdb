@@ -88,17 +88,6 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final int INSERT_RETRY_INTERVAL_MS = 2000;
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String LOG = "log";
-  private static final String USERNAME = "username";
-  private static final String USER_ID = "user_id";
-  private static final String CLI_HOSTNAME = "cli_hostname";
-  private static final String RESULT = "result";
-  private static final String AUDIT_EVENT_TYPE = "audit_event_type";
-  private static final String OPERATION_TYPE = "operation_type";
-  private static final String PRIVILEGE_TYPE = "privilege_type";
-  private static final String PRIVILEGE_LEVEL = "privilege_level";
-  private static final String DATABASE = "database";
-  private static final String SQL_STRING = "sql_string";
 
   private static final String AUDIT_LOG_DEVICE = "root.__audit.log.node_%s.u_%s";
   private static final String AUDIT_LOGIN_LOG_DEVICE = "root.__audit.login.node_%s.u_%s";
@@ -155,16 +144,16 @@ public class DNAuditLogger extends AbstractAuditLogger {
     insertStatement.setTime(CommonDateTimeUtils.currentTime());
     insertStatement.setMeasurements(
         new String[] {
-          USERNAME,
-          CLI_HOSTNAME,
-          AUDIT_EVENT_TYPE,
-          OPERATION_TYPE,
-          PRIVILEGE_TYPE,
-          PRIVILEGE_LEVEL,
-          RESULT,
-          DATABASE,
-          SQL_STRING,
-          LOG
+          AUDIT_LOG_USERNAME,
+          AUDIT_LOG_CLI_HOSTNAME,
+          AUDIT_LOG_AUDIT_EVENT_TYPE,
+          AUDIT_LOG_OPERATION_TYPE,
+          AUDIT_LOG_PRIVILEGE_TYPE,
+          AUDIT_LOG_PRIVILEGE_LEVEL,
+          AUDIT_LOG_RESULT,
+          AUDIT_LOG_DATABASE,
+          AUDIT_LOG_SQL_STRING,
+          AUDIT_LOG_LOG
         });
     insertStatement.setAligned(false);
     insertStatement.setValues(
@@ -285,20 +274,33 @@ public class DNAuditLogger extends AbstractAuditLogger {
           }
           stmt =
               relationSqlParser.createStatement(
-                  "CREATE VIEW __audit.audit_log (\n"
-                      + "    node_id STRING TAG,\n"
-                      + "    user_id STRING TAG,\n"
-                      + "    username STRING FIELD,\n"
-                      + "    cli_hostname STRING FIELD,\n"
-                      + "    audit_event_type STRING FIELD,\n"
-                      + "    operation_type STRING FIELD,\n"
-                      + "    privilege_type STRING FIELD,\n"
-                      + "    privilege_level STRING FIELD,\n"
-                      + "    result BOOLEAN FIELD,\n"
-                      + "    database STRING FIELD,\n"
-                      + "    sql_string STRING FIELD,\n"
-                      + "    log STRING FIELD\n"
-                      + ") AS root.__audit.log.**",
+                  String.format(
+                      "CREATE VIEW __audit.audit_log (\n"
+                          + "    %s STRING TAG,\n"
+                          + "    %s STRING TAG,\n"
+                          + "    %s STRING FIELD,\n"
+                          + "    %s STRING FIELD,\n"
+                          + "    %s STRING FIELD,\n"
+                          + "    %s STRING FIELD,\n"
+                          + "    %s STRING FIELD,\n"
+                          + "    %s STRING FIELD,\n"
+                          + "    %s BOOLEAN FIELD,\n"
+                          + "    %s STRING FIELD,\n"
+                          + "    %s STRING FIELD,\n"
+                          + "    %s STRING FIELD\n"
+                          + ") AS root.__audit.log.**",
+                      AUDIT_LOG_NODE_ID,
+                      AUDIT_LOG_USER_ID,
+                      AUDIT_LOG_USERNAME,
+                      AUDIT_LOG_CLI_HOSTNAME,
+                      AUDIT_LOG_AUDIT_EVENT_TYPE,
+                      AUDIT_LOG_OPERATION_TYPE,
+                      AUDIT_LOG_PRIVILEGE_TYPE,
+                      AUDIT_LOG_PRIVILEGE_LEVEL,
+                      AUDIT_LOG_RESULT,
+                      AUDIT_LOG_DATABASE,
+                      AUDIT_LOG_SQL_STRING,
+                      AUDIT_LOG_LOG),
                   ZoneId.systemDefault(),
                   session);
           status =
@@ -395,6 +397,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   public void logFromCN(AuditLogFields auditLogFields, String log, int nodeId)
       throws IllegalPathException {
+    if (!IS_AUDIT_LOG_ENABLED) {
+      return;
+    }
     createViewIfNecessary();
     if (noNeedInsertAuditLog(auditLogFields)) {
       return;

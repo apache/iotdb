@@ -443,6 +443,8 @@ public class MPPQueryContext implements IAuditEntity {
 
   private List<PrivilegeType> privilegeTypeList;
 
+  private String databaseName;
+
   private boolean result;
 
   @Override
@@ -517,12 +519,12 @@ public class MPPQueryContext implements IAuditEntity {
 
   @Override
   public String getDatabase() {
-    return session.getDatabaseName().orElse("");
+    return databaseName;
   }
 
   @Override
   public IAuditEntity setDatabase(String database) {
-    // Do nothing
+    this.databaseName = database;
     return this;
   }
 

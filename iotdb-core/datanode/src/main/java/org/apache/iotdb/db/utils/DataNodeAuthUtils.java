@@ -86,8 +86,8 @@ public class DataNodeAuthUtils {
           new SessionInfo(
               0,
               new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
                   IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
               ZoneId.systemDefault());
 
@@ -183,8 +183,8 @@ public class DataNodeAuthUtils {
           new SessionInfo(
               0,
               new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
                   IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
               ZoneId.systemDefault());
 
@@ -236,8 +236,8 @@ public class DataNodeAuthUtils {
           new SessionInfo(
               0,
               new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
                   IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
               ZoneId.systemDefault());
 

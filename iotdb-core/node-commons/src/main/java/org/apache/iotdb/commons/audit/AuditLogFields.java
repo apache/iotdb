@@ -37,12 +37,12 @@ public class AuditLogFields implements IAuditEntity {
   private final String sqlString;
 
   public AuditLogFields(
-      String username,
       long userId,
+      String username,
       String cliHostname,
       AuditEventType auditType,
       AuditLogOperation operationType,
-      PrivilegeType privilegeType,
+      List<PrivilegeType> privilegeTypes,
       boolean result,
       String database,
       String sqlString) {
@@ -51,10 +51,32 @@ public class AuditLogFields implements IAuditEntity {
     this.cliHostname = cliHostname;
     this.auditType = auditType;
     this.operationType = operationType;
-    this.privilegeTypes = Collections.singletonList(privilegeType);
+    this.privilegeTypes = privilegeTypes;
     this.result = result;
     this.database = database;
     this.sqlString = sqlString;
+  }
+
+  public AuditLogFields(
+      long userId,
+      String username,
+      String cliHostname,
+      AuditEventType auditType,
+      AuditLogOperation operationType,
+      PrivilegeType privilegeType,
+      boolean result,
+      String database,
+      String sqlString) {
+    this(
+        userId,
+        username,
+        cliHostname,
+        auditType,
+        operationType,
+        Collections.singletonList(privilegeType),
+        result,
+        database,
+        sqlString);
   }
 
   public String getUsername() {

@@ -915,7 +915,14 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowDatabase(
       ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
-    context.setAuditLogOperation(AuditLogOperation.QUERY);
+    context
+        .setAuditLogOperation(AuditLogOperation.QUERY)
+        .setDatabase(
+            showDatabaseStatement.getPaths().stream()
+                .distinct()
+                .collect(Collectors.toList())
+                .toString())
+        .setPrivilegeType(PrivilegeType.MANAGE_DATABASE);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       recordObjectAuthenticationAuditLog(
           context.setResult(true), () -> showDatabaseStatement.getPathPattern().toString());

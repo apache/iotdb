@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -76,14 +77,14 @@ public class AccessControlImpl implements AccessControl {
       String userName, String databaseName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(
-        userName, databaseName, TableModelPrivilege.CREATE, auditEntity);
+        userName, databaseName, TableModelPrivilege.CREATE, auditEntity.setDatabase(databaseName));
   }
 
   @Override
   public void checkCanDropDatabase(String userName, String databaseName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(
-        userName, databaseName, TableModelPrivilege.DROP, auditEntity);
+        userName, databaseName, TableModelPrivilege.DROP, auditEntity.setDatabase(databaseName));
   }
 
   @Override
@@ -91,18 +92,20 @@ public class AccessControlImpl implements AccessControl {
       String userName, String databaseName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(
-        userName, databaseName, TableModelPrivilege.ALTER, auditEntity);
+        userName, databaseName, TableModelPrivilege.ALTER, auditEntity.setDatabase(databaseName));
   }
 
   @Override
   public void checkCanShowOrUseDatabase(
       String userName, String databaseName, IAuditEntity auditEntity) {
-    authChecker.checkDatabaseVisibility(userName, databaseName, auditEntity);
+    authChecker.checkDatabaseVisibility(
+        userName, databaseName, auditEntity.setDatabase(databaseName));
   }
 
   @Override
   public void checkCanCreateTable(
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     if (userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)
         && tableName.getDatabaseName().equals(TABLE_MODEL_AUDIT_DATABASE)) {
@@ -111,6 +114,9 @@ public class AccessControlImpl implements AccessControl {
     }
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
+      ITableAuthCheckerImpl.recordAuditLog(
+          auditEntity.setPrivilegeType(PrivilegeType.SYSTEM).setResult(true),
+          tableName.getObjectName());
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE, auditEntity);
@@ -122,6 +128,7 @@ public class AccessControlImpl implements AccessControl {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
+      ITableAuthCheckerImpl.recordAuditLog(auditEntity, tableName.getObjectName());
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP, auditEntity);
@@ -133,6 +140,7 @@ public class AccessControlImpl implements AccessControl {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
+      ITableAuthCheckerImpl.recordAuditLog(auditEntity, tableName.getObjectName());
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER, auditEntity);

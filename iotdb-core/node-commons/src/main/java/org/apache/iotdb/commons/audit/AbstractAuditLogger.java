@@ -27,15 +27,26 @@ import java.util.List;
 import java.util.function.Supplier;
 
 public abstract class AbstractAuditLogger {
+
+  public static final String AUDIT_LOG_NODE_ID = "node_id";
+  public static final String AUDIT_LOG_USER_ID = "user_id";
+  public static final String AUDIT_LOG_USERNAME = "username";
+  public static final String AUDIT_LOG_CLI_HOSTNAME = "cli_hostname";
+  public static final String AUDIT_LOG_AUDIT_EVENT_TYPE = "audit_event_type";
+  public static final String AUDIT_LOG_OPERATION_TYPE = "operation_type";
+  public static final String AUDIT_LOG_PRIVILEGE_TYPE = "privilege_type";
+  public static final String AUDIT_LOG_PRIVILEGE_LEVEL = "privilege_level";
+  public static final String AUDIT_LOG_RESULT = "result";
+  public static final String AUDIT_LOG_DATABASE = "database";
+  public static final String AUDIT_LOG_SQL_STRING = "sql_string";
+  public static final String AUDIT_LOG_LOG = "log";
+
   private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
   protected static final boolean IS_AUDIT_LOG_ENABLED = CONFIG.isEnableAuditLog();
-
   private static final List<AuditLogOperation> AUDITABLE_OPERATION_TYPE =
       CONFIG.getAuditableOperationType();
-
   private static final PrivilegeLevel AUDITABLE_OPERATION_LEVEL =
       CONFIG.getAuditableOperationLevel();
-
   private static final String AUDITABLE_OPERATION_RESULT = CONFIG.getAuditableOperationResult();
 
   public abstract void log(IAuditEntity auditLogFields, Supplier<String> log);
