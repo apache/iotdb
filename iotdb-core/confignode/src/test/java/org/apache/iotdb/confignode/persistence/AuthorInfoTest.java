@@ -702,7 +702,7 @@ public class AuthorInfoTest {
 
     plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RDropUser,
+            ConfigPhysicalPlanType.RDropUserV2,
             "user",
             "",
             "",

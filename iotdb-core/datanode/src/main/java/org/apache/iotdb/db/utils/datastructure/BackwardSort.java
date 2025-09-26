@@ -115,6 +115,9 @@ public class BackwardSort extends QuickSort {
       i += step;
       blocks += 1;
     }
+    if (blocks == 0.0) {
+      throw new IllegalStateException("blocks should never be zero.");
+    }
     double ratio = overlap / blocks;
     int mul = (int) Math.ceil(ratio / INVERSION_RATIOS_THRESHOLD);
     // System.out.printf("Overlap ratio=%.4f mul=%d, step=%d\n", ratio, mul, step);

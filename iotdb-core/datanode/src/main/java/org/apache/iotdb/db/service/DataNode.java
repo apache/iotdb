@@ -451,7 +451,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    *
    * <p>6. All TTL information
    */
-  private void storeRuntimeConfigurations(
+  protected void storeRuntimeConfigurations(
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
       throws StartupException {
     /* Store ConfigNodeList */

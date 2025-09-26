@@ -141,4 +141,9 @@ public class AllowAllAccessControl implements AccessControl {
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
     return SUCCEED;
   }
+
+  @Override
+  public TSStatus allowUserToLogin(String userName) {
+    return SUCCEED;
+  }
 }

@@ -186,11 +186,18 @@ public class ConfigRegionListeningFilter {
           new PartialPath("auth.user.alter"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.UpdateUser, ConfigPhysicalPlanType.RUpdateUser)));
+                  ConfigPhysicalPlanType.UpdateUser,
+                  ConfigPhysicalPlanType.UpdateUserV2,
+                  ConfigPhysicalPlanType.RUpdateUser,
+                  ConfigPhysicalPlanType.RUpdateUserV2)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.drop"),
           Collections.unmodifiableList(
-              Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RDropUser)));
+              Arrays.asList(
+                  ConfigPhysicalPlanType.DropUser,
+                  ConfigPhysicalPlanType.DropUserV2,
+                  ConfigPhysicalPlanType.RDropUser,
+                  ConfigPhysicalPlanType.RDropUserV2)));
 
       // Both
       OPTION_PLAN_MAP.put(

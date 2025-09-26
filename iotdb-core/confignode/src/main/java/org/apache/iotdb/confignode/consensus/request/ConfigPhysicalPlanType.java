@@ -113,6 +113,7 @@ public enum ConfigPhysicalPlanType {
   // For version after and equal 1.2
   CreateUser((short) 621),
   CreateRole((short) 622),
+  @Deprecated
   DropUser((short) 623),
   DropRole((short) 624),
   GrantRole((short) 625),
@@ -121,6 +122,7 @@ public enum ConfigPhysicalPlanType {
   RevokeUser((short) 628),
   RevokeRole((short) 629),
   RevokeRoleFromUser((short) 630),
+  @Deprecated
   UpdateUser((short) 631),
   ListUser((short) 632),
   ListRole((short) 633),
@@ -137,7 +139,9 @@ public enum ConfigPhysicalPlanType {
   /** Table Author */
   RCreateUser((short) 641),
   RCreateRole((short) 642),
+  @Deprecated
   RUpdateUser((short) 643),
+  @Deprecated
   RDropUser((short) 644),
   RDropRole((short) 645),
   RGrantUserRole((short) 646),
@@ -314,6 +318,14 @@ public enum ConfigPhysicalPlanType {
   ConsumerGroupHandleMetaChange((short) 1901),
 
   ShowSubscription((short) 2000),
+
+  DropUserV2((short) 2100),
+  UpdateUserV2((short) 2101),
+
+  RUpdateUserV2((short) 2102),
+  RDropUserV2((short) 2103),
+
+  EnableSeparationOfAdminPowers((short) 2200),
 
   /** Test Only. */
   TestOnly((short) 30000),

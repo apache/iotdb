@@ -34,7 +34,8 @@ public enum AuthorType {
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIVILEGE,
-  LIST_ROLE_PRIVILEGE;
+  LIST_ROLE_PRIVILEGE,
+  ;
 
   /**
    * deserialize short number.

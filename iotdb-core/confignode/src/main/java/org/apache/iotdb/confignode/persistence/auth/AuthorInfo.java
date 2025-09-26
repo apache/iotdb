@@ -54,7 +54,7 @@ public class AuthorInfo implements SnapshotProcessor {
   public static final String NO_USER_MSG = "No such user : ";
 
   private IAuthorizer authorizer;
-  private volatile AuthorPlanExecutor authorPlanExecutor;
+  private volatile IAuthorPlanExecutor authorPlanExecutor;
 
   public AuthorInfo() {
     try {
@@ -65,7 +65,7 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
-  public void setAuthorQueryPlanExecutor(AuthorPlanExecutor authorPlanExecutor) {
+  public void setAuthorQueryPlanExecutor(IAuthorPlanExecutor authorPlanExecutor) {
     this.authorPlanExecutor = authorPlanExecutor;
   }
 
