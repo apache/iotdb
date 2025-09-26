@@ -504,7 +504,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         }
       }
       // Historical tsFiles
-      // Coarse filter, will be judged in inner class
       else {
         final Set<IDeviceID> devices = getDeviceSet();
         if (Objects.nonNull(devices)) {
@@ -524,8 +523,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               throw new AccessDeniedException(status.getMessage());
             }
           }
-        } else {
-          shouldParse4Privilege = true;
         }
       }
     } catch (final AccessDeniedException e) {
