@@ -283,8 +283,8 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        User user = AuthorityChecker.getUser(username);
-        long userId = user == null ? -1 : user.getUserId();
+        User tmpUser = AuthorityChecker.getUser(username);
+        long userId = tmpUser == null ? -1 : tmpUser.getUserId();
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
@@ -342,7 +342,7 @@ public class SessionManager implements SessionManagerMBean {
               AUTHOR_STATEMENT);
         }
         if (enableLoginLock) {
-          loginLockManager.clearFailure(user.getUserId(), session.getClientAddress());
+          loginLockManager.clearFailure(tmpUser.getUserId(), session.getClientAddress());
         }
       }
     } else {
