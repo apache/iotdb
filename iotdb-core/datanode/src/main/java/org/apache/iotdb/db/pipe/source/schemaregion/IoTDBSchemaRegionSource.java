@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.source.IoTDBNonDataRegionSource;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEven
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSourceMetrics;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -157,8 +157,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
     try {
       if (PathUtils.isTableModelDatabase(database)) {
-        Coordinator.getInstance()
-            .getAccessControl()
+        AuthorityChecker.getAccessControl()
             .checkCanSelectFromDatabase4Pipe(userName, database, userEntity);
       }
       return true;

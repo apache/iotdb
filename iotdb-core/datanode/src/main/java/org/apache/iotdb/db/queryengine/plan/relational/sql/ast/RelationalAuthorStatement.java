@@ -53,6 +53,7 @@ public class RelationalAuthorStatement extends Statement {
   private Set<PrivilegeType> privilegeType;
 
   private boolean grantOption;
+  private long executedByUserId;
   private String loginAddr;
 
   public RelationalAuthorStatement(
@@ -150,6 +151,10 @@ public class RelationalAuthorStatement extends Statement {
     return privilegeIds;
   }
 
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
   public void setDatabase(String database) {
     this.database = database;
   }
@@ -164,6 +169,10 @@ public class RelationalAuthorStatement extends Statement {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
   }
 
   public String getLoginAddr() {

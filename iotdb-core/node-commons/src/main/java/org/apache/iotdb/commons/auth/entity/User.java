@@ -36,6 +36,12 @@ import java.util.Set;
 /** This class contains all information of a User. */
 public class User extends Role {
 
+  public static final long INTERNAL_USER_END_ID = 9999;
+
+  public static final long INTERNAL_SYSTEM_ADMIN = 1;
+  public static final long INTERNAL_SECURITY_ADMIN = 2;
+  public static final long INTERNAL_AUDIT_ADMIN = 3;
+
   private long userId = -1;
 
   private String password;

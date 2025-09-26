@@ -344,6 +344,7 @@ struct TAuthorizerReq {
   6: required set<i32> permissions
   7: required bool grantOpt
   8: required binary nodeNameList
+  9: required i64 executedByUserID
 }
 
 struct TAuthorizerRelationalReq {
@@ -355,6 +356,7 @@ struct TAuthorizerRelationalReq {
    6: required string table
    7: required set<i32> permissions
    8: required bool grantOpt
+   9: required i64 executedByUserID
 }
 
 struct TAuthorizerResp {

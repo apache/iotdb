@@ -60,12 +60,16 @@ public class IoTDBDatabaseIT {
         .getConfig()
         .getCommonConfig()
         .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     // enable subscription
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setSubscriptionEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }

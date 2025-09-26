@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -61,6 +64,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -98,7 +102,7 @@ public class AuthorityChecker {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static AccessControl accessControl =
+  private static volatile AccessControl accessControl =
       new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
 
   private AuthorityChecker() {
@@ -126,8 +130,21 @@ public class AuthorityChecker {
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
+  public static User getUser(String username) {
+    return authorityFetcher.get().getUser(username);
+  }
+
+  public static Optional<Long> getUserId(String username) {
+    User user = authorityFetcher.get().getUser(username);
+    return Optional.ofNullable(user == null ? null : user.getUserId());
+  }
+
   public static TSStatus checkUser(String userName, String password) {
-    return authorityFetcher.get().checkUser(userName, password);
+    TSStatus status = authorityFetcher.get().checkUser(userName, password);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    return accessControl.allowUserToLogin(userName);
   }
 
   public static SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
@@ -149,20 +166,33 @@ public class AuthorityChecker {
     return authorityFetcher.get().operatePermission(authorStatement);
   }
 
+  public static IAuditEntity createIAuditEntity(String userName, IClientSession clientSession) {
+    if (clientSession != null && clientSession.getUsername() != null) {
+      return new UserEntity(
+          clientSession.getUserId(), clientSession.getUsername(), clientSession.getClientAddress());
+    } else if (userName != null) {
+      return new UserEntity(AuthorityChecker.getUserId(userName).orElse(-1L), userName, "");
+    } else {
+      return new UserEntity(-1, "unknown", "");
+    }
+  }
+
   /** Check whether specific Session has the authorization to given plan. */
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
     try {
-      return accessControl.checkPermissionBeforeProcess(statement, session.getUsername());
+      return accessControl.checkPermissionBeforeProcess(
+          statement,
+          new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()));
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
   }
 
-  public static TSStatus checkAuthority(Statement statement, String userName) {
+  public static TSStatus checkAuthority(Statement statement, UserEntity userEntity) {
     long startTime = System.nanoTime();
     try {
-      return accessControl.checkPermissionBeforeProcess(statement, userName);
+      return accessControl.checkPermissionBeforeProcess(statement, userEntity);
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }

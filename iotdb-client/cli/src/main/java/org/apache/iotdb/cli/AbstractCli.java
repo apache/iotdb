@@ -335,10 +335,12 @@ public abstract class AbstractCli {
         break;
       }
     }
-    if (index >= 0
-        && ((index + 1 >= args.length)
-            || (index + 1 < args.length && keywordSet.contains(args[index + 1])))) {
-      return ArrayUtils.remove(args, index);
+    if (index >= 0) {
+      if (index + 1 >= args.length
+          || args[index + 1].startsWith("-")
+          || (keywordSet.contains(args[index + 1]))) {
+        return ArrayUtils.remove(args, index);
+      }
     }
     return args;
   }

@@ -151,11 +151,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // check WRITE_DATA permission of timeseries
           long startTime = System.nanoTime();
           try {
-            String userName = loadTsFileAnalyzer.context.getSession().getUserName();
             TSStatus status =
                 AuthorityChecker.getAccessControl()
                     .checkFullPathWriteDataPermission(
-                        userName, device, timeseriesMetadata.getMeasurementId());
+                        loadTsFileAnalyzer.context, device, timeseriesMetadata.getMeasurementId());
             if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               throw new AuthException(
                   TSStatusCode.representOf(status.getCode()), status.getMessage());
@@ -323,7 +322,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
     // 1.check Authority
     TSStatus status =
         AuthorityChecker.checkAuthority(
-            statement, loadTsFileAnalyzer.context.getSession().getUserName());
+            statement, loadTsFileAnalyzer.context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
     }
@@ -424,12 +423,13 @@ public class TreeSchemaAutoCreatorAndVerifier {
       // check device schema: is aligned or not
       final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
       final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-      if (LOGGER.isDebugEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
-        LOGGER.debug(
-            "Device {} in TsFile is {}, but in IoTDB is {}.",
-            device,
-            isAlignedInTsFile ? "aligned" : "not aligned",
-            isAlignedInIoTDB ? "aligned" : "not aligned");
+      if (isAlignedInTsFile != isAlignedInIoTDB) {
+        throw new LoadAnalyzeTypeMismatchException(
+            String.format(
+                "Device %s in TsFile is %s, but in IoTDB is %s.",
+                device,
+                isAlignedInTsFile ? "aligned" : "not aligned",
+                isAlignedInIoTDB ? "aligned" : "not aligned"));
       }
 
       // check timeseries schema

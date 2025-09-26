@@ -40,6 +40,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
+
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
 
@@ -55,7 +57,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return "No such user %s";
   }
 
-  protected long nextUserId = 9999;
+  protected long nextUserId = INTERNAL_USER_END_ID;
 
   /**
    * BasicUserManager Constructor.
@@ -151,18 +153,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void initUserId() {
     try {
       long maxUserId = this.accessor.loadUserId();
-      if (maxUserId < 9999) {
-        nextUserId = 9999;
-      } else {
-        nextUserId = maxUserId;
-      }
-
-      for (Map.Entry<String, Role> userEntry : entityMap.entrySet()) {
-        User user = (User) userEntry.getValue();
-        if (user.getUserId() == -1) {
-          user.setUserId(++nextUserId);
-        }
-      }
+      nextUserId = Math.max(maxUserId, INTERNAL_USER_END_ID);
     } catch (IOException e) {
       LOGGER.warn("meet error in load max userId.", e);
       throw new RuntimeException(e);
@@ -187,16 +178,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   public boolean createUser(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
-    if (validCheck && !CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)) {
-      if (username.equals(password)
-          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
-        throw new AuthException(
-            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
-      }
-      AuthUtils.validateUsername(username);
-      if (enableEncrypt) {
-        AuthUtils.validatePassword(password);
-      }
+    if (validCheck) {
+      validCheck(username, password, enableEncrypt);
     }
 
     User user = this.getEntity(username);
@@ -220,6 +203,43 @@ public abstract class BasicUserManager extends BasicRoleManager {
       return true;
     } finally {
       lock.writeUnlock(username);
+    }
+  }
+
+  public void tryToCreateBuiltinUser(
+      String username, String password, long userId, boolean validCheck, boolean enableEncrypt)
+      throws AuthException {
+    if (validCheck) {
+      validCheck(username, password, enableEncrypt);
+    }
+    User user = this.getEntity(username);
+    if (user != null) {
+      throw new AuthException(
+          TSStatusCode.USER_ALREADY_EXIST, "Builtin username of admin is already in use");
+    }
+    lock.writeLock(username);
+    try {
+      user =
+          new User(
+              username, enableEncrypt ? AuthUtils.encryptPassword(password) : password, userId);
+      entityMap.put(username, user);
+    } finally {
+      lock.writeUnlock(username);
+    }
+  }
+
+  private void validCheck(String username, String password, boolean enableEncrypt)
+      throws AuthException {
+    if (!CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)) {
+      if (username.equals(password)
+          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
+      }
+      AuthUtils.validateUsername(username);
+      if (enableEncrypt) {
+        AuthUtils.validatePassword(password);
+      }
     }
   }
 
@@ -286,16 +306,23 @@ public abstract class BasicUserManager extends BasicRoleManager {
   public void reset() throws AuthException {
     accessor.reset();
     entityMap.clear();
+    initUserId();
     for (String userId : accessor.listAllEntities()) {
       try {
         User user = (User) accessor.loadEntity(userId);
+        if (user.getUserId() == -1) {
+          if (user.getName().equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
+            user.setUserId(0);
+          } else {
+            user.setUserId(++nextUserId);
+          }
+        }
         entityMap.put(user.getName(), user);
       } catch (IOException e) {
         LOGGER.warn("Get exception when load user {}", userId);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }
-    initUserId();
     initAdmin();
     initInternalAuditorWhenNecessary();
   }

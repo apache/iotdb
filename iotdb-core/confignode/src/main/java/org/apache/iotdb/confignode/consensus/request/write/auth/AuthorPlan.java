@@ -31,6 +31,11 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
   protected String newPassword;
   protected String userName;
   protected boolean grantOpt;
+  protected int maxSessionPerUser;
+  protected int minSessionPerUser;
+
+  // Used for read plans or some write plans whose type name ends with 'V2'
+  protected long executedByUserId;
 
   public AuthorPlan(final ConfigPhysicalPlanType type) {
     super(type);
@@ -44,13 +49,17 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
       String roleName,
       String password,
       String newPassword,
-      boolean grantOpt) {
+      boolean grantOpt,
+      int MaxSessionPerUser,
+      int MinSessionPerUser) {
     super(type);
     this.userName = userName;
     this.roleName = roleName;
     this.password = password;
     this.newPassword = newPassword;
     this.grantOpt = grantOpt;
+    this.maxSessionPerUser = MaxSessionPerUser;
+    this.minSessionPerUser = MinSessionPerUser;
   }
 
   public ConfigPhysicalPlanType getAuthorType() {
@@ -67,6 +76,22 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
 
   public String getPassword() {
     return password;
+  }
+
+  public int getMaxSessionPerUser() {
+    return maxSessionPerUser;
+  }
+
+  public void setMaxSessionPerUser(final int maxSessionPerUser) {
+    this.maxSessionPerUser = maxSessionPerUser;
+  }
+
+  public int getMinSessionPerUser() {
+    return minSessionPerUser;
+  }
+
+  public void setMinSessionPerUser(final int minSessionPerUser) {
+    this.maxSessionPerUser = minSessionPerUser;
   }
 
   public void setPassword(final String password) {
@@ -95,6 +120,14 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
 
   public void setUserName(final String userName) {
     this.userName = userName;
+  }
+
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
   }
 
   @Override

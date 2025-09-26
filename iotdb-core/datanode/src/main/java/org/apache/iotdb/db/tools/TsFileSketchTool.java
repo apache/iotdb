@@ -41,6 +41,8 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -55,6 +57,8 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 public class TsFileSketchTool {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSketchTool.class);
 
   private String filename;
   private PrintWriter pw;
@@ -97,7 +101,7 @@ public class TsFileSketchTool {
             String.format("Cannot load file %s because the file has crashed.", filename));
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.warn("Fail to init TsFileSketchTool, {}", filename, e);
     }
   }
 
@@ -214,7 +218,7 @@ public class TsFileSketchTool {
               + "|\t[magic tail] "
               + reader.readTailMagic());
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.warn("Fail to parse TsFileMetadata, {}", filename, e);
     }
   }
 
@@ -274,7 +278,7 @@ public class TsFileSketchTool {
               + "|\t[version number] "
               + reader.readVersionNumber());
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.warn("Fail to printFileInfo, {}", filename, e);
     }
   }
 
@@ -384,7 +388,7 @@ public class TsFileSketchTool {
         printlnBoth(pw, splitStr + " [Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.warn("Fail to parse chunk, {}", filename, e);
     }
   }
 
@@ -414,7 +418,7 @@ public class TsFileSketchTool {
       }
       printlnBoth(pw, splitStr);
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.warn("Fail to printTimeseriesIndex, {}", filename, e);
     }
   }
 
@@ -438,7 +442,7 @@ public class TsFileSketchTool {
                 + chunkMetadata.getOffsetOfChunkHeader());
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.warn("Fail to printTimeseriesIndex, {}", filename, e);
     }
   }
 

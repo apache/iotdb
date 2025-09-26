@@ -47,6 +47,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
+  private long executedByUserId;
   private String loginAddr;
 
   /**
@@ -188,6 +189,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setGrantOpt(boolean grantOpt) {
     this.grantOpt = grantOpt;
+  }
+
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
   }
 
   @Override

@@ -3456,7 +3456,7 @@ public class IoTDBConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        e.printStackTrace();
+        logger.warn("Failed to get field {}", configField, e);
       }
     }
     return configMessage.toString();
