@@ -77,6 +77,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
@@ -107,6 +108,7 @@ public class WriteBackSink implements PipeConnector {
   // for correctly handling data insertion in IoTDBReceiverAgent#receive method
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  public static final AtomicLong id = new AtomicLong();
   private InternalClientSession session;
 
   private boolean skipIfNoPrivileges;
@@ -136,11 +138,12 @@ public class WriteBackSink implements PipeConnector {
     session =
         new InternalClientSession(
             String.format(
-                "%s_%s_%s_%s",
+                "%s_%s_%s_%s_%s",
                 WriteBackSink.class.getSimpleName(),
                 environment.getPipeName(),
                 environment.getCreationTime(),
-                environment.getRegionId()));
+                environment.getRegionId(),
+                id.getAndDecrement()));
 
     String userIdString =
         parameters.getStringOrDefault(
