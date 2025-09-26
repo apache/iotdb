@@ -143,7 +143,7 @@ public class WriteBackSink implements PipeConnector {
                 environment.getPipeName(),
                 environment.getCreationTime(),
                 environment.getRegionId(),
-                id.getAndDecrement()));
+                id.getAndIncrement()));
 
     String userIdString =
         parameters.getStringOrDefault(
@@ -186,7 +186,9 @@ public class WriteBackSink implements PipeConnector {
             Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
             CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE);
 
-    SESSION_MANAGER.registerSession(session);
+    if (SESSION_MANAGER.getCurrSession() != null) {
+      SESSION_MANAGER.registerSession(session);
+    }
   }
 
   @Override
@@ -360,7 +362,7 @@ public class WriteBackSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (session != null) {
+    if (session != null && SESSION_MANAGER.getCurrSession() == session) {
       SESSION_MANAGER.removeCurrSession();
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
     }
