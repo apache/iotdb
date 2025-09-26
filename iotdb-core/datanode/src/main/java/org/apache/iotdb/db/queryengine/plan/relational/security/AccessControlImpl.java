@@ -39,6 +39,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -117,7 +118,7 @@ public class AccessControlImpl implements AccessControl {
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
       ITableAuthCheckerImpl.recordAuditLog(
           auditEntity.setPrivilegeType(PrivilegeType.SYSTEM).setResult(true),
-          tableName.getObjectName());
+          tableName::getObjectName);
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE, auditEntity);
@@ -129,7 +130,7 @@ public class AccessControlImpl implements AccessControl {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
-      ITableAuthCheckerImpl.recordAuditLog(auditEntity, tableName.getObjectName());
+      ITableAuthCheckerImpl.recordAuditLog(auditEntity, tableName::getObjectName);
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP, auditEntity);
@@ -141,7 +142,7 @@ public class AccessControlImpl implements AccessControl {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
-      ITableAuthCheckerImpl.recordAuditLog(auditEntity, tableName.getObjectName());
+      ITableAuthCheckerImpl.recordAuditLog(auditEntity, tableName::getObjectName);
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER, auditEntity);
@@ -244,13 +245,9 @@ public class AccessControlImpl implements AccessControl {
     AuthorRType type = statement.getAuthorType();
     switch (type) {
       case CREATE_USER:
-        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          return;
-        }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
-        return;
       case DROP_USER:
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity, statement::getUserName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
@@ -259,6 +256,7 @@ public class AccessControlImpl implements AccessControl {
       case LIST_USER_PRIV:
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
             || statement.getUserName().equals(userName)) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity, statement::getUserName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
@@ -269,28 +267,19 @@ public class AccessControlImpl implements AccessControl {
         }
         return;
       case CREATE_ROLE:
-        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          return;
-        }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
-        return;
-
       case DROP_ROLE:
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity, statement::getRoleName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
         return;
-
       case GRANT_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          return;
-        }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
-        return;
-
       case REVOKE_USER_ROLE:
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity,
+              () -> "user: " + statement.getUserName() + ", role: " + statement.getRoleName());
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
@@ -298,6 +287,7 @@ public class AccessControlImpl implements AccessControl {
       case LIST_ROLE:
         if (statement.getUserName() != null && !statement.getUserName().equals(userName)) {
           authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity, statement::getRoleName);
           return;
         }
         if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_ROLE)) {
@@ -305,10 +295,9 @@ public class AccessControlImpl implements AccessControl {
         }
         return;
       case LIST_ROLE_PRIV:
-        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          return;
-        }
-        if (AuthorityChecker.checkRole(userName, statement.getRoleName())) {
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
+            || AuthorityChecker.checkRole(userName, statement.getRoleName())) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity, statement::getRoleName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
@@ -318,6 +307,8 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_ROLE_ANY:
       case REVOKE_USER_ANY:
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity, () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -330,6 +321,8 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_USER_ALL:
       case REVOKE_USER_ALL:
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity, () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (TableModelPrivilege privilege : TableModelPrivilege.values()) {
@@ -347,6 +340,8 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_USER_DB:
       case REVOKE_ROLE_DB:
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity, () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -362,6 +357,8 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_USER_TB:
       case REVOKE_ROLE_TB:
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity, () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -378,6 +375,8 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_USER_SYS:
       case REVOKE_ROLE_SYS:
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity, () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -459,6 +458,12 @@ public class AccessControlImpl implements AccessControl {
   public TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
     if (AuthorityChecker.SUPER_USER_ID == entity.getUserId()) {
+      ITableAuthCheckerImpl.recordAuditLog(
+          entity
+              .setPrivilegeTypes(
+                  Arrays.asList(PrivilegeType.READ_SCHEMA, PrivilegeType.WRITE_SCHEMA))
+              .setResult(true),
+          () -> "source: " + sourcePaths + ", target: " + targetPaths);
       return SUCCEED;
     }
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

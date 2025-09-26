@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collection;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 
@@ -50,7 +51,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(true),
-          databaseName);
+          () -> databaseName);
       return;
     }
     // Information_schema is visible to any user
@@ -60,7 +61,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(true),
-          databaseName);
+          () -> databaseName);
       return;
     }
 
@@ -71,7 +72,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 .setAuditLogOperation(AuditLogOperation.QUERY)
                 .setPrivilegeType(PrivilegeType.READ_SCHEMA)
                 .setResult(true),
-            databaseName);
+            () -> databaseName);
         return;
       } else {
         recordAuditLog(
@@ -79,7 +80,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 .setAuditLogOperation(AuditLogOperation.QUERY)
                 .setPrivilegeType(PrivilegeType.READ_SCHEMA)
                 .setResult(false),
-            databaseName);
+            () -> databaseName);
         throw new AccessDeniedException("DATABASE " + databaseName);
       }
     }
@@ -90,7 +91,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(true),
-          databaseName);
+          () -> databaseName);
       return;
     }
     if (!AuthorityChecker.checkDBVisible(userName, databaseName)) {
@@ -99,7 +100,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(false),
-          databaseName);
+          () -> databaseName);
       throw new AccessDeniedException("DATABASE " + databaseName);
     }
     recordAuditLog(
@@ -107,7 +108,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             .setAuditLogOperation(AuditLogOperation.QUERY)
             .setPrivilegeType(PrivilegeType.READ_SCHEMA)
             .setResult(true),
-        databaseName);
+        () -> databaseName);
   }
 
   @Override
@@ -129,7 +130,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(true),
-          databaseName);
+          () -> databaseName);
       return;
     }
 
@@ -139,7 +140,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(true),
-          databaseName);
+          () -> databaseName);
       return;
     }
 
@@ -149,7 +150,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 userName, databaseName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType(),
             databaseName);
-    recordAuditLogViaAuthenticationResult(databaseName, privilege, auditEntity, result);
+    recordAuditLogViaAuthenticationResult(() -> databaseName, privilege, auditEntity, result);
   }
 
   private static void checkAuditDatabase(
@@ -169,7 +170,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 .setAuditLogOperation(privilege.getAuditLogOperation())
                 .setPrivilegeType(privilege.getPrivilegeType())
                 .setResult(false),
-            databaseName);
+            () -> databaseName);
         throw new AccessDeniedException(
             String.format("The database '%s' is read-only.", TABLE_MODEL_AUDIT_DATABASE));
       }
@@ -185,7 +186,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.SELECT)
               .setResult(false),
-          TABLE_MODEL_AUDIT_DATABASE);
+          () -> TABLE_MODEL_AUDIT_DATABASE);
       AUDIT_LOGGER.log(
           auditEntity
               .setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION)
@@ -209,7 +210,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             .setAuditLogOperation(AuditLogOperation.QUERY)
             .setPrivilegeType(PrivilegeType.SELECT)
             .setResult(true),
-        TABLE_MODEL_AUDIT_DATABASE);
+        () -> TABLE_MODEL_AUDIT_DATABASE);
   }
 
   @Override
@@ -224,7 +225,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(true),
-          databaseName);
+          () -> databaseName);
       return;
     }
     TSStatus result =
@@ -233,7 +234,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 userName, databaseName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType(),
             databaseName);
-    recordAuditLogViaAuthenticationResult(databaseName, privilege, auditEntity, result);
+    recordAuditLogViaAuthenticationResult(() -> databaseName, privilege, auditEntity, result);
   }
 
   @Override
@@ -249,7 +250,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(true),
-          tableName.getObjectName());
+          tableName::getObjectName);
       return;
     }
     TSStatus result =
@@ -262,8 +263,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             privilege.getPrivilegeType(),
             tableName.getDatabaseName(),
             tableName.getObjectName());
-    recordAuditLogViaAuthenticationResult(
-        tableName.getObjectName(), privilege, auditEntity, result);
+    recordAuditLogViaAuthenticationResult(tableName::getObjectName, privilege, auditEntity, result);
   }
 
   @Override
@@ -278,7 +278,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(true),
-          tableName.getObjectName());
+          tableName::getObjectName);
       return;
     }
     TSStatus result =
@@ -291,8 +291,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             privilege.getPrivilegeType(),
             tableName.getDatabaseName(),
             tableName.getObjectName());
-    recordAuditLogViaAuthenticationResult(
-        tableName.getObjectName(), privilege, auditEntity, result);
+    recordAuditLogViaAuthenticationResult(tableName::getObjectName, privilege, auditEntity, result);
   }
 
   @Override
@@ -315,7 +314,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.CONTROL)
               .setPrivilegeType(PrivilegeType.SYSTEM)
               .setResult(true),
-          tableName.getObjectName());
+          tableName::getObjectName);
       return true;
     }
     recordAuditLog(
@@ -323,7 +322,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             .setAuditLogOperation(AuditLogOperation.CONTROL)
             .setPrivilegeType(PrivilegeType.SYSTEM)
             .setResult(false),
-        tableName.getObjectName());
+        tableName::getObjectName);
     return false;
   }
 
@@ -337,7 +336,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(true),
-          tableName.getObjectName());
+          tableName::getObjectName);
       return;
     }
 
@@ -349,7 +348,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(false),
-          tableName.getObjectName());
+          tableName::getObjectName);
       throw new AccessDeniedException("TABLE " + tableName);
     }
 
@@ -359,7 +358,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(true),
-          tableName.getObjectName());
+          tableName::getObjectName);
       return;
     }
     if (!AuthorityChecker.checkTableVisible(
@@ -369,7 +368,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(false),
-          tableName.getObjectName());
+          tableName::getObjectName);
       throw new AccessDeniedException("TABLE " + tableName);
     }
   }
@@ -383,14 +382,14 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(true),
-          AuthorityChecker.ANY_SCOPE);
+          () -> AuthorityChecker.ANY_SCOPE);
       return;
     }
     TSStatus result =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());
-    recordAuditLogViaAuthenticationResult(userName, privilege, auditEntity, result);
+    recordAuditLogViaAuthenticationResult(() -> userName, privilege, auditEntity, result);
   }
 
   @Override
@@ -403,7 +402,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 .setAuditLogOperation(privilege.getAuditLogOperation())
                 .setPrivilegeType(privilege)
                 .setResult(true),
-            AuthorityChecker.ANY_SCOPE);
+            () -> AuthorityChecker.ANY_SCOPE);
       }
       return;
     }
@@ -424,7 +423,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(true),
-          AuthorityChecker.ANY_SCOPE);
+          () -> AuthorityChecker.ANY_SCOPE);
       return;
     }
     TSStatus result =
@@ -433,7 +432,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());
     recordAuditLogViaAuthenticationResult(
-        AuthorityChecker.ANY_SCOPE, privilege, auditEntity, result);
+        () -> AuthorityChecker.ANY_SCOPE, privilege, auditEntity, result);
   }
 
   @Override
@@ -445,7 +444,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(true),
-          AuthorityChecker.ANY_SCOPE);
+          () -> AuthorityChecker.ANY_SCOPE);
       return;
     }
     TSStatus result =
@@ -454,11 +453,11 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());
     recordAuditLogViaAuthenticationResult(
-        AuthorityChecker.ANY_SCOPE, privilege, auditEntity, result);
+        () -> AuthorityChecker.ANY_SCOPE, privilege, auditEntity, result);
   }
 
   private void recordAuditLogViaAuthenticationResult(
-      String auditObject,
+      Supplier<String> auditObject,
       TableModelPrivilege privilege,
       IAuditEntity auditEntity,
       TSStatus result) {
@@ -479,7 +478,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
         auditObject);
   }
 
-  public static void recordAuditLog(IAuditEntity auditEntity, String auditObject) {
+  public static void recordAuditLog(IAuditEntity auditEntity, Supplier<String> auditObject) {
     AUDIT_LOGGER.log(
         auditEntity.setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION),
         () ->
@@ -487,7 +486,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 OBJECT_AUTHENTICATION_AUDIT_STR,
                 auditEntity.getUsername(),
                 auditEntity.getUserId(),
-                auditObject,
+                auditObject.get(),
                 true));
   }
 }
