@@ -190,7 +190,7 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeName(),
                     deleteDataEvent.getCreationTime(),
                     deleteDataEvent.getPipeTaskMeta(),
-                    deleteDataEvent.getTreePattern(),
+                    deleteDataEvent.getTreePatterns(),
                     deleteDataEvent.getTablePattern(),
                     deleteDataEvent.getUserId(),
                     deleteDataEvent.getUserName(),

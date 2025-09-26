@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.UserDefinedEvent;
 
+import java.util.List;
+
 public class UserDefinedEnrichedEvent extends EnrichedEvent {
 
   private final UserDefinedEvent userDefinedEvent;
@@ -46,7 +48,7 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         enrichedEvent.getPipeName(),
         enrichedEvent.getCreationTime(),
         enrichedEvent.getPipeTaskMeta(),
-        enrichedEvent.getTreePattern(),
+        enrichedEvent.getTreePatterns(),
         enrichedEvent.getTablePattern(),
         enrichedEvent.getUserId(),
         enrichedEvent.getUserName(),
@@ -82,7 +84,7 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -94,7 +96,7 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
+import java.util.List;
+
 public abstract class PipeWritePlanEvent extends EnrichedEvent implements SerializableEvent {
 
   protected boolean isGeneratedByPipe;
@@ -34,7 +36,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -45,7 +47,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,

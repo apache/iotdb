@@ -236,7 +236,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
     // Validate tree pattern and table pattern
-    validatePattern(TreePattern.parsePipePatternFromSourceParameters(validator.getParameters()));
+    TreePattern.parsePipePatternFromSourceParameters(validator.getParameters())
+        .forEach(this::validatePattern);
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator

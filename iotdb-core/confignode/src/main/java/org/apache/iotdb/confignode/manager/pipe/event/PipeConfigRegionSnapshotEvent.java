@@ -42,6 +42,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -120,7 +121,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -130,7 +131,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -203,7 +204,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -219,7 +220,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
             pipeName,
             creationTime,
             pipeTaskMeta,
-            treePattern,
+            treePatterns,
             tablePattern,
             userId,
             userName,
