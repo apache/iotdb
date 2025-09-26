@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
@@ -43,8 +43,7 @@ public class PipePlanTablePrivilegeParseVisitor
   @Override
   public Optional<PlanNode> visitCreateOrUpdateTableDevice(
       final CreateOrUpdateTableDeviceNode node, final IAuditEntity auditEntity) {
-    return Coordinator.getInstance()
-            .getAccessControl()
+    return AuthorityChecker.getAccessControl()
             .checkCanSelectFromTable4Pipe(
                 auditEntity.getUsername(),
                 new QualifiedObjectName(node.getDatabase(), node.getTableName()),
@@ -56,8 +55,7 @@ public class PipePlanTablePrivilegeParseVisitor
   @Override
   public Optional<PlanNode> visitTableDeviceAttributeUpdate(
       final TableDeviceAttributeUpdateNode node, final IAuditEntity auditEntity) {
-    return Coordinator.getInstance()
-            .getAccessControl()
+    return AuthorityChecker.getAccessControl()
             .checkCanSelectFromTable4Pipe(
                 auditEntity.getUsername(),
                 new QualifiedObjectName(node.getDatabase(), node.getTableName()),
@@ -73,8 +71,7 @@ public class PipePlanTablePrivilegeParseVisitor
         node.getModEntries().stream()
             .filter(
                 entry ->
-                    Coordinator.getInstance()
-                        .getAccessControl()
+                    AuthorityChecker.getAccessControl()
                         .checkCanSelectFromTable4Pipe(
                             auditEntity.getUsername(),
                             new QualifiedObjectName(node.getDatabaseName(), entry.getTableName()),

@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -160,8 +160,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     }
     for (final TableDeletionEntry entry :
         ((RelationalDeleteDataNode) deleteDataNode).getModEntries()) {
-      Coordinator.getInstance()
-          .getAccessControl()
+      AuthorityChecker.getAccessControl()
           .checkCanSelectFromTable(
               userName,
               new QualifiedObjectName(
