@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -247,9 +247,8 @@ public class TableDeviceSchemaValidator {
             Long.MAX_VALUE,
             false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
+      throw new IoTDBRuntimeException(
+          executionResult.status.getMessage(), executionResult.status.getCode());
     }
   }
 
