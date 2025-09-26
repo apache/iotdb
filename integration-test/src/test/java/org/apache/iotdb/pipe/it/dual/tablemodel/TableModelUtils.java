@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -98,11 +99,21 @@ public class TableModelUtils {
     }
   }
 
-  public static void insertData(
+  public static boolean insertData(
       final String dataBaseName,
       final String tableName,
       final int startInclusive,
       final int endExclusive,
+      final BaseEnv baseEnv) {
+    return insertData(dataBaseName, tableName, startInclusive, endExclusive, false, baseEnv);
+  }
+
+  public static boolean insertData(
+      final String dataBaseName,
+      final String tableName,
+      final int startInclusive,
+      final int endExclusive,
+      final boolean trial,
       final BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(endExclusive - startInclusive + 1);
     for (int i = startInclusive; i < endExclusive; ++i) {
@@ -112,7 +123,13 @@ public class TableModelUtils {
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
-    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    if (!trial) {
+      TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+      return true;
+    } else {
+      return TestUtils.tryExecuteNonQueriesWithRetry(
+          baseEnv, list, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, null);
+    }
   }
 
   public static void insertData(

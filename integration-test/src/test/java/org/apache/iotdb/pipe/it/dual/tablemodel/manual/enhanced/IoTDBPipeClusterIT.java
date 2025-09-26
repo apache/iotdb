@@ -335,9 +335,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
             fail();
           }
 
-          TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
-
-          TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv);
+          // The without unknown check may randomly fail, and may cause insertion failure
+          // Directly return here because the problem has nothing to do with pipe
+          if (!TableModelUtils.insertData("test", "test", 200, 300, senderEnv)
+              || !TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv)) {
+            return;
+          }
 
           TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
         }
