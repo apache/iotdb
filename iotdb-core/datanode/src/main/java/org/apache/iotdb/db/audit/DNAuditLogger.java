@@ -133,10 +133,12 @@ public class DNAuditLogger extends AbstractAuditLogger {
     AuditEventType type = auditLogFields.getAuditEventType();
     AuditLogOperation operation = auditLogFields.getAuditLogOperation();
     PrivilegeLevel privilegeLevel = null;
-    for (PrivilegeType privilegeType : auditLogFields.getPrivilegeTypes()) {
-      privilegeLevel = judgePrivilegeLevel(privilegeType);
-      if (privilegeLevel.equals(PrivilegeLevel.GLOBAL)) {
-        break;
+    if (auditLogFields.getPrivilegeTypes() != null) {
+      for (PrivilegeType privilegeType : auditLogFields.getPrivilegeTypes()) {
+        privilegeLevel = judgePrivilegeLevel(privilegeType);
+        if (privilegeLevel.equals(PrivilegeLevel.GLOBAL)) {
+          break;
+        }
       }
     }
     String dataNodeId = String.valueOf(config.getDataNodeId());
@@ -164,7 +166,11 @@ public class DNAuditLogger extends AbstractAuditLogger {
           new Binary(type == null ? "null" : type.toString(), TSFileConfig.STRING_CHARSET),
           new Binary(
               operation == null ? "null" : operation.toString(), TSFileConfig.STRING_CHARSET),
-          new Binary(auditLogFields.getPrivilegeTypeString(), TSFileConfig.STRING_CHARSET),
+          new Binary(
+              auditLogFields.getPrivilegeTypes() == null
+                  ? "null"
+                  : auditLogFields.getPrivilegeTypeString(),
+              TSFileConfig.STRING_CHARSET),
           new Binary(
               privilegeLevel == null ? "null" : privilegeLevel.toString(),
               TSFileConfig.STRING_CHARSET),
