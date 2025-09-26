@@ -696,10 +696,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()];
     switch (configPhysicalPlanType) {
       case RUpdateUser:
-        configPhysicalPlanType = ConfigPhysicalPlanType.UpdateUserV2;
+        configPhysicalPlanType = ConfigPhysicalPlanType.RUpdateUserV2;
         break;
       case RDropUser:
-        configPhysicalPlanType = ConfigPhysicalPlanType.DropUserV2;
+        configPhysicalPlanType = ConfigPhysicalPlanType.RDropUserV2;
         break;
     }
     return configManager.operatePermission(
