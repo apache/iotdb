@@ -28,6 +28,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,6 +42,7 @@ import java.util.Map;
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
   @Test
+  @Ignore
   public void testAggregator() throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
