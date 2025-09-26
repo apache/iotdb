@@ -37,6 +37,10 @@ WS
 
 // Common Keywords
 
+ACCOUNT
+    : A C C O U N T
+    ;
+
 ADD
     : A D D
     ;
@@ -962,6 +966,10 @@ UNLOAD
     : U N L O A D
     ;
 
+UNLOCK
+    : U N L O C K
+    ;
+
 UNSET
     : U N S E T
     ;
@@ -1225,6 +1233,10 @@ DOUBLE_COLON: '::';
 /**
  * 5. Literals
  */
+
+USERNAME_WITH_HOST
+    : [a-zA-Z_] [a-zA-Z_0-9]* '@' '\'' .*? '\''
+    ;
 
 // String Literal
 

@@ -49,5 +49,6 @@ public enum AuthorRType {
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIV,
-  LIST_ROLE_PRIV
+  LIST_ROLE_PRIV,
+  ACCOUNT_UNLOCK
 }

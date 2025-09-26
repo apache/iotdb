@@ -221,6 +221,8 @@ public class LoginLockManager {
     if (ip == null || ip.isEmpty()) {
       // Unlock global user lock
       userLocks.remove(userId);
+      // Also remove all IP locks for this user
+      userIpLocks.keySet().removeIf(key -> key.startsWith(userId + "@"));
       LOGGER.info("User ID '{}' unlocked (manual)", userId);
     } else {
       // Unlock specific user@ip lock

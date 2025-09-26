@@ -53,6 +53,7 @@ public class RelationalAuthorStatement extends Statement {
   private Set<PrivilegeType> privilegeType;
 
   private boolean grantOption;
+  private String loginAddr;
 
   public RelationalAuthorStatement(
       AuthorRType authorType,
@@ -165,6 +166,14 @@ public class RelationalAuthorStatement extends Statement {
     this.password = password;
   }
 
+  public String getLoginAddr() {
+    return loginAddr;
+  }
+
+  public void setLoginAddr(String loginAddr) {
+    this.loginAddr = loginAddr;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -172,6 +181,7 @@ public class RelationalAuthorStatement extends Statement {
     RelationalAuthorStatement that = (RelationalAuthorStatement) o;
     return grantOption == that.grantOption
         && authorType == that.authorType
+        && Objects.equals(loginAddr, that.loginAddr)
         && Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(userName, that.userName)
@@ -225,6 +235,7 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_USER_ROLE:
+      case ACCOUNT_UNLOCK:
         return QueryType.WRITE;
       case LIST_ROLE:
       case LIST_USER:
@@ -319,6 +330,8 @@ public class RelationalAuthorStatement extends Statement {
 
   public TSStatus checkStatementIsValid(String currentUser) {
     switch (authorType) {
+      case ACCOUNT_UNLOCK:
+        break;
       case CREATE_USER:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(

@@ -47,6 +47,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
+  private String loginAddr;
 
   /**
    * Constructor with AuthorType.
@@ -102,6 +103,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case LIST_ROLE:
         this.setType(StatementType.LIST_ROLE);
         break;
+      case ACCOUNT_UNLOCK:
+        this.setType(StatementType.ACCOUNT_UNLOCK);
+        break;
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
@@ -144,6 +148,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setPassWord(String password) {
     this.password = password;
+  }
+
+  public String getLoginAddr() {
+    return loginAddr;
+  }
+
+  public void setLoginAddr(String loginAddr) {
+    this.loginAddr = loginAddr;
   }
 
   public String getNewPassword() {
@@ -198,6 +210,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
       case REVOKE_USER_ROLE:
       case UPDATE_USER:
+      case ACCOUNT_UNLOCK:
         queryType = QueryType.WRITE;
         break;
       case LIST_USER:
