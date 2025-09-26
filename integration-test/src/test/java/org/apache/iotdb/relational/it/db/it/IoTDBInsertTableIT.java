@@ -1206,7 +1206,9 @@ public class IoTDBInsertTableIT {
       List<File> files =
           FileUtils.listFilesRecursively(
               new File(simpleEnv.getDataNodeWrapper(0).getDataNodeDir()),
-              f -> f.getName().endsWith(TSFILE_SUFFIX) && f.getAbsolutePath().contains(File.separator + "test" + File.separator));
+              f ->
+                  f.getName().endsWith(TSFILE_SUFFIX)
+                      && f.getAbsolutePath().contains(File.separator + "test" + File.separator));
 
       assertEquals(1, files.size());
       File file = files.get(0);
