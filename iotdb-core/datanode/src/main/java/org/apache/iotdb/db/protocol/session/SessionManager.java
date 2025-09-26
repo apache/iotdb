@@ -35,9 +35,6 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.BasicAuthorityCache;
-import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
-import org.apache.iotdb.db.auth.IAuthorityFetcher;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -63,7 +60,6 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,9 +104,6 @@ public class SessionManager implements SessionManagerMBean {
 
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-
-  private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
-      MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
 
   private static final boolean ENABLE_AUDIT_LOG =
       IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
@@ -264,7 +257,7 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        User user = authorityFetcher.get().getUser(username);
+        User user = AuthorityChecker.getUser(username);
         long userId = user == null ? -1 : user.getUserId();
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
