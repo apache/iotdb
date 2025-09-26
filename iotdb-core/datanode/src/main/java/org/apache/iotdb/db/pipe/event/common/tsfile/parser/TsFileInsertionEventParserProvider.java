@@ -96,7 +96,6 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           entity,
-          sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent);
     }
 

@@ -83,7 +83,6 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               Long.MAX_VALUE,
               null,
               null,
-              false,
               null)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {

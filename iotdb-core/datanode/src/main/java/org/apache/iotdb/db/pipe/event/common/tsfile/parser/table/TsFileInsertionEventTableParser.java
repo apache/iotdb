@@ -63,7 +63,6 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
-      final boolean skipIfNoPrivileges,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
     super(
@@ -75,7 +74,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         endTime,
         pipeTaskMeta,
         entity,
-        skipIfNoPrivileges,
+        true,
         sourceEvent);
 
     try {
@@ -116,20 +115,9 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
-      final boolean skipIfNoPrivileges,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    this(
-        null,
-        0,
-        tsFile,
-        pattern,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        entity,
-        skipIfNoPrivileges,
-        sourceEvent);
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, entity, sourceEvent);
   }
 
   @Override
