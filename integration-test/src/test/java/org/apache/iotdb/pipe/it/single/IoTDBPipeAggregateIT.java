@@ -55,11 +55,11 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
               "insert into root.ln.wf01.wt01(time, temperature, status) values (10000, 1, false)"),
           null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("pattern", "root.ln");
+      sourceAttributes.put("pattern", "root.ln");
 
       processorAttributes.put("processor", "aggregate-processor");
       processorAttributes.put("output.database", "root.testdb");
@@ -69,12 +69,12 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
           "operators", "avg, peak, rms, var, skew, kurt, ff, cf, pf, cE, max, min");
       processorAttributes.put("sliding.seconds", "60");
 
-      connectorAttributes.put("sink", "write-back-sink");
+      sinkAttributes.put("sink", "write-back-sink");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

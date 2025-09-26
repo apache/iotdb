@@ -482,7 +482,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         for (final Map.Entry<IDeviceID, String[]> entry : treeSchemaMap.entrySet()) {
           final IDeviceID deviceID = entry.getKey();
           for (final String measurement : entry.getValue()) {
-            if (!treePattern.matchesMeasurement(deviceID, measurement)) {
+            if (treePattern.matchesMeasurement(deviceID, measurement)) {
               measurementList.add(new MeasurementPath(deviceID, measurement));
             }
           }

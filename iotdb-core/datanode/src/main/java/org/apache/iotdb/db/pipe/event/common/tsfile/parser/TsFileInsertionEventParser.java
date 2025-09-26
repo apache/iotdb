@@ -103,7 +103,6 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   @Override
   public void close() {
-
     tabletInsertionIterable = null;
 
     try {
