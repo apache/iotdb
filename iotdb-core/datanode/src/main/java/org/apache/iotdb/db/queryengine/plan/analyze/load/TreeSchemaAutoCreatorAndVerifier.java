@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;

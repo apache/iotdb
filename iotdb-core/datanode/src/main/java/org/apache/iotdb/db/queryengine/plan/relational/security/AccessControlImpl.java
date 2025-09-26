@@ -447,8 +447,7 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName) {
-    return treeAccessCheckVisitor.checkCreateOrAlterDatabasePermission(
-        entity, databaseName);
+    return treeAccessCheckVisitor.checkCreateOrAlterDatabasePermission(entity, databaseName);
   }
 
   @Override
@@ -464,12 +463,10 @@ public class AccessControlImpl implements AccessControl {
     }
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (sourcePaths != null) {
-      status =
-          checkTimeSeriesPermission(entity, sourcePaths, PrivilegeType.READ_SCHEMA);
+      status = checkTimeSeriesPermission(entity, sourcePaths, PrivilegeType.READ_SCHEMA);
     }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return checkTimeSeriesPermission(
-          entity, targetPaths, PrivilegeType.WRITE_SCHEMA);
+      return checkTimeSeriesPermission(entity, targetPaths, PrivilegeType.WRITE_SCHEMA);
     }
     return status;
   }

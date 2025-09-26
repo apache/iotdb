@@ -378,11 +378,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject) {
     if (AuthorityChecker.SUPER_USER.equals(entity.getUsername())) {
       recordObjectAuthenticationAuditLog(
-        entity
-          .setAuditLogOperation(AuditLogOperation.DDL)
-          .setPrivilegeType(PrivilegeType.EXTEND_TEMPLATE)
-          .setResult(true), auditObject
-        );
+          entity
+              .setAuditLogOperation(AuditLogOperation.DDL)
+              .setPrivilegeType(PrivilegeType.EXTEND_TEMPLATE)
+              .setResult(true),
+          auditObject);
       return SUCCEED;
     }
     return checkGlobalAuth(entity, PrivilegeType.EXTEND_TEMPLATE, auditObject);
