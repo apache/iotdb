@@ -119,7 +119,8 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RenameTable,
                   ConfigPhysicalPlanType.RenameView,
                   ConfigPhysicalPlanType.RenameTableColumn,
-                  ConfigPhysicalPlanType.RenameViewColumn)));
+                  ConfigPhysicalPlanType.RenameViewColumn,
+                  ConfigPhysicalPlanType.CommitAlterColumnDataType)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.unmodifiableList(
