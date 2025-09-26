@@ -128,7 +128,13 @@ public class TableModelUtils {
       return true;
     } else {
       return TestUtils.tryExecuteNonQueriesWithRetry(
-          baseEnv, list, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, null);
+          baseEnv,
+          list,
+          SessionConfig.DEFAULT_USER,
+          SessionConfig.DEFAULT_PASSWORD,
+          dataBaseName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          null);
     }
   }
 
