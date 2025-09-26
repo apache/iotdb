@@ -76,11 +76,34 @@ public class AuthorRelationalPlan extends AuthorPlan {
       final Set<Integer> permissions,
       final boolean grantOpt,
       final String password) {
+    this(
+        authorType,
+        userName,
+        roleName,
+        databaseName,
+        tableName,
+        permissions,
+        grantOpt,
+        password,
+        0);
+  }
+
+  public AuthorRelationalPlan(
+      final ConfigPhysicalPlanType authorType,
+      final String userName,
+      final String roleName,
+      final String databaseName,
+      final String tableName,
+      final Set<Integer> permissions,
+      final boolean grantOpt,
+      final String password,
+      final long executedByUserId) {
     super(authorType, userName, roleName, password, "", grantOpt, -1, -1);
 
     this.databaseName = databaseName;
     this.tableName = tableName;
     this.permissions = permissions;
+    this.executedByUserId = executedByUserId;
   }
 
   public AuthorRelationalPlan(
@@ -167,10 +190,15 @@ public class AuthorRelationalPlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(userName, stream);
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
-    if (getAuthorType() == ConfigPhysicalPlanType.UpdateUserMaxSession
-        || getAuthorType() == ConfigPhysicalPlanType.UpdateUserMinSession) {
+    ConfigPhysicalPlanType authorType = getAuthorType();
+    if (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
+        || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
       BasicStructureSerDeUtil.write(maxSessionPerUser, stream);
       BasicStructureSerDeUtil.write(minSessionPerUser, stream);
+    }
+    if (authorType == ConfigPhysicalPlanType.RDropUserV2
+        || authorType == ConfigPhysicalPlanType.RUpdateUserV2) {
+      BasicStructureSerDeUtil.write(executedByUserId, stream);
     }
     BasicStructureSerDeUtil.write(databaseName, stream);
     BasicStructureSerDeUtil.write(tableName, stream);
@@ -187,10 +215,15 @@ public class AuthorRelationalPlan extends AuthorPlan {
     userName = BasicStructureSerDeUtil.readString(buffer);
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
-    if (getAuthorType() == ConfigPhysicalPlanType.UpdateUserMaxSession
-        || getAuthorType() == ConfigPhysicalPlanType.UpdateUserMinSession) {
+    ConfigPhysicalPlanType authorType = getAuthorType();
+    if (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
+        || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
       maxSessionPerUser = buffer.getInt();
       minSessionPerUser = buffer.getInt();
+    }
+    if (authorType == ConfigPhysicalPlanType.RDropUserV2
+        || authorType == ConfigPhysicalPlanType.RUpdateUserV2) {
+      executedByUserId = buffer.getLong();
     }
     databaseName = BasicStructureSerDeUtil.readString(buffer);
     tableName = BasicStructureSerDeUtil.readString(buffer);

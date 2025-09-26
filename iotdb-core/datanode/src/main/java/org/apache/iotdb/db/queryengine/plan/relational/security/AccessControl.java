@@ -229,4 +229,7 @@ public interface AccessControl {
 
   TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths);
+
+  // ====================================== COMMON =============================================
+  TSStatus allowUserToLogin(String userName);
 }

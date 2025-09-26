@@ -178,16 +178,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   public boolean createUser(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
-    if (validCheck && !CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)) {
-      if (username.equals(password)
-          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
-        throw new AuthException(
-            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
-      }
-      AuthUtils.validateUsername(username);
-      if (enableEncrypt) {
-        AuthUtils.validatePassword(password);
-      }
+    if (validCheck) {
+      validCheck(username, password, enableEncrypt);
     }
 
     User user = this.getEntity(username);
@@ -211,6 +203,43 @@ public abstract class BasicUserManager extends BasicRoleManager {
       return true;
     } finally {
       lock.writeUnlock(username);
+    }
+  }
+
+  public void tryToCreateBuiltinUser(
+      String username, String password, long userId, boolean validCheck, boolean enableEncrypt)
+      throws AuthException {
+    if (validCheck) {
+      validCheck(username, password, enableEncrypt);
+    }
+    User user = this.getEntity(username);
+    if (user != null) {
+      throw new AuthException(
+          TSStatusCode.USER_ALREADY_EXIST, "Builtin username of admin is already in use");
+    }
+    lock.writeLock(username);
+    try {
+      user =
+          new User(
+              username, enableEncrypt ? AuthUtils.encryptPassword(password) : password, userId);
+      entityMap.put(username, user);
+    } finally {
+      lock.writeUnlock(username);
+    }
+  }
+
+  private void validCheck(String username, String password, boolean enableEncrypt)
+      throws AuthException {
+    if (!CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)) {
+      if (username.equals(password)
+          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
+      }
+      AuthUtils.validateUsername(username);
+      if (enableEncrypt) {
+        AuthUtils.validatePassword(password);
+      }
     }
   }
 

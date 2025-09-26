@@ -102,7 +102,7 @@ public class AuthorityChecker {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static AccessControl accessControl =
+  private static volatile AccessControl accessControl =
       new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
 
   private AuthorityChecker() {
@@ -130,13 +130,21 @@ public class AuthorityChecker {
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
+  public static User getUser(String username) {
+    return authorityFetcher.get().getUser(username);
+  }
+
   public static Optional<Long> getUserId(String username) {
     User user = authorityFetcher.get().getUser(username);
     return Optional.ofNullable(user == null ? null : user.getUserId());
   }
 
   public static TSStatus checkUser(String userName, String password) {
-    return authorityFetcher.get().checkUser(userName, password);
+    TSStatus status = authorityFetcher.get().checkUser(userName, password);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    return accessControl.allowUserToLogin(userName);
   }
 
   public static SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {

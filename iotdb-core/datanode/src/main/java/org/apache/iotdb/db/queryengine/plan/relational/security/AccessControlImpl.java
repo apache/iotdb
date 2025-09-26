@@ -462,4 +462,9 @@ public class AccessControlImpl implements AccessControl {
     }
     return status;
   }
+
+  @Override
+  public TSStatus allowUserToLogin(String userName) {
+    return SUCCEED;
+  }
 }
