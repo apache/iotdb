@@ -30,6 +30,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TQueryStatistics;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FragmentInstanceStatisticsDrawer {
   private int maxLineLength = 0;
@@ -83,14 +84,21 @@ public class FragmentInstanceStatisticsDrawer {
       Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics,
       boolean verbose) {
     List<StatisticLine> table = new ArrayList<>(planHeader);
-    addLine(
-        table, 0, String.format("Fragment Instances Count: %s", instancesToBeRendered.size() - 1));
-    for (FragmentInstance instance : instancesToBeRendered) {
+    List<FragmentInstance> validInstances =
+        instancesToBeRendered.stream()
+            .filter(
+                instance -> {
+                  TFetchFragmentInstanceStatisticsResp statistics =
+                      allStatistics.get(instance.getId());
+                  return statistics != null && statistics.getDataRegion() != null;
+                })
+            .collect(Collectors.toList());
+
+    addLine(table, 0, String.format("Fragment Instances Count: %s", validInstances.size()));
+    for (FragmentInstance instance : validInstances) {
       List<StatisticLine> singleFragmentInstanceArea = new ArrayList<>();
       TFetchFragmentInstanceStatisticsResp statistics = allStatistics.get(instance.getId());
-      if (statistics == null || statistics.getDataRegion() == null) {
-        continue;
-      }
+
       addBlankLine(singleFragmentInstanceArea);
       addLine(
           singleFragmentInstanceArea,
