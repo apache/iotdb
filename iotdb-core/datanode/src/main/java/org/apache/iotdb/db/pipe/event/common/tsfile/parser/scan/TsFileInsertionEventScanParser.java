@@ -104,6 +104,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
       final PipeInsertionEvent sourceEvent)
       throws IOException, IllegalPathException {
     super(
@@ -115,6 +116,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         endTime,
         pipeTaskMeta,
         entity,
+        skipIfNoPrivileges,
         sourceEvent);
 
     this.startTime = startTime;
@@ -149,7 +151,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent)
       throws IOException, IllegalPathException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, null, sourceEvent);
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, null, false, sourceEvent);
   }
 
   @Override

@@ -96,6 +96,7 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           entity,
+          sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent);
     }
 
@@ -112,6 +113,7 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           entity,
+          sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent);
     }
 
@@ -131,7 +133,10 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          null);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -148,6 +153,7 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           entity,
+          sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent);
     }
 
@@ -166,6 +172,7 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             entity,
+            sourceEvent.isSkipIfNoPrivileges(),
             sourceEvent)
         : new TsFileInsertionEventQueryParser(
             pipeName,
@@ -177,6 +184,7 @@ public class TsFileInsertionEventParserProvider {
             pipeTaskMeta,
             sourceEvent,
             entity,
+            sourceEvent.isSkipIfNoPrivileges(),
             filteredDeviceIsAlignedMap);
   }
 

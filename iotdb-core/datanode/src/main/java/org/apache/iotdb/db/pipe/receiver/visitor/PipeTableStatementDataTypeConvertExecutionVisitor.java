@@ -133,6 +133,7 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
               Long.MAX_VALUE,
               null,
               null,
+              true,
               null)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {

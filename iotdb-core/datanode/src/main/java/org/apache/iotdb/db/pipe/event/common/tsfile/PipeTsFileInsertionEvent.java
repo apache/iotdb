@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -477,7 +478,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             }
           }
         }
-      } else {
+      }
+      // Real-time tsFiles
+      else if (Objects.nonNull(treeSchemaMap)) {
         final List<MeasurementPath> measurementList = new ArrayList<>();
         for (final Map.Entry<IDeviceID, String[]> entry : treeSchemaMap.entrySet()) {
           final IDeviceID deviceID = entry.getKey();
@@ -498,6 +501,31 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           } else {
             throw new AccessDeniedException(status.getMessage());
           }
+        }
+      }
+      // Historical tsFiles
+      // Coarse filter, will be judged in inner class
+      else {
+        final Set<IDeviceID> devices = getDeviceSet();
+        if (Objects.nonNull(devices)) {
+          final List<MeasurementPath> measurementList = new ArrayList<>();
+          for (final IDeviceID device : devices) {
+            measurementList.add(new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+          }
+          final TSStatus status =
+              TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                  new UserEntity(Long.parseLong(userId), userName, cliHostname),
+                  measurementList,
+                  PrivilegeType.READ_DATA);
+          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+            if (skipIfNoPrivileges) {
+              shouldParse4Privilege = true;
+            } else {
+              throw new AccessDeniedException(status.getMessage());
+            }
+          }
+        } else {
+          shouldParse4Privilege = true;
         }
       }
     } catch (final AccessDeniedException e) {
@@ -560,7 +588,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     if (Objects.nonNull(deviceIsAlignedMap)) {
       return deviceIsAlignedMap.keySet();
     }
-    return resource.getDevices();
+    try {
+      return resource.getDevices();
+    } catch (final Exception e) {
+      return null;
+    }
   }
 
   public void setTableNames(final Set<String> tableNames) {

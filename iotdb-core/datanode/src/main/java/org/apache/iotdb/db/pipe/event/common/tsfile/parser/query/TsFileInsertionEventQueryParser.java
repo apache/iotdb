@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -82,30 +84,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeInsertionEvent sourceEvent)
       throws IOException, IllegalPathException {
-    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent);
-  }
-
-  public TsFileInsertionEventQueryParser(
-      final String pipeName,
-      final long creationTime,
-      final File tsFile,
-      final TreePattern pattern,
-      final long startTime,
-      final long endTime,
-      final PipeTaskMeta pipeTaskMeta,
-      final PipeInsertionEvent sourceEvent)
-      throws IOException, IllegalPathException {
-    this(
-        pipeName,
-        creationTime,
-        tsFile,
-        pattern,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        sourceEvent,
-        null,
-        null);
+    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, null, false, null);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -118,6 +97,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
       final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap)
       throws IOException, IllegalPathException {
     super(
@@ -129,6 +109,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         endTime,
         pipeTaskMeta,
         entity,
+        skipIfNoPrivileges,
         sourceEvent);
 
     try {
@@ -211,14 +192,20 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         final List<String> filteredMeasurements = new ArrayList<>();
 
         for (final String measurement : entry.getValue()) {
-          if (treePattern.matchesMeasurement(deviceId, measurement)
-              && (Objects.isNull(entity)
-                  || TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                              entity,
-                              Collections.singletonList(new MeasurementPath(deviceId, measurement)),
-                              PrivilegeType.READ_DATA)
-                          .getCode()
-                      == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+          if (treePattern.matchesMeasurement(deviceId, measurement)) {
+            if (Objects.nonNull(entity)) {
+              final TSStatus status =
+                  TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                      entity,
+                      Collections.singletonList(new MeasurementPath(deviceId, measurement)),
+                      PrivilegeType.READ_DATA);
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                if (skipIfNoPrivileges) {
+                  continue;
+                }
+                throw new AccessDeniedException(status.getMessage());
+              }
+            }
             filteredMeasurements.add(measurement);
           }
         }
