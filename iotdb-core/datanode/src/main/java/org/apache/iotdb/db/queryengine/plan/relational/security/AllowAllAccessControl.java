@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
+import java.util.List;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 
@@ -120,7 +121,23 @@ public class AllowAllAccessControl implements AccessControl {
 
   @Override
   public TSStatus checkFullPathWriteDataPermission(
-      String userName, IDeviceID device, String measurementId) {
+      IAuditEntity entity, IDeviceID device, String measurementId) {
+    return SUCCEED;
+  }
+
+  @Override
+  public TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName) {
+    return SUCCEED;
+  }
+
+  @Override
+  public TSStatus checkCanAlterTemplate(IAuditEntity entity) {
+    return SUCCEED;
+  }
+
+  @Override
+  public TSStatus checkCanAlterView(
+      IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
     return SUCCEED;
   }
 }

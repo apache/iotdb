@@ -450,8 +450,7 @@ public class WriteBackSink implements PipeConnector {
     }
 
     try {
-      Coordinator.getInstance()
-          .getAccessControl()
+      AuthorityChecker.getAccessControl()
           .checkCanCreateDatabase(userEntity.getUsername(), database, userEntity);
     } catch (final AccessDeniedException e) {
       // Auto create failed, we still check if there are existing databases

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -38,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -89,7 +87,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
   private final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   final MPPQueryContext context;
 

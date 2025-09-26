@@ -61,6 +61,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -121,8 +122,6 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
-
-  private static final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   public static Iterator<TsBlock> getSupplier(
       final String tableName, final List<TSDataType> dataTypes, final UserEntity userEntity) {
@@ -1223,6 +1222,7 @@ public class InformationSchemaContentSupplierFactory {
 
     protected final TsBlockBuilder resultBuilder;
     protected final ColumnBuilder[] columnBuilders;
+    protected final AccessControl accessControl = AuthorityChecker.getAccessControl();
 
     private TsBlockSupplier(final List<TSDataType> dataTypes) {
       this.resultBuilder = new TsBlockBuilder(dataTypes);
@@ -1240,7 +1240,8 @@ public class InformationSchemaContentSupplierFactory {
       final TsBlock result =
           resultBuilder.build(
               new RunLengthEncodedColumn(
-                  TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+                  AbstractTableScanOperator.TIME_COLUMN_TEMPLATE,
+                  resultBuilder.getPositionCount()));
       resultBuilder.reset();
       return result;
     }
