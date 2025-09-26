@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -445,19 +447,25 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             break;
           }
 
-          if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())
-              && (Objects.isNull(entity)
-                  || TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                              entity,
-                              Collections.singletonList(
-                                  new MeasurementPath(
-                                      currentDevice, chunkHeader.getMeasurementID())),
-                              PrivilegeType.READ_DATA)
-                          .getCode()
-                      == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+          if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
             tsFileSequenceReader.position(
                 tsFileSequenceReader.position() + chunkHeader.getDataSize());
             break;
+          }
+
+          if (Objects.nonNull(entity)) {
+            final TSStatus status =
+                TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                    entity,
+                    Collections.singletonList(
+                        new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
+                    PrivilegeType.READ_DATA);
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              if (skipIfNoPrivileges) {
+                continue;
+              }
+              throw new AccessDeniedException(status.getMessage());
+            }
           }
 
           if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
