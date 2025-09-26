@@ -38,6 +38,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.BasicAuthorityCache;
 import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
 import org.apache.iotdb.db.auth.IAuthorityFetcher;
+import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -255,6 +256,24 @@ public class SessionManager implements SessionManagerMBean {
       return openSessionResp;
     }
 
+    User user = authorityFetcher.get().getUser(username);
+    boolean enableLoginLock = user != null;
+    LoginLockManager loginLockManager = LoginLockManager.getInstance();
+    if (enableLoginLock
+        && loginLockManager.checkLock(user.getUserId(), session.getClientAddress())) {
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(
+            String.format("User %s opens Session failed with login locked", username),
+            AUTHOR_STATEMENT);
+      }
+      // Generic authentication error
+      openSessionResp
+          .sessionId(-1)
+          .setMessage("Authentication failed.")
+          .setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
+      return openSessionResp;
+    }
+
     TSStatus loginStatus = AuthorityChecker.checkUser(username, password);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
@@ -320,6 +339,9 @@ public class SessionManager implements SessionManagerMBean {
                   IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session),
               AUTHOR_STATEMENT);
         }
+        if (enableLoginLock) {
+          loginLockManager.clearFailure(user.getUserId(), session.getClientAddress());
+        }
       }
     } else {
       if (ENABLE_AUDIT_LOG) {
@@ -328,6 +350,9 @@ public class SessionManager implements SessionManagerMBean {
             AUTHOR_STATEMENT);
       }
       openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
+      if (enableLoginLock) {
+        loginLockManager.recordFailure(user.getUserId(), session.getClientAddress());
+      }
     }
 
     return openSessionResp;
