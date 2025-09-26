@@ -32,7 +32,8 @@ identifier
 // List of keywords, new keywords that can be used as identifiers should be added into this list. For example, 'not' is an identifier but can not be used as an identifier in node name.
 
 keyWords
-    : ADD
+    : ACCOUNT
+    | ADD
     | AFTER
     | ALIAS
     | ALIGN
@@ -261,6 +262,7 @@ keyWords
     | TTL
     | UNLINK
     | UNLOAD
+    | UNLOCK
     | UNSET
     | UPDATE
     | UPSERT

@@ -304,7 +304,9 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseIdentifier;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
+import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_END;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_START;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
@@ -1738,6 +1740,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     stmt.setUserName(((Identifier) visit(ctx.userName)).getValue());
     String password = ((StringLiteral) visit(ctx.password)).getValue();
     stmt.setPassword(password);
+    return stmt;
+  }
+
+  // Unlock User
+  @Override
+  public Node visitAlterUserAccountUnlockStatement(
+      RelationalSqlParser.AlterUserAccountUnlockStatementContext ctx) {
+    String usernameWithRootWithOptionalHost = ctx.usernameWithRootWithOptionalHost().getText();
+    String[] parts = usernameWithRootWithOptionalHost.split("@", 2);
+    String username = parts[0];
+    String host = parts.length > 1 ? parts[1] : null;
+
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.ACCOUNT_UNLOCK);
+    stmt.setUserName(parseIdentifier(username));
+    if (host != null) {
+      stmt.setLoginAddr(parseStringLiteral(host));
+    }
     return stmt;
   }
 

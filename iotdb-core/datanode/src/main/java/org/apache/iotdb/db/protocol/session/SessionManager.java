@@ -35,6 +35,10 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.BasicAuthorityCache;
+import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
+import org.apache.iotdb.db.auth.IAuthorityFetcher;
+import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -60,6 +64,7 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,6 +109,9 @@ public class SessionManager implements SessionManagerMBean {
 
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+
+  private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
+      MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
 
   private static final boolean ENABLE_AUDIT_LOG =
       IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
@@ -248,6 +256,24 @@ public class SessionManager implements SessionManagerMBean {
       return openSessionResp;
     }
 
+    User user = authorityFetcher.get().getUser(username);
+    boolean enableLoginLock = user != null;
+    LoginLockManager loginLockManager = LoginLockManager.getInstance();
+    if (enableLoginLock
+        && loginLockManager.checkLock(user.getUserId(), session.getClientAddress())) {
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(
+            String.format("User %s opens Session failed with login locked", username),
+            AUTHOR_STATEMENT);
+      }
+      // Generic authentication error
+      openSessionResp
+          .sessionId(-1)
+          .setMessage("Authentication failed.")
+          .setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
+      return openSessionResp;
+    }
+
     TSStatus loginStatus = AuthorityChecker.checkUser(username, password);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
@@ -257,8 +283,8 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        User user = AuthorityChecker.getUser(username);
-        long userId = user == null ? -1 : user.getUserId();
+        User tmpUser = AuthorityChecker.getUser(username);
+        long userId = tmpUser == null ? -1 : tmpUser.getUserId();
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
@@ -315,6 +341,9 @@ public class SessionManager implements SessionManagerMBean {
                   IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session),
               AUTHOR_STATEMENT);
         }
+        if (enableLoginLock) {
+          loginLockManager.clearFailure(tmpUser.getUserId(), session.getClientAddress());
+        }
       }
     } else {
       if (ENABLE_AUDIT_LOG) {
@@ -323,6 +352,9 @@ public class SessionManager implements SessionManagerMBean {
             AUTHOR_STATEMENT);
       }
       openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
+      if (enableLoginLock) {
+        loginLockManager.recordFailure(user.getUserId(), session.getClientAddress());
+      }
     }
 
     return openSessionResp;

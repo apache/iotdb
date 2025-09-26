@@ -81,7 +81,7 @@ dmlStatement
     ;
 
 dclStatement
-    : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
+    : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser | alterUserAccountUnlock
     | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
     | listUser | listRole | listPrivilegesUser | listPrivilegesRole
     ;
@@ -1059,6 +1059,11 @@ alterUser
     : ALTER USER userName=usernameWithRoot SET PASSWORD password=STRING_LITERAL
     ;
 
+// ---- Alter User Account Unlock
+alterUserAccountUnlock
+    : ALTER USER userName=usernameWithRootWithOptionalHost ACCOUNT UNLOCK
+    ;
+
 // Grant User Privileges
 grantUser
     : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=identifier (grantOpt)?
@@ -1142,6 +1147,11 @@ usernameWithRoot
     | identifier
     ;
 
+usernameWithRootWithOptionalHost
+    : ROOT
+    | identifier
+    | USERNAME_WITH_HOST
+    ;
 
 /**
  * 5. Utility Statements

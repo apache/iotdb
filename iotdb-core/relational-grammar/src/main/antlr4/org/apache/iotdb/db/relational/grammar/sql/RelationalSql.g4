@@ -157,6 +157,7 @@ statement
     | grantUserRoleStatement
     | revokeUserRoleStatement
     | alterUserStatement
+    | alterUserAccountUnlockStatement
     | listUserPrivilegeStatement
     | listRolePrivilegeStatement
     | listUserStatement
@@ -706,6 +707,16 @@ dropRoleStatement
 
 alterUserStatement
     : ALTER USER userName=identifier SET PASSWORD password=string
+    ;
+
+alterUserAccountUnlockStatement
+    : ALTER USER userName=usernameWithRootWithOptionalHost ACCOUNT UNLOCK
+    ;
+
+usernameWithRootWithOptionalHost
+    : ROOT
+    | identifier
+    | USERNAME_WITH_HOST
     ;
 
 grantUserRoleStatement
@@ -1403,6 +1414,7 @@ nonReserved
     ;
 
 ABSENT: 'ABSENT';
+ACCOUNT: 'ACCOUNT';
 ADD: 'ADD';
 ADMIN: 'ADMIN';
 AFTER: 'AFTER';
@@ -1766,6 +1778,7 @@ UNION: 'UNION';
 UNIQUE: 'UNIQUE';
 UNKNOWN: 'UNKNOWN';
 UNLOAD: 'UNLOAD';
+UNLOCK: 'UNLOCK';
 UNMATCHED: 'UNMATCHED';
 UNNEST: 'UNNEST';
 UNTIL: 'UNTIL';
@@ -1817,6 +1830,9 @@ CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
 
+USERNAME_WITH_HOST
+    : [a-zA-Z_] [a-zA-Z_0-9]* '@' '\'' .*? '\''
+    ;
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

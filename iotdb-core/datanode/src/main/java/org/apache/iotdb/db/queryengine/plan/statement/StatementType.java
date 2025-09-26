@@ -27,6 +27,7 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 public enum StatementType {
   NULL,
 
+  ACCOUNT_UNLOCK,
   AUTHOR,
   LOAD_DATA,
   CREATE_USER,

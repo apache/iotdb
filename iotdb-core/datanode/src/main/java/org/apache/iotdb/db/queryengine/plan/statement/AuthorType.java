@@ -35,7 +35,7 @@ public enum AuthorType {
   LIST_ROLE,
   LIST_USER_PRIVILEGE,
   LIST_ROLE_PRIVILEGE,
-  ;
+  ACCOUNT_UNLOCK;
 
   /**
    * deserialize short number.
@@ -75,6 +75,8 @@ public enum AuthorType {
         return LIST_USER_PRIVILEGE;
       case 14:
         return LIST_ROLE_PRIVILEGE;
+      case 15:
+        return ACCOUNT_UNLOCK;
       default:
         return null;
     }
@@ -117,6 +119,8 @@ public enum AuthorType {
         return 13;
       case LIST_ROLE_PRIVILEGE:
         return 14;
+      case ACCOUNT_UNLOCK:
+        return 15;
       default:
         return -1;
     }
