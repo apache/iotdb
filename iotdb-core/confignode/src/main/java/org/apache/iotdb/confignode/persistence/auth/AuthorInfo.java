@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -114,6 +116,11 @@ public class AuthorInfo implements SnapshotProcessor {
   public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
       throws AuthException {
     return authorPlanExecutor.generateAuthorizedPTree(username, permission);
+  }
+
+  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
+      throws AuthException {
+    return authorPlanExecutor.generateRawAuthorizedPTree(username, type);
   }
 
   public TPermissionInfoResp checkRoleOfUser(String username, String roleName)

@@ -73,6 +73,8 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   private static final PipeStatementToPlanVisitor STATEMENT_TO_PLAN_VISITOR =
       new PipeStatementToPlanVisitor();
 
+  // Local for exception
+  private PipePlanTreePrivilegeParseVisitor treePrivilegeParseVisitor;
   private SchemaRegionId schemaRegionId;
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
@@ -96,6 +98,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
 
     schemaRegionId = new SchemaRegionId(regionId);
     listenedTypeSet = SchemaRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+    treePrivilegeParseVisitor = new PipePlanTreePrivilegeParseVisitor(skipIfNoPrivileges);
 
     PipeSchemaRegionSourceMetrics.getInstance().register(this);
     PipeDataNodeSinglePipeMetrics.getInstance().register(this);
@@ -198,8 +201,9 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) throws AccessDeniedException {
     final Optional<PlanNode> result =
-        TABLE_PRIVILEGE_PARSE_VISITOR.process(
-            ((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userEntity);
+        treePrivilegeParseVisitor
+            .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userEntity)
+            .flatMap(planNode -> TABLE_PRIVILEGE_PARSE_VISITOR.process(planNode, userEntity));
     if (result.isPresent()) {
       return Optional.of(
           new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
@@ -220,7 +224,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
         .flatMap(
             planNode ->
                 TABLE_PATTERN_PARSE_VISITOR
-                    .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), tablePattern)
+                    .process(planNode, tablePattern)
                     .map(
                         planNode1 ->
                             new PipeSchemaRegionWritePlanEvent(

@@ -33,8 +33,6 @@ public class SystemConstant {
 
   public static final String AUDIT_DATABASE = "root.__audit";
   public static final String AUDIT_PREFIX_KEY = "__audit";
-  public static final String PREFIX_PASSWORD_HISTORY =
-      "root." + SYSTEM_PREFIX_KEY + ".password_history";
 
   public static final String RESTART_KEY = "__system.restart";
   public static final boolean RESTART_DEFAULT_VALUE = false;

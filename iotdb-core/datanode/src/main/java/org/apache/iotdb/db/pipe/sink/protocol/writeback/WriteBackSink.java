@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -61,6 +62,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -75,6 +77,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
@@ -105,10 +108,9 @@ public class WriteBackSink implements PipeConnector {
   // for correctly handling data insertion in IoTDBReceiverAgent#receive method
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private IClientSession session;
+  public static final AtomicLong id = new AtomicLong();
+  private InternalClientSession session;
 
-  // Temporary, used to separate
-  private IClientSession treeSession;
   private boolean skipIfNoPrivileges;
   private boolean useEventUserName;
 
@@ -136,11 +138,12 @@ public class WriteBackSink implements PipeConnector {
     session =
         new InternalClientSession(
             String.format(
-                "%s_%s_%s_%s",
+                "%s_%s_%s_%s_%s",
                 WriteBackSink.class.getSimpleName(),
                 environment.getPipeName(),
                 environment.getCreationTime(),
-                environment.getRegionId()));
+                environment.getRegionId(),
+                id.getAndIncrement()));
 
     String userIdString =
         parameters.getStringOrDefault(
@@ -159,19 +162,6 @@ public class WriteBackSink implements PipeConnector {
     session.setUsername(usernameString);
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
-
-    // Temporary
-    treeSession =
-        new InternalClientSession(
-            String.format(
-                "%s_%s_%s_%s_tree",
-                WriteBackSink.class.getSimpleName(),
-                environment.getPipeName(),
-                environment.getCreationTime(),
-                environment.getRegionId()));
-    treeSession.setUsername(AuthorityChecker.SUPER_USER);
-    treeSession.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-    treeSession.setZoneId(ZoneId.systemDefault());
 
     final String connectorSkipIfValue =
         parameters
@@ -195,6 +185,10 @@ public class WriteBackSink implements PipeConnector {
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
             CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE);
+
+    if (SESSION_MANAGER.getCurrSession() != null) {
+      SESSION_MANAGER.registerSession(session);
+    }
   }
 
   @Override
@@ -213,7 +207,7 @@ public class WriteBackSink implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WriteBackConnector only support "
+          "WriteBackSink only support "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Ignore {}.",
           tabletInsertionEvent);
@@ -368,11 +362,9 @@ public class WriteBackSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (session != null) {
+    if (session != null && SESSION_MANAGER.getCurrSession() == session) {
+      SESSION_MANAGER.removeCurrSession();
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
-    }
-    if (treeSession != null) {
-      SESSION_MANAGER.closeSession(treeSession, COORDINATOR::cleanupQueryExecution);
     }
   }
 
@@ -384,7 +376,6 @@ public class WriteBackSink implements PipeConnector {
     if (useEventUserName && userName != null) {
       session.setUsername(userName);
     }
-    SESSION_MANAGER.registerSession(session);
     try {
       autoCreateDatabaseIfNecessary(dataBaseName);
       return Coordinator.getInstance()
@@ -436,7 +427,6 @@ public class WriteBackSink implements PipeConnector {
       // If the exception is not caused by database not set, throw it directly
       throw e;
     } finally {
-      SESSION_MANAGER.removeCurrSession();
       if (useEventUserName) {
         session.setUsername(originalUserName);
       }
@@ -485,19 +475,30 @@ public class WriteBackSink implements PipeConnector {
   }
 
   private TSStatus executeStatementForTreeModel(final Statement statement, final String userName) {
-    treeSession.setDatabaseName(null);
-    treeSession.setSqlDialect(IClientSession.SqlDialect.TREE);
-    final String originalUserName = treeSession.getUsername();
+    session.setDatabaseName(null);
+    session.setSqlDialect(IClientSession.SqlDialect.TREE);
+    final String originalUserName = session.getUsername();
     if (useEventUserName && userName != null) {
-      treeSession.setUsername(userName);
+      session.setUsername(userName);
     }
-    SESSION_MANAGER.registerSession(treeSession);
+    final TSStatus permissionCheckStatus = AuthorityChecker.checkAuthority(statement, session);
+    if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      PipeLogger.log(
+          LOGGER::warn,
+          "Session {}: Failed to check authority for statement {}, username = {}, response = {}.",
+          session.getClientAddress() + ":" + session.getClientPort(),
+          statement.getType().name(),
+          session.getUsername(),
+          permissionCheckStatus);
+      return RpcUtils.getStatus(
+          permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
+    }
     try {
       return Coordinator.getInstance()
           .executeForTreeModel(
               new PipeEnrichedStatement(statement),
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(treeSession),
+              SESSION_MANAGER.getSessionInfo(session),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
@@ -505,9 +506,8 @@ public class WriteBackSink implements PipeConnector {
               false)
           .status;
     } finally {
-      SESSION_MANAGER.removeCurrSession();
       if (useEventUserName) {
-        treeSession.setUsername(originalUserName);
+        session.setUsername(originalUserName);
       }
     }
   }

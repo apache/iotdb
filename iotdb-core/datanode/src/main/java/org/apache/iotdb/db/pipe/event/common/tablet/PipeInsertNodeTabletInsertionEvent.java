@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -48,13 +52,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -267,24 +274,25 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
-  public void throwIfNoPrivilege() {
-    if (skipIfNoPrivileges || !isTableModelEvent()) {
+  public void throwIfNoPrivilege() throws Exception {
+    if (skipIfNoPrivileges) {
       return;
     }
     if (Objects.nonNull(insertNode.getTargetPath())) {
-      checkTableName(
-          DeviceIDFactory.getInstance().getDeviceID(insertNode.getTargetPath()).getTableName());
+      if (isTableModelEvent()) {
+        checkTableName(
+            DeviceIDFactory.getInstance().getDeviceID(insertNode.getTargetPath()).getTableName());
+      } else {
+        checkTreePattern(insertNode.getDeviceID(), insertNode.getMeasurements());
+      }
     } else if (insertNode instanceof InsertRowsNode) {
-      for (final String tableName :
-          ((InsertRowsNode) insertNode)
-              .getInsertRowNodeList().stream()
-                  .map(
-                      node ->
-                          DeviceIDFactory.getInstance()
-                              .getDeviceID(node.getTargetPath())
-                              .getTableName())
-                  .collect(Collectors.toSet())) {
-        checkTableName(tableName);
+      for (final InsertNode node : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
+        if (isTableModelEvent()) {
+          checkTableName(
+              DeviceIDFactory.getInstance().getDeviceID(node.getTargetPath()).getTableName());
+        } else {
+          checkTreePattern(node.getDeviceID(), node.getMeasurements());
+        }
       }
     }
   }
@@ -299,6 +307,28 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           String.format(
               "No privilege for SELECT for user %s at table %s.%s",
               userName, tableModelDatabaseName, tableName));
+    }
+  }
+
+  private void checkTreePattern(final IDeviceID deviceID, final String[] measurements)
+      throws IllegalPathException {
+    final List<MeasurementPath> measurementList = new ArrayList<>();
+    for (final String measurement : measurements) {
+      if (!treePattern.matchesMeasurement(deviceID, measurement)) {
+        measurementList.add(new MeasurementPath(deviceID, measurement));
+      }
+    }
+    final TSStatus status =
+        TreeAccessCheckVisitor.checkTimeSeriesPermission(
+            new UserEntity(Long.parseLong(userId), userName, cliHostname),
+            measurementList,
+            PrivilegeType.READ_DATA);
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+      if (skipIfNoPrivileges) {
+        shouldParse4Privilege = true;
+      } else {
+        throw new AccessDeniedException(status.getMessage());
+      }
     }
   }
 
@@ -447,13 +477,26 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         case INSERT_ROW:
         case INSERT_TABLET:
           eventParsers.add(
-              new TabletInsertionEventTreePatternParser(pipeTaskMeta, this, node, treePattern));
+              new TabletInsertionEventTreePatternParser(
+                  pipeTaskMeta,
+                  this,
+                  node,
+                  treePattern,
+                  shouldParse4Privilege
+                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
+                      : null));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
             eventParsers.add(
                 new TabletInsertionEventTreePatternParser(
-                    pipeTaskMeta, this, insertRowNode, treePattern));
+                    pipeTaskMeta,
+                    this,
+                    insertRowNode,
+                    treePattern,
+                    shouldParse4Privilege
+                        ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
+                        : null));
           }
           break;
         case RELATIONAL_INSERT_ROW:

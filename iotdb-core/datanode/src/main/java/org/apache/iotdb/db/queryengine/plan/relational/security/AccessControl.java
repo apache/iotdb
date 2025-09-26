@@ -33,6 +33,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 public interface AccessControl {
 
@@ -221,11 +222,11 @@ public interface AccessControl {
 
   /** called by load */
   TSStatus checkFullPathWriteDataPermission(
-      IAuditEntity entity, IDeviceID device, String measurementId);
+      IAuditEntity auditEntity, IDeviceID device, String measurementId);
 
   TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName);
 
-  TSStatus checkCanAlterTemplate(IAuditEntity entity);
+  TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject);
 
   TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths);

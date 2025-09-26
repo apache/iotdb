@@ -36,7 +36,8 @@ public interface TabletInsertionEvent extends Event {
    * @return {@code Iterable<TabletInsertionEvent>} a list of new {@link TabletInsertionEvent}
    *     contains the results collected by the {@link RowCollector}
    */
-  Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer);
+  Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer)
+      throws Exception;
 
   /**
    * The consumer processes the Tablet directly and collects the results by {@link RowCollector}.
@@ -44,5 +45,6 @@ public interface TabletInsertionEvent extends Event {
    * @return {@code Iterable<TabletInsertionEvent>} a list of new {@link TabletInsertionEvent}
    *     contains the results collected by the {@link RowCollector}
    */
-  Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer);
+  Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer)
+      throws Exception;
 }

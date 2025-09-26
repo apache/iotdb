@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -28,8 +34,10 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventP
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -55,6 +63,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -96,9 +105,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
       final PipeInsertionEvent sourceEvent)
-      throws IOException {
-    super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
+      throws IOException, IllegalPathException {
+    super(
+        pipeName,
+        creationTime,
+        pattern,
+        null,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -131,8 +152,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent)
-      throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+      throws IOException, IllegalPathException {
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, null, false, sourceEvent);
   }
 
   @Override
@@ -295,7 +316,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
   }
 
-  private void prepareData() throws IOException {
+  private void prepareData() throws IOException, IllegalPathException {
     do {
       do {
         moveToNextChunkReader();
@@ -384,7 +405,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
   }
 
-  private void moveToNextChunkReader() throws IOException, IllegalStateException {
+  private void moveToNextChunkReader()
+      throws IOException, IllegalStateException, IllegalPathException {
     ChunkHeader chunkHeader;
     long valueChunkSize = 0;
     final List<Chunk> valueChunkList = new ArrayList<>();
@@ -429,6 +451,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             tsFileSequenceReader.position(
                 tsFileSequenceReader.position() + chunkHeader.getDataSize());
             break;
+          }
+
+          if (Objects.nonNull(entity)) {
+            final TSStatus status =
+                TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                    entity,
+                    Collections.singletonList(
+                        new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
+                    PrivilegeType.READ_DATA);
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              if (skipIfNoPrivileges) {
+                continue;
+              }
+              throw new AccessDeniedException(status.getMessage());
+            }
           }
 
           if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
