@@ -949,7 +949,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitDeleteDatabase(
       DeleteDatabaseStatement statement, TreeAccessCheckContext context) {
-    context.setAuditLogOperation(AuditLogOperation.DDL);
+    context
+        .setAuditLogOperation(AuditLogOperation.DDL)
+        .setDatabase(statement.getPrefixPath().toString());
     for (String prefixPath : statement.getPrefixPath()) {
       // root.__audit can never be deleted
       if (TREE_MODEL_AUDIT_DATABASE.equals(prefixPath)) {
@@ -972,7 +974,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   protected TSStatus checkCreateOrAlterDatabasePermission(
       IAuditEntity auditEntity, PartialPath databaseName) {
-    auditEntity.setDatabase(databaseName.getFullPath()).setAuditLogOperation(AuditLogOperation.DDL);
+    auditEntity
+        .setDatabase(databaseName.getFullPath())
+        .setPrivilegeType(PrivilegeType.MANAGE_DATABASE)
+        .setAuditLogOperation(AuditLogOperation.DDL);
     // root.__audit can never be created or alter
     if (TREE_MODEL_AUDIT_DATABASE_PATH.equals(databaseName)) {
       recordObjectAuthenticationAuditLog(auditEntity.setResult(false), databaseName::getFullPath);
@@ -1162,6 +1167,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    context
+        .setPrivilegeType(PrivilegeType.WRITE_SCHEMA)
+        .setAuditLogOperation(AuditLogOperation.DDL);
     // audit db is read-only
     if (includeByAuditTreeDB(statement.getDevicePath())
         && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
@@ -1263,6 +1271,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCountTimeSeries(
       CountTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    context
+        .setAuditLogOperation(AuditLogOperation.QUERY)
+        .setPrivilegeType(PrivilegeType.READ_SCHEMA);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       statement.setCanSeeAuditDB(true);
       recordObjectAuthenticationAuditLog(
