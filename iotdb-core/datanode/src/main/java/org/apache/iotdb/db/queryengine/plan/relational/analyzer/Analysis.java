@@ -278,6 +278,10 @@ public class Analysis implements IAnalysis {
     return namedQueries.get(NodeRef.of(table));
   }
 
+  public Map<NodeRef<Table>, Query> getNamedQueries() {
+    return namedQueries;
+  }
+
   public boolean isAnalyzed(Expression expression) {
     return expression instanceof DataType || types.containsKey(NodeRef.of(expression));
   }

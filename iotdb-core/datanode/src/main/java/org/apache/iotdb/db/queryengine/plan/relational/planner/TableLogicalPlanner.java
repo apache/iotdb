@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.CteMaterializer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
@@ -316,7 +317,7 @@ public class TableLogicalPlanner {
 
     int columnNumber = 0;
     // TODO perfect the logic of outputDescriptor
-    if (queryContext.isExplainAnalyze()) {
+    if (queryContext.isExplainAnalyze() && !queryContext.isSubquery()) {
       outputs.add(new Symbol(ColumnHeaderConstant.EXPLAIN_ANALYZE));
       names.add(ColumnHeaderConstant.EXPLAIN_ANALYZE);
       columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT));
@@ -372,6 +373,8 @@ public class TableLogicalPlanner {
   }
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
+    // materialize cte if needed
+    CteMaterializer.materializeCTE(analysis, queryContext);
     return getRelationPlanner(analysis).process(query, null);
   }
 

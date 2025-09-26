@@ -80,6 +80,14 @@ public class Analyzer {
             warningCollector);
 
     Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
+    // Here we register CTE into analysis. Later in RelationPlanner, we create CteScanNode or
+    // DeviceTableDeviceScanNode based on analysis.getNamedQuery result.
+    context
+        .getCteDataStores()
+        .forEach(
+            (tableRef, dataStore) ->
+                analysis.registerNamedQuery(tableRef.getNode(), dataStore.getQuery()));
+
     Statement innerStatement =
         rewrittenStatement instanceof PipeEnriched
             ? ((PipeEnriched) rewrittenStatement).getInnerStatement()
