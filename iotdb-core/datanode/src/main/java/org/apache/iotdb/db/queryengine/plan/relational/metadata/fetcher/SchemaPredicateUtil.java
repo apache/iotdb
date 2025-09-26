@@ -58,8 +58,8 @@ public class SchemaPredicateUtil {
       final TsTable table,
       final MPPQueryContext queryContext,
       final boolean isDirectDeviceQuery) {
-    final List<Expression> idDeterminedList = new ArrayList<>();
-    final List<Expression> idFuzzyList = new ArrayList<>();
+    final List<Expression> tagDeterminedList = new ArrayList<>();
+    final List<Expression> tagFuzzyList = new ArrayList<>();
     final CheckSchemaPredicateVisitor visitor = new CheckSchemaPredicateVisitor();
     final CheckSchemaPredicateVisitor.Context context =
         new CheckSchemaPredicateVisitor.Context(table, queryContext, isDirectDeviceQuery);
@@ -70,15 +70,15 @@ public class SchemaPredicateUtil {
       if (expression instanceof BetweenPredicate) {
         final BetweenPredicate predicate = (BetweenPredicate) expression;
 
-        // Separate the between predicate to simply the logic and to handle cases like
-        // '2' between id1 and attr2 / id1 between '2' and attr1
+        // Separate the between predicate to simplify the logic and to handle cases like '2' between
+        // id1 and attr2 / id1 between '2' and attr1
         separateExpression(
             new ComparisonExpression(
                 ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
                 predicate.getMin(),
                 predicate.getValue()),
-            idDeterminedList,
-            idFuzzyList,
+            tagDeterminedList,
+            tagFuzzyList,
             visitor,
             context);
         separateExpression(
@@ -86,27 +86,27 @@ public class SchemaPredicateUtil {
                 ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
                 predicate.getValue(),
                 predicate.getMax()),
-            idDeterminedList,
-            idFuzzyList,
+            tagDeterminedList,
+            tagFuzzyList,
             visitor,
             context);
         continue;
       }
-      separateExpression(expression, idDeterminedList, idFuzzyList, visitor, context);
+      separateExpression(expression, tagDeterminedList, tagFuzzyList, visitor, context);
     }
-    return new Pair<>(idDeterminedList, idFuzzyList);
+    return new Pair<>(tagDeterminedList, tagFuzzyList);
   }
 
   private static void separateExpression(
       final Expression expression,
-      final List<Expression> idDeterminedList,
-      final List<Expression> idFuzzyList,
+      final List<Expression> tagDeterminedList,
+      final List<Expression> tagFuzzyList,
       final CheckSchemaPredicateVisitor visitor,
       final CheckSchemaPredicateVisitor.Context context) {
     if (Boolean.TRUE.equals(expression.accept(visitor, context))) {
-      idFuzzyList.add(expression);
+      tagFuzzyList.add(expression);
     } else {
-      idDeterminedList.add(expression);
+      tagDeterminedList.add(expression);
     }
   }
 
