@@ -366,6 +366,24 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
+    config.setPipeConnectorInsertNodeDegradeTransferThresholdMs(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_sink_insert_node_degrade_transfer_threshold_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_insert_node_degrade_transfer_threshold_ms",
+                        String.valueOf(
+                            config.getPipeConnectorInsertNodeDegradeTransferThresholdMs())))));
+    config.setPipeConnectorTsFileDegradeTransferThresholdMs(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_sink_tsfile_degrade_transfer_threshold_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_tsfile_degrade_transfer_threshold_ms",
+                        String.valueOf(
+                            config.getPipeConnectorTsFileDegradeTransferThresholdMs())))));
     config.setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
         Long.parseLong(
             Optional.ofNullable(

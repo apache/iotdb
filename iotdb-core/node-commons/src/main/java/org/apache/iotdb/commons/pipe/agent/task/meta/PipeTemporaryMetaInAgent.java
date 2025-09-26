@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
@@ -34,6 +35,9 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
   // Object pool
   private final String pipeNameWithCreationTime;
   private final Map<Integer, CommitterKey> regionId2CommitterKeyMap = new ConcurrentHashMap<>();
+
+  private final AtomicReference<MemoryFactorState> state =
+      new AtomicReference<>(new MemoryFactorState(1.0, 0L, 0));
 
   PipeTemporaryMetaInAgent(final String pipeName, final long creationTime) {
     this.pipeNameWithCreationTime = pipeName + "_" + creationTime;
@@ -72,6 +76,77 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     return newKey;
   }
 
+  public void reportHighTransferTime() {
+    final MemoryFactorState current = state.get();
+    final long currentTime = System.currentTimeMillis();
+    if (currentTime - current.lastTime < 5000 || current.factor <= 0.5) {
+      return;
+    }
+
+    state.updateAndGet(
+        old -> {
+          long updateTime = System.currentTimeMillis();
+          if (updateTime - old.lastTime < 5000 || old.factor <= 0.5) {
+            return old;
+          }
+          return new MemoryFactorState(Math.max(0.5, old.factor - 0.1), updateTime, 0);
+        });
+  }
+
+  public void reportStableTransferTime() {
+    final MemoryFactorState current = state.get();
+    final long currentTime = System.currentTimeMillis();
+    if (current.factor >= 1.0) {
+      return;
+    }
+
+    if (currentTime - current.lastTime < 5000 && current.stableCount + 1 < 5) {
+      state.updateAndGet(
+          old -> {
+            if (old.factor >= 1.0) {
+              return old;
+            }
+            return new MemoryFactorState(old.factor, old.lastTime, old.stableCount + 1);
+          });
+      return;
+    }
+
+    state.updateAndGet(
+        old -> {
+          long updateTime = System.currentTimeMillis();
+          if (old.factor >= 1.0) {
+            return old;
+          }
+
+          int newCount = old.stableCount + 1;
+          if (newCount < 5) {
+            return new MemoryFactorState(old.factor, old.lastTime, newCount);
+          }
+
+          if (updateTime - old.lastTime < 5000) {
+            return new MemoryFactorState(old.factor, old.lastTime, newCount);
+          }
+
+          return new MemoryFactorState(Math.min(1.0, old.factor + 0.1), updateTime, 0);
+        });
+  }
+
+  public double getMemoryAdjustFactor() {
+    return state.get().factor;
+  }
+
+  private static class MemoryFactorState {
+    final double factor;
+    final long lastTime;
+    final int stableCount;
+
+    MemoryFactorState(double factor, long lastTime, int stableCount) {
+      this.factor = factor;
+      this.lastTime = lastTime;
+      this.stableCount = stableCount;
+    }
+  }
+
   /////////////////////////////// Object ///////////////////////////////
 
   // We assume that the "pipeNameWithCreationTime" does not contain extra information
@@ -85,23 +160,37 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
       return false;
     }
     final PipeTemporaryMetaInAgent that = (PipeTemporaryMetaInAgent) o;
+    final MemoryFactorState thisState = this.state.get();
+    final MemoryFactorState thatState = that.state.get();
     return Objects.equals(
             this.floatingMemoryUsageInByte.get(), that.floatingMemoryUsageInByte.get())
-        && Objects.equals(this.regionId2CommitterKeyMap, that.regionId2CommitterKeyMap);
+        && Objects.equals(this.regionId2CommitterKeyMap, that.regionId2CommitterKeyMap)
+        && Objects.equals(thisState.factor, thatState.factor)
+        && Objects.equals(thisState.stableCount, thatState.stableCount)
+        && Objects.equals(thisState.lastTime, thatState.lastTime);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(floatingMemoryUsageInByte, regionId2CommitterKeyMap);
+    final MemoryFactorState currentState = state.get();
+    return Objects.hash(
+        floatingMemoryUsageInByte.get(),
+        regionId2CommitterKeyMap,
+        currentState.factor,
+        currentState.stableCount,
+        currentState.lastTime);
   }
 
   @Override
   public String toString() {
+    final MemoryFactorState currentState = state.get();
     return "PipeTemporaryMeta{"
         + "floatingMemoryUsage="
         + floatingMemoryUsageInByte
         + ", regionId2CommitterKeyMap="
         + regionId2CommitterKeyMap
+        + ", memoryAdjustFactor="
+        + currentState.factor
         + '}';
   }
 }
