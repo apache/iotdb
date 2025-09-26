@@ -423,12 +423,13 @@ public class TreeSchemaAutoCreatorAndVerifier {
       // check device schema: is aligned or not
       final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
       final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-      if (LOGGER.isDebugEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
-        LOGGER.debug(
-            "Device {} in TsFile is {}, but in IoTDB is {}.",
-            device,
-            isAlignedInTsFile ? "aligned" : "not aligned",
-            isAlignedInIoTDB ? "aligned" : "not aligned");
+      if (isAlignedInTsFile != isAlignedInIoTDB) {
+        throw new LoadAnalyzeTypeMismatchException(
+            String.format(
+                "Device %s in TsFile is %s, but in IoTDB is %s.",
+                device,
+                isAlignedInTsFile ? "aligned" : "not aligned",
+                isAlignedInIoTDB ? "aligned" : "not aligned"));
       }
 
       // check timeseries schema
