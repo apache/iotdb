@@ -48,6 +48,8 @@ import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -55,6 +57,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
 import java.io.File;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -67,6 +70,7 @@ import java.util.stream.Collectors;
 
 public class Utils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
   private static final int TEMP_BUFFER_SIZE = 1024;
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
@@ -363,11 +367,11 @@ public class Utils {
       String keyStorePassword = config.getGrpc().getSslKeyStorePassword();
       String trustStorePath = config.getGrpc().getSslTrustStorePath();
       String trustStorePassword = config.getGrpc().getSslTrustStorePassword();
-      try {
+      try (InputStream keyStoreStream = Files.newInputStream(Paths.get(keyStorePath));
+          InputStream trustStoreStream = Files.newInputStream(Paths.get(trustStorePath))) {
         // === 1) create KeyManager ===
         KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(
-            Files.newInputStream(Paths.get(keyStorePath)), keyStorePassword.toCharArray());
+        keyStore.load(keyStoreStream, keyStorePassword.toCharArray());
 
         KeyManagerFactory kmf =
             KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
@@ -376,15 +380,15 @@ public class Utils {
 
         // === 2) create TrustManager ===
         KeyStore trustStore = KeyStore.getInstance("JKS");
-        trustStore.load(
-            Files.newInputStream(Paths.get(trustStorePath)), trustStorePassword.toCharArray());
+        trustStore.load(trustStoreStream, trustStorePassword.toCharArray());
 
         TrustManagerFactory tmf =
             TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         tmf.init(trustStore);
         TrustManager trustManager = tmf.getTrustManagers()[0];
         GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
-      } catch (Exception ignored) {
+      } catch (Exception e) {
+        LOGGER.error("Failed to read key store or trust store.", e);
       }
     }
     return parameters;
