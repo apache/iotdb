@@ -111,6 +111,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRealTimeQueuePollTsFileThreshold();
   }
 
+  public boolean isPipeRealTimeQueueCompactionEnabled() {
+    return COMMON_CONFIG.isPipeRealTimeQueueCompactionEnabled();
+  }
+
   public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
     return Math.max(COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
   }
@@ -468,6 +472,7 @@ public class PipeConfig {
 
     LOGGER.info(
         "PipeRealTimeQueuePollTsFileThreshold: {}", getPipeRealTimeQueuePollTsFileThreshold());
+    LOGGER.info("PipeRealTimeQueueCompactionEnabled: {}", isPipeRealTimeQueueCompactionEnabled());
     LOGGER.info(
         "PipeRealTimeQueuePollHistoricalTsFileThreshold: {}",
         getPipeRealTimeQueuePollHistoricalTsFileThreshold());
