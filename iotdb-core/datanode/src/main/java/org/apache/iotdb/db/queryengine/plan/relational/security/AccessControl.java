@@ -221,7 +221,7 @@ public interface AccessControl {
 
   /** called by load */
   TSStatus checkFullPathWriteDataPermission(
-          IAuditEntity entity, IDeviceID device, String measurementId);
+      IAuditEntity entity, IDeviceID device, String measurementId);
 
   TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName);
 

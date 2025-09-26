@@ -435,8 +435,6 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-<<<<<<< HEAD
-=======
   public TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName) {
     return treeAccessCheckVisitor.checkCreateOrAlterDatabasePermission(
         entity.getUsername(), databaseName);
