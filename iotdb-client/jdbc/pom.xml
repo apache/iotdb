@@ -98,7 +98,7 @@
     <build>
         <resources>
             <resource>
-                <targetPath>${project.build.directory}/feature</targetPath>
+                <targetPath>feature</targetPath>
                 <filtering>true</filtering>
                 <directory>src/main/feature</directory>
             </resource>
