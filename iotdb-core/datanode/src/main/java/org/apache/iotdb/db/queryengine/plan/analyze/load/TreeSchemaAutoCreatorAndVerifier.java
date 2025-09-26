@@ -424,7 +424,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
       final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
       if (isAlignedInTsFile != isAlignedInIoTDB) {
-        throw new LoadAnalyzeException(
+        throw new LoadAnalyzeTypeMismatchException(
             String.format(
                 "Device %s in TsFile is %s, but in IoTDB is %s.",
                 device,
