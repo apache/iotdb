@@ -455,7 +455,7 @@ public class CommonConfig {
   private boolean mayBypassPasswordCheckInException = true;
 
   /** whether to enable the audit log * */
-  private boolean enableAuditLog = true;
+  private boolean enableAuditLog = false;
 
   /** Indicates the category collection of audit logs * */
   private List<AuditLogOperation> auditableOperationType =
