@@ -98,16 +98,17 @@ public class TableDistributedPlanner {
     this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
-  public DistributedQueryPlan plan(MPPQueryContext context) {
+  public DistributedQueryPlan plan() {
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
     List<String> planText = null;
-    if (context.isExplain() && context.isSubquery()) {
+    if (mppQueryContext.isExplain() && mppQueryContext.isSubquery()) {
       planText =
           outputNodeWithExchange.accept(
               new PlanGraphPrinter(),
-              new PlanGraphPrinter.GraphContext(context.getTypeProvider().getTemplatedInfo()));
+              new PlanGraphPrinter.GraphContext(
+                  mppQueryContext.getTypeProvider().getTemplatedInfo()));
     }
 
     if (analysis.isQuery()) {
