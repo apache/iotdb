@@ -163,7 +163,6 @@ JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 
 set -o noglob
 iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-cli.xml"
-echo $PARAMETERS
 exec "$JAVA" $JVM_OPTS $iotdb_cli_params $illegal_access_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
 exit $?
