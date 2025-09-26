@@ -134,4 +134,8 @@ public class TreeAccessCheckContext implements IAuditEntity {
     this.sqlString = sqlString;
     return this;
   }
+
+  public UserEntity getUserEntity() {
+    return userEntity;
+  }
 }

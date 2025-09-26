@@ -24,11 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
@@ -57,6 +56,8 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -312,15 +313,14 @@ public class PartitionCache {
         for (final String databaseName : databaseNamesNeedCreated) {
           final long startTime = System.nanoTime();
           try {
-            if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-              final TSStatus status =
-                  AuthorityChecker.getTSStatus(
-                      AuthorityChecker.checkSystemPermission(
-                          userName, PrivilegeType.MANAGE_DATABASE),
-                      PrivilegeType.MANAGE_DATABASE);
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                throw new RuntimeException(new IoTDBException(status));
-              }
+            final TSStatus status =
+                AuthorityChecker.getAccessControl()
+                    .checkCanCreateDatabaseForTree(
+                        AuthorityChecker.createIAuditEntity(
+                            userName, SessionManager.getInstance().getCurrSession()),
+                        new PartialPath(databaseName));
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new IoTDBRuntimeException(status);
             }
           } finally {
             PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
@@ -370,15 +370,9 @@ public class PartitionCache {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       long startTime = System.nanoTime();
       try {
-        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-          final TSStatus status =
-              AuthorityChecker.getTSStatus(
-                  AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
-                  PrivilegeType.MANAGE_DATABASE);
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
-          }
-        }
+        IClientSession clientSession = SessionManager.getInstance().getCurrSession();
+        IAuditEntity entity = AuthorityChecker.createIAuditEntity(userName, clientSession);
+        AuthorityChecker.getAccessControl().checkCanCreateDatabase(userName, database, entity);
       } finally {
         PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
       }

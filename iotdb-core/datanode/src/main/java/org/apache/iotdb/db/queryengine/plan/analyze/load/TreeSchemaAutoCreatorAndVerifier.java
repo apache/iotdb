@@ -152,11 +152,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // check WRITE_DATA permission of timeseries
           long startTime = System.nanoTime();
           try {
-            UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
             TSStatus status =
                 AuthorityChecker.getAccessControl()
                     .checkFullPathWriteDataPermission(
-                        userEntity, device, timeseriesMetadata.getMeasurementId());
+                        loadTsFileAnalyzer.context, device, timeseriesMetadata.getMeasurementId());
             if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               throw new AuthException(
                   TSStatusCode.representOf(status.getCode()), status.getMessage());

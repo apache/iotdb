@@ -34,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,12 +41,15 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
+import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl.checkCanSelectAuditTable;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor.checkTimeSeriesPermission;
 
@@ -55,12 +57,11 @@ public class AccessControlImpl implements AccessControl {
 
   public static final String READ_ONLY_DB_ERROR_MSG = "The database '%s' is read-only.";
 
-  private final ITableAuthChecker authChecker;
+  protected final ITableAuthChecker authChecker;
 
-  private final StatementVisitor<TSStatus, TreeAccessCheckContext> treeAccessCheckVisitor;
+  protected final TreeAccessCheckVisitor treeAccessCheckVisitor;
 
-  public AccessControlImpl(
-      ITableAuthChecker authChecker, StatementVisitor<TSStatus, TreeAccessCheckContext> visitor) {
+  public AccessControlImpl(ITableAuthChecker authChecker, TreeAccessCheckVisitor visitor) {
     this.authChecker = authChecker;
     this.treeAccessCheckVisitor = visitor;
   }
@@ -427,6 +428,7 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public TSStatus checkFullPathWriteDataPermission(
       IAuditEntity auditEntity, IDeviceID device, String measurementId) {
+    String userName = auditEntity.getUsername();
     try {
       PartialPath path = new MeasurementPath(device, measurementId);
       // audit db is read-only
@@ -441,5 +443,34 @@ public class AccessControlImpl implements AccessControl {
       // should never be here
       throw new IllegalStateException(e);
     }
+  }
+
+  @Override
+  public TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName) {
+    return treeAccessCheckVisitor.checkCreateOrAlterDatabasePermission(
+        entity, databaseName);
+  }
+
+  @Override
+  public TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject) {
+    return treeAccessCheckVisitor.checkCanAlterTemplate(entity, auditObject);
+  }
+
+  @Override
+  public TSStatus checkCanAlterView(
+      IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
+    if (AuthorityChecker.SUPER_USER_ID == entity.getUserId()) {
+      return SUCCEED;
+    }
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (sourcePaths != null) {
+      status =
+          checkTimeSeriesPermission(entity, sourcePaths, PrivilegeType.READ_SCHEMA);
+    }
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return checkTimeSeriesPermission(
+          entity, targetPaths, PrivilegeType.WRITE_SCHEMA);
+    }
+    return status;
   }
 }

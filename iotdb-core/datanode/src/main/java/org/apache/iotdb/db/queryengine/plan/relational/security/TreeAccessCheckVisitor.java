@@ -370,18 +370,22 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitAlterSchemaTemplate(
       AlterSchemaTemplateStatement alterSchemaTemplateStatement, TreeAccessCheckContext context) {
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
-      recordObjectAuthenticationAuditLog(
-          context
-              .setAuditLogOperation(AuditLogOperation.DDL)
-              .setPrivilegeType(PrivilegeType.EXTEND_TEMPLATE)
-              .setResult(true),
-          () -> alterSchemaTemplateStatement.getPaths().toString());
       return SUCCEED;
     }
-    return checkGlobalAuth(
-        context.setAuditLogOperation(AuditLogOperation.DDL),
-        PrivilegeType.EXTEND_TEMPLATE,
-        () -> alterSchemaTemplateStatement.getPaths().toString());
+    return checkCanAlterTemplate(context, () -> alterSchemaTemplateStatement.getPaths().toString());
+  }
+
+  public TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject) {
+    if (AuthorityChecker.SUPER_USER.equals(entity.getUsername())) {
+      recordObjectAuthenticationAuditLog(
+        entity
+          .setAuditLogOperation(AuditLogOperation.DDL)
+          .setPrivilegeType(PrivilegeType.EXTEND_TEMPLATE)
+          .setResult(true), auditObject
+        );
+      return SUCCEED;
+    }
+    return checkGlobalAuth(entity, PrivilegeType.EXTEND_TEMPLATE, auditObject);
   }
 
   // ============================= timeseries view related ===============
@@ -966,7 +970,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         context, PrivilegeType.MANAGE_DATABASE, () -> statement.getPrefixPath().toString());
   }
 
-  private TSStatus checkCreateOrAlterDatabasePermission(
+  protected TSStatus checkCreateOrAlterDatabasePermission(
       IAuditEntity auditEntity, PartialPath databaseName) {
     auditEntity.setDatabase(databaseName.getFullPath()).setAuditLogOperation(AuditLogOperation.DDL);
     // root.__audit can never be created or alter

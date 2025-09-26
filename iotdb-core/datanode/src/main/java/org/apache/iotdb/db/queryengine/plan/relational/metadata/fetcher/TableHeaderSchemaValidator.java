@@ -27,12 +27,12 @@ import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -43,7 +43,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
@@ -75,7 +74,6 @@ public class TableHeaderSchemaValidator {
 
   private final ClusterConfigTaskExecutor configTaskExecutor =
       ClusterConfigTaskExecutor.getInstance();
-  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   private TableHeaderSchemaValidator() {
     // do nothing
@@ -262,10 +260,11 @@ public class TableHeaderSchemaValidator {
     DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     final TsTable tsTable = new TsTable(tableSchema.getTableName());
     addColumnSchema(tableSchema.getColumns(), tsTable);
-    accessControl.checkCanCreateTable(
-        context.getSession().getUserName(),
-        new QualifiedObjectName(database, tableSchema.getTableName()),
-        context);
+    AuthorityChecker.getAccessControl()
+        .checkCanCreateTable(
+            context.getSession().getUserName(),
+            new QualifiedObjectName(database, tableSchema.getTableName()),
+            context);
     final CreateTableTask createTableTask = new CreateTableTask(tsTable, database, true);
     try {
       final ListenableFuture<ConfigTaskResult> future = createTableTask.execute(configTaskExecutor);
@@ -362,8 +361,11 @@ public class TableHeaderSchemaValidator {
       final List<ColumnSchema> inputColumnList,
       final MPPQueryContext context) {
     DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
-    accessControl.checkCanAlterTable(
-        context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
+    AuthorityChecker.getAccessControl()
+        .checkCanAlterTable(
+            context.getSession().getUserName(),
+            new QualifiedObjectName(database, tableName),
+            context);
     final AlterTableAddColumnTask task =
         new AlterTableAddColumnTask(
             database,

@@ -463,8 +463,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               || !tablePattern.matchesTable(table)) {
             continue;
           }
-          if (!Coordinator.getInstance()
-              .getAccessControl()
+          if (!AuthorityChecker.getAccessControl()
               .checkCanSelectFromTable4Pipe(
                   userName,
                   new QualifiedObjectName(getTableModelDatabaseName(), table),
