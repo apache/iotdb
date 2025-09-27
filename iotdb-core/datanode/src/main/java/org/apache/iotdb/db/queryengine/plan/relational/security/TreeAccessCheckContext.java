@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
 import java.util.Collections;
@@ -30,25 +29,29 @@ import java.util.List;
 
 public class TreeAccessCheckContext implements IAuditEntity {
 
-  private final UserEntity userEntity;
+  private final long userId;
+  private final String username;
+  private final String cliHostname;
 
-  public TreeAccessCheckContext(UserEntity userEntity) {
-    this.userEntity = userEntity;
+  public TreeAccessCheckContext(long userId, String username, String cliHostname) {
+    this.userId = userId;
+    this.username = username;
+    this.cliHostname = cliHostname;
   }
 
   @Override
   public long getUserId() {
-    return userEntity.getUserId();
+    return userId;
   }
 
   @Override
   public String getUsername() {
-    return userEntity.getUsername();
+    return username;
   }
 
   @Override
   public String getCliHostname() {
-    return userEntity.getCliHostname();
+    return cliHostname;
   }
 
   private AuditEventType auditEventType;
@@ -133,9 +136,5 @@ public class TreeAccessCheckContext implements IAuditEntity {
   public IAuditEntity setSqlString(String sqlString) {
     this.sqlString = sqlString;
     return this;
-  }
-
-  public UserEntity getUserEntity() {
-    return userEntity;
   }
 }

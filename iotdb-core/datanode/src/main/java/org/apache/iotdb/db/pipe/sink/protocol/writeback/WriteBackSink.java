@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -481,7 +482,11 @@ public class WriteBackSink implements PipeConnector {
     if (useEventUserName && userName != null) {
       session.setUsername(userName);
     }
-    final TSStatus permissionCheckStatus = AuthorityChecker.checkAuthority(statement, session);
+    final TSStatus permissionCheckStatus =
+        AuthorityChecker.checkAuthority(
+            statement,
+            new TreeAccessCheckContext(
+                session.getUserId(), session.getUsername(), session.getClientAddress()));
     if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       PipeLogger.log(
           LOGGER::warn,

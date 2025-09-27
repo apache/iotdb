@@ -88,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
@@ -346,7 +347,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   false);
         } else {
           // permission check
-          TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+          TSStatus status =
+              AuthorityChecker.checkAuthority(
+                  s,
+                  new TreeAccessCheckContext(
+                          clientSession.getUserId(),
+                          clientSession.getUsername(),
+                          clientSession.getClientAddress())
+                      .setSqlString(statement));
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return RpcUtils.getTSExecuteStatementResp(status);
           }
@@ -521,7 +529,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Statement s = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -610,7 +624,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       Statement s = StatementGenerator.createStatement(req);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -701,7 +721,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       Statement s = StatementGenerator.createStatement(req);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -1145,7 +1171,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // cache miss
       Statement s = StatementGenerator.createStatement(convert(req));
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -1540,7 +1572,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: Create SetStorageGroupStatement
       DatabaseSchemaStatement statement = StatementGenerator.createStatement(storageGroup);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1578,7 +1616,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement = StatementGenerator.createStatement(req);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1622,7 +1666,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement = StatementGenerator.createStatement(req);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1666,7 +1716,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement = StatementGenerator.createStatement(req);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1706,7 +1762,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           StatementGenerator.createDeleteTimeSeriesStatement(path);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1745,7 +1807,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       DeleteDatabaseStatement statement = StatementGenerator.createStatement(storageGroups);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1825,7 +1893,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                       false);
             } else {
               // permission check
-              TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+              TSStatus status =
+                  AuthorityChecker.checkAuthority(
+                      s,
+                      new TreeAccessCheckContext(
+                              clientSession.getUserId(),
+                              clientSession.getUsername(),
+                              clientSession.getClientAddress())
+                          .setSqlString(statement));
               if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 return status;
               }
@@ -2015,7 +2090,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2075,7 +2156,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2137,7 +2224,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2201,7 +2294,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2270,7 +2369,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2333,7 +2438,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // permission check for tree model, table model does this in the analysis stage
       if (!req.isWriteToTable()) {
-        TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+        TSStatus status =
+            AuthorityChecker.checkAuthority(
+                statement,
+                new TreeAccessCheckContext(
+                    clientSession.getUserId(),
+                    clientSession.getUsername(),
+                    clientSession.getClientAddress()));
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
@@ -2404,7 +2515,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2494,7 +2611,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       DeleteDataStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2554,7 +2677,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2717,7 +2846,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         resp.setStatus(status);
         return resp;
@@ -2796,7 +2931,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2837,7 +2978,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       UnsetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2878,7 +3025,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2917,7 +3070,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           StatementGenerator.createBatchActivateTemplateStatement(req.getDevicePathList());
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -3007,7 +3166,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       final InsertRowStatement statement = StatementGenerator.createStatement(req);
 
       // Permission check
-      final TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
