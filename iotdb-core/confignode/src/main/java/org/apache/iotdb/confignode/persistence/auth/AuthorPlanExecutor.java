@@ -97,12 +97,9 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
       }
     } catch (AuthException e) {
       LOGGER.error("meet error while logging in.", e);
-      status = false;
       loginMessage = e.getMessage();
-    }
-    if (!status) {
+      tsStatus.setCode(e.getCode().getStatusCode());
       tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
-      tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
       result.setStatus(tsStatus);
     }
     return result;

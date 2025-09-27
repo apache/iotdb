@@ -79,6 +79,25 @@ public class AuditLogFields implements IAuditEntity {
         sqlString);
   }
 
+  public AuditLogFields(
+      long userId,
+      String username,
+      String cliHostname,
+      AuditEventType auditEventType,
+      AuditLogOperation operationType,
+      boolean result) {
+    this(
+        userId,
+        username,
+        cliHostname,
+        auditEventType,
+        operationType,
+        (List<PrivilegeType>) null,
+        result,
+        "",
+        "");
+  }
+
   public String getUsername() {
     return username;
   }

@@ -679,7 +679,7 @@ public abstract class AbstractEnv implements BaseEnv {
         ? new ClusterTestConnection(
             getWriteConnection(version, username, password, sqlDialect),
             getReadConnections(version, username, password, sqlDialect))
-        : getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnecton();
+        : getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnection();
   }
 
   @Override
