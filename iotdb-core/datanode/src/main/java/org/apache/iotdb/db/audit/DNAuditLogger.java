@@ -77,6 +77,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader.SCHEMA_FETCHER;
 
@@ -159,6 +161,20 @@ public class DNAuditLogger extends AbstractAuditLogger {
           AUDIT_LOG_LOG
         });
     insertStatement.setAligned(false);
+    String sqlString = auditLogFields.getSqlString();
+    if (sqlString != null) {
+      if (sqlString.toUpperCase().startsWith("CREATE USER")) {
+        sqlString = String.join(" ", Arrays.asList(sqlString.split(" ")).subList(0, 3)) + " ...";
+      }
+      Pattern pattern = Pattern.compile("(?i)(values)\\([^)]*\\)");
+      Matcher matcher = pattern.matcher(sqlString);
+      StringBuffer sb = new StringBuffer();
+      while (matcher.find()) {
+        matcher.appendReplacement(sb, matcher.group(1) + "(...)");
+      }
+      matcher.appendTail(sb);
+      sqlString = sb.toString();
+    }
     insertStatement.setValues(
         new Object[] {
           new Binary(username == null ? "null" : username, TSFileConfig.STRING_CHARSET),
@@ -178,9 +194,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
           new Binary(
               auditLogFields.getDatabase() == null ? "null" : auditLogFields.getDatabase(),
               TSFileConfig.STRING_CHARSET),
-          new Binary(
-              auditLogFields.getSqlString() == null ? "null" : auditLogFields.getSqlString(),
-              TSFileConfig.STRING_CHARSET),
+          new Binary(sqlString == null ? "null" : sqlString, TSFileConfig.STRING_CHARSET),
           new Binary(log == null ? "null" : log, TSFileConfig.STRING_CHARSET)
         });
     insertStatement.setDataTypes(

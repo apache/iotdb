@@ -501,9 +501,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitAuthor(AuthorStatement statement, TreeAccessCheckContext context) {
     AuthorType authorType = statement.getAuthorType();
+    Supplier<String> auditObject;
     switch (authorType) {
       case CREATE_USER:
       case DROP_USER:
+        context
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY);
         return checkGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.DDL),
             PrivilegeType.MANAGE_USER,
@@ -513,22 +517,31 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         if (statement.getUserName().equals(context.getUsername())) {
           return RpcUtils.SUCCESS_STATUS;
         }
+        context
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY);
         return checkGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.DDL),
             PrivilegeType.MANAGE_USER,
             statement::getUserName);
 
       case LIST_USER:
+        context
+            .setAuditLogOperation(AuditLogOperation.QUERY)
+            .setPrivilegeType(PrivilegeType.SECURITY);
         if (checkHasGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.QUERY),
             PrivilegeType.MANAGE_USER,
-            null)) {
+            statement::getUserName)) {
           return RpcUtils.SUCCESS_STATUS;
         }
         statement.setUserName(context.getUsername());
         return RpcUtils.SUCCESS_STATUS;
 
       case LIST_USER_PRIVILEGE:
+        context
+            .setAuditLogOperation(AuditLogOperation.QUERY)
+            .setPrivilegeType(PrivilegeType.SECURITY);
         if (context.getUsername().equals(statement.getUserName())) {
           return RpcUtils.SUCCESS_STATUS;
         }
@@ -538,6 +551,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             statement::getUserName);
 
       case LIST_ROLE_PRIVILEGE:
+        context
+            .setAuditLogOperation(AuditLogOperation.QUERY)
+            .setPrivilegeType(PrivilegeType.SECURITY);
         if (!AuthorityChecker.checkRole(context.getUsername(), statement.getRoleName())) {
           return checkGlobalAuth(
               context.setAuditLogOperation(AuditLogOperation.QUERY),
@@ -548,10 +564,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         }
 
       case LIST_ROLE:
+        context
+            .setAuditLogOperation(AuditLogOperation.QUERY)
+            .setPrivilegeType(PrivilegeType.SECURITY);
         if (checkHasGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.QUERY),
             PrivilegeType.MANAGE_ROLE,
-            null)) {
+            statement::getRoleName)) {
           return SUCCEED;
         }
         // list roles of other user is not allowed
@@ -566,17 +585,27 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       case DROP_ROLE:
       case GRANT_USER_ROLE:
       case REVOKE_USER_ROLE:
+        context
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY);
+        auditObject =
+            authorType == AuthorType.CREATE_ROLE || authorType == AuthorType.DROP_ROLE
+                ? statement::getRoleName
+                : () -> "user: " + statement.getUserName() + ", role: " + statement.getRoleName();
         return checkGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.DDL),
             PrivilegeType.MANAGE_ROLE,
-            statement::getRoleName);
+            auditObject);
 
       case REVOKE_USER:
       case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
+        context
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY);
         context.setAuditLogOperation(AuditLogOperation.DDL);
-        Supplier<String> auditObject =
+        auditObject =
             () ->
                 authorType == AuthorType.REVOKE_USER || authorType == AuthorType.GRANT_USER
                     ? statement.getUserName()
@@ -1340,6 +1369,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitAlterTimeSeries(
       AlterTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.DDL);
     // audit db is read-only
     if (includeByAuditTreeDB(statement.getPath())
         && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
@@ -1355,6 +1385,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitDeleteTimeSeries(
       DeleteTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.DDL);
     // audit db is read-only
     for (PartialPath path : statement.getPathPatternList()) {
       if (includeByAuditTreeDB(path)

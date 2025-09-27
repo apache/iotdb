@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -116,7 +115,8 @@ public class AllowAllAccessControl implements AccessControl {
       String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {}
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(Statement statement, UserEntity userEntity) {
+  public TSStatus checkPermissionBeforeProcess(
+      Statement statement, TreeAccessCheckContext context) {
     return SUCCEED;
   }
 

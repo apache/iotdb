@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -503,10 +502,7 @@ public class StatementAnalyzer {
       accessControl.checkCanInsertIntoTable(
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()),
-          new UserEntity(
-              sessionContext.getUserId(),
-              sessionContext.getUserName(),
-              sessionContext.getCliHostname()));
+          queryContext);
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
@@ -567,10 +563,7 @@ public class StatementAnalyzer {
       accessControl.checkCanDeleteFromTable(
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()),
-          new UserEntity(
-              sessionContext.getUserId(),
-              sessionContext.getUserName(),
-              sessionContext.getCliHostname()));
+          queryContext);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
@@ -645,12 +638,7 @@ public class StatementAnalyzer {
       }
       // verify access privileges
       accessControl.checkCanInsertIntoTable(
-          sessionContext.getUserName(),
-          targetTable,
-          new UserEntity(
-              sessionContext.getUserId(),
-              sessionContext.getUserName(),
-              sessionContext.getCliHostname()));
+          sessionContext.getUserName(), targetTable, queryContext);
 
       // verify the insert destination columns match the query
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, targetTable);
@@ -773,10 +761,7 @@ public class StatementAnalyzer {
           new QualifiedObjectName(
               AnalyzeUtils.getDatabaseName(node, queryContext),
               node.getTable().getName().getSuffix()),
-          new UserEntity(
-              sessionContext.getUserId(),
-              sessionContext.getUserName(),
-              sessionContext.getCliHostname()));
+          queryContext);
       AnalyzeUtils.analyzeDelete(node, queryContext);
 
       analysis.setScope(node, ret);
@@ -3071,17 +3056,10 @@ public class StatementAnalyzer {
           return resultScope;
         }
       }
-
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
 
       // access control
-      accessControl.checkCanSelectFromTable(
-          sessionContext.getUserName(),
-          name,
-          new UserEntity(
-              sessionContext.getUserId(),
-              sessionContext.getUserName(),
-              sessionContext.getCliHostname()));
+      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name, queryContext);
 
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
@@ -4505,10 +4483,7 @@ public class StatementAnalyzer {
       accessControl.checkCanSelectFromTable(
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()),
-          new UserEntity(
-              sessionContext.getUserId(),
-              sessionContext.getUserName(),
-              sessionContext.getCliHostname()));
+          queryContext);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
 
       final TsTable table =
