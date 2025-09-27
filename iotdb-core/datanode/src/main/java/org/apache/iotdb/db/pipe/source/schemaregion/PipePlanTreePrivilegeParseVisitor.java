@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -328,7 +327,9 @@ public class PipePlanTreePrivilegeParseVisitor
       final DeleteDataNode node, final IAuditEntity auditEntity) {
     final List<MeasurementPath> intersectedPaths =
         TreeAccessCheckVisitor.getIntersectedPaths4Pipe(
-            node.getPathList(), new TreeAccessCheckContext((UserEntity) auditEntity));
+            node.getPathList(),
+            new TreeAccessCheckContext(
+                auditEntity.getUserId(), auditEntity.getUsername(), auditEntity.getCliHostname()));
     if (!skip && !intersectedPaths.equals(node.getPathList())) {
       throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
     }

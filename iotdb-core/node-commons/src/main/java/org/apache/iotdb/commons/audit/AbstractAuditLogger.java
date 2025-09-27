@@ -94,6 +94,7 @@ public abstract class AbstractAuditLogger {
       case DELETE:
       case INSERT:
       case SELECT:
+      case MANAGE_DATABASE:
       case WRITE_DATA:
       case READ_SCHEMA:
       case WRITE_SCHEMA:
@@ -106,7 +107,6 @@ public abstract class AbstractAuditLogger {
       case MANAGE_ROLE:
       case MANAGE_USER:
       case USE_TRIGGER:
-      case MANAGE_DATABASE:
       case EXTEND_TEMPLATE:
       default:
         return PrivilegeLevel.GLOBAL;
