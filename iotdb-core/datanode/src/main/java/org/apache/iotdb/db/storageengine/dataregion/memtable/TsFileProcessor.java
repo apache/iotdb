@@ -2324,7 +2324,10 @@ public class TsFileProcessor {
 
   public void registerToTsFile(
       String tableName, Function<String, TableSchema> tableSchemaFunction) {
-    getWriter().getSchema().getTableSchemaMap().computeIfAbsent(tableName, tableSchemaFunction);
+    getWriter()
+        .getSchema()
+        .getTableSchemaMap()
+        .put(tableName, tableSchemaFunction.apply(tableName));
   }
 
   public void writeLock() {
