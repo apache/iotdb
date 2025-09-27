@@ -81,9 +81,7 @@ import java.util.function.Supplier;
 import static org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader.SCHEMA_FETCHER;
 
 public class DNAuditLogger extends AbstractAuditLogger {
-  // TODO: @Hongzhi Gao move this path under __audit
-  public static final String PREFIX_PASSWORD_HISTORY =
-      "root." + SystemConstant.SYSTEM_PREFIX_KEY + ".password_history";
+  public static final String PREFIX_PASSWORD_HISTORY = "root.__audit.password_history";
   private static final Logger logger = LoggerFactory.getLogger(DNAuditLogger.class);
 
   // TODO: @zhujt20 Optimize the following stupid retry

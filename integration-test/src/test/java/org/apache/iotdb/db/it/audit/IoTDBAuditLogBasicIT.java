@@ -165,20 +165,6 @@ public class IoTDBAuditLogBasicIT {
               "null",
               "null",
               "Successfully start the Audit service with configurations (auditableOperationType [DDL, DML, QUERY, CONTROL], auditableOperationLevel GLOBAL, auditableOperationResult SUCCESS,FAIL)"),
-          // Create password history TODO: @Hongzhi Gao move password history under __audit
-          Arrays.asList(
-              "node_1",
-              "u_0",
-              "root",
-              "",
-              "OBJECT_AUTHENTICATION",
-              "DDL",
-              "null",
-              "null",
-              "true",
-              "root.__system",
-              "null",
-              "User root (ID=0) requests authority on object root.__system with result true"),
           // Show audit database TODO: Fix typo in tree model
           Arrays.asList(
               "node_1",
