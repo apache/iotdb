@@ -140,6 +140,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
           break;
         }
       }
+    } else {
+      privilegeLevel = PrivilegeLevel.GLOBAL;
     }
     String dataNodeId = String.valueOf(config.getDataNodeId());
     InsertRowStatement insertStatement = new InsertRowStatement();
