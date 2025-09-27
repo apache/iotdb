@@ -495,8 +495,7 @@ class AutoCreateSchemaExecutor {
   // Auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       final Statement statement, final MPPQueryContext context) {
-    final TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
+    final TSStatus status = AuthorityChecker.checkAuthority(statement, context);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
