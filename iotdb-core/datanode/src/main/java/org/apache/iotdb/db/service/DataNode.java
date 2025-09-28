@@ -68,6 +68,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -486,6 +487,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store audit log configuration */
     CommonDescriptor.getInstance().loadAuditConfig(runtimeConfiguration.auditConfig);
+
+    /* Store superuser name */
+    AuthorityChecker.setSuperUser(runtimeConfiguration.getSuperUserName());
   }
 
   /**
