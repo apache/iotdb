@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
-import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -48,6 +48,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final long startTime;
   private final long endTime;
   private final TablePattern tablePattern;
+  private final String userName;
 
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
@@ -62,20 +63,10 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final IAuditEntity entity,
+      final String userName,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    super(
-        pipeName,
-        creationTime,
-        null,
-        pattern,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        entity,
-        true,
-        sourceEvent);
+    super(pipeName, creationTime, null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
       long tableSize =
@@ -100,7 +91,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.endTime = endTime;
       this.tablePattern = pattern;
 
-      this.entity = entity;
+      this.userName = userName;
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
     } catch (final Exception e) {
       close();
@@ -114,10 +105,10 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final IAuditEntity entity,
+      final String userName,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, entity, sourceEvent);
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
   }
 
   @Override
@@ -160,15 +151,15 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                 }
 
                 private boolean hasTablePrivilege(final String tableName) {
-                  return Objects.isNull(entity)
+                  return Objects.isNull(userName)
                       || Objects.isNull(sourceEvent)
                       || Objects.isNull(sourceEvent.getTableModelDatabaseName())
                       || AuthorityChecker.getAccessControl()
                           .checkCanSelectFromTable4Pipe(
-                              entity.getUsername(),
+                              userName,
                               new QualifiedObjectName(
                                   sourceEvent.getTableModelDatabaseName(), tableName),
-                              entity);
+                              new UserEntity(-1, userName, ""));
                 }
 
                 @Override

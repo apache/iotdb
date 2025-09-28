@@ -21,28 +21,25 @@ package org.apache.iotdb.commons.audit;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
-import java.util.Collections;
-import java.util.List;
-
-public class AuditLogFields implements IAuditEntity {
+public class AuditLogFields {
+  private final String username;
 
   private final long userId;
-  private final String username;
   private final String cliHostname;
   private final AuditEventType auditType;
   private final AuditLogOperation operationType;
-  private final List<PrivilegeType> privilegeTypes;
-  private final boolean result;
+  private final PrivilegeType privilegeType;
+  private boolean result;
   private final String database;
   private final String sqlString;
 
   public AuditLogFields(
-      long userId,
       String username,
+      long userId,
       String cliHostname,
       AuditEventType auditType,
       AuditLogOperation operationType,
-      List<PrivilegeType> privilegeTypes,
+      PrivilegeType privilegeType,
       boolean result,
       String database,
       String sqlString) {
@@ -51,32 +48,10 @@ public class AuditLogFields implements IAuditEntity {
     this.cliHostname = cliHostname;
     this.auditType = auditType;
     this.operationType = operationType;
-    this.privilegeTypes = privilegeTypes;
+    this.privilegeType = privilegeType;
     this.result = result;
     this.database = database;
     this.sqlString = sqlString;
-  }
-
-  public AuditLogFields(
-      long userId,
-      String username,
-      String cliHostname,
-      AuditEventType auditType,
-      AuditLogOperation operationType,
-      PrivilegeType privilegeType,
-      boolean result,
-      String database,
-      String sqlString) {
-    this(
-        userId,
-        username,
-        cliHostname,
-        auditType,
-        operationType,
-        Collections.singletonList(privilegeType),
-        result,
-        database,
-        sqlString);
   }
 
   public String getUsername() {
@@ -91,73 +66,32 @@ public class AuditLogFields implements IAuditEntity {
     return cliHostname;
   }
 
-  @Override
-  public AuditEventType getAuditEventType() {
+  public AuditEventType getAuditType() {
     return auditType;
   }
 
-  @Override
-  public AuditLogOperation getAuditLogOperation() {
+  public AuditLogOperation getOperationType() {
     return operationType;
   }
 
-  @Override
-  public List<PrivilegeType> getPrivilegeTypes() {
-    return privilegeTypes;
+  public PrivilegeType getPrivilegeType() {
+    return privilegeType;
   }
 
-  @Override
-  public String getPrivilegeTypeString() {
-    return privilegeTypes.toString();
+  public boolean isResult() {
+    return result;
   }
 
-  @Override
+  public AuditLogFields setResult(boolean result) {
+    this.result = result;
+    return this;
+  }
+
   public String getDatabase() {
     return database;
   }
 
-  @Override
   public String getSqlString() {
     return sqlString;
-  }
-
-  @Override
-  public boolean getResult() {
-    return result;
-  }
-
-  @Override
-  public IAuditEntity setAuditEventType(AuditEventType auditEventType) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IAuditEntity setAuditLogOperation(AuditLogOperation auditLogOperation) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IAuditEntity setPrivilegeType(PrivilegeType privilegeType) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IAuditEntity setPrivilegeTypes(List<PrivilegeType> privilegeTypes) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IAuditEntity setResult(boolean result) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IAuditEntity setDatabase(String database) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IAuditEntity setSqlString(String sqlString) {
-    throw new UnsupportedOperationException();
   }
 }

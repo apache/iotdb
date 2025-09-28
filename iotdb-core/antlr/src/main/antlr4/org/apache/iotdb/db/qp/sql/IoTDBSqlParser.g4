@@ -571,21 +571,21 @@ removeAINode
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
-        ((sourceAttributesClause?
+        ((extractorAttributesClause?
         processorAttributesClause?
-        sinkAttributesClause)
-        |sinkAttributesWithoutWithSinkClause)
+        connectorAttributesClause)
+        |connectorAttributesWithoutWithSinkClause)
     ;
 
-sourceAttributesClause
+extractorAttributesClause
     : WITH (EXTRACTOR | SOURCE)
         LR_BRACKET
-        (sourceAttributeClause COMMA)* sourceAttributeClause?
+        (extractorAttributeClause COMMA)* extractorAttributeClause?
         RR_BRACKET
     ;
 
-sourceAttributeClause
-    : sourceKey=STRING_LITERAL OPERATOR_SEQ sourceValue=STRING_LITERAL
+extractorAttributeClause
+    : extractorKey=STRING_LITERAL OPERATOR_SEQ extractorValue=STRING_LITERAL
     ;
 
 processorAttributesClause
@@ -599,32 +599,32 @@ processorAttributeClause
     : processorKey=STRING_LITERAL OPERATOR_SEQ processorValue=STRING_LITERAL
     ;
 
-sinkAttributesClause
+connectorAttributesClause
     : WITH (CONNECTOR | SINK)
         LR_BRACKET
-        (sinkAttributeClause COMMA)* sinkAttributeClause?
+        (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET
     ;
 
-sinkAttributesWithoutWithSinkClause
-    : LR_BRACKET (sinkAttributeClause COMMA)* sinkAttributeClause? RR_BRACKET
+connectorAttributesWithoutWithSinkClause
+    : LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
     ;
 
-sinkAttributeClause
-    : sinkKey=STRING_LITERAL OPERATOR_SEQ sinkValue=STRING_LITERAL
+connectorAttributeClause
+    : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
     ;
 
 alterPipe
     : ALTER PIPE (IF EXISTS)? pipeName=identifier
-        alterSourceAttributesClause?
+        alterExtractorAttributesClause?
         alterProcessorAttributesClause?
-        alterSinkAttributesClause?
+        alterConnectorAttributesClause?
     ;
 
-alterSourceAttributesClause
+alterExtractorAttributesClause
     : (MODIFY | REPLACE) (EXTRACTOR | SOURCE)
         LR_BRACKET
-        (sourceAttributeClause COMMA)* sourceAttributeClause?
+        (extractorAttributeClause COMMA)* extractorAttributeClause?
         RR_BRACKET
     ;
 
@@ -635,10 +635,10 @@ alterProcessorAttributesClause
         RR_BRACKET
     ;
 
-alterSinkAttributesClause
+alterConnectorAttributesClause
     : (MODIFY | REPLACE) (CONNECTOR | SINK)
         LR_BRACKET
-        (sinkAttributeClause COMMA)* sinkAttributeClause?
+        (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET
     ;
 

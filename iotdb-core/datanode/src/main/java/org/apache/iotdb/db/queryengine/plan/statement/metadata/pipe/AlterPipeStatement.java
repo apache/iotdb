@@ -35,12 +35,12 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
   private String pipeName;
   private String userName;
   private boolean ifExistsCondition;
-  private Map<String, String> sourceAttributes;
+  private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
-  private Map<String, String> sinkAttributes;
-  private boolean isReplaceAllSourceAttributes;
+  private Map<String, String> connectorAttributes;
+  private boolean isReplaceAllExtractorAttributes;
   private boolean isReplaceAllProcessorAttributes;
-  private boolean isReplaceAllSinkAttributes;
+  private boolean isReplaceAllConnectorAttributes;
   private boolean isTableModel;
 
   public AlterPipeStatement(final StatementType alterPipeStatement) {
@@ -55,28 +55,28 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     return ifExistsCondition;
   }
 
-  public Map<String, String> getSourceAttributes() {
-    return sourceAttributes;
+  public Map<String, String> getExtractorAttributes() {
+    return extractorAttributes;
   }
 
   public Map<String, String> getProcessorAttributes() {
     return processorAttributes;
   }
 
-  public Map<String, String> getSinkAttributes() {
-    return sinkAttributes;
+  public Map<String, String> getConnectorAttributes() {
+    return connectorAttributes;
   }
 
-  public boolean isReplaceAllSourceAttributes() {
-    return isReplaceAllSourceAttributes;
+  public boolean isReplaceAllExtractorAttributes() {
+    return isReplaceAllExtractorAttributes;
   }
 
   public boolean isReplaceAllProcessorAttributes() {
     return isReplaceAllProcessorAttributes;
   }
 
-  public boolean isReplaceAllSinkAttributes() {
-    return isReplaceAllSinkAttributes;
+  public boolean isReplaceAllConnectorAttributes() {
+    return isReplaceAllConnectorAttributes;
   }
 
   public boolean isTableModel() {
@@ -95,28 +95,28 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     this.ifExistsCondition = ifExistsCondition;
   }
 
-  public void setSourceAttributes(final Map<String, String> sourceAttributes) {
-    this.sourceAttributes = sourceAttributes;
+  public void setExtractorAttributes(final Map<String, String> extractorAttributes) {
+    this.extractorAttributes = extractorAttributes;
   }
 
   public void setProcessorAttributes(final Map<String, String> processorAttributes) {
     this.processorAttributes = processorAttributes;
   }
 
-  public void setSinkAttributes(final Map<String, String> sinkAttributes) {
-    this.sinkAttributes = sinkAttributes;
+  public void setConnectorAttributes(final Map<String, String> connectorAttributes) {
+    this.connectorAttributes = connectorAttributes;
   }
 
-  public void setReplaceAllSourceAttributes(final boolean replaceAllSourceAttributes) {
-    isReplaceAllSourceAttributes = replaceAllSourceAttributes;
+  public void setReplaceAllExtractorAttributes(final boolean replaceAllExtractorAttributes) {
+    isReplaceAllExtractorAttributes = replaceAllExtractorAttributes;
   }
 
   public void setReplaceAllProcessorAttributes(final boolean replaceAllProcessorAttributes) {
     isReplaceAllProcessorAttributes = replaceAllProcessorAttributes;
   }
 
-  public void setReplaceAllSinkAttributes(final boolean replaceAllConnectorAttributes) {
-    isReplaceAllSinkAttributes = replaceAllConnectorAttributes;
+  public void setReplaceAllConnectorAttributes(final boolean replaceAllConnectorAttributes) {
+    isReplaceAllConnectorAttributes = replaceAllConnectorAttributes;
   }
 
   public void setTableModel(final boolean tableModel) {

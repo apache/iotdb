@@ -63,7 +63,6 @@ import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -262,6 +261,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -286,7 +286,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -847,11 +846,8 @@ public class ConfigManager implements IManager {
     final List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
     final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(false);
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
-    Iterator<String> iterator = allDatabases.iterator();
-    while (iterator.hasNext()) {
-      String database = iterator.next();
+    for (final String database : allDatabases) {
       if (!needAuditDB && TREE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(database)) {
-        iterator.remove();
         continue;
       }
       try {

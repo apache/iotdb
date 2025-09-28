@@ -535,7 +535,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
-    context.setDatabase(database);
+
     accessControl.checkCanCreateTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 
@@ -1041,39 +1041,40 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    final String userName = context.getSession().getUserName();
     accessControl.checkUserGlobalSysPrivilege(context);
 
-    final Map<String, String> sourceAttributes = node.getSourceAttributes();
+    final Map<String, String> extractorAttributes = node.getExtractorAttributes();
     final String pipeName = node.getPipeName();
-    for (final String sourceAttribute : sourceAttributes.keySet()) {
-      if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    for (final String ExtractorAttribute : extractorAttributes.keySet()) {
+      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to create pipe %s, setting %s is not allowed.",
-                node.getPipeName(), sourceAttribute));
+                node.getPipeName(), ExtractorAttribute));
       }
-      if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
+      if (ExtractorAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to create pipe %s, setting %s is not allowed.",
-                node.getPipeName(), sourceAttribute));
+                node.getPipeName(), ExtractorAttribute));
       }
     }
 
     // Inject table model into the extractor attributes
-    sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     checkAndEnrichSourceUser(
         pipeName,
-        sourceAttributes,
+        extractorAttributes,
         new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
     checkAndEnrichSinkUser(
         pipeName,
-        node.getSinkAttributes(),
+        node.getConnectorAttributes(),
         new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
 
-    mayChangeSourcePattern(sourceAttributes);
+    mayChangeSourcePattern(extractorAttributes);
 
     return new CreatePipeTask(node);
   }
@@ -1117,11 +1118,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
   }
 
-  private static void mayChangeSourcePattern(final Map<String, String> sourceAttributes) {
-    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+  private static void mayChangeSourcePattern(final Map<String, String> extractorAttributes) {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
 
     final String pluginName =
-        sourceParameters
+        extractorParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
@@ -1133,14 +1134,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     // Use lower case because database + table name are all in lower cases
-    sourceParameters.computeAttributeIfExists(
+    extractorParameters.computeAttributeIfExists(
         (k, v) -> v.toLowerCase(Locale.ENGLISH),
         PipeSourceConstant.EXTRACTOR_DATABASE_KEY,
         PipeSourceConstant.SOURCE_DATABASE_KEY,
         PipeSourceConstant.EXTRACTOR_DATABASE_NAME_KEY,
         PipeSourceConstant.SOURCE_DATABASE_NAME_KEY);
 
-    sourceParameters.computeAttributeIfExists(
+    extractorParameters.computeAttributeIfExists(
         (k, v) -> v.toLowerCase(Locale.ENGLISH),
         PipeSourceConstant.EXTRACTOR_TABLE_KEY,
         PipeSourceConstant.SOURCE_TABLE_KEY,

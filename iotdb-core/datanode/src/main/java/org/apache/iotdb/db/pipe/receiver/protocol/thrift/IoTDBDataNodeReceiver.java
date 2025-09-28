@@ -86,7 +86,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -881,12 +880,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     // For table model, the authority check is done in inner execution. No need to check here
     if (!isTableModelStatement) {
       final TSStatus permissionCheckStatus =
-          AuthorityChecker.checkAuthority(
-              statement,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
+          AuthorityChecker.checkAuthority(statement, clientSession);
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,

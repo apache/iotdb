@@ -42,7 +42,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Optional;
 
-public class PipeConfigTablePrivilegeParseVisitor
+public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, String> {
 
   @Override

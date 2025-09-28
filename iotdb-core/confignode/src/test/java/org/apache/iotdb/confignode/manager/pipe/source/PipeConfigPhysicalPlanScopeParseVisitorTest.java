@@ -33,7 +33,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 
-public class PipeConfigScopeParseVisitorTest {
+public class PipeConfigPhysicalPlanScopeParseVisitorTest {
   @Test
   public void testTreeScopeParsing() {
     testTreeScopeParsing(ConfigPhysicalPlanType.GrantRole, false);
