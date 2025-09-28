@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -32,7 +34,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.v4.ITsFileReader;
+import org.apache.tsfile.read.v4.TsFileReaderBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -44,6 +49,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -62,6 +69,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showRegionColumnHeaders;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -1173,6 +1181,54 @@ public class IoTDBInsertTableIT {
       assertNull(rs1.getString("s1"));
       assertNull(rs1.getString("s2"));
       assertFalse(rs1.next());
+    }
+  }
+
+  @Test
+  public void testInsertWithChangedSchema() throws SQLException, IOException {
+    SimpleEnv simpleEnv = new SimpleEnv();
+    simpleEnv.initClusterEnvironment(1, 1);
+    try (Connection connection = simpleEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement st1 = connection.createStatement()) {
+      st1.execute("create database \"test\"");
+      st1.execute("use \"test\"");
+      st1.execute(
+          "create table insert_with_changed_schema(d1 string tag, s1 int32 field, s2 int32 field)");
+      st1.execute("insert into insert_with_changed_schema(time, d1,s1,s2) values(1,'a',1, 1)");
+
+      st1.execute("drop  table insert_with_changed_schema");
+      st1.execute(
+          "create table insert_with_changed_schema(d3 string tag, d2 string tag, s1 int32 field, s2 int32 field)");
+      st1.execute(
+          "insert into insert_with_changed_schema(time, d3, d2, s1, s2) values(1,'a', 'b', 1, 1)");
+      st1.execute("flush");
+
+      List<File> files =
+          FileUtils.listFilesRecursively(
+              new File(simpleEnv.getDataNodeWrapper(0).getDataNodeDir()),
+              f ->
+                  f.getName().endsWith(TSFILE_SUFFIX)
+                      && f.getAbsolutePath().contains(File.separator + "test" + File.separator));
+
+      assertEquals(1, files.size());
+      File file = files.get(0);
+      try (ITsFileReader tsFileReader = new TsFileReaderBuilder().file(file).build()) {
+        List<TableSchema> allTableSchema = tsFileReader.getAllTableSchema();
+        assertEquals(1, allTableSchema.size());
+        TableSchema tableSchema = allTableSchema.get(0);
+        List<IMeasurementSchema> columnSchemas = tableSchema.getColumnSchemas();
+        assertEquals(4, columnSchemas.size());
+        assertEquals("d3", columnSchemas.get(0).getMeasurementName());
+        assertEquals("d2", columnSchemas.get(1).getMeasurementName());
+        assertEquals("s1", columnSchemas.get(2).getMeasurementName());
+        assertEquals("s2", columnSchemas.get(3).getMeasurementName());
+        assertEquals(ColumnCategory.TAG, tableSchema.getColumnTypes().get(0));
+        assertEquals(ColumnCategory.TAG, tableSchema.getColumnTypes().get(1));
+        assertEquals(ColumnCategory.FIELD, tableSchema.getColumnTypes().get(2));
+        assertEquals(ColumnCategory.FIELD, tableSchema.getColumnTypes().get(3));
+      }
+    } finally {
+      simpleEnv.cleanClusterEnvironment();
     }
   }
 
