@@ -103,8 +103,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
                       .constructStatement(),
                   loadTsFileStatement.isConvertOnTypeMismatch());
 
-          final TSStatus status =
-              executeInsertTabletWithRetry(statement, databaseName, loadTsFileStatement);
+          final TSStatus status = executeInsertTabletWithRetry(statement, databaseName);
           if (!handleTSStatus(status, loadTsFileStatement)) {
             return Optional.of(status);
           }
@@ -138,9 +137,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
   }
 
   private TSStatus executeInsertTabletWithRetry(
-      final LoadConvertedInsertTabletStatement statement,
-      final String databaseName,
-      final LoadTsFile loadTsFile) {
+      final LoadConvertedInsertTabletStatement statement, final String databaseName) {
     TSStatus result;
     try {
       result =
@@ -164,7 +161,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      result = loadTsFile.accept(LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR, e);
+      result = statement.accept(LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
     }
     return result;
   }

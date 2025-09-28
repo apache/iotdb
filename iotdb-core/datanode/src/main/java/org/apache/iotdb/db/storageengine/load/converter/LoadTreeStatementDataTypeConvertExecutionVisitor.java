@@ -107,7 +107,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             }
 
             final TSStatus result =
-                executeInsertMultiTabletsWithRetry(tabletRawReqs, loadTsFileStatement);
+                executeInsertMultiTabletsWithRetry(
+                    tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
 
             for (final long memoryCost : tabletRawReqSizes) {
               block.reduceMemoryUsage(memoryCost);
@@ -135,7 +136,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       if (!tabletRawReqs.isEmpty()) {
         try {
           final TSStatus result =
-              executeInsertMultiTabletsWithRetry(tabletRawReqs, loadTsFileStatement);
+              executeInsertMultiTabletsWithRetry(
+                  tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
 
           for (final long memoryCost : tabletRawReqSizes) {
             block.reduceMemoryUsage(memoryCost);
@@ -183,15 +185,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
   }
 
   private TSStatus executeInsertMultiTabletsWithRetry(
-      final List<PipeTransferTabletRawReq> tabletRawReqs,
-      final LoadTsFileStatement loadTsFileStatement) {
+      final List<PipeTransferTabletRawReq> tabletRawReqs, final boolean isConvertedOnTypeMismatch) {
     final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
     batchStatement.setInsertTabletStatementList(
         tabletRawReqs.stream()
             .map(
                 req ->
                     new LoadConvertedInsertTabletStatement(
-                        req.constructStatement(), loadTsFileStatement.isConvertOnTypeMismatch()))
+                        req.constructStatement(), isConvertedOnTypeMismatch))
             .collect(Collectors.toList()));
 
     TSStatus result;
@@ -218,8 +219,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         Thread.currentThread().interrupt();
       }
       result =
-          loadTsFileStatement.accept(
-              LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
+          batchStatement.accept(LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
     }
     return result;
   }
