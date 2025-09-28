@@ -19,7 +19,7 @@
  *
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
+package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -70,13 +70,11 @@ import java.util.stream.IntStream;
 public class CteMaterializer {
   private static final Logger LOGGER = LoggerFactory.getLogger(CteMaterializer.class);
   private static String CTE_MATERIALIZATION_FAILURE_WARNING =
-      "***** CTE MATERIALIZATION failed! INLINE mode is adopted in main query *****";
+      "***** Failed to materialize CTE! INLINE mode is adopted in the main query *****";
 
   private static final Coordinator coordinator = Coordinator.getInstance();
 
-  private CteMaterializer() {}
-
-  public static void materializeCTE(Analysis analysis, MPPQueryContext context) {
+  public void materializeCTE(Analysis analysis, MPPQueryContext context) {
     analysis
         .getNamedQueries()
         .forEach(
@@ -104,7 +102,7 @@ public class CteMaterializer {
             });
   }
 
-  public static void cleanUpCTE(MPPQueryContext context) {
+  public void cleanUpCTE(MPPQueryContext context) {
     Map<NodeRef<Table>, CteDataStore> cteDataStores = context.getCteDataStores();
     cteDataStores
         .values()
@@ -116,8 +114,7 @@ public class CteMaterializer {
     cteDataStores.clear();
   }
 
-  private static CteDataStore fetchCteQueryResult(
-      Table table, Query query, MPPQueryContext context) {
+  private CteDataStore fetchCteQueryResult(Table table, Query query, MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     try {
@@ -184,7 +181,7 @@ public class CteMaterializer {
     return null;
   }
 
-  private static TableSchema getTableSchema(DatasetHeader datasetHeader, String cteName) {
+  private TableSchema getTableSchema(DatasetHeader datasetHeader, String cteName) {
     final List<String> columnNames = datasetHeader.getRespColumns();
     final List<TSDataType> columnDataTypes = datasetHeader.getRespDataTypes();
     if (columnNames.size() != columnDataTypes.size()) {
@@ -213,7 +210,7 @@ public class CteMaterializer {
     return new TableSchema(cteName, columnSchemaList);
   }
 
-  private static List<String> getCteExplainAnalyzeLines(
+  private List<String> getCteExplainAnalyzeLines(
       FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer,
       List<FragmentInstance> instances,
       boolean verbose)
@@ -231,7 +228,7 @@ public class CteMaterializer {
     return statisticLines.stream().map(StatisticLine::getValue).collect(Collectors.toList());
   }
 
-  private static void handleCteExplainAnalyzeResults(
+  private void handleCteExplainAnalyzeResults(
       MPPQueryContext context, long queryId, Table table, String warnMessage) {
     QueryExecution execution = (QueryExecution) coordinator.getQueryExecution(queryId);
     DistributedQueryPlan distributedQueryPlan = execution.getDistributedPlan();
@@ -265,7 +262,7 @@ public class CteMaterializer {
     }
   }
 
-  private static void handleCteExplainResults(MPPQueryContext context, long queryId, Table table) {
+  private void handleCteExplainResults(MPPQueryContext context, long queryId, Table table) {
     QueryExecution execution = (QueryExecution) coordinator.getQueryExecution(queryId);
     DistributedQueryPlan distributedQueryPlan = execution.getDistributedPlan();
     if (distributedQueryPlan == null) {
@@ -275,5 +272,17 @@ public class CteMaterializer {
 
     List<String> lines = distributedQueryPlan.getPlanText();
     context.addCteExplainResult(table, new Pair<>(-1, lines));
+  }
+
+  private static class CteMaterializerHolder {
+    private static final CteMaterializer INSTANCE = new CteMaterializer();
+
+    private CteMaterializerHolder() {
+      // Empty constructor
+    }
+  }
+
+  public static CteMaterializer getInstance() {
+    return CteMaterializerHolder.INSTANCE;
   }
 }
