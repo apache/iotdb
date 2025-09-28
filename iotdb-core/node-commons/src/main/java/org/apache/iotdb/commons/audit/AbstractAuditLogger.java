@@ -52,9 +52,6 @@ public abstract class AbstractAuditLogger {
   public abstract void log(IAuditEntity auditLogFields, Supplier<String> log);
 
   public boolean noNeedInsertAuditLog(IAuditEntity auditLogFields) {
-    String username = auditLogFields.getUsername();
-    String address = auditLogFields.getCliHostname();
-    AuditEventType type = auditLogFields.getAuditEventType();
     AuditLogOperation operation = auditLogFields.getAuditLogOperation();
     boolean result = auditLogFields.getResult();
 
@@ -76,10 +73,7 @@ public abstract class AbstractAuditLogger {
     if (result && !AUDITABLE_OPERATION_RESULT.contains("SUCCESS")) {
       return true;
     }
-    if (!result && !AUDITABLE_OPERATION_RESULT.contains("FAIL")) {
-      return true;
-    }
-    return false;
+    return !result && !AUDITABLE_OPERATION_RESULT.contains("FAIL");
   }
 
   public static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {
