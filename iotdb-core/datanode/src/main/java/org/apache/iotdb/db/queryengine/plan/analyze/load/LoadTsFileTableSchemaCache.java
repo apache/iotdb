@@ -221,7 +221,7 @@ public class LoadTsFileTableSchemaCache {
             tableIdColumnMapper.get(tableName);
         if (Objects.isNull(idColumnCountAndMapper)) {
           // This should not happen
-          LOGGER.warn("Failed to find id column mapping for table {}", tableName);
+          LOGGER.warn("Failed to find tag column mapping for table {}", tableName);
         }
 
         for (final IDeviceID device : currentBatchTable2Devices.get(tableName)) {
@@ -358,7 +358,7 @@ public class LoadTsFileTableSchemaCache {
         } else {
           throw new LoadAnalyzeException(
               String.format(
-                  "Id column %s in TsFile is not found in IoTDB table %s",
+                  "Tag column %s in TsFile is not found in IoTDB table %s",
                   fileColumn.getName(), realSchema.getTableName()));
         }
       } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
