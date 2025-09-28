@@ -168,6 +168,15 @@ public interface IAuthorizer extends SnapshotProcessor {
   void updateUserPassword(String userName, String newPassword) throws AuthException;
 
   /**
+   * Rename the specified user.
+   *
+   * @param username The original name of the specified user.
+   * @param newUsername The new name to be specified.
+   * @throws AuthException If the original name does not exist or the new name is already existed.
+   */
+  void renameUser(String username, String newUsername) throws AuthException;
+
+  /**
    * Check if the user have the privilege or grant option on the target.
    *
    * @param userName The name of the user whose privileges are checked.

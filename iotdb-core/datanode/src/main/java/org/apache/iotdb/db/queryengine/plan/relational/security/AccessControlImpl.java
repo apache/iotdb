@@ -252,11 +252,22 @@ public class AccessControlImpl implements AccessControl {
     switch (type) {
       case CREATE_USER:
       case DROP_USER:
-      case UPDATE_USER:
         auditEntity
             .setAuditLogOperation(AuditLogOperation.DDL)
             .setPrivilegeType(PrivilegeType.SECURITY);
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          return;
+        }
+        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
+        return;
+      case RENAME_USER:
+      case UPDATE_USER:
+        auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
+        // users can change the username and password of themselves
+        // the superuser can affect anyone
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
+            || statement.getUserName().equals(userName)) {
           ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
           return;
         }

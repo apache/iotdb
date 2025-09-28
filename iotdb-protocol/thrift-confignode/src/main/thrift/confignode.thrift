@@ -117,6 +117,7 @@ struct TRuntimeConfiguration {
   6: optional string clusterId
   7: optional binary tableInfo
   8: required TAuditConfig auditConfig
+  9: required string superUserName
 }
 
 struct TDataNodeRegisterReq {
@@ -353,6 +354,7 @@ struct TAuthorizerReq {
   7: required bool grantOpt
   8: required binary nodeNameList
   9: required i64 executedByUserID
+  10: required string newUsername
 }
 
 struct TAuthorizerRelationalReq {
@@ -365,6 +367,7 @@ struct TAuthorizerRelationalReq {
    7: required set<i32> permissions
    8: required bool grantOpt
    9: required i64 executedByUserID
+   10: required string newUsername
 }
 
 struct TAuthorizerResp {

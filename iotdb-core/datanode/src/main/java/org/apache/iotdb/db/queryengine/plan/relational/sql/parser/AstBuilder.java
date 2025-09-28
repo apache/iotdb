@@ -1742,6 +1742,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitRenameUserStatement(RelationalSqlParser.RenameUserStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.RENAME_USER);
+    stmt.setUserName(((Identifier) visit(ctx.username)).getValue());
+    stmt.setNewUsername(((Identifier) visit(ctx.newUsername)).getValue());
+    return stmt;
+  }
+
+  @Override
   public Node visitGrantUserRoleStatement(RelationalSqlParser.GrantUserRoleStatementContext ctx) {
     RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.GRANT_USER_ROLE);
     stmt.setUserName(((Identifier) visit(ctx.userName)).getValue());

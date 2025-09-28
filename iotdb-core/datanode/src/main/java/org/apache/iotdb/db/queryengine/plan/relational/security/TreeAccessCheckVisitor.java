@@ -517,18 +517,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             PrivilegeType.MANAGE_USER,
             statement::getUserName);
       case UPDATE_USER:
-        // users can change passwords of themselves
+      case RENAME_USER:
+        context.setAuditLogOperation(AuditLogOperation.DDL);
+        // users can change the username and password of themselves
         if (statement.getUserName().equals(context.getUsername())) {
+          recordObjectAuthenticationAuditLog(context.setResult(true), context::getUsername);
           return RpcUtils.SUCCESS_STATUS;
         }
-        context
-            .setAuditLogOperation(AuditLogOperation.DDL)
-            .setPrivilegeType(PrivilegeType.SECURITY);
+        context.setPrivilegeType(PrivilegeType.SECURITY);
         return checkGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.DDL),
             PrivilegeType.MANAGE_USER,
             statement::getUserName);
-
       case LIST_USER:
         context
             .setAuditLogOperation(AuditLogOperation.QUERY)

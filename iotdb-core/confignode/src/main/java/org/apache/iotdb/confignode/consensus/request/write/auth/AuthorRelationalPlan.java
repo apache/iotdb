@@ -85,7 +85,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
         permissions,
         grantOpt,
         password,
-        0);
+        0,
+        "");
   }
 
   public AuthorRelationalPlan(
@@ -97,13 +98,15 @@ public class AuthorRelationalPlan extends AuthorPlan {
       final Set<Integer> permissions,
       final boolean grantOpt,
       final String password,
-      final long executedByUserId) {
+      final long executedByUserId,
+      final String newUsername) {
     super(authorType, userName, roleName, password, "", grantOpt, -1, -1);
 
     this.databaseName = databaseName;
     this.tableName = tableName;
     this.permissions = permissions;
     this.executedByUserId = executedByUserId;
+    this.newUsername = newUsername;
   }
 
   public AuthorRelationalPlan(
@@ -181,6 +184,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
         + databaseName
         + ", TABLE:"
         + tableName
+        + ", newUsername:"
+        + newUsername
         + "]";
   }
 
@@ -195,6 +200,9 @@ public class AuthorRelationalPlan extends AuthorPlan {
         || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
       BasicStructureSerDeUtil.write(maxSessionPerUser, stream);
       BasicStructureSerDeUtil.write(minSessionPerUser, stream);
+    }
+    if (authorType == ConfigPhysicalPlanType.RRenameUser) {
+      BasicStructureSerDeUtil.write(newUsername, stream);
     }
     if (authorType == ConfigPhysicalPlanType.RDropUserV2
         || authorType == ConfigPhysicalPlanType.RUpdateUserV2) {
@@ -220,6 +228,9 @@ public class AuthorRelationalPlan extends AuthorPlan {
         || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
       maxSessionPerUser = buffer.getInt();
       minSessionPerUser = buffer.getInt();
+    }
+    if (authorType == ConfigPhysicalPlanType.RRenameUser) {
+      newUsername = BasicStructureSerDeUtil.readString(buffer);
     }
     if (authorType == ConfigPhysicalPlanType.RDropUserV2
         || authorType == ConfigPhysicalPlanType.RUpdateUserV2) {
