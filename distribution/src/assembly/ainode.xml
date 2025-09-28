@@ -30,20 +30,48 @@
         <fileSet>
             <directory>${project.basedir}/../iotdb-core/ainode/target/apache-iotdb-ainode-${project.version}/apache-iotdb-ainode-${project.version}/conf</directory>
             <outputDirectory>${file.separator}/conf</outputDirectory>
+            <excludes>
+                <exclude>venv/**</exclude>
+                <exclude>.venv/**</exclude>
+                <exclude>target/**</exclude>
+                <exclude>**/__pycache__/**</exclude>
+                <exclude>**/*.pyc</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../iotdb-core/ainode/target/apache-iotdb-ainode-${project.version}/apache-iotdb-ainode-${project.version}/sbin</directory>
             <outputDirectory>${file.separator}/sbin</outputDirectory>
             <fileMode>0755</fileMode>
+            <excludes>
+                <exclude>venv/**</exclude>
+                <exclude>.venv/**</exclude>
+                <exclude>target/**</exclude>
+                <exclude>**/__pycache__/**</exclude>
+                <exclude>**/*.pyc</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../iotdb-core/ainode/target/apache-iotdb-ainode-${project.version}/apache-iotdb-ainode-${project.version}/lib</directory>
             <outputDirectory>${file.separator}/lib</outputDirectory>
+            <excludes>
+                <exclude>venv/**</exclude>
+                <exclude>.venv/**</exclude>
+                <exclude>target/**</exclude>
+                <exclude>**/__pycache__/**</exclude>
+                <exclude>**/*.pyc</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../iotdb-core/ainode/target/apache-iotdb-ainode-${project.version}/apache-iotdb-ainode-${project.version}/tools</directory>
             <outputDirectory>${file.separator}/tools</outputDirectory>
             <fileMode>0755</fileMode>
+            <excludes>
+                <exclude>venv/**</exclude>
+                <exclude>.venv/**</exclude>
+                <exclude>target/**</exclude>
+                <exclude>**/__pycache__/**</exclude>
+                <exclude>**/*.pyc</exclude>
+            </excludes>
         </fileSet>
     </fileSets>
     <componentDescriptors>
