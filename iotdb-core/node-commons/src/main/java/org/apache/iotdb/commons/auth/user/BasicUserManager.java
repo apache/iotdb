@@ -229,6 +229,27 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
   }
 
+  public void renameUser(String username, String newUsername) throws AuthException {
+    User user = this.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), username));
+    }
+    User tmpUser = this.getEntity(newUsername);
+    if (tmpUser != null) {
+      throw new AuthException(
+          TSStatusCode.USER_ALREADY_EXIST, String.format("Cannot rename user %s to %s, because the target username is already existed.",
+          username, newUsername
+      ));
+    }
+    lock.writeLock(username);
+    try {
+      entityMap.get(username).setName(newUsername);
+    } finally {
+      lock.writeUnlock(username);
+    }
+  }
+
   public void grantRoleToUser(String roleName, String username) throws AuthException {
     lock.writeLock(username);
     try {

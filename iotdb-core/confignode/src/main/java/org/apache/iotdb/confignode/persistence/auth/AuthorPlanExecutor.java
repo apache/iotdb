@@ -123,11 +123,15 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     Set<Integer> permissions = authorPlan.getPermissions();
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
+    String newUsername = authorPlan.getNewUsername();
     try {
       switch (authorType) {
         case UpdateUser:
         case UpdateUserV2:
           authorizer.updateUserPassword(userName, newPassword);
+          break;
+        case RenameUser:
+          authorizer.renameUser(userName, newUsername);
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
@@ -241,6 +245,9 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         case RUpdateUserV2:
           authorizer.updateUserPassword(userName, authorPlan.getPassword());
           break;
+          case RRenameUser:
+            authorizer.renameUser(userName, roleName);
+            break;
         case RDropRole:
           authorizer.deleteRole(roleName);
           break;

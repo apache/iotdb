@@ -48,6 +48,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
   private long executedByUserId;
+  private String newUsername;
 
   /**
    * Constructor with AuthorType.
