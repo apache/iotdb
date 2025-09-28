@@ -194,7 +194,7 @@ public class PipeReceiverStatusHandler {
 
           // Reduce the log if retry forever
           if (retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE) {
-            PipeLogger.log(LOGGER::warn, "No permission: will retry forever. status: {}", status);
+            PipeLogger.log(LOGGER::warn, "No permission: will retry forever. status: %s", status);
           } else {
             LOGGER.warn(
                 "No permission: will retry for at least {} seconds. status: {}",

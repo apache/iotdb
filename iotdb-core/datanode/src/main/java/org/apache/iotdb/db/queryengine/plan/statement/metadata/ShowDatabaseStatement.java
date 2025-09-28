@@ -116,7 +116,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
 
   @Override
   public <R, C> R accept(final StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowDatabase(this, context);
+    return visitor.visitShowStorageGroup(this, context);
   }
 
   @Override

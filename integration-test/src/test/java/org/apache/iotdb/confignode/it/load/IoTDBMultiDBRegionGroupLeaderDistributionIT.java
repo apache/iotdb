@@ -113,8 +113,7 @@ public class IoTDBMultiDBRegionGroupLeaderDistributionIT {
         TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
         showRegionResp
             .getRegionInfoList()
-            // Skip AUDIT database
-            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+            .removeIf(r -> r.database.startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
         showRegionResp
             .getRegionInfoList()
             .forEach(

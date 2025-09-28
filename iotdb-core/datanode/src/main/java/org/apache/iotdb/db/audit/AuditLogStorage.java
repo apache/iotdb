@@ -17,39 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.audit;
+package org.apache.iotdb.db.audit;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+public enum AuditLogStorage {
+  IOTDB,
+  LOGGER;
 
-public interface IAuditEntity {
-
-  long getUserId();
-
-  String getUsername();
-
-  String getCliHostname();
-
-  AuditEventType getAuditEventType();
-
-  IAuditEntity setAuditEventType(AuditEventType auditEventType);
-
-  AuditLogOperation getAuditLogOperation();
-
-  IAuditEntity setAuditLogOperation(AuditLogOperation auditLogOperation);
-
-  PrivilegeType getPrivilegeType();
-
-  IAuditEntity setPrivilegeType(PrivilegeType privilegeType);
-
-  boolean getResult();
-
-  IAuditEntity setResult(boolean result);
-
-  String getDatabase();
-
-  IAuditEntity setDatabase(String database);
-
-  String getSqlString();
-
-  IAuditEntity setSqlString(String sqlString);
+  @Override
+  public String toString() {
+    return name();
+  }
 }

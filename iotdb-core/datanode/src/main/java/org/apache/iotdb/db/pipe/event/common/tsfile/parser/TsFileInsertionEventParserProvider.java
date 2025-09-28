@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
-import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -55,7 +53,7 @@ public class TsFileInsertionEventParserProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
-  private final IAuditEntity entity;
+  private final String userName;
 
   public TsFileInsertionEventParserProvider(
       final String pipeName,
@@ -66,7 +64,7 @@ public class TsFileInsertionEventParserProvider {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final IAuditEntity entity,
+      final String userName,
       final PipeTsFileInsertionEvent sourceEvent) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
@@ -76,11 +74,11 @@ public class TsFileInsertionEventParserProvider {
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.entity = entity;
+    this.userName = userName;
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionEventParser provide() throws IOException, IllegalPathException {
+  public TsFileInsertionEventParser provide() throws IOException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
@@ -95,7 +93,7 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          entity,
+          userName,
           sourceEvent);
     }
 
@@ -111,8 +109,6 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          entity,
-          sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent);
     }
 
@@ -132,10 +128,7 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent,
-          entity,
-          sourceEvent.isSkipIfNoPrivileges(),
-          null);
+          sourceEvent);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -151,8 +144,6 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          entity,
-          sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent);
     }
 
@@ -170,8 +161,6 @@ public class TsFileInsertionEventParserProvider {
             startTime,
             endTime,
             pipeTaskMeta,
-            entity,
-            sourceEvent.isSkipIfNoPrivileges(),
             sourceEvent)
         : new TsFileInsertionEventQueryParser(
             pipeName,
@@ -182,8 +171,6 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            entity,
-            sourceEvent.isSkipIfNoPrivileges(),
             filteredDeviceIsAlignedMap);
   }
 

@@ -39,7 +39,7 @@ public class CreatePipeTask implements IConfigTask {
 
   public CreatePipeTask(CreatePipeStatement createPipeStatement) {
     // support now() function
-    applyNowFunctionToExtractorAttributes(createPipeStatement.getSourceAttributes());
+    applyNowFunctionToExtractorAttributes(createPipeStatement.getExtractorAttributes());
     this.createPipeStatement = createPipeStatement;
   }
 
@@ -49,11 +49,11 @@ public class CreatePipeTask implements IConfigTask {
     createPipeStatement.setIfNotExists(createPipe.hasIfNotExistsCondition());
 
     // support now() function
-    applyNowFunctionToExtractorAttributes(createPipe.getSourceAttributes());
+    applyNowFunctionToExtractorAttributes(createPipe.getExtractorAttributes());
 
-    createPipeStatement.setSourceAttributes(createPipe.getSourceAttributes());
+    createPipeStatement.setExtractorAttributes(createPipe.getExtractorAttributes());
     createPipeStatement.setProcessorAttributes(createPipe.getProcessorAttributes());
-    createPipeStatement.setSinkAttributes(createPipe.getSinkAttributes());
+    createPipeStatement.setConnectorAttributes(createPipe.getConnectorAttributes());
   }
 
   @Override

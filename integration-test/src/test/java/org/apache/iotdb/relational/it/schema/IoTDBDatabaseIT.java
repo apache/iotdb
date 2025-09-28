@@ -804,7 +804,6 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      // One for AUDIT database
       TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 2);
     }
   }

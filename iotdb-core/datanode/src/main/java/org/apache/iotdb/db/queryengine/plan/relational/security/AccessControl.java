@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,7 +33,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Supplier;
 
 public interface AccessControl {
 
@@ -217,15 +217,15 @@ public interface AccessControl {
 
   // ====================================== TREE =============================================
 
-  TSStatus checkPermissionBeforeProcess(Statement statement, TreeAccessCheckContext context);
+  TSStatus checkPermissionBeforeProcess(Statement statement, UserEntity userEntity);
 
   /** called by load */
   TSStatus checkFullPathWriteDataPermission(
-      IAuditEntity auditEntity, IDeviceID device, String measurementId);
+      IAuditEntity entity, IDeviceID device, String measurementId);
 
   TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName);
 
-  TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject);
+  TSStatus checkCanAlterTemplate(IAuditEntity entity);
 
   TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths);

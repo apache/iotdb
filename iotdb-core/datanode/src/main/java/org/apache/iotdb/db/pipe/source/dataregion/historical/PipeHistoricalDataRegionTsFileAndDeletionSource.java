@@ -374,11 +374,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
 
     userId =
-        parameters.getStringOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
-                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
-            "-1");
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID, PipeSourceConstant.SOURCE_IOTDB_USER_ID);
     userName =
         parameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,

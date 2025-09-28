@@ -21,8 +21,6 @@ package org.apache.iotdb.commons.audit;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 /** This class defines the fields of a user entity to be audited. */
@@ -70,7 +68,7 @@ public class UserEntity implements IAuditEntity {
 
   private AuditEventType auditEventType;
   private AuditLogOperation auditLogOperation;
-  private List<PrivilegeType> privilegeTypeList;
+  private PrivilegeType privilegeType;
   private boolean result;
   private String database;
   private String sqlString;
@@ -98,24 +96,13 @@ public class UserEntity implements IAuditEntity {
   }
 
   @Override
-  public List<PrivilegeType> getPrivilegeTypes() {
-    return privilegeTypeList;
-  }
-
-  @Override
-  public String getPrivilegeTypeString() {
-    return privilegeTypeList.toString();
+  public PrivilegeType getPrivilegeType() {
+    return privilegeType;
   }
 
   @Override
   public IAuditEntity setPrivilegeType(PrivilegeType privilegeType) {
-    this.privilegeTypeList = Collections.singletonList(privilegeType);
-    return this;
-  }
-
-  @Override
-  public IAuditEntity setPrivilegeTypes(List<PrivilegeType> privilegeTypes) {
-    this.privilegeTypeList = privilegeTypes;
+    this.privilegeType = privilegeType;
     return this;
   }
 

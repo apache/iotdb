@@ -59,8 +59,7 @@ public class CountPointProcessor implements PipeProcessor {
 
   @Override
   public void process(
-      final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector)
-      throws Exception {
+      final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector) {
     tabletInsertionEvent.processTablet(
         (tablet, rowCollector) -> writePointCount.addAndGet(tablet.getRowSize()));
   }
