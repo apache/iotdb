@@ -238,9 +238,10 @@ public class CommonDescriptor {
             properties
                 .getProperty("audit_log_ttl_in_days", String.valueOf(config.getAuditLogTtlInDays()))
                 .trim());
+    // Prevent overflow when converting days to milliseconds
     if (auditLogTtlInDays > Long.MAX_VALUE / (24L * 3600 * 1000)) {
-      LOGGER.warn("audit_log_ttl_in_days is too large, please reset it");
-      auditLogTtlInDays = Long.MAX_VALUE;
+      LOGGER.warn("audit_log_ttl_in_days is too large, setting to maximum allowed value");
+      auditLogTtlInDays = Long.MAX_VALUE / (24L * 3600 * 1000);
     }
     config.setAuditLogTtlInDays(auditLogTtlInDays);
 
