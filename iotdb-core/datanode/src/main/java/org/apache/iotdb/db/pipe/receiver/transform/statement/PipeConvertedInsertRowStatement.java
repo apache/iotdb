@@ -94,7 +94,7 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     PipeLogger.log(
         LOGGER::info,
-        "Pipe: Inserting row to {}.{}. Casting type from {} to {}.",
+        "Pipe: Inserting row to %s.%s. Casting type from %s to %s.",
         devicePath,
         measurements[columnIndex],
         dataTypes[columnIndex],
@@ -131,8 +131,8 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
       } catch (Exception e) {
         PipeLogger.log(
             LOGGER::warn,
-            "data type of {}.{} is not consistent, "
-                + "registered type {}, inserting timestamp {}, value {}",
+            "data type of %s.%s is not consistent, "
+                + "registered type %s, inserting timestamp %s, value %s",
             devicePath,
             measurements[i],
             dataTypes[i],
