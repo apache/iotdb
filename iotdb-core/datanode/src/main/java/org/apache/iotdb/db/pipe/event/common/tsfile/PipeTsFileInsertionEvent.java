@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -47,13 +42,11 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -61,10 +54,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -86,6 +77,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private boolean isWithMod;
   private File modFile;
   private final File sharedModFile;
+  private boolean shouldParse4Privilege = false;
 
   protected final boolean isLoaded;
   protected final boolean isGeneratedByPipe;
@@ -100,7 +92,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
-  private Map<IDeviceID, String[]> treeSchemaMap;
 
   public PipeTsFileInsertionEvent(
       final Boolean isTableModelEvent,
@@ -450,82 +441,31 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public void throwIfNoPrivilege() {
     try {
-      if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      if (!isTableModelEvent() || AuthorityChecker.SUPER_USER.equals(userName)) {
         return;
       }
       if (!waitForTsFileClose()) {
         LOGGER.info("Temporary tsFile {} detected, will skip its transfer.", tsFile);
         return;
       }
-      if (isTableModelEvent()) {
-        for (final String table : tableNames) {
-          if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
-              || !tablePattern.matchesTable(table)) {
-            continue;
-          }
-          if (!AuthorityChecker.getAccessControl()
-              .checkCanSelectFromTable4Pipe(
-                  userName,
-                  new QualifiedObjectName(getTableModelDatabaseName(), table),
-                  new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
-            if (skipIfNoPrivileges) {
-              shouldParse4Privilege = true;
-            } else {
-              throw new AccessDeniedException(
-                  String.format(
-                      "No privilege for SELECT for user %s at table %s.%s",
-                      userName, tableModelDatabaseName, table));
-            }
-          }
+      for (final String table : tableNames) {
+        if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
+            || !tablePattern.matchesTable(table)) {
+          continue;
         }
-      }
-      // Real-time tsFiles
-      else if (Objects.nonNull(treeSchemaMap)) {
-        final List<MeasurementPath> measurementList = new ArrayList<>();
-        for (final Map.Entry<IDeviceID, String[]> entry : treeSchemaMap.entrySet()) {
-          final IDeviceID deviceID = entry.getKey();
-          for (final String measurement : entry.getValue()) {
-            if (treePattern.matchesMeasurement(deviceID, measurement)) {
-              measurementList.add(new MeasurementPath(deviceID, measurement));
-            }
-          }
-        }
-        final TSStatus status =
-            TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                new UserEntity(Long.parseLong(userId), userName, cliHostname),
-                measurementList,
-                PrivilegeType.READ_DATA);
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        if (!AuthorityChecker.getAccessControl()
+            .checkCanSelectFromTable4Pipe(
+                userName,
+                new QualifiedObjectName(getTableModelDatabaseName(), table),
+                new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
           if (skipIfNoPrivileges) {
             shouldParse4Privilege = true;
           } else {
-            throw new AccessDeniedException(status.getMessage());
+            throw new AccessDeniedException(
+                String.format(
+                    "No privilege for SELECT for user %s at table %s.%s",
+                    userName, tableModelDatabaseName, table));
           }
-        }
-      }
-      // Historical tsFiles
-      // Coarse filter, will be judged in inner class
-      else {
-        final Set<IDeviceID> devices = getDeviceSet();
-        if (Objects.nonNull(devices)) {
-          final List<MeasurementPath> measurementList = new ArrayList<>();
-          for (final IDeviceID device : devices) {
-            measurementList.add(new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-          }
-          final TSStatus status =
-              TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                  new UserEntity(Long.parseLong(userId), userName, cliHostname),
-                  measurementList,
-                  PrivilegeType.READ_DATA);
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-            if (skipIfNoPrivileges) {
-              shouldParse4Privilege = true;
-            } else {
-              throw new AccessDeniedException(status.getMessage());
-            }
-          }
-        } else {
-          shouldParse4Privilege = true;
         }
       }
     } catch (final AccessDeniedException e) {
@@ -545,10 +485,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   resource.getTsFilePath(), e.getMessage());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg, e);
-    } finally {
-      // GC useless
-      tableNames = null;
-      treeSchemaMap = null;
     }
   }
 
@@ -588,19 +524,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     if (Objects.nonNull(deviceIsAlignedMap)) {
       return deviceIsAlignedMap.keySet();
     }
-    try {
-      return resource.getDevices();
-    } catch (final Exception e) {
-      return null;
-    }
+    return resource.getDevices();
   }
 
   public void setTableNames(final Set<String> tableNames) {
     this.tableNames = tableNames;
-  }
-
-  public void setTreeSchemaMap(final Map<IDeviceID, String[]> treeSchemaMap) {
-    this.treeSchemaMap = treeSchemaMap;
   }
 
   /////////////////////////// PipeInsertionEvent ///////////////////////////
@@ -620,11 +548,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @FunctionalInterface
   public interface TabletInsertionEventConsumer {
-    void consume(final PipeRawTabletInsertionEvent event) throws IllegalPathException;
+    void consume(final PipeRawTabletInsertionEvent event);
   }
 
   public void consumeTabletInsertionEventsWithRetry(
-      final TabletInsertionEventConsumer consumer, final String callerName) throws Exception {
+      final TabletInsertionEventConsumer consumer, final String callerName) throws PipeException {
     final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
     final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
     int tabletEventCount = 0;
@@ -674,6 +602,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       if (!waitForTsFileClose()) {
         LOGGER.warn(
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
+        return Collections.emptyList();
+      }
+      // Skip if is table events and tree model
+      if (Objects.isNull(userName) && isTableModelEvent()) {
         return Collections.emptyList();
       }
       waitForResourceEnough4Parsing(timeoutMs);
@@ -766,13 +698,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   pipeTaskMeta,
                   // Do not parse privilege if it should not be parsed
                   // To avoid renaming of the tsFile database
-                  shouldParse4Privilege
-                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
-                      : null,
+                  shouldParse4Privilege ? userName : null,
                   this)
               .provide());
       return eventParser.get();
-    } catch (final Exception e) {
+    } catch (final IOException e) {
       close();
 
       final String errorMsg = String.format("Read TsFile %s error.", tsFile.getPath());
@@ -781,7 +711,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  public long count(final boolean skipReportOnCommit) throws Exception {
+  public long count(final boolean skipReportOnCommit) throws IOException {
     AtomicLong count = new AtomicLong();
 
     if (shouldParseTime()) {

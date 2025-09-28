@@ -49,8 +49,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     // Shall fail if username is specified without password
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create pipe a2b with source ('capture.tree'='true') with sink ('user'='thulab', 'sink'='write-back-sink')");
+      statement.execute("create pipe a2b ('user'='thulab', 'sink'='write-back-sink')");
       fail("When the 'user' or 'username' is specified, password must be specified too.");
     } catch (final SQLException ignore) {
       // Expected

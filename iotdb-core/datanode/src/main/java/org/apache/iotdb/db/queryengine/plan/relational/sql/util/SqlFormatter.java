@@ -1146,12 +1146,12 @@ public final class SqlFormatter {
       builder.append(node.getPipeName());
       builder.append(" \n");
 
-      if (!node.getSourceAttributes().isEmpty()) {
+      if (!node.getExtractorAttributes().isEmpty()) {
         builder
             .append("WITH SOURCE (")
             .append("\n")
             .append(
-                node.getSourceAttributes().entrySet().stream()
+                node.getExtractorAttributes().entrySet().stream()
                     .map(
                         entry ->
                             indentString(1)
@@ -1182,12 +1182,12 @@ public final class SqlFormatter {
             .append(")\n");
       }
 
-      if (!node.getSinkAttributes().isEmpty()) {
+      if (!node.getConnectorAttributes().isEmpty()) {
         builder
             .append("WITH SINK (")
             .append("\n")
             .append(
-                node.getSinkAttributes().entrySet().stream()
+                node.getConnectorAttributes().entrySet().stream()
                     .map(
                         entry ->
                             indentString(1)

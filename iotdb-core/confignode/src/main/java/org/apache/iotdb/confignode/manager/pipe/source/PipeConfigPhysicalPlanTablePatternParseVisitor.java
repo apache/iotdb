@@ -40,7 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropert
 
 import java.util.Optional;
 
-public class PipeConfigTablePatternParseVisitor
+public class PipeConfigPhysicalPlanTablePatternParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, TablePattern> {
 
   @Override

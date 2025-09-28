@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
-import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -74,23 +73,25 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader.SCHEMA_FETCHER;
 
 public class DNAuditLogger extends AbstractAuditLogger {
-  public static final String PREFIX_PASSWORD_HISTORY = "root.__audit.password_history";
   private static final Logger logger = LoggerFactory.getLogger(DNAuditLogger.class);
 
-  // TODO: @zhujt20 Optimize the following stupid retry
-  private static final int INSERT_RETRY_COUNT = 5;
-  private static final int INSERT_RETRY_INTERVAL_MS = 2000;
-
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final String LOG = "log";
+  private static final String USERNAME = "username";
+  private static final String USER_ID = "user_id";
+  private static final String CLI_HOSTNAME = "cli_hostname";
+  private static final String RESULT = "result";
+  private static final String AUDIT_EVENT_TYPE = "audit_event_type";
+  private static final String OPERATION_TYPE = "operation_type";
+  private static final String PRIVILEGE_TYPE = "privilege_type";
+  private static final String PRIVILEGE_LEVEL = "privilege_level";
+  private static final String DATABASE = "database";
+  private static final String SQL_STRING = "sql_string";
 
   private static final String AUDIT_LOG_DEVICE = "root.__audit.log.node_%s.u_%s";
   private static final String AUDIT_LOGIN_LOG_DEVICE = "root.__audit.login.node_%s.u_%s";
@@ -129,52 +130,31 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   @NotNull
   private static InsertRowStatement generateInsertStatement(
-      IAuditEntity auditLogFields, String log, PartialPath log_device) {
+      AuditLogFields auditLogFields, String log, PartialPath log_device) {
     String username = auditLogFields.getUsername();
     String address = auditLogFields.getCliHostname();
-    AuditEventType type = auditLogFields.getAuditEventType();
-    AuditLogOperation operation = auditLogFields.getAuditLogOperation();
-    PrivilegeLevel privilegeLevel = null;
-    if (auditLogFields.getPrivilegeTypes() != null) {
-      for (PrivilegeType privilegeType : auditLogFields.getPrivilegeTypes()) {
-        privilegeLevel = judgePrivilegeLevel(privilegeType);
-        if (privilegeLevel.equals(PrivilegeLevel.GLOBAL)) {
-          break;
-        }
-      }
-    }
+    AuditEventType type = auditLogFields.getAuditType();
+    AuditLogOperation operation = auditLogFields.getOperationType();
+    PrivilegeType privilegeType = auditLogFields.getPrivilegeType();
+    PrivilegeLevel privilegeLevel = judgePrivilegeLevel(privilegeType);
     String dataNodeId = String.valueOf(config.getDataNodeId());
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(log_device);
     insertStatement.setTime(CommonDateTimeUtils.currentTime());
     insertStatement.setMeasurements(
         new String[] {
-          AUDIT_LOG_USERNAME,
-          AUDIT_LOG_CLI_HOSTNAME,
-          AUDIT_LOG_AUDIT_EVENT_TYPE,
-          AUDIT_LOG_OPERATION_TYPE,
-          AUDIT_LOG_PRIVILEGE_TYPE,
-          AUDIT_LOG_PRIVILEGE_LEVEL,
-          AUDIT_LOG_RESULT,
-          AUDIT_LOG_DATABASE,
-          AUDIT_LOG_SQL_STRING,
-          AUDIT_LOG_LOG
+          USERNAME,
+          CLI_HOSTNAME,
+          AUDIT_EVENT_TYPE,
+          OPERATION_TYPE,
+          PRIVILEGE_TYPE,
+          PRIVILEGE_LEVEL,
+          RESULT,
+          DATABASE,
+          SQL_STRING,
+          LOG
         });
     insertStatement.setAligned(false);
-    String sqlString = auditLogFields.getSqlString();
-    if (sqlString != null) {
-      if (sqlString.toUpperCase().startsWith("CREATE USER")) {
-        sqlString = String.join(" ", Arrays.asList(sqlString.split(" ")).subList(0, 3)) + " ...";
-      }
-      Pattern pattern = Pattern.compile("(?i)(values)\\([^)]*\\)");
-      Matcher matcher = pattern.matcher(sqlString);
-      StringBuffer sb = new StringBuffer();
-      while (matcher.find()) {
-        matcher.appendReplacement(sb, matcher.group(1) + "(...)");
-      }
-      matcher.appendTail(sb);
-      sqlString = sb.toString();
-    }
     insertStatement.setValues(
         new Object[] {
           new Binary(username == null ? "null" : username, TSFileConfig.STRING_CHARSET),
@@ -183,18 +163,18 @@ public class DNAuditLogger extends AbstractAuditLogger {
           new Binary(
               operation == null ? "null" : operation.toString(), TSFileConfig.STRING_CHARSET),
           new Binary(
-              auditLogFields.getPrivilegeTypes() == null
-                  ? "null"
-                  : auditLogFields.getPrivilegeTypeString(),
+              privilegeType == null ? "null" : privilegeType.toString(),
               TSFileConfig.STRING_CHARSET),
           new Binary(
               privilegeLevel == null ? "null" : privilegeLevel.toString(),
               TSFileConfig.STRING_CHARSET),
-          auditLogFields.getResult(),
+          auditLogFields.isResult(),
           new Binary(
               auditLogFields.getDatabase() == null ? "null" : auditLogFields.getDatabase(),
               TSFileConfig.STRING_CHARSET),
-          new Binary(sqlString == null ? "null" : sqlString, TSFileConfig.STRING_CHARSET),
+          new Binary(
+              auditLogFields.getSqlString() == null ? "null" : auditLogFields.getSqlString(),
+              TSFileConfig.STRING_CHARSET),
           new Binary(log == null ? "null" : log, TSFileConfig.STRING_CHARSET)
         });
     insertStatement.setDataTypes(
@@ -295,33 +275,20 @@ public class DNAuditLogger extends AbstractAuditLogger {
           }
           stmt =
               relationSqlParser.createStatement(
-                  String.format(
-                      "CREATE VIEW __audit.audit_log (\n"
-                          + "    %s STRING TAG,\n"
-                          + "    %s STRING TAG,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s BOOLEAN FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD\n"
-                          + ") AS root.__audit.log.**",
-                      AUDIT_LOG_NODE_ID,
-                      AUDIT_LOG_USER_ID,
-                      AUDIT_LOG_USERNAME,
-                      AUDIT_LOG_CLI_HOSTNAME,
-                      AUDIT_LOG_AUDIT_EVENT_TYPE,
-                      AUDIT_LOG_OPERATION_TYPE,
-                      AUDIT_LOG_PRIVILEGE_TYPE,
-                      AUDIT_LOG_PRIVILEGE_LEVEL,
-                      AUDIT_LOG_RESULT,
-                      AUDIT_LOG_DATABASE,
-                      AUDIT_LOG_SQL_STRING,
-                      AUDIT_LOG_LOG),
+                  "CREATE VIEW __audit.audit_log (\n"
+                      + "    node_id STRING TAG,\n"
+                      + "    user_id STRING TAG,\n"
+                      + "    username STRING FIELD,\n"
+                      + "    cli_hostname STRING FIELD,\n"
+                      + "    audit_event_type STRING FIELD,\n"
+                      + "    operation_type STRING FIELD,\n"
+                      + "    privilege_type STRING FIELD,\n"
+                      + "    privilege_level STRING FIELD,\n"
+                      + "    result BOOLEAN FIELD,\n"
+                      + "    database STRING FIELD,\n"
+                      + "    sql_string STRING FIELD,\n"
+                      + "    log STRING FIELD\n"
+                      + ") AS root.__audit.log.**",
                   ZoneId.systemDefault(),
                   session);
           status =
@@ -351,13 +318,12 @@ public class DNAuditLogger extends AbstractAuditLogger {
     }
   }
 
-  @Override
-  public void log(IAuditEntity auditLogFields, Supplier<String> log) {
+  public void log(AuditLogFields auditLogFields, String log) {
     if (!IS_AUDIT_LOG_ENABLED) {
       return;
     }
     createViewIfNecessary();
-    if (noNeedInsertAuditLog(auditLogFields)) {
+    if (!checkBeforeLog(auditLogFields)) {
       return;
     }
     long userId = auditLogFields.getUserId();
@@ -371,58 +337,43 @@ public class DNAuditLogger extends AbstractAuditLogger {
       statement =
           generateInsertStatement(
               auditLogFields,
-              log.get(),
+              log,
               DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, user)));
     } catch (IllegalPathException e) {
       logger.error("Failed to log audit events because ", e);
       return;
     }
-    for (int retry = 0; retry < INSERT_RETRY_COUNT; retry++) {
-      ExecutionResult insertResult =
-          coordinator.executeForTreeModel(
-              statement,
-              SESSION_MANAGER.requestQueryId(),
-              sessionInfo,
-              "",
-              ClusterPartitionFetcher.getInstance(),
-              SCHEMA_FETCHER);
-      if (insertResult.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    coordinator.executeForTreeModel(
+        statement,
+        SESSION_MANAGER.requestQueryId(),
+        sessionInfo,
+        "",
+        ClusterPartitionFetcher.getInstance(),
+        SCHEMA_FETCHER);
+    AuditEventType type = auditLogFields.getAuditType();
+    if (isLoginEvent(type)) {
+      try {
+        statement.setDevicePath(
+            DEVICE_PATH_CACHE.getPartialPath(
+                String.format(AUDIT_LOGIN_LOG_DEVICE, dataNodeId, user)));
+      } catch (IllegalPathException e) {
+        logger.error("Failed to log audit login events because ", e);
         return;
       }
-      try {
-        TimeUnit.MILLISECONDS.sleep(INSERT_RETRY_INTERVAL_MS);
-      } catch (InterruptedException e) {
-        logger.error("Audit log insertion retry sleep was interrupted", e);
-      }
-    }
-    AuditEventType type = auditLogFields.getAuditEventType();
-    if (isLoginEvent(type)) {
-      // TODO: @wenyanshi-123 Reactivate the following codes in the future
-      //      try {
-      //        statement.setDevicePath(
-      //            DEVICE_PATH_CACHE.getPartialPath(
-      //                String.format(AUDIT_LOGIN_LOG_DEVICE, dataNodeId, user)));
-      //      } catch (IllegalPathException e) {
-      //        logger.error("Failed to log audit login events because ", e);
-      //        return;
-      //      }
-      //      coordinator.executeForTreeModel(
-      //          statement,
-      //          SESSION_MANAGER.requestQueryId(),
-      //          sessionInfo,
-      //          "",
-      //          ClusterPartitionFetcher.getInstance(),
-      //          SCHEMA_FETCHER);
+      coordinator.executeForTreeModel(
+          statement,
+          SESSION_MANAGER.requestQueryId(),
+          sessionInfo,
+          "",
+          ClusterPartitionFetcher.getInstance(),
+          SCHEMA_FETCHER);
     }
   }
 
   public void logFromCN(AuditLogFields auditLogFields, String log, int nodeId)
       throws IllegalPathException {
-    if (!IS_AUDIT_LOG_ENABLED) {
-      return;
-    }
     createViewIfNecessary();
-    if (noNeedInsertAuditLog(auditLogFields)) {
+    if (!checkBeforeLog(auditLogFields)) {
       return;
     }
     InsertRowStatement statement =
@@ -430,24 +381,13 @@ public class DNAuditLogger extends AbstractAuditLogger {
             auditLogFields,
             log,
             DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_CN_LOG_DEVICE, nodeId)));
-    for (int retry = 0; retry < INSERT_RETRY_COUNT; retry++) {
-      ExecutionResult insertResult =
-          coordinator.executeForTreeModel(
-              statement,
-              SESSION_MANAGER.requestQueryId(),
-              sessionInfo,
-              "",
-              ClusterPartitionFetcher.getInstance(),
-              SCHEMA_FETCHER);
-      if (insertResult.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
-      }
-      try {
-        TimeUnit.MILLISECONDS.sleep(INSERT_RETRY_INTERVAL_MS);
-      } catch (InterruptedException e) {
-        logger.error("Audit log insertion retry sleep was interrupted", e);
-      }
-    }
+    coordinator.executeForTreeModel(
+        statement,
+        SESSION_MANAGER.requestQueryId(),
+        sessionInfo,
+        "",
+        ClusterPartitionFetcher.getInstance(),
+        SCHEMA_FETCHER);
   }
 
   private static class DNAuditLoggerHolder {

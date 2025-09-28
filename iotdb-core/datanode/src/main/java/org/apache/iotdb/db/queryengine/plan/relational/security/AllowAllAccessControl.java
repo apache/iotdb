@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -31,7 +32,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 
@@ -115,14 +115,13 @@ public class AllowAllAccessControl implements AccessControl {
       String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {}
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(
-      Statement statement, TreeAccessCheckContext context) {
+  public TSStatus checkPermissionBeforeProcess(Statement statement, UserEntity userEntity) {
     return SUCCEED;
   }
 
   @Override
   public TSStatus checkFullPathWriteDataPermission(
-      IAuditEntity auditEntity, IDeviceID device, String measurementId) {
+      IAuditEntity entity, IDeviceID device, String measurementId) {
     return SUCCEED;
   }
 
@@ -132,7 +131,7 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
-  public TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject) {
+  public TSStatus checkCanAlterTemplate(IAuditEntity entity) {
     return SUCCEED;
   }
 

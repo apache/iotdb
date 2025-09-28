@@ -52,7 +52,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Collections;
 
-public class PipeConfigTablePatternParseVisitorTest {
+public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   private final TablePattern tablePattern = new TablePattern(true, "^db[0-9]", "a.*b");
 
   @Test

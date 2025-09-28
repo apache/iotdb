@@ -29,23 +29,24 @@ public class CreatePipe extends PipeStatement {
 
   private final String pipeName;
   private final boolean ifNotExistsCondition;
-  private final Map<String, String> sourceAttributes;
+  private final Map<String, String> extractorAttributes;
   private final Map<String, String> processorAttributes;
-  private final Map<String, String> sinkAttributes;
+  private final Map<String, String> connectorAttributes;
 
   public CreatePipe(
       final String pipeName,
       final boolean ifNotExistsCondition,
-      final Map<String, String> sourceAttributes,
+      final Map<String, String> extractorAttributes,
       final Map<String, String> processorAttributes,
-      final Map<String, String> sinkAttributes) {
+      final Map<String, String> connectorAttributes) {
     this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
     this.ifNotExistsCondition = ifNotExistsCondition;
-    this.sourceAttributes =
-        requireNonNull(sourceAttributes, "extractor/source attributes can not be null");
+    this.extractorAttributes =
+        requireNonNull(extractorAttributes, "extractor/source attributes can not be null");
     this.processorAttributes =
         requireNonNull(processorAttributes, "processor attributes can not be null");
-    this.sinkAttributes = requireNonNull(sinkAttributes, "connector attributes can not be null");
+    this.connectorAttributes =
+        requireNonNull(connectorAttributes, "connector attributes can not be null");
   }
 
   public String getPipeName() {
@@ -56,16 +57,16 @@ public class CreatePipe extends PipeStatement {
     return ifNotExistsCondition;
   }
 
-  public Map<String, String> getSourceAttributes() {
-    return sourceAttributes;
+  public Map<String, String> getExtractorAttributes() {
+    return extractorAttributes;
   }
 
   public Map<String, String> getProcessorAttributes() {
     return processorAttributes;
   }
 
-  public Map<String, String> getSinkAttributes() {
-    return sinkAttributes;
+  public Map<String, String> getConnectorAttributes() {
+    return connectorAttributes;
   }
 
   @Override
@@ -76,7 +77,11 @@ public class CreatePipe extends PipeStatement {
   @Override
   public int hashCode() {
     return Objects.hash(
-        pipeName, ifNotExistsCondition, sourceAttributes, processorAttributes, sinkAttributes);
+        pipeName,
+        ifNotExistsCondition,
+        extractorAttributes,
+        processorAttributes,
+        connectorAttributes);
   }
 
   @Override
@@ -90,9 +95,9 @@ public class CreatePipe extends PipeStatement {
     CreatePipe other = (CreatePipe) obj;
     return Objects.equals(pipeName, other.pipeName)
         && Objects.equals(ifNotExistsCondition, other.ifNotExistsCondition)
-        && Objects.equals(sourceAttributes, other.sourceAttributes)
+        && Objects.equals(extractorAttributes, other.extractorAttributes)
         && Objects.equals(processorAttributes, other.processorAttributes)
-        && Objects.equals(sinkAttributes, other.sinkAttributes);
+        && Objects.equals(connectorAttributes, other.connectorAttributes);
   }
 
   @Override
@@ -100,9 +105,9 @@ public class CreatePipe extends PipeStatement {
     return toStringHelper(this)
         .add("pipeName", pipeName)
         .add("ifNotExistsCondition", ifNotExistsCondition)
-        .add("extractorAttributes", sourceAttributes)
+        .add("extractorAttributes", extractorAttributes)
         .add("processorAttributes", processorAttributes)
-        .add("connectorAttributes", sinkAttributes)
+        .add("connectorAttributes", connectorAttributes)
         .toString();
   }
 }

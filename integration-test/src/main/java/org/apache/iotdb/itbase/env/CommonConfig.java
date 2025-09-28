@@ -203,12 +203,4 @@ public interface CommonConfig {
   CommonConfig setTrustStorePwd(String trustStorePwd);
 
   CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
-
-  CommonConfig setEnableAuditLog(boolean enableAuditLog);
-
-  CommonConfig setAuditableOperationType(String auditableOperationType);
-
-  CommonConfig setAuditableOperationLevel(String auditableOperationLevel);
-
-  CommonConfig setAuditableOperationResult(String auditableOperationResult);
 }
