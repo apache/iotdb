@@ -619,6 +619,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     req.setGrantOpt(false);
     req.setUserName(username);
     req.setRoleName(rolename);
+    req.setNewUsername("");
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

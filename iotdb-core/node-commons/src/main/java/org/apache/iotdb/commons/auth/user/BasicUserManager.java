@@ -245,7 +245,9 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
     lock.writeLock(username);
     try {
-      entityMap.get(username).setName(newUsername);
+      User newUser = (User) entityMap.remove(username);
+      newUser.setName(newUsername);
+      entityMap.put(newUsername, newUser);
     } finally {
       lock.writeUnlock(username);
     }

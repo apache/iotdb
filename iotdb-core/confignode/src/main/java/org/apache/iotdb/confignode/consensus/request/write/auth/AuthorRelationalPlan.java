@@ -184,6 +184,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
         + databaseName
         + ", TABLE:"
         + tableName
+        + ", newUsername:"
+        + newUsername
         + "]";
   }
 

@@ -54,7 +54,7 @@ public class RelationalAuthorStatement extends Statement {
 
   private boolean grantOption;
   private long executedByUserId;
-  private String newUsername;
+  private String newUsername = "";
 
   public RelationalAuthorStatement(
       AuthorRType authorType,

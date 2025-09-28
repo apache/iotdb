@@ -83,7 +83,16 @@ public class IoTDBClusterAuthorityRelationalIT {
     // clean user
     TAuthorizerRelationalReq authorizerReq =
         new TAuthorizerRelationalReq(
-            AuthorRType.LIST_USER.ordinal(), "", "", "", "", "", Collections.emptySet(), false, 0);
+            AuthorRType.LIST_USER.ordinal(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            0,
+            "");
 
     TAuthorizerResp authorizerResp = client.queryRPermission(authorizerReq);
     status = authorizerResp.getStatus();
@@ -102,7 +111,8 @@ public class IoTDBClusterAuthorityRelationalIT {
                 "",
                 Collections.emptySet(),
                 false,
-                0);
+                0,
+                "");
         status = client.operateRPermission(authorizerReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
@@ -111,7 +121,16 @@ public class IoTDBClusterAuthorityRelationalIT {
     // clean role
     authorizerReq =
         new TAuthorizerRelationalReq(
-            AuthorRType.LIST_ROLE.ordinal(), "", "", "", "", "", Collections.emptySet(), false, 0);
+            AuthorRType.LIST_ROLE.ordinal(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            0,
+            "");
 
     authorizerResp = client.queryRPermission(authorizerReq);
     status = authorizerResp.getStatus();
@@ -129,7 +148,8 @@ public class IoTDBClusterAuthorityRelationalIT {
               "",
               Collections.emptySet(),
               false,
-              0);
+              0,
+              "");
       status = client.operateRPermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
@@ -149,7 +169,8 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             Collections.emptySet(),
             false,
-            0);
+            0,
+            "");
     status = client.operateRPermission(authorizerReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     authorizerReq =
@@ -162,7 +183,8 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             Collections.emptySet(),
             false,
-            0);
+            0,
+            "");
     TAuthorizerResp resp = client.queryRPermission(authorizerReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
     assertTrue(resp.getMemberInfo().contains(name));
@@ -187,7 +209,8 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             Collections.singleton(sysPriv.ordinal()),
             grantOpt,
-            0);
+            0,
+            "");
 
     status = client.operateRPermission(authorizerRelationalReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -242,7 +265,8 @@ public class IoTDBClusterAuthorityRelationalIT {
             union.getTbName() == null ? "" : union.getTbName(),
             Collections.singleton(union.getPrivilegeType().ordinal()),
             union.isGrantOption(),
-            0);
+            0,
+            "");
     status = client.operateRPermission(authorizerRelationalReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     int reqtype = -1;
@@ -360,7 +384,8 @@ public class IoTDBClusterAuthorityRelationalIT {
               "",
               Collections.emptySet(),
               false,
-              0));
+              0,
+              ""));
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_USER, false);
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_ROLE, true);
       grantPrivilegeAndCheck(
@@ -407,7 +432,8 @@ public class IoTDBClusterAuthorityRelationalIT {
               Collections.emptySet(),
               false,
               AuthUtils.serializePartialPathList(Collections.emptyList()),
-              0);
+              0,
+              "");
       expectSuccess(client.checkRoleOfUser(user_role_req));
 
       // check db is visible

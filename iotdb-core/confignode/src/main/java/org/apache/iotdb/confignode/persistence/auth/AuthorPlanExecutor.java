@@ -232,6 +232,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         privileges.add(PrivilegeType.values()[permission]);
       }
     }
+    String newUsername = authorPlan.getNewUsername();
 
     try {
       switch (authorType) {
@@ -246,7 +247,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           authorizer.updateUserPassword(userName, authorPlan.getPassword());
           break;
         case RRenameUser:
-          authorizer.renameUser(userName, roleName);
+          authorizer.renameUser(userName, newUsername);
           break;
         case RDropRole:
           authorizer.deleteRole(roleName);

@@ -180,6 +180,8 @@ public class AuthorTreePlan extends AuthorPlan {
         + super.getGrantOpt()
         + ", paths:"
         + nodeNameList
+        + ", newUsername:"
+        + newUsername
         + "]";
   }
 
