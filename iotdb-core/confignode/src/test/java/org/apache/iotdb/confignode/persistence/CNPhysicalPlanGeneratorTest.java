@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -40,6 +39,7 @@ import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;

@@ -22,9 +22,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -49,7 +47,7 @@ public class PermissionManager {
   private final ConfigManager configManager;
   private final AuthorInfo authorInfo;
 
-  public PermissionManager(final ConfigManager configManager, final AuthorInfo authorInfo) {
+  public PermissionManager(ConfigManager configManager, AuthorInfo authorInfo) {
     this.configManager = configManager;
     this.authorInfo = authorInfo;
   }
@@ -127,11 +125,6 @@ public class PermissionManager {
   public TAuthizedPatternTreeResp fetchAuthorizedPTree(String username, int permission)
       throws AuthException {
     return authorInfo.generateAuthorizedPTree(username, permission);
-  }
-
-  public PathPatternTree fetchRawAuthorizedPTree(final String userName, final PrivilegeType type)
-      throws AuthException {
-    return authorInfo.generateRawAuthorizedPTree(userName, type);
   }
 
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union)

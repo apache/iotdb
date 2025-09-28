@@ -39,7 +39,7 @@ public class AlterPipeTask implements IConfigTask {
 
   public AlterPipeTask(final AlterPipeStatement alterPipeStatement) {
     // support now() function
-    applyNowFunctionToExtractorAttributes(alterPipeStatement.getSourceAttributes());
+    applyNowFunctionToExtractorAttributes(alterPipeStatement.getExtractorAttributes());
     this.alterPipeStatement = alterPipeStatement;
   }
 
@@ -51,12 +51,12 @@ public class AlterPipeTask implements IConfigTask {
     // support now() function
     applyNowFunctionToExtractorAttributes(node.getExtractorAttributes());
 
-    alterPipeStatement.setSourceAttributes(node.getExtractorAttributes());
+    alterPipeStatement.setExtractorAttributes(node.getExtractorAttributes());
     alterPipeStatement.setProcessorAttributes(node.getProcessorAttributes());
-    alterPipeStatement.setSinkAttributes(node.getConnectorAttributes());
-    alterPipeStatement.setReplaceAllSourceAttributes(node.isReplaceAllExtractorAttributes());
+    alterPipeStatement.setConnectorAttributes(node.getConnectorAttributes());
+    alterPipeStatement.setReplaceAllExtractorAttributes(node.isReplaceAllExtractorAttributes());
     alterPipeStatement.setReplaceAllProcessorAttributes(node.isReplaceAllProcessorAttributes());
-    alterPipeStatement.setReplaceAllSinkAttributes(node.isReplaceAllConnectorAttributes());
+    alterPipeStatement.setReplaceAllConnectorAttributes(node.isReplaceAllConnectorAttributes());
     alterPipeStatement.setUserName(userName);
 
     alterPipeStatement.setTableModel(true);

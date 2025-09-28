@@ -28,7 +28,6 @@ import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,7 +41,6 @@ import java.util.Map;
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
   @Test
-  @Ignore
   public void testAggregator() throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
@@ -57,11 +55,11 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
               "insert into root.ln.wf01.wt01(time, temperature, status) values (10000, 1, false)"),
           null);
 
-      final Map<String, String> sourceAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> sinkAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
-      sourceAttributes.put("pattern", "root.ln");
+      extractorAttributes.put("pattern", "root.ln");
 
       processorAttributes.put("processor", "aggregate-processor");
       processorAttributes.put("output.database", "root.testdb");
@@ -71,12 +69,12 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
           "operators", "avg, peak, rms, var, skew, kurt, ff, cf, pf, cE, max, min");
       processorAttributes.put("sliding.seconds", "60");
 
-      sinkAttributes.put("sink", "write-back-sink");
+      connectorAttributes.put("sink", "write-back-sink");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", sinkAttributes)
-                  .setExtractorAttributes(sourceAttributes)
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

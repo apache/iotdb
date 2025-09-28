@@ -457,24 +457,4 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     return this;
   }
-
-  @Override
-  public CommonConfig setEnableAuditLog(boolean enableAuditLog) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setAuditableOperationType(String auditableOperationType) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setAuditableOperationLevel(String auditableOperationLevel) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
-    return this;
-  }
 }

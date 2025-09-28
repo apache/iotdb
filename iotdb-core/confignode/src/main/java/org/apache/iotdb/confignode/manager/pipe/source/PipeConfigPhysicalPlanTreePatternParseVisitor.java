@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
-import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
@@ -39,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
 import org.apache.tsfile.utils.Pair;
@@ -57,7 +57,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * The {@link PipeConfigTreePatternParseVisitor} will transform the schema {@link
+ * The {@link PipeConfigPhysicalPlanTreePatternParseVisitor} will transform the schema {@link
  * ConfigPhysicalPlan}s using {@link IoTDBTreePattern}. Rule:
  *
  * <p>1. All patterns in the output {@link ConfigPhysicalPlan} will be the intersection of the
@@ -71,10 +71,10 @@ import java.util.stream.Stream;
  * <p>4. The output {@link PlanNode} shall be a copied form of the original one because the original
  * one is used in the {@link PipeConfigRegionWritePlanEvent} in {@link ConfigRegionListeningQueue}.
  */
-public class PipeConfigTreePatternParseVisitor
+public class PipeConfigPhysicalPlanTreePatternParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IoTDBTreePattern> {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConfigTreePatternParseVisitor.class);
+      LoggerFactory.getLogger(PipeConfigPhysicalPlanTreePatternParseVisitor.class);
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
