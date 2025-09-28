@@ -732,7 +732,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                     req.getTable(),
                     req.getPermissions(),
                     req.isGrantOpt(),
-                    req.getPassword()));
+                    req.getPassword(),
+                    req.getExecutedByUserID()));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
