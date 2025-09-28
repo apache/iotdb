@@ -238,9 +238,10 @@ public abstract class BasicUserManager extends BasicRoleManager {
     User tmpUser = this.getEntity(newUsername);
     if (tmpUser != null) {
       throw new AuthException(
-          TSStatusCode.USER_ALREADY_EXIST, String.format("Cannot rename user %s to %s, because the target username is already existed.",
-          username, newUsername
-      ));
+          TSStatusCode.USER_ALREADY_EXIST,
+          String.format(
+              "Cannot rename user %s to %s, because the target username is already existed.",
+              username, newUsername));
     }
     lock.writeLock(username);
     try {

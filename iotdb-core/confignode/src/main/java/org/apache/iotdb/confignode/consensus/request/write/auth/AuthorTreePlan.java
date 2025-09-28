@@ -108,7 +108,8 @@ public class AuthorTreePlan extends AuthorPlan {
         permissions,
         grantOpt,
         nodeNameList,
-        0, "");
+        0,
+        "");
   }
 
   public AuthorTreePlan(

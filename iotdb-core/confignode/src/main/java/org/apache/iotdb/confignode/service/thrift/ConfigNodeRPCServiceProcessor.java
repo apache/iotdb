@@ -638,9 +638,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     ConfigPhysicalPlanType configPhysicalPlanType;
     if (req.getAuthorType() == AuthorType.RENAME_USER.ordinal()) {
       configPhysicalPlanType = ConfigPhysicalPlanType.RenameUser;
-    } else {configPhysicalPlanType
-      =ConfigPhysicalPlanType.values()[
-          req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()];
+    } else {
+      configPhysicalPlanType =
+          ConfigPhysicalPlanType.values()[
+              req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()];
       switch (configPhysicalPlanType) {
         case UpdateUser:
           configPhysicalPlanType = ConfigPhysicalPlanType.UpdateUserV2;
@@ -682,7 +683,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                     req.getPermissions(),
                     req.isGrantOpt(),
                     AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
-                    req.getExecutedByUserID(), req.getNewUsername()));
+                    req.getExecutedByUserID(),
+                    req.getNewUsername()));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
@@ -700,10 +702,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() == AuthorRType.RENAME_USER.ordinal()) {
       configPhysicalPlanType = ConfigPhysicalPlanType.RRenameUser;
     } else {
-      configPhysicalPlanType
-    =
-      ConfigPhysicalPlanType.values()[
-          req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()];
+      configPhysicalPlanType =
+          ConfigPhysicalPlanType.values()[
+              req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()];
       switch (configPhysicalPlanType) {
         case RUpdateUser:
           configPhysicalPlanType = ConfigPhysicalPlanType.RUpdateUserV2;

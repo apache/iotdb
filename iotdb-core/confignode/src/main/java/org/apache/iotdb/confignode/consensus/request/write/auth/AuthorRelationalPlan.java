@@ -85,7 +85,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
         permissions,
         grantOpt,
         password,
-        0, "");
+        0,
+        "");
   }
 
   public AuthorRelationalPlan(

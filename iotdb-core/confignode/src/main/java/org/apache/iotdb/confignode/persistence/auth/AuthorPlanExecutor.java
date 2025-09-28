@@ -245,9 +245,9 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         case RUpdateUserV2:
           authorizer.updateUserPassword(userName, authorPlan.getPassword());
           break;
-          case RRenameUser:
-            authorizer.renameUser(userName, roleName);
-            break;
+        case RRenameUser:
+          authorizer.renameUser(userName, roleName);
+          break;
         case RDropRole:
           authorizer.deleteRole(roleName);
           break;
