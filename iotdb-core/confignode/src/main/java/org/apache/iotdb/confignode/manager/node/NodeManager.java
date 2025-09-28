@@ -80,7 +80,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
-import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
@@ -127,7 +126,7 @@ public class NodeManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
 
   private final IManager configManager;
   protected final NodeInfo nodeInfo;
@@ -252,17 +251,6 @@ public class NodeManager {
     dataSet.setCqConfig(cqConfig);
   }
 
-  private TAuditConfig getAuditConfig() {
-    TAuditConfig auditConfig = new TAuditConfig();
-    auditConfig.setEnableAuditLog(COMMON_CONFIG.isEnableAuditLog());
-    if (COMMON_CONFIG.isEnableAuditLog()) {
-      auditConfig.setAuditableOperationType(COMMON_CONFIG.getAuditableOperationTypeInStr());
-      auditConfig.setAuditableOperationLevel(COMMON_CONFIG.getAuditableOperationLevelInStr());
-      auditConfig.setAuditableOperationResult(COMMON_CONFIG.getAuditableOperationResult());
-    }
-    return auditConfig;
-  }
-
   private TRuntimeConfiguration getRuntimeConfiguration() {
     getPipeManager().getPipePluginCoordinator().lock();
     try {
@@ -286,7 +274,6 @@ public class NodeManager {
           runtimeConfiguration.setTableInfo(
               getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
           runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
-          runtimeConfiguration.setAuditConfig(getAuditConfig());
           return runtimeConfiguration;
         } finally {
           getUDFManager().getUdfInfo().releaseUDFTableLock();

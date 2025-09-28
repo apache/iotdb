@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import static org.apache.iotdb.db.audit.DNAuditLogger.PREFIX_PASSWORD_HISTORY;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
@@ -1520,7 +1519,7 @@ public class IoTDBAuthIT {
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            String.format("select last password from %s.`_userA`", PREFIX_PASSWORD_HISTORY))) {
+            "select last password from root.__system.password_history.`_userA`")) {
       if (!resultSet.next()) {
         fail("Password history not found");
       }
@@ -1529,7 +1528,7 @@ public class IoTDBAuthIT {
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            String.format("select last oldPassword from %s.`_userA`", PREFIX_PASSWORD_HISTORY))) {
+            "select last oldPassword from root.__system.password_history.`_userA`")) {
       if (!resultSet.next()) {
         fail("Password history not found");
       }
@@ -1540,13 +1539,13 @@ public class IoTDBAuthIT {
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            String.format("select last password from %s.`_userA`", PREFIX_PASSWORD_HISTORY))) {
+            "select last password from root.__system.password_history.`_userA`")) {
       assertFalse(resultSet.next());
     }
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            String.format("select last oldPassword from %s.`_userA`", PREFIX_PASSWORD_HISTORY))) {
+            "select last oldPassword from root.__system.password_history.`_userA`")) {
       assertFalse(resultSet.next());
     }
   }
@@ -1557,7 +1556,7 @@ public class IoTDBAuthIT {
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            String.format("select last password from %s.`_userA`", PREFIX_PASSWORD_HISTORY))) {
+            "select last password from root.__system.password_history.`_userA`")) {
       if (!resultSet.next()) {
         fail("Password history not found");
       }
@@ -1566,15 +1565,13 @@ public class IoTDBAuthIT {
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            String.format(
-                "select oldPassword from %s.`_userA` order by time desc limit 1",
-                PREFIX_PASSWORD_HISTORY))) {
+            "select oldPassword from root.__system.password_history.`_userA` order by time desc limit 1")) {
       if (!resultSet.next()) {
         fail("Password history not found");
       }
       assertEquals(
           AuthUtils.encryptPassword("abcdef123456"),
-          resultSet.getString(String.format("%s._userA.oldPassword", PREFIX_PASSWORD_HISTORY)));
+          resultSet.getString("root.__system.password_history._userA.oldPassword"));
     }
   }
 

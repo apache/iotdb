@@ -86,7 +86,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -670,7 +669,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+            "Receiver id = %s: Failed to check authority for statement %s, username = %s, response = %s.",
             receiverId.get(),
             StatementType.ALTER_LOGICAL_VIEW.name(),
             username,
@@ -822,7 +821,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       } else {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = {}: Failure status encountered while executing statement {}: {}",
+            "Receiver id = %s: Failure status encountered while executing statement %s: %s",
             receiverId.get(),
             statement,
             result);
@@ -831,7 +830,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
-          "Receiver id = {}: Exception encountered while executing statement {}: ",
+          "Receiver id = %s: Exception encountered while executing statement %s: ",
           receiverId.get(),
           statement,
           e);
@@ -881,16 +880,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     // For table model, the authority check is done in inner execution. No need to check here
     if (!isTableModelStatement) {
       final TSStatus permissionCheckStatus =
-          AuthorityChecker.checkAuthority(
-              statement,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
+          AuthorityChecker.checkAuthority(statement, clientSession);
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+            "Receiver id = %s: Failed to check authority for statement %s, username = %s, response = %s.",
             receiverId.get(),
             statement.getType().name(),
             username,

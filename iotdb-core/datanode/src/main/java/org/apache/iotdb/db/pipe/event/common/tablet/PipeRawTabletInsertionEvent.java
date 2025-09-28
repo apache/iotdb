@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -408,21 +406,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    try {
-      return initEventParser().processRowByRow(consumer);
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
+    return initEventParser().processRowByRow(consumer);
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    try {
-      return initEventParser().processTablet(consumer);
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
+    return initEventParser().processTablet(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -445,28 +435,21 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       eventParser =
           tablet.getDeviceId().startsWith("root.")
               ? new TabletInsertionEventTreePatternParser(
-                  pipeTaskMeta,
-                  this,
-                  tablet,
-                  isAligned,
-                  treePattern,
-                  shouldParse4Privilege
-                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
-                      : null)
+                  pipeTaskMeta, this, tablet, isAligned, treePattern)
               : new TabletInsertionEventTablePatternParser(
                   pipeTaskMeta, this, tablet, isAligned, tablePattern);
     }
     return eventParser;
   }
 
-  public long count() throws IllegalPathException {
+  public long count() {
     final Tablet convertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
     return (long) convertedTablet.getRowSize() * convertedTablet.getSchemas().size();
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
-  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() throws IllegalPathException {
+  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
         getRawIsTableModelEvent(),
         getSourceDatabaseNameFromDataRegion(),

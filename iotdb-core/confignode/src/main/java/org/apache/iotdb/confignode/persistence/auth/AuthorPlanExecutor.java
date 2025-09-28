@@ -673,33 +673,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return resp;
   }
 
-  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
-      throws AuthException {
-    final User user = authorizer.getUser(username);
-    final PathPatternTree pPtree = new PathPatternTree();
-    if (user == null) {
-      return null;
-    }
-
-    constructAuthorityScope(pPtree, user, type);
-
-    for (final String roleName : user.getRoleSet()) {
-      Role role = authorizer.getRole(roleName);
-      if (role != null) {
-        constructAuthorityScope(pPtree, role, type);
-      }
-    }
-    pPtree.constructTree();
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      pPtree.serialize(dataOutputStream);
-    } catch (final IOException e) {
-      return null;
-    }
-    return pPtree;
-  }
-
   @Override
   public TPermissionInfoResp checkRoleOfUser(String username, String roleName)
       throws AuthException {

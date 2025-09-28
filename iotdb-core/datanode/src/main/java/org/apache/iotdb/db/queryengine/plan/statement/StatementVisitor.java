@@ -200,7 +200,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(deleteTimeSeriesStatement, context);
   }
 
-  public R visitDeleteDatabase(DeleteDatabaseStatement deleteDatabaseStatement, C context) {
+  public R visitDeleteStorageGroup(DeleteDatabaseStatement deleteDatabaseStatement, C context) {
     return visitStatement(deleteDatabaseStatement, context);
   }
 
@@ -384,7 +384,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(authorStatement, context);
   }
 
-  public R visitShowDatabase(ShowDatabaseStatement showDatabaseStatement, C context) {
+  public R visitShowStorageGroup(ShowDatabaseStatement showDatabaseStatement, C context) {
     return visitStatement(showDatabaseStatement, context);
   }
 
@@ -396,7 +396,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showDevicesStatement, context);
   }
 
-  public R visitCountDatabase(CountDatabaseStatement countDatabaseStatement, C context) {
+  public R visitCountStorageGroup(CountDatabaseStatement countDatabaseStatement, C context) {
     return visitStatement(countDatabaseStatement, context);
   }
 

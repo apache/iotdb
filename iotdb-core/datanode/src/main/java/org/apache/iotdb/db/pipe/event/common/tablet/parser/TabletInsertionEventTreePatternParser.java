@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
-import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -32,11 +28,9 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -50,18 +44,14 @@ import java.util.function.BiConsumer;
 public class TabletInsertionEventTreePatternParser extends TabletInsertionEventParser {
 
   private final TreePattern pattern;
-  private final IAuditEntity entity;
 
   public TabletInsertionEventTreePatternParser(
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final InsertNode insertNode,
-      final TreePattern pattern,
-      final IAuditEntity entity)
-      throws IllegalPathException {
+      final TreePattern pattern) {
     super(pipeTaskMeta, sourceEvent);
     this.pattern = pattern;
-    this.entity = entity;
 
     if (insertNode instanceof InsertRowNode) {
       parse((InsertRowNode) insertNode);
@@ -78,19 +68,17 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
       final EnrichedEvent sourceEvent,
       final Tablet tablet,
       final boolean isAligned,
-      final TreePattern pattern,
-      final IAuditEntity entity) {
+      final TreePattern pattern) {
     super(pipeTaskMeta, sourceEvent);
     this.pattern = pattern;
-    this.entity = entity;
 
     parse(tablet, isAligned);
   }
 
   @TestOnly
   public TabletInsertionEventTreePatternParser(
-      final InsertNode insertNode, final TreePattern pattern) throws IllegalPathException {
-    this(null, null, insertNode, pattern, null);
+      final InsertNode insertNode, final TreePattern pattern) {
+    this(null, null, insertNode, pattern);
   }
 
   @Override
@@ -106,8 +94,7 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
-    if (Objects.isNull(entity)
-        && (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId))) {
+    if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
       for (int i = 0; i < originColumnSize; i++) {
         originColumnIndex2FilteredColumnIndexMapperList[i] = i;
       }
@@ -126,19 +113,8 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
           continue;
         }
 
-        try {
-          if (pattern.matchesMeasurement(deviceId, measurement)
-              && (Objects.isNull(entity)
-                  || TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                              entity,
-                              Collections.singletonList(new MeasurementPath(deviceId, measurement)),
-                              PrivilegeType.READ_DATA)
-                          .getCode()
-                      == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
-            originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
-          }
-        } catch (final IllegalPathException e) {
-          throw new RuntimeException(e);
+        if (pattern.matchesMeasurement(deviceId, measurement)) {
+          originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
         }
       }
     }
