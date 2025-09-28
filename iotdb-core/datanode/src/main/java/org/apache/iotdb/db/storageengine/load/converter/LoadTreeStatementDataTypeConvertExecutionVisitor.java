@@ -107,8 +107,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             }
 
             final TSStatus result =
-                executeInsertMultiTabletsWithRetry(
-                    tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
+                executeInsertMultiTabletsWithRetry(tabletRawReqs, loadTsFileStatement);
 
             for (final long memoryCost : tabletRawReqSizes) {
               block.reduceMemoryUsage(memoryCost);
@@ -117,7 +116,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             tabletRawReqSizes.clear();
 
             if (!handleTSStatus(result, loadTsFileStatement)) {
-              return Optional.empty();
+              return Optional.of(result);
             }
 
             tabletRawReqs.add(tabletRawReq);
@@ -127,15 +126,16 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.empty();
+          return Optional.of(
+              loadTsFileStatement.accept(
+                  LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
 
       if (!tabletRawReqs.isEmpty()) {
         try {
           final TSStatus result =
-              executeInsertMultiTabletsWithRetry(
-                  tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
+              executeInsertMultiTabletsWithRetry(tabletRawReqs, loadTsFileStatement);
 
           for (final long memoryCost : tabletRawReqSizes) {
             block.reduceMemoryUsage(memoryCost);
@@ -144,12 +144,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           tabletRawReqSizes.clear();
 
           if (!handleTSStatus(result, loadTsFileStatement)) {
-            return Optional.empty();
+            return Optional.of(result);
           }
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.empty();
+          return Optional.of(
+              loadTsFileStatement.accept(
+                  LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
     } finally {
@@ -181,14 +183,15 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
   }
 
   private TSStatus executeInsertMultiTabletsWithRetry(
-      final List<PipeTransferTabletRawReq> tabletRawReqs, boolean isConvertOnTypeMismatch) {
+      final List<PipeTransferTabletRawReq> tabletRawReqs,
+      final LoadTsFileStatement loadTsFileStatement) {
     final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
     batchStatement.setInsertTabletStatementList(
         tabletRawReqs.stream()
             .map(
                 req ->
                     new LoadConvertedInsertTabletStatement(
-                        req.constructStatement(), isConvertOnTypeMismatch))
+                        req.constructStatement(), loadTsFileStatement.isConvertOnTypeMismatch()))
             .collect(Collectors.toList()));
 
     TSStatus result;
@@ -214,7 +217,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      result = batchStatement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
+      result =
+          loadTsFileStatement.accept(
+              LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
     }
     return result;
   }
