@@ -535,7 +535,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
-
+    context.setDatabase(database);
     accessControl.checkCanCreateTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 

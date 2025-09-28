@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
@@ -46,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -82,8 +82,8 @@ public class AuthorityChecker {
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-  public static final int INTERNAL_AUDIT_USER_ID = IoTDBConstant.INTERNAL_AUDIT_USER_ID;
-  public static final String INTERNAL_AUDIT_USER = IoTDBConstant.INTERNAL_AUDIT_USER;
+  public static final int INTERNAL_AUDIT_USER_ID = 4;
+  public static final String INTERNAL_AUDIT_USER = "__internal_auditor";
 
   public static String ANY_SCOPE = "any";
 
@@ -177,22 +177,21 @@ public class AuthorityChecker {
     }
   }
 
-  /** Check whether specific Session has the authorization to given plan. */
-  public static TSStatus checkAuthority(Statement statement, IClientSession session) {
+  public static TSStatus checkAuthority(Statement statement, IAuditEntity auditEntity) {
     long startTime = System.nanoTime();
     try {
+      if (auditEntity instanceof TreeAccessCheckContext) {
+        return accessControl.checkPermissionBeforeProcess(
+            statement, (TreeAccessCheckContext) auditEntity);
+      }
       return accessControl.checkPermissionBeforeProcess(
           statement,
-          new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()));
-    } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    }
-  }
-
-  public static TSStatus checkAuthority(Statement statement, UserEntity userEntity) {
-    long startTime = System.nanoTime();
-    try {
-      return accessControl.checkPermissionBeforeProcess(statement, userEntity);
+          (TreeAccessCheckContext)
+              new TreeAccessCheckContext(
+                      auditEntity.getUserId(),
+                      auditEntity.getUsername(),
+                      auditEntity.getCliHostname())
+                  .setSqlString(auditEntity.getSqlString()));
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
