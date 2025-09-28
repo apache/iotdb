@@ -252,35 +252,28 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       if (namedQuery.isMaterialized()) {
         CteDataStore dataStore = queryContext.getCteDataStore(table);
         if (dataStore != null) {
-          List<Symbol> cteSymbols = new ArrayList<>();
-          Map<String, Symbol> cteSymbolMap = new HashMap<>();
-          dataStore
-              .getTableSchema()
-              .getColumns()
-              .forEach(
-                  column -> {
-                    Symbol columnSymbol =
-                        symbolAllocator.newSymbol(column.getName(), column.getType());
-                    cteSymbols.add(columnSymbol);
-                    cteSymbolMap.put(column.getName(), columnSymbol);
-                  });
+          List<Symbol> cteSymbols =
+              dataStore.getTableSchema().getColumns().stream()
+                  .map(column -> symbolAllocator.newSymbol(column.getName(), column.getType()))
+                  .collect(Collectors.toList());
 
           // CTE Scan Node
           CteScanNode cteScanNode =
               new CteScanNode(idAllocator.genPlanNodeId(), table.getName(), cteSymbols, dataStore);
 
+          List<Integer> columnIndex2TsBlockColumnIndexList =
+              dataStore.getColumnIndex2TsBlockColumnIndexList();
+          if (columnIndex2TsBlockColumnIndexList == null) {
+            return new RelationPlan(cteScanNode, scope, cteSymbols, outerContext);
+          }
+
           List<Symbol> outputSymbols = new ArrayList<>();
           Assignments.Builder assignments = Assignments.builder();
-          analysis
-              .getOutputDescriptor(table)
-              .getVisibleFields()
-              .forEach(
-                  field -> {
-                    String columnName = field.getName().orElse("field");
-                    Symbol symbol = cteSymbolMap.get(columnName);
-                    outputSymbols.add(symbol);
-                    assignments.put(symbol, symbol.toSymbolReference());
-                  });
+          for (int index : columnIndex2TsBlockColumnIndexList) {
+            Symbol columnSymbol = cteSymbols.get(index);
+            outputSymbols.add(columnSymbol);
+            assignments.put(columnSymbol, columnSymbol.toSymbolReference());
+          }
 
           // Project Node
           ProjectNode projectNode =

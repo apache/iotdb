@@ -34,14 +34,17 @@ import java.util.List;
 public class CteDataStore {
   private final Query query;
   private final TableSchema tableSchema;
+  private final List<Integer> columnIndex2TsBlockColumnIndexList;
 
   private final List<TsBlock> cachedData;
   private long cachedBytes;
   private int cachedRows;
 
-  public CteDataStore(Query query, TableSchema tableSchema) {
+  public CteDataStore(
+      Query query, TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
     this.query = query;
     this.tableSchema = tableSchema;
+    this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
     this.cachedData = new ArrayList<>();
     this.cachedBytes = 0L;
     this.cachedRows = 0;
@@ -83,5 +86,9 @@ public class CteDataStore {
 
   public Query getQuery() {
     return query;
+  }
+
+  public List<Integer> getColumnIndex2TsBlockColumnIndexList() {
+    return columnIndex2TsBlockColumnIndexList;
   }
 }

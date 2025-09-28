@@ -61,7 +61,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -145,7 +144,9 @@ public class CteMaterializer {
       DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
       TableSchema tableSchema = getTableSchema(datasetHeader, table.getName().toString());
 
-      CteDataStore cteDataStore = new CteDataStore(query, tableSchema);
+      CteDataStore cteDataStore =
+          new CteDataStore(
+              query, tableSchema, datasetHeader.getColumnIndex2TsBlockColumnIndexList());
       while (execution.hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {
@@ -191,39 +192,24 @@ public class CteMaterializer {
           "Size of column names and column data types do not match",
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    final Map<String, Integer> columnNameIndexMap = datasetHeader.getColumnNameIndexMap();
-    final List<ColumnSchema> columnSchemaList = new ArrayList<>();
 
-    // If CTE query returns empty result set, columnNameIndexMap is null
-    if (columnNameIndexMap == null) {
-      for (int i = 0; i < columnNames.size(); i++) {
-        columnSchemaList.add(
-            new ColumnSchema(
-                columnNames.get(i),
-                TypeFactory.getType(columnDataTypes.get(i)),
-                false,
-                TsTableColumnCategory.FIELD));
-      }
-      return new TableSchema(cteName, columnSchemaList);
+    List<Integer> columnIndex2TsBlockColumnIndexList =
+        datasetHeader.getColumnIndex2TsBlockColumnIndexList();
+    if (columnIndex2TsBlockColumnIndexList == null) {
+      columnIndex2TsBlockColumnIndexList =
+          IntStream.range(0, columnNames.size()).boxed().collect(Collectors.toList());
     }
-
-    // build name -> type map
-    Map<String, TSDataType> columnNameDataTypeMap =
-        IntStream.range(0, columnNames.size())
-            .boxed()
-            .collect(Collectors.toMap(columnNames::get, columnDataTypes::get));
-
-    // build column schema list of cte table based on columnNameIndexMap
-    columnNameIndexMap.entrySet().stream()
-        .sorted(Map.Entry.comparingByValue())
-        .forEach(
-            entry ->
-                columnSchemaList.add(
+    // build column schema list of cte table based on column2BlockColumnIndex
+    final List<ColumnSchema> columnSchemaList =
+        columnIndex2TsBlockColumnIndexList.stream()
+            .map(
+                index ->
                     new ColumnSchema(
-                        entry.getKey(),
-                        TypeFactory.getType(columnNameDataTypeMap.get(entry.getKey())),
+                        columnNames.get(index),
+                        TypeFactory.getType(columnDataTypes.get(index)),
                         false,
-                        TsTableColumnCategory.FIELD)));
+                        TsTableColumnCategory.FIELD))
+            .collect(Collectors.toList());
     return new TableSchema(cteName, columnSchemaList);
   }
 
