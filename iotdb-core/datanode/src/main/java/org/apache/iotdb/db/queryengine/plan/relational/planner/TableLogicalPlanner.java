@@ -50,7 +50,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.CteMaterializer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
@@ -374,7 +373,7 @@ public class TableLogicalPlanner {
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
     // materialize cte if needed
-    CteMaterializer.materializeCTE(analysis, queryContext);
+    CteMaterializer.getInstance().materializeCTE(analysis, queryContext);
     return getRelationPlanner(analysis).process(query, null);
   }
 

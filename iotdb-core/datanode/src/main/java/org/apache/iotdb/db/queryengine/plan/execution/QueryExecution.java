@@ -47,7 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.CteMaterializer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CteMaterializer;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -351,7 +351,7 @@ public class QueryExecution implements IQueryExecution {
       cleanUpResultHandle();
     }
     if (getSQLDialect().equals(IClientSession.SqlDialect.TABLE) && !context.isSubquery()) {
-      CteMaterializer.cleanUpCTE(context);
+      CteMaterializer.getInstance().cleanUpCTE(context);
     }
   }
 
@@ -397,7 +397,7 @@ public class QueryExecution implements IQueryExecution {
       cleanUpResultHandle();
     }
     if (getSQLDialect().equals(IClientSession.SqlDialect.TABLE) && !context.isSubquery()) {
-      CteMaterializer.cleanUpCTE(context);
+      CteMaterializer.getInstance().cleanUpCTE(context);
     }
   }
 

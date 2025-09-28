@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -99,6 +100,7 @@ public class PlanTester {
 
   public PlanTester(Metadata metadata) {
     this.metadata = metadata;
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
   }
 
   public LogicalQueryPlan createPlan(String sql) {
