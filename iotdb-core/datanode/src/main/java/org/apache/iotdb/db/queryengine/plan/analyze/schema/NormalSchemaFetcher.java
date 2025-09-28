@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -182,8 +180,6 @@ class NormalSchemaFetcher {
       // Check the isAligned value. If the input value is different from the actual value of the
       // existing device, throw exception.
       PartialPath devicePath = schemaComputationWithAutoCreation.getDevicePath();
-      validateIsAlignedValueIfAutoCreate(
-          schemaComputationWithAutoCreation.isAligned(), isAlignedPutIn, devicePath);
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       autoCreateSchemaExecutor.autoCreateTimeSeries(
           schemaTree,
@@ -351,13 +347,6 @@ class NormalSchemaFetcher {
           schemaComputationWithAutoCreationList.stream()
               .map(ISchemaComputationWithAutoCreation::getDevicePath)
               .collect(Collectors.toList());
-      List<Boolean> isAlignedRealList =
-          schemaComputationWithAutoCreationList.stream()
-              .map(ISchemaComputationWithAutoCreation::isAligned)
-              .collect(Collectors.toList());
-      // Check the isAligned value. If the input value is different from the actual value of the
-      // existing device, throw exception.
-      validateIsAlignedValueIfAutoCreate(isAlignedRealList, isAlignedPutInList, devicePathList);
 
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       autoCreateSchemaExecutor.autoCreateTimeSeries(
@@ -412,31 +401,6 @@ class NormalSchemaFetcher {
       for (int index : indexOfMissingMeasurementsList.get(i)) {
         schemaComputationWithAutoCreation.computeMeasurement(index, null);
       }
-    }
-  }
-
-  private void validateIsAlignedValueIfAutoCreate(
-      List<Boolean> realValueList, List<Boolean> putInValueList, List<PartialPath> devicePathList) {
-    int checkLen =
-        Math.min(Math.min(realValueList.size(), putInValueList.size()), devicePathList.size());
-    for (int i = 0; i < checkLen; i++) {
-      validateIsAlignedValueIfAutoCreate(
-          realValueList.get(i), putInValueList.get(i), devicePathList.get(i));
-    }
-  }
-
-  private void validateIsAlignedValueIfAutoCreate(
-      boolean realValue, boolean putInValue, PartialPath devicePath) {
-    if (realValue != putInValue) {
-      String msg;
-      if (realValue) {
-        msg =
-            "Timeseries under this device is aligned, please use createTimeseries or change device.";
-      } else {
-        msg =
-            "Timeseries under this device is not aligned, please use createTimeseries or change device.";
-      }
-      throw new SemanticException(new AlignedTimeseriesException(msg, devicePath.getFullPath()));
     }
   }
 }
