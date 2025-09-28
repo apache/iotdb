@@ -45,7 +45,9 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
@@ -68,6 +70,8 @@ public class IoTDBCteIT {
       };
 
   private static final String dropDbSqls = "DROP DATABASE IF EXISTS testdb";
+
+  private static final String[] cteKeywords = {"", "materialized"};
 
   @BeforeClass
   public static void setUpClass() {
@@ -103,6 +107,9 @@ public class IoTDBCteIT {
 
   @Test
   public void testQuery() {
+    final String mainQuery = "select * from cte order by deviceid";
+
+    // case 1
     String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
     String[] retArray =
         new String[] {
@@ -110,43 +117,40 @@ public class IoTDBCteIT {
           "1970-01-01T00:00:02.000Z,d1,200.0,",
           "1970-01-01T00:00:01.000Z,d2,300.0,"
         };
-    tableResultSetEqualTest(
-        "with cte as (select * from testtb) select * from cte order by deviceid",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    String[] cteTemplateQueries = new String[] {"cte as %s (select * from testtb)"};
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
 
+    // case 2
     expectedHeader = new String[] {"deviceid", "voltage"};
     retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
-    tableResultSetEqualTest(
-        "with cte as (select deviceid, voltage from testtb) select * from cte order by deviceid",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    cteTemplateQueries = new String[] {"cte as %s (select deviceid, voltage from testtb)"};
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
 
+    // case 3
     expectedHeader = new String[] {"deviceid", "avg_voltage"};
     retArray = new String[] {"d1,150.0,", "d2,300.0,"};
-    tableResultSetEqualTest(
-        "with cte as (select deviceid, avg(voltage) as avg_voltage from testtb group by deviceid) select * from cte order by deviceid",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    cteTemplateQueries =
+        new String[] {
+          "cte as %s (select deviceid, avg(voltage) as avg_voltage from testtb group by deviceid)"
+        };
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
   }
 
   @Test
   public void testPartialColumn() {
+    final String mainQuery = "select * from cte order by id";
+
+    // case 1
     String[] expectedHeader = new String[] {"id", "v"};
     String[] retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
-    tableResultSetEqualTest(
-        "with cte(id, v) as (select deviceid, voltage from testtb) select * from cte order by id",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    String[] cteTemplateQueries =
+        new String[] {"cte(id, v) as %s (select deviceid, voltage from testtb)"};
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
 
-    tableAssertTestFail(
-        "with cte(v) as (select deviceid, voltage from testtb) select * from cte order by id",
-        "701: Column alias list has 1 entries but relation has 2 columns",
-        DATABASE_NAME);
+    // case 2
+    cteTemplateQueries = new String[] {"cte(v) as %s (select deviceid, voltage from testtb)"};
+    String errMsg = "701: Column alias list has 1 entries but relation has 2 columns";
+    testCteFailureWithVariants(cteTemplateQueries, mainQuery, errMsg);
   }
 
   @Test
@@ -154,21 +158,27 @@ public class IoTDBCteIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE testdb");
-      // explain
-      ResultSet resultSet =
-          statement.executeQuery(
-              "explain with cte as (select * from testtb) select * from cte order by deviceid");
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 1);
-      assertEquals(metaData.getColumnName(1), "distribution plan");
+      for (String keyword : cteKeywords) {
+        // explain
+        ResultSet resultSet =
+            statement.executeQuery(
+                String.format(
+                    "explain with cte as %s (select * from testtb) select * from cte order by deviceid",
+                    keyword));
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(metaData.getColumnCount(), 1);
+        assertEquals(metaData.getColumnName(1), "distribution plan");
 
-      // explain analyze
-      resultSet =
-          statement.executeQuery(
-              "explain analyze with cte as (select * from testtb) select * from cte order by deviceid");
-      metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 1);
-      assertEquals(metaData.getColumnName(1), "Explain Analyze");
+        // explain analyze
+        resultSet =
+            statement.executeQuery(
+                String.format(
+                    "explain analyze with cte as %s (select * from testtb) select * from cte order by deviceid",
+                    keyword));
+        metaData = resultSet.getMetaData();
+        assertEquals(metaData.getColumnCount(), 1);
+        assertEquals(metaData.getColumnName(1), "Explain Analyze");
+      }
     }
   }
 
@@ -176,46 +186,47 @@ public class IoTDBCteIT {
   public void testMultiReference() {
     String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
     String[] retArray = new String[] {"1970-01-01T00:00:01.000Z,d2,300.0,"};
-    tableResultSetEqualTest(
-        "with cte as (select * from testtb) select * from cte where voltage > (select avg(voltage) from cte)",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    String[] cteTemplateQueries = new String[] {"cte as %s (select * from testtb)"};
+    String mainQuery = "select * from cte where voltage > (select avg(voltage) from cte)";
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
   }
 
   @Test
   public void testDomain() {
+    final String mainQuery = "select * from testtb order by deviceid";
+
     String[] expectedHeader = new String[] {"deviceid", "voltage"};
     String[] retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
-    tableResultSetEqualTest(
-        "with testtb as (select deviceid, voltage from testtb) select * from testtb order by deviceid",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    String[] cteTemplateQueries =
+        new String[] {"testtb as %s (select deviceid, voltage from testtb)"};
 
-    tableAssertTestFail(
-        "with testtb as (select voltage from testtb) select * from testtb order by deviceid",
-        "616: Column 'deviceid' cannot be resolved",
-        DATABASE_NAME);
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
+
+    cteTemplateQueries = new String[] {"testtb as %s (select voltage from testtb)"};
+    String errMsg = "616: Column 'deviceid' cannot be resolved";
+    testCteFailureWithVariants(cteTemplateQueries, mainQuery, errMsg);
   }
 
   @Test
   public void testSession() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("use testdb");
-      SessionDataSet dataSet =
-          session.executeQueryStatement("with cte as (select * from testtb) select * from cte");
+      for (String keyword : cteKeywords) {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                String.format("with cte as %s (select * from testtb) select * from cte", keyword));
 
-      assertEquals(dataSet.getColumnNames().size(), 3);
-      assertEquals(dataSet.getColumnNames().get(0), "time");
-      assertEquals(dataSet.getColumnNames().get(1), "deviceid");
-      assertEquals(dataSet.getColumnNames().get(2), "voltage");
-      int cnt = 0;
-      while (dataSet.hasNext()) {
-        dataSet.next();
-        cnt++;
+        assertEquals(dataSet.getColumnNames().size(), 3);
+        assertEquals(dataSet.getColumnNames().get(0), "time");
+        assertEquals(dataSet.getColumnNames().get(1), "deviceid");
+        assertEquals(dataSet.getColumnNames().get(2), "voltage");
+        int cnt = 0;
+        while (dataSet.hasNext()) {
+          dataSet.next();
+          cnt++;
+        }
+        Assert.assertEquals(3, cnt);
       }
-      Assert.assertEquals(3, cnt);
     }
   }
 
@@ -229,54 +240,63 @@ public class IoTDBCteIT {
                 uri, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
         Statement statement = connection.createStatement()) {
       statement.executeUpdate("use testdb");
-      ResultSet resultSet =
-          statement.executeQuery("with cte as (select * from testtb) select * from cte");
+      for (String keyword : cteKeywords) {
+        ResultSet resultSet =
+            statement.executeQuery(
+                String.format("with cte as %s (select * from testtb) select * from cte", keyword));
 
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 3);
-      assertEquals(metaData.getColumnLabel(1), "time");
-      assertEquals(metaData.getColumnLabel(2), "deviceid");
-      assertEquals(metaData.getColumnLabel(3), "voltage");
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(metaData.getColumnCount(), 3);
+        assertEquals(metaData.getColumnLabel(1), "time");
+        assertEquals(metaData.getColumnLabel(2), "deviceid");
+        assertEquals(metaData.getColumnLabel(3), "voltage");
 
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(3, cnt);
       }
-      Assert.assertEquals(3, cnt);
     }
   }
 
   @Test
   public void testNest() {
-    String sql1 =
-        "WITH"
-            + " cte1 AS (select deviceid, voltage from testtb where voltage > 200),"
-            + " cte2 AS (SELECT voltage FROM cte1)"
-            + " SELECT * FROM cte2";
+    final String mainQuery = "SELECT * FROM cte2";
 
-    String sql2 =
-        "WITH"
-            + " cte2 AS (SELECT voltage FROM cte1),"
-            + " cte1 AS (select deviceid, voltage from testtb where voltage > 200)"
-            + " SELECT * FROM cte2";
-
+    String[] cteTemplateQueries =
+        new String[] {
+          "cte1 as %s (select deviceid, voltage from testtb where voltage > 200)",
+          "cte2 as %s (SELECT voltage FROM cte1)"
+        };
     String[] expectedHeader = new String[] {"voltage"};
     String[] retArray = new String[] {"300.0,"};
-    tableResultSetEqualTest(sql1, expectedHeader, retArray, DATABASE_NAME);
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
 
-    tableAssertTestFail(sql2, "550: Table 'testdb.cte1' does not exist.", DATABASE_NAME);
+    cteTemplateQueries =
+        new String[] {
+          "cte2 as %s (SELECT voltage FROM cte1)",
+          "cte1 as %s (select deviceid, voltage from testtb where voltage > 200)"
+        };
+    String errMsg = "550: Table 'testdb.cte1' does not exist.";
+    testCteFailureWithVariants(cteTemplateQueries, mainQuery, errMsg);
   }
 
   @Test
   public void testRecursive() {
-    String sql =
-        "WITH RECURSIVE t(n) AS ("
+    String sqlTemplate =
+        "WITH RECURSIVE t(n) AS %s ("
             + " VALUES (1)"
             + " UNION ALL"
             + " SELECT n+1 FROM t WHERE n < 100)"
             + " SELECT sum(n) FROM t";
 
-    tableAssertTestFail(sql, "701: recursive cte is not supported yet", DATABASE_NAME);
+    for (String keyword : cteKeywords) {
+      tableAssertTestFail(
+          String.format(sqlTemplate, keyword),
+          "701: recursive cte is not supported yet",
+          DATABASE_NAME);
+    }
   }
 
   @Test
@@ -295,7 +315,10 @@ public class IoTDBCteIT {
                   .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE testdb");
-        statement.execute("with cte as (select * from testtb) select * from cte");
+        for (String keyword : cteKeywords) {
+          statement.execute(
+              String.format("with cte as %s (select * from testtb) select * from cte", keyword));
+        }
       }
 
       try (Connection connection =
@@ -303,7 +326,11 @@ public class IoTDBCteIT {
                   .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE testdb");
-        statement.execute("with cte as (select * from testtb1) select * from testtb");
+        for (String keyword : cteKeywords) {
+          statement.execute(
+              String.format(
+                  "with cte as %s (select * from testtb1) select * from testtb", keyword));
+        }
         fail("No exception!");
       } catch (Exception e) {
         Assert.assertTrue(
@@ -327,6 +354,30 @@ public class IoTDBCteIT {
       }
     } catch (Exception e) {
       fail(e.getMessage());
+    }
+  }
+
+  private void testCteSuccessWithVariants(
+      String[] cteTemplateQueries, String mainQuery, String[] expectedHeader, String[] retArray) {
+    for (String keyword : cteKeywords) {
+      String cteQueries =
+          Arrays.stream(cteTemplateQueries)
+              .map(s -> String.format(s, keyword))
+              .collect(Collectors.joining(", "));
+      String query = String.format("with %s %s", cteQueries, mainQuery);
+      tableResultSetEqualTest(query, expectedHeader, retArray, DATABASE_NAME);
+    }
+  }
+
+  private void testCteFailureWithVariants(
+      String[] cteTemplateQueries, String mainQuery, String expectedErrMsg) {
+    for (String keyword : cteKeywords) {
+      String cteQueries =
+          Arrays.stream(cteTemplateQueries)
+              .map(s -> String.format(s, keyword))
+              .collect(Collectors.joining(", "));
+      String query = String.format("with %s %s", cteQueries, mainQuery);
+      tableAssertTestFail(query, expectedErrMsg, DATABASE_NAME);
     }
   }
 }
