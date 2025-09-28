@@ -135,13 +135,13 @@ public class TableHeaderSchemaValidator {
       // id columns are the prefix of the incoming id columns, or vice versa
       if (isStrictTagColumn) {
         final List<TsTableColumnSchema> realTagColumns = table.getTagColumnSchemaList();
-        final List<ColumnSchema> incomingTagColumns = tableSchema.getIdColumns();
+        final List<ColumnSchema> incomingTagColumns = tableSchema.getTagColumns();
         if (realTagColumns.size() <= incomingTagColumns.size()) {
           // When incoming table has more ID columns, the existing id columns
           // should be the prefix of the incoming id columns (or equal)
           for (int indexReal = 0; indexReal < realTagColumns.size(); indexReal++) {
             final String tagName = realTagColumns.get(indexReal).getColumnName();
-            final int indexIncoming = tableSchema.getIndexAmongIdColumns(tagName);
+            final int indexIncoming = tableSchema.getIndexAmongTagColumns(tagName);
             if (indexIncoming != indexReal) {
               throw new LoadAnalyzeTableColumnDisorderException(
                   String.format(
