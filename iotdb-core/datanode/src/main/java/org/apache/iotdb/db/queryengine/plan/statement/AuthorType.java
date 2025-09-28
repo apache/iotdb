@@ -30,11 +30,13 @@ public enum AuthorType {
   REVOKE_USER,
   REVOKE_ROLE,
   REVOKE_USER_ROLE,
+  @Deprecated
   UPDATE_USER,
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIVILEGE,
-  LIST_ROLE_PRIVILEGE;
+  LIST_ROLE_PRIVILEGE,
+  ALTER_USER;
 
   /**
    * deserialize short number.
@@ -74,6 +76,8 @@ public enum AuthorType {
         return LIST_USER_PRIVILEGE;
       case 14:
         return LIST_ROLE_PRIVILEGE;
+      case 15:
+        return ALTER_USER;
       default:
         return null;
     }
@@ -116,6 +120,8 @@ public enum AuthorType {
         return 13;
       case LIST_ROLE_PRIVILEGE:
         return 14;
+      case ALTER_USER:
+        return 15;
       default:
         return -1;
     }

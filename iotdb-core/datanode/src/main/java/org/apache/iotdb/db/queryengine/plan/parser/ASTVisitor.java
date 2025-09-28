@@ -2507,12 +2507,29 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Alter Password
+  private void appendAlterUserProperties(int key, String value, AuthorStatement stmt) {
+    switch (key) {
+      case IoTDBSqlParser.PASSWORD:
+        stmt.setNewPassword(value);
+        break;
+      case IoTDBSqlParser.USERNAME:
+        stmt.setNewUsername(value);
+        break;
+      default:
+        throw new SemanticException("Unknown property: " + key);
+    }
+  }
+
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.ALTER_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
+    int attributesCnt = ctx.userAttributeClause().userAttributeKey().size();
+    for (int i = 0; i < attributesCnt; i++) {
+      int key = ctx.userAttributeClause().userAttributeKey(i).start.getType();
+      String value = parseStringLiteral(ctx.userAttributeClause().STRING_LITERAL(i).getText());
+      appendAlterUserProperties(key, value, authorStatement);
+    }
     return authorStatement;
   }
 

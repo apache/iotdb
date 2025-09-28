@@ -1404,6 +1404,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (user == null) {
       throw new SemanticException("User " + node.getUserName() + " not found");
     }
+    if (node.getNewUsername() != null) {
+      if (node.getNewUsername().equals(node.getUserName())) {
+        throw new SemanticException("The user's new name shall not be equal to the old one.");
+      }
+      User tmpUser = AuthorityChecker.getAuthorityFetcher().getUser(node.getNewUsername());
+      if (tmpUser != null) {
+        throw new SemanticException("User " + node.getNewUsername() + " already exists.");
+      }
+    }
     node.setOldPassword(user.getPassword());
     DataNodeAuthUtils.verifyPasswordReuse(node.getUserName(), node.getPassword());
   }

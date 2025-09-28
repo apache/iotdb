@@ -142,6 +142,9 @@ public class AuthorTreePlan extends AuthorPlan {
       BasicStructureSerDeUtil.write(partialPath.getFullPath(), stream);
     }
     BasicStructureSerDeUtil.write(super.getGrantOpt() ? 1 : 0, stream);
+
+    // Serialize and deserialize through judging AlterUser type
+    BasicStructureSerDeUtil.write(super.getNewUsername(), stream);
   }
 
   @Override
@@ -171,6 +174,10 @@ public class AuthorTreePlan extends AuthorPlan {
     }
     if (super.getAuthorType().ordinal() >= ConfigPhysicalPlanType.CreateUser.ordinal()) {
       super.setGrantOpt(BasicStructureSerDeUtil.readInt(buffer) > 0);
+    }
+    if (super.getAuthorType().ordinal() == ConfigPhysicalPlanType.AlterUser.ordinal()) {
+      // Serialize and deserialize through judging AlterUser type
+      super.setNewUsername(BasicStructureSerDeUtil.readString(buffer));
     }
   }
 }

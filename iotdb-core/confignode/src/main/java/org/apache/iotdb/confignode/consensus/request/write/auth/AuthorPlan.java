@@ -32,6 +32,8 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
   protected String userName;
   protected boolean grantOpt;
 
+  protected String newUsername = "";
+
   public AuthorPlan(final ConfigPhysicalPlanType type) {
     super(type);
   }
@@ -97,6 +99,14 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
     this.userName = userName;
   }
 
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -111,12 +121,14 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
         && Objects.equals(roleName, that.roleName)
         && Objects.equals(password, that.password)
         && Objects.equals(newPassword, that.newPassword)
-        && grantOpt == that.grantOpt;
+        && grantOpt == that.grantOpt
+        && Objects.equals(newUsername, that.newUsername);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.getType(), userName, roleName, password, newPassword, grantOpt);
+    return Objects.hash(
+        super.getType(), userName, roleName, password, newPassword, grantOpt, newUsername);
   }
 
   @Override
@@ -129,6 +141,8 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
         + roleName
         + ", grant option:"
         + grantOpt
+        + ", new username:"
+        + newUsername
         + "]";
   }
 }

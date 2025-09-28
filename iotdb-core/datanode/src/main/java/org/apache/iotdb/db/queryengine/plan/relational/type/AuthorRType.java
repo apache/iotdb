@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.type;
 public enum AuthorRType {
   CREATE_USER,
   CREATE_ROLE,
+  @Deprecated
   UPDATE_USER,
   DROP_USER,
   DROP_ROLE,
@@ -49,5 +50,6 @@ public enum AuthorRType {
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIV,
-  LIST_ROLE_PRIV
+  LIST_ROLE_PRIV,
+  ALTER_USER
 }

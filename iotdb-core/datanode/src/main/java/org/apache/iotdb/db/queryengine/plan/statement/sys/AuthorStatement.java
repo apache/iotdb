@@ -43,10 +43,11 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String userName;
   private String roleName;
   private String password;
-  private String newPassword;
+  private String newPassword = null;
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
+  private String newUsername = null;
 
   /**
    * Constructor with AuthorType.
@@ -154,6 +155,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.newPassword = newPassword;
   }
 
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
   public String[] getPrivilegeList() {
     return privilegeList;
   }
@@ -251,13 +260,18 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   }
 
   private TSStatus onUpdateUserSuccess() {
-    TSStatus tsStatus =
-        DataNodeAuthUtils.recordPasswordHistory(
-            userName, newPassword, password, CommonDateTimeUtils.currentTime());
-    try {
-      RpcUtils.verifySuccess(tsStatus);
-    } catch (StatementExecutionException e) {
-      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    if (newPassword != null) {
+      TSStatus tsStatus =
+          DataNodeAuthUtils.recordPasswordHistory(
+              newUsername == null ? userName : newUsername,
+              newPassword,
+              password,
+              CommonDateTimeUtils.currentTime());
+      try {
+        RpcUtils.verifySuccess(tsStatus);
+      } catch (StatementExecutionException e) {
+        return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+      }
     }
     return null;
   }

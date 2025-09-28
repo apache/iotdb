@@ -147,6 +147,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
       stream.writeInt(permission);
     }
     stream.write(grantOpt ? (byte) 1 : (byte) 0);
+    // Serialize and deserialize through judging AlterUser type
+    BasicStructureSerDeUtil.write(newUsername, stream);
   }
 
   @Override
@@ -163,5 +165,9 @@ public class AuthorRelationalPlan extends AuthorPlan {
       permissions.add(buffer.getInt());
     }
     grantOpt = buffer.get() == (byte) 1;
+    if (super.getAuthorType().ordinal() == ConfigPhysicalPlanType.AlterUser.ordinal()) {
+      // Serialize and deserialize through judging AlterUser type
+      super.setNewUsername(BasicStructureSerDeUtil.readString(buffer));
+    }
   }
 }

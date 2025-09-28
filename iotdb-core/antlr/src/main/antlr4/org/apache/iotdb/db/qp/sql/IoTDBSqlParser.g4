@@ -1054,9 +1054,18 @@ createRole
     : CREATE ROLE roleName=identifier
     ;
 
-// Alter Password
+// Alter User
 alterUser
-    : ALTER USER userName=usernameWithRoot SET PASSWORD password=STRING_LITERAL
+    : ALTER USER userName=usernameWithRoot userAttributeClause
+    ;
+
+userAttributeClause
+    : SET userAttributeKey value=STRING_LITERAL (COMMA userAttributeKey value=STRING_LITERAL)*
+    ;
+
+userAttributeKey
+    : PASSWORD
+    | USERNAME
     ;
 
 // Grant User Privileges

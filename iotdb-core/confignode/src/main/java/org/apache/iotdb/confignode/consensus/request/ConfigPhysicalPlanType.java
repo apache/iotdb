@@ -121,6 +121,7 @@ public enum ConfigPhysicalPlanType {
   RevokeUser((short) 628),
   RevokeRole((short) 629),
   RevokeRoleFromUser((short) 630),
+  @Deprecated
   UpdateUser((short) 631),
   ListUser((short) 632),
   ListRole((short) 633),
@@ -131,10 +132,12 @@ public enum ConfigPhysicalPlanType {
   @Deprecated
   ListRoleUsers((short) 637),
   CreateUserWithRawPassword((short) 638),
+  AlterUser((short) 639),
 
   /** Table Author */
   RCreateUser((short) 641),
   RCreateRole((short) 642),
+  @Deprecated
   RUpdateUser((short) 643),
   RDropUser((short) 644),
   RDropRole((short) 645),
@@ -164,6 +167,7 @@ public enum ConfigPhysicalPlanType {
   RListRole((short) 670),
   RListUserPrivilege((short) 671),
   RListRolePrivilege((short) 672),
+  RAlterUser((short) 673),
 
   /** Function. */
   CreateFunction((short) 700),

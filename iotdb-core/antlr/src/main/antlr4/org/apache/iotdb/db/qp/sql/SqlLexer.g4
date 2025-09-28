@@ -986,6 +986,10 @@ USER
     : U S E R
     ;
 
+USERNAME
+    : U S E R N A M E
+    ;
+
 USING
     : U S I N G
     ;

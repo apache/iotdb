@@ -47,8 +47,10 @@ public class RelationalAuthorStatement extends Statement {
   private String userName;
   private String roleName;
 
-  private String password;
+  private String password = null;
   private String oldPassword;
+
+  private String newUsername = null;
 
   private Set<PrivilegeType> privilegeType;
 
@@ -163,6 +165,14 @@ public class RelationalAuthorStatement extends Statement {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
   }
 
   @Override
@@ -288,13 +298,18 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   private TSStatus onUpdateUserSuccess() {
-    TSStatus tsStatus =
-        DataNodeAuthUtils.recordPasswordHistory(
-            userName, password, oldPassword, CommonDateTimeUtils.currentTime());
-    try {
-      RpcUtils.verifySuccess(tsStatus);
-    } catch (StatementExecutionException e) {
-      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    if (password != null) {
+      TSStatus tsStatus =
+          DataNodeAuthUtils.recordPasswordHistory(
+              newUsername == null ? userName : newUsername,
+              password,
+              oldPassword,
+              CommonDateTimeUtils.currentTime());
+      try {
+        RpcUtils.verifySuccess(tsStatus);
+      } catch (StatementExecutionException e) {
+        return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+      }
     }
     return null;
   }

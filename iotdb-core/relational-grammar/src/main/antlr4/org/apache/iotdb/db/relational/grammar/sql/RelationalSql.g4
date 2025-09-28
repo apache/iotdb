@@ -705,7 +705,16 @@ dropRoleStatement
     ;
 
 alterUserStatement
-    : ALTER USER userName=identifier SET PASSWORD password=string
+    : ALTER USER userName=identifier alterUserAttributeClause
+    ;
+
+alterUserAttributeClause
+    : SET alterUserAttributeKey value=string (',' alterUserAttributeKey value=string)*
+    ;
+
+alterUserAttributeKey
+    : PASSWORD
+    | USERNAME
     ;
 
 grantUserRoleStatement
@@ -1774,6 +1783,7 @@ URI: 'URI';
 USE: 'USE';
 USED: 'USED';
 USER: 'USER';
+USERNAME: 'USERNAME';
 USING: 'USING';
 UTF16: 'UTF16';
 UTF32: 'UTF32';

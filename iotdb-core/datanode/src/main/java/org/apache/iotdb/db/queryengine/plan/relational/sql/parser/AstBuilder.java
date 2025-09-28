@@ -1732,12 +1732,29 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return stmt;
   }
 
+  private void appendAlterUserProperties(int key, String value, RelationalAuthorStatement stmt) {
+    switch (key) {
+      case RelationalSqlParser.PASSWORD:
+        stmt.setPassword(value);
+        break;
+      case RelationalSqlParser.USERNAME:
+        stmt.setNewUsername(value);
+        break;
+      default:
+        throw new SemanticException("Unknown property: " + key);
+    }
+  }
+
   @Override
   public Node visitAlterUserStatement(RelationalSqlParser.AlterUserStatementContext ctx) {
-    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.UPDATE_USER);
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.ALTER_USER);
     stmt.setUserName(((Identifier) visit(ctx.userName)).getValue());
-    String password = ((StringLiteral) visit(ctx.password)).getValue();
-    stmt.setPassword(password);
+    int attributesCnt = ctx.alterUserAttributeClause().alterUserAttributeKey().size();
+    for (int i = 0; i < attributesCnt; i++) {
+      int key = ctx.alterUserAttributeClause().alterUserAttributeKey(i).getStart().getType();
+      String value = ((StringLiteral) visit(ctx.alterUserAttributeClause().string(i))).getValue();
+      appendAlterUserProperties(key, value, stmt);
+    }
     return stmt;
   }
 
