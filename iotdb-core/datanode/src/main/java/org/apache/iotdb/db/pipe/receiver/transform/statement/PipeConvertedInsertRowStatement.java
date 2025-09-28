@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.transform.statement;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -91,7 +92,8 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    LOGGER.info(
+    PipeLogger.log(
+        LOGGER::info,
         "Pipe: Inserting row to {}.{}. Casting type from {} to {}.",
         devicePath,
         measurements[columnIndex],
@@ -127,7 +129,8 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
       try {
         values[i] = ValueConverter.parse(values[i].toString(), dataTypes[i]);
       } catch (Exception e) {
-        LOGGER.warn(
+        PipeLogger.log(
+            LOGGER::warn,
             "data type of {}.{} is not consistent, "
                 + "registered type {}, inserting timestamp {}, value {}",
             devicePath,
