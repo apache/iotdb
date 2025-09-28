@@ -711,7 +711,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
         authorStatement.getGrantOpt(),
         AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()),
-        authorStatement.getExecutedByUserId());
+        authorStatement.getExecutedByUserId(),
+        authorStatement.getNewUsername());
   }
 
   private TAuthorizerRelationalReq statementToAuthorizerReq(
@@ -727,6 +728,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             ? Collections.emptySet()
             : authorStatement.getPrivilegeIds(),
         authorStatement.isGrantOption(),
-        authorStatement.getExecutedByUserId());
+        authorStatement.getExecutedByUserId(),
+        authorStatement.getNewUsername());
   }
 }
