@@ -239,7 +239,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       ActivateTemplateStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
-        statement.getPaths(),
+        statement::getPaths,
         PrivilegeType.WRITE_SCHEMA);
   }
 
@@ -248,7 +248,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       BatchActivateTemplateStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
-        statement.getPaths(),
+        statement::getPaths,
         PrivilegeType.WRITE_SCHEMA);
   }
 
@@ -257,7 +257,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       InternalBatchActivateTemplateStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
-        statement.getPaths(),
+        statement::getPaths,
         PrivilegeType.WRITE_SCHEMA);
   }
 
@@ -317,7 +317,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       DeactivateTemplateStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
-        statement.getPaths(),
+        statement::getPaths,
         PrivilegeType.WRITE_SCHEMA);
   }
 
@@ -406,16 +406,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<PartialPath> sourcePathList = statement.getSourcePaths().fullPathList;
     if (sourcePathList != null) {
-      status = checkTimeSeriesPermission(context, sourcePathList, PrivilegeType.READ_SCHEMA);
+      status =
+          checkTimeSeriesPermission(
+              context, () -> statement.getSourcePaths().fullPathList, PrivilegeType.READ_SCHEMA);
     }
     QueryStatement queryStatement = statement.getQueryStatement();
     if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      sourcePathList = queryStatement.getPaths();
-      status = checkTimeSeriesPermission(context, sourcePathList, PrivilegeType.READ_SCHEMA);
+      status =
+          checkTimeSeriesPermission(context, queryStatement::getPaths, PrivilegeType.READ_SCHEMA);
     }
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return checkTimeSeriesPermission(context, paths, PrivilegeType.WRITE_SCHEMA);
+      return checkTimeSeriesPermission(context, () -> paths, PrivilegeType.WRITE_SCHEMA);
     }
     return status;
   }
@@ -425,7 +427,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       DeleteLogicalViewStatement statement, TreeAccessCheckContext context) {
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
-        statement.getPaths(),
+        statement::getPaths,
         PrivilegeType.WRITE_SCHEMA);
   }
 
@@ -463,17 +465,19 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<PartialPath> sourcePathList = statement.getSourcePaths().fullPathList;
     if (sourcePathList != null) {
-      status = checkTimeSeriesPermission(context, sourcePathList, PrivilegeType.READ_SCHEMA);
+      status =
+          checkTimeSeriesPermission(
+              context, () -> statement.getSourcePaths().fullPathList, PrivilegeType.READ_SCHEMA);
     }
     QueryStatement queryStatement = statement.getQueryStatement();
     if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      sourcePathList = queryStatement.getPaths();
-      status = checkTimeSeriesPermission(context, sourcePathList, PrivilegeType.READ_SCHEMA);
+      status =
+          checkTimeSeriesPermission(context, queryStatement::getPaths, PrivilegeType.READ_SCHEMA);
     }
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return checkTimeSeriesPermission(
-          context, statement.getTargetPathList(), PrivilegeType.WRITE_SCHEMA);
+          context, statement::getTargetPathList, PrivilegeType.WRITE_SCHEMA);
     }
     return status;
   }
@@ -493,7 +497,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     }
     return checkTimeSeriesPermission(
         context,
-        ImmutableList.of(statement.getOldName(), statement.getNewName()),
+        () -> ImmutableList.of(statement.getOldName(), statement.getNewName()),
         PrivilegeType.WRITE_SCHEMA);
   }
 
@@ -1038,7 +1042,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     }
     return checkTimeSeriesPermission(
         context,
-        statement.getPaths().stream().distinct().collect(Collectors.toList()),
+        () -> statement.getPaths().stream().distinct().collect(Collectors.toList()),
         PrivilegeType.WRITE_DATA);
   }
 
@@ -1053,7 +1057,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
     }
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_DATA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_DATA);
   }
 
   @Override
@@ -1074,7 +1078,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
     }
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_DATA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_DATA);
   }
 
   @Override
@@ -1116,12 +1120,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   // ============================= timeseries related =================================
   public static TSStatus checkTimeSeriesPermission(
-      IAuditEntity context, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
+      IAuditEntity context,
+      Supplier<List<? extends PartialPath>> checkedPathsSupplier,
+      PrivilegeType permission) {
     context.setPrivilegeType(permission);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
-      recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+      recordObjectAuthenticationAuditLog(
+          context.setResult(true), () -> checkedPathsSupplier.get().toString());
       return SUCCEED;
     }
+    List<? extends PartialPath> checkedPaths = checkedPathsSupplier.get();
     TSStatus result =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathOrPatternListPermission(
@@ -1150,7 +1158,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
     }
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -1168,7 +1176,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
     }
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -1186,7 +1194,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       }
     }
 
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -1204,7 +1212,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
     }
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -1220,7 +1228,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
     }
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -1379,7 +1387,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
     }
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
@@ -1397,7 +1405,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
     }
-    return checkTimeSeriesPermission(context, statement.getPaths(), PrivilegeType.WRITE_SCHEMA);
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
   // ================================== maintain related =============================

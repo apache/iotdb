@@ -486,7 +486,7 @@ public class AccessControlImpl implements AccessControl {
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
       return checkTimeSeriesPermission(
-          auditEntity, Collections.singletonList(path), PrivilegeType.WRITE_DATA);
+          auditEntity, () -> Collections.singletonList(path), PrivilegeType.WRITE_DATA);
     } catch (IllegalPathException e) {
       // should never be here
       throw new IllegalStateException(e);
@@ -517,10 +517,10 @@ public class AccessControlImpl implements AccessControl {
     }
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (sourcePaths != null) {
-      status = checkTimeSeriesPermission(entity, sourcePaths, PrivilegeType.READ_SCHEMA);
+      status = checkTimeSeriesPermission(entity, () -> sourcePaths, PrivilegeType.READ_SCHEMA);
     }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return checkTimeSeriesPermission(entity, targetPaths, PrivilegeType.WRITE_SCHEMA);
+      return checkTimeSeriesPermission(entity, () -> targetPaths, PrivilegeType.WRITE_SCHEMA);
     }
     return status;
   }
