@@ -132,13 +132,13 @@ public class TableHeaderSchemaValidator {
       DataNodeTreeViewSchemaUtils.checkTableInWrite(database, table);
       // If table with this name already exists and isStrictTagColumn is true, make sure the
       // existing
-      // id columns are the prefix of the incoming id columns, or vice versa
+      // id columns are the prefix of the incoming tag columns, or vice versa
       if (isStrictTagColumn) {
         final List<TsTableColumnSchema> realTagColumns = table.getTagColumnSchemaList();
         final List<ColumnSchema> incomingTagColumns = tableSchema.getTagColumns();
         if (realTagColumns.size() <= incomingTagColumns.size()) {
-          // When incoming table has more ID columns, the existing id columns
-          // should be the prefix of the incoming id columns (or equal)
+          // When incoming table has more TAG columns, the existing tag columns
+          // should be the prefix of the incoming tag columns (or equal)
           for (int indexReal = 0; indexReal < realTagColumns.size(); indexReal++) {
             final String tagName = realTagColumns.get(indexReal).getColumnName();
             final int indexIncoming = tableSchema.getIndexAmongTagColumns(tagName);
@@ -152,8 +152,8 @@ public class TableHeaderSchemaValidator {
             }
           }
         } else {
-          // When existing table has more ID columns, the incoming id columns
-          // should be the prefix of the existing id columns
+          // When existing table has more TAG columns, the incoming tag columns
+          // should be the prefix of the existing tag columns
           for (int indexIncoming = 0; indexIncoming < incomingTagColumns.size(); indexIncoming++) {
             final String tagName = incomingTagColumns.get(indexIncoming).getName();
             final int indexReal = table.getTagColumnOrdinal(tagName);
