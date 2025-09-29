@@ -81,7 +81,7 @@ IoTDB的主要特点如下:
 
 # 快速开始
 
-这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
+这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](https://iotdb.apache.org/zh/UserGuide/latest/QuickStart/QuickStart.html)。
 
 ## 环境准备
 
@@ -108,7 +108,7 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 * 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
 
-在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
+在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](https://iotdb.apache.org/zh/UserGuide/latest/QuickStart/QuickStart.html)。
 
 ## 从源码构建
 
@@ -182,10 +182,10 @@ git checkout rel/x.x
 
 配置文件在"conf"文件夹下
 * 环境配置模块(`datanode-env.bat`, `datanode-env.sh`),
-* 系统配置模块(`iotdb-datanode.properties`)
+* 系统配置模块(`iotdb-system.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)。
+有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/latest/Reference/DataNode-Config-Manual.html)。
 
 ## 开始
 
@@ -364,7 +364,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[用户指南](https://iotdb.apache.org/zh/UserGuide/latest/QuickStart/QuickStart.html)。
 
 ### 停止 IoTDB
 
@@ -378,12 +378,13 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 > sbin\stop-standalone.bat
 ```
 
-# 导入导出CSV工具
+# 数据导入导出工具
 
-查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/latest/Tools-System/Import-Export-Tool.html)
+查看 [数据导入工具](https://iotdb.apache.org/zh/UserGuide/latest/Tools-System/Data-Import-Tool.html)
+查看 [数据导出工具](https://iotdb.apache.org/zh/UserGuide/latest/Tools-System/Data-Export-Tool.html)
 
 # 常见编译错误
-查看 [常见编译错误](https://iotdb.apache.org/zh/Community/Development-Guide.html)
+查看 [常见编译错误](https://iotdb.apache.org/zh/Community/Development-Guide.html#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
 
 # 联系我们
 ### QQ群
