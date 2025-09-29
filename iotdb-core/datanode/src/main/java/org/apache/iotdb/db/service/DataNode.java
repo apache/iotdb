@@ -127,6 +127,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLHandshakeException;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -374,6 +376,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         break;
       } catch (TException | ClientManagerException e) {
         logger.warn("Cannot pull system configurations from ConfigNode-leader", e);
+        if (e.getCause() != null
+            && e.getCause().getCause() != null
+            && e.getCause().getCause() instanceof SSLHandshakeException) {
+          throw new StartupException("Cannot SSL Handshake with ConfigNode-leader.");
+        }
         retry--;
       }
 

@@ -204,6 +204,8 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLHandshakeException;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -433,6 +435,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
                 Thread.currentThread().getStackTrace()[2].getMethodName());
         logger.warn(message, e);
         configLeader = null;
+        if (e.getCause() != null && e.getCause() instanceof SSLHandshakeException) {
+          throw e;
+        }
       }
 
       // If we have detected all configNodes and still not return
