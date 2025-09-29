@@ -376,10 +376,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         break;
       } catch (TException | ClientManagerException e) {
         logger.warn("Cannot pull system configurations from ConfigNode-leader", e);
-        if (e.getCause() != null
-            && e.getCause().getCause() != null
-            && e.getCause().getCause() instanceof SSLHandshakeException) {
-          throw new StartupException("Cannot SSL Handshake with ConfigNode-leader.");
+        if (e.getCause() != null && e.getCause().getCause() != null) {
+          Throwable cause = e.getCause().getCause();
+          if (cause instanceof SSLHandshakeException) {
+            throw new StartupException("Cannot SSL Handshake with ConfigNode-leader.");
+          } else if (cause.getMessage() != null && cause.getMessage().contains("IOException")) {
+            throw new StartupException("Cannot connect to ConfigNode-leader.");
+          }
         }
         retry--;
       }
