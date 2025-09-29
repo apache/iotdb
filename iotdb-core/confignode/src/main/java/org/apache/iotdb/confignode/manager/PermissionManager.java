@@ -44,8 +44,8 @@ public class PermissionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PermissionManager.class);
 
-  private final ConfigManager configManager;
-  private final AuthorInfo authorInfo;
+  protected final ConfigManager configManager;
+  protected final AuthorInfo authorInfo;
 
   public PermissionManager(final ConfigManager configManager, final AuthorInfo authorInfo) {
     this.configManager = configManager;
@@ -106,7 +106,7 @@ public class PermissionManager {
     }
   }
 
-  private ConsensusManager getConsensusManager() {
+  protected ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
   }
 

@@ -125,5 +125,5 @@ public enum CnToDnAsyncRequestType {
   DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
 
   // audit log and event write-back
-  INSERT_RECORD
+  INSERT_RECORD,
 }
