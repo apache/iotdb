@@ -53,6 +53,8 @@ public class RelationalAuthorStatement extends Statement {
   private Set<PrivilegeType> privilegeType;
 
   private boolean grantOption;
+  private long executedByUserId;
+  private String newUsername = "";
 
   public RelationalAuthorStatement(
       AuthorRType authorType,
@@ -149,6 +151,10 @@ public class RelationalAuthorStatement extends Statement {
     return privilegeIds;
   }
 
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
   public void setDatabase(String database) {
     this.database = database;
   }
@@ -163,6 +169,18 @@ public class RelationalAuthorStatement extends Statement {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
+  }
+
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
   }
 
   @Override
@@ -225,6 +243,7 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_USER_ROLE:
+      case RENAME_USER:
         return QueryType.WRITE;
       case LIST_ROLE:
       case LIST_USER:

@@ -68,6 +68,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -276,8 +277,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         DNAuditLogger.getInstance().setCoordinator(Coordinator.getInstance());
         AuditLogFields fields =
             new AuditLogFields(
-                null,
                 -1,
+                null,
                 null,
                 AuditEventType.CHANGE_AUDIT_OPTION,
                 AuditLogOperation.CONTROL,
@@ -292,7 +293,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
                 thisNode);
-        DNAuditLogger.getInstance().log(fields, logMessage);
+        DNAuditLogger.getInstance().log(fields, () -> logMessage);
       }
 
       if (isUsingPipeConsensus()) {
@@ -451,7 +452,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    *
    * <p>6. All TTL information
    */
-  private void storeRuntimeConfigurations(
+  protected void storeRuntimeConfigurations(
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
       throws StartupException {
     /* Store ConfigNodeList */
@@ -481,8 +482,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     String clusterId = runtimeConfiguration.getClusterId();
     storeClusterID(clusterId);
 
-    /* Store table info*/
+    /* Store table info */
     DataNodeTableCache.getInstance().init(runtimeConfiguration.getTableInfo());
+
+    /* Store audit log configuration */
+    CommonDescriptor.getInstance().loadAuditConfig(runtimeConfiguration.auditConfig);
+
+    /* Store superuser name */
+    AuthorityChecker.setSuperUser(runtimeConfiguration.getSuperUserName());
   }
 
   /**

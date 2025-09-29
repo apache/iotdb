@@ -23,13 +23,13 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
@@ -273,8 +273,7 @@ public class LoadTsFileTableSchemaCache {
     }
 
     // Check on creation, do not auto-create tables or database that cannot be inserted
-    Coordinator.getInstance()
-        .getAccessControl()
+    AuthorityChecker.getAccessControl()
         .checkCanInsertIntoTable(
             context.getSession().getUserName(),
             new QualifiedObjectName(database, tableName),
@@ -311,8 +310,7 @@ public class LoadTsFileTableSchemaCache {
               + " does not exist, please enable 'enable_auto_create_schema' to enable auto creation.");
     }
 
-    Coordinator.getInstance()
-        .getAccessControl()
+    AuthorityChecker.getAccessControl()
         .checkCanCreateDatabase(context.getSession().getUserName(), database, context);
     final CreateDBTask task =
         new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);

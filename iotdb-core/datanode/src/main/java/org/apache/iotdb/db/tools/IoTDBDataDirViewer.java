@@ -33,6 +33,7 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -166,15 +167,31 @@ public class IoTDBDataDirViewer {
     for (IDeviceID device : keys) {
       // iterating the index, must present
       //noinspection OptionalGetWithoutIsPresent
+      Optional<Long> startTime = resource.getStartTime(device);
+      long start;
+      if (!startTime.isPresent()) {
+        printlnBoth(pw, String.format("|  |  |  |  |  |--device %s, start time is null", device));
+        return;
+      } else {
+        start = startTime.get();
+      }
+      long end;
+      Optional<Long> endTime = resource.getStartTime(device);
+      if (!endTime.isPresent()) {
+        printlnBoth(pw, String.format("|  |  |  |  |  |--device %s, end time is null", device));
+        return;
+      } else {
+        end = endTime.get();
+      }
       printlnBoth(
           pw,
           String.format(
               "|  |  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
               device,
-              resource.getStartTime(device),
-              DateTimeUtils.convertLongToDate(resource.getStartTime(device).get()),
-              resource.getEndTime(device),
-              DateTimeUtils.convertLongToDate(resource.getEndTime(device).get())));
+              start,
+              DateTimeUtils.convertLongToDate(start),
+              end,
+              DateTimeUtils.convertLongToDate(end)));
     }
   }
 

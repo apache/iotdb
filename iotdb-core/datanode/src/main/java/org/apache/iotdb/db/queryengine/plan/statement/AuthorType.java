@@ -34,7 +34,10 @@ public enum AuthorType {
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIVILEGE,
-  LIST_ROLE_PRIVILEGE;
+  LIST_ROLE_PRIVILEGE,
+  // Remind to renew the convert codes in ConfigNodeRPCServiceProcessor
+  RENAME_USER,
+  ;
 
   /**
    * deserialize short number.
@@ -74,6 +77,8 @@ public enum AuthorType {
         return LIST_USER_PRIVILEGE;
       case 14:
         return LIST_ROLE_PRIVILEGE;
+      case 15:
+        return RENAME_USER;
       default:
         return null;
     }
@@ -116,6 +121,8 @@ public enum AuthorType {
         return 13;
       case LIST_ROLE_PRIVILEGE:
         return 14;
+      case RENAME_USER:
+        return 15;
       default:
         return -1;
     }

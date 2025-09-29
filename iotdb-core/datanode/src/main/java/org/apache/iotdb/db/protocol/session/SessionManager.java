@@ -21,11 +21,9 @@ package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -33,11 +31,8 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.audit.AuditLogger;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.BasicAuthorityCache;
-import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
-import org.apache.iotdb.db.auth.IAuthorityFetcher;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -49,8 +44,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -63,7 +56,6 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,16 +96,8 @@ public class SessionManager implements SessionManagerMBean {
   // The statementId is unique in one IoTDB instance.
   private final AtomicLong statementIdGenerator = new AtomicLong();
 
-  private static final AuthorStatement AUTHOR_STATEMENT = new AuthorStatement(StatementType.AUTHOR);
-
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-
-  private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
-      MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
-
-  private static final boolean ENABLE_AUDIT_LOG =
-      IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
 
   protected SessionManager() {
     // singleton
@@ -160,7 +144,7 @@ public class SessionManager implements SessionManagerMBean {
     lastDataQueryReq.setSessionId(0);
     lastDataQueryReq.setPaths(
         Collections.singletonList(
-            SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
+            DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
 
     long queryId = -1;
     try {
@@ -169,8 +153,8 @@ public class SessionManager implements SessionManagerMBean {
           new SessionInfo(
               0,
               new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
                   IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
               ZoneId.systemDefault());
 
@@ -264,8 +248,7 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        User user = authorityFetcher.get().getUser(username);
-        long userId = user == null ? -1 : user.getUserId();
+        long userId = AuthorityChecker.getUserId(username).orElse(-1L);
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
@@ -315,20 +298,8 @@ public class SessionManager implements SessionManagerMBean {
             openSessionResp.getMessage(),
             username,
             session);
-        if (ENABLE_AUDIT_LOG) {
-          AuditLogger.log(
-              String.format(
-                  "%s: Login status: %s. User : %s, opens Session-%s",
-                  IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session),
-              AUTHOR_STATEMENT);
-        }
       }
     } else {
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format("User %s opens Session failed with an incorrect password", username),
-            AUTHOR_STATEMENT);
-      }
       openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
     }
 
@@ -345,21 +316,7 @@ public class SessionManager implements SessionManagerMBean {
             String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
-    if (session1 != null && session != session1) {
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "The client-%s is trying to close another session %s, pls check if it's a bug",
-                session, session1),
-            AUTHOR_STATEMENT);
-      }
-      return false;
-    } else {
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("Session-%s is closing", session), AUTHOR_STATEMENT);
-      }
-      return true;
-    }
+    return session1 == null || session == session1;
   }
 
   private void releaseSessionResource(IClientSession session, LongConsumer releaseQueryResource) {

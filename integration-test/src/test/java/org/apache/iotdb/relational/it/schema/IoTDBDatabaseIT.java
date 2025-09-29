@@ -60,12 +60,16 @@ public class IoTDBDatabaseIT {
         .getConfig()
         .getCommonConfig()
         .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     // enable subscription
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setSubscriptionEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
@@ -800,6 +804,7 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
+      // One for AUDIT database
       TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 2);
     }
   }

@@ -157,6 +157,7 @@ statement
     | grantUserRoleStatement
     | revokeUserRoleStatement
     | alterUserStatement
+    | renameUserStatement
     | listUserPrivilegeStatement
     | listRolePrivilegeStatement
     | listUserStatement
@@ -706,6 +707,10 @@ dropRoleStatement
 
 alterUserStatement
     : ALTER USER userName=identifier SET PASSWORD password=string
+    ;
+
+renameUserStatement
+    : ALTER USER username=identifier RENAME TO newUsername=identifier
     ;
 
 grantUserRoleStatement

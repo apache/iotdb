@@ -459,6 +459,7 @@ public class ConfigPlanExecutor {
       case CreateUser:
       case CreateRole:
       case DropUser:
+      case DropUserV2:
       case DropRole:
       case GrantRole:
       case GrantUser:
@@ -467,6 +468,7 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case UpdateUserV2:
       case UpdateUserMaxSession:
       case UpdateUserMinSession:
       case CreateUserWithRawPassword:
@@ -481,11 +483,14 @@ public class ConfigPlanExecutor {
       case RevokeRoleDep:
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
+      case RenameUser:
       case RCreateRole:
       case RCreateUser:
       case RDropUser:
+      case RDropUserV2:
       case RDropRole:
       case RUpdateUser:
+      case RUpdateUserV2:
       case RUpdateUserMaxSession:
       case RUpdateUserMinSession:
       case RGrantUserRole:
@@ -510,6 +515,7 @@ public class ConfigPlanExecutor {
       case RRevokeRoleSysPri:
       case RRevokeRoleTBPriv:
       case RRevokeUserRole:
+      case RRenameUser:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);

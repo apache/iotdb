@@ -318,6 +318,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
+  @Override
+  public void renameUser(String username, String newUsername) throws AuthException {
+    userManager.renameUser(username, newUsername);
+  }
+
   private void forceUpdateUserPassword(String userName, String newPassword) throws AuthException {
     if (!userManager.updateUserPassword(userName, newPassword, true)) {
       throw new AuthException(

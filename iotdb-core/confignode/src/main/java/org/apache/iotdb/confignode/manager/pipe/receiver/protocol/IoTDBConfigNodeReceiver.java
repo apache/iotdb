@@ -540,7 +540,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         }
         return StatusUtils.OK;
       case UpdateUser:
+      case UpdateUserV2:
       case RUpdateUser:
+      case RUpdateUserV2:
         return ((AuthorPlan) plan).getUserName().equals(username)
             ? StatusUtils.OK
             : configManager
@@ -550,7 +552,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RCreateUser:
       case CreateUserWithRawPassword:
       case DropUser:
+      case DropUserV2:
       case RDropUser:
+      case RDropUserV2:
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
             .getStatus();
@@ -874,6 +878,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case CreateUserWithRawPassword:
       case CreateRole:
       case DropUser:
+      case DropUserV2:
       case DropRole:
       case GrantRole:
       case GrantUser:
@@ -882,9 +887,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case UpdateUserV2:
       case RCreateUser:
       case RCreateRole:
       case RDropUser:
+      case RDropUserV2:
+      case RUpdateUser:
+      case RUpdateUserV2:
       case RDropRole:
       case RGrantRoleAll:
       case RGrantUserAll:

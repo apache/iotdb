@@ -31,6 +31,19 @@ set sql_dialect_param=-sql_dialect %DEFAULT_SQL_DIALECT%
 set PARAMETERS=
 
 REM -------------------------------
+REM Normalize script path to ensure %~dp0 resolves correctly
+REM Using pushd/popd with %CD% is more reliable than %~dp0 alone
+pushd "%~dp0" >nul 2>&1
+set SCRIPT_DIR=%CD%
+popd >nul 2>&1
+
+REM -------------------------------
+REM Set IOTDB_HOME
+if not defined IOTDB_HOME (
+    for %%I in ("%~dp0..\..") do set "IOTDB_HOME=%%~fI"
+)
+
+REM -------------------------------
 REM Parse command-line arguments
 :parse_args
 if "%~1"=="" goto after_parse
@@ -81,13 +94,6 @@ goto parse_args
 REM Combine all parameters
 set PARAMETERS=%host_param% %port_param% %user_param% %passwd_param% %sql_dialect_param% %PARAMETERS%
 
-REM -------------------------------
-REM Set IOTDB_HOME
-if not defined IOTDB_HOME (
-    pushd %~dp0..\..
-    set IOTDB_HOME=%CD%
-    popd
-)
 
 REM CLI configuration
 set IOTDB_CLI_CONF=%IOTDB_HOME%\conf
@@ -95,11 +101,7 @@ set MAIN_CLASS=org.apache.iotdb.cli.Cli
 
 REM -------------------------------
 REM CLASSPATH setup
-if exist "%IOTDB_HOME%\lib" (
-    set CLASSPATH=%IOTDB_HOME%\lib\*
-) else (
-    set CLASSPATH=%IOTDB_HOME%\..\lib\*
-)
+set CLASSPATH=%IOTDB_HOME%\lib\*
 
 REM -------------------------------
 REM JAVA executable
@@ -115,12 +117,10 @@ if defined JAVA_HOME (
 
 REM -------------------------------
 REM JVM options
-set JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 set IOTDB_CLI_PARAMS=-Dlogback.configurationFile=%IOTDB_CLI_CONF%\logback-cli.xml
 set JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 --add-opens=java.base/java.lang=ALL-UNNAMED
 
 REM -------------------------------
 REM Run CLI
-echo %PARAMETERS%
 "%JAVA%" %JVM_OPTS% %IOTDB_CLI_PARAMS% -cp "%CLASSPATH%" %MAIN_CLASS% %PARAMETERS%
 exit /b %ERRORLEVEL%

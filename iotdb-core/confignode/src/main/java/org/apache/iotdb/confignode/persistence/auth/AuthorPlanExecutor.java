@@ -73,6 +73,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     this.authorizer = authorizer;
   }
 
+  @Override
   public TPermissionInfoResp login(String username, String password) {
     boolean status;
     String loginMessage = null;
@@ -107,10 +108,12 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public String login4Pipe(final String username, final String password) {
     return authorizer.login4Pipe(username, password);
   }
 
+  @Override
   public TSStatus executeAuthorNonQuery(AuthorTreePlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
@@ -120,10 +123,15 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     Set<Integer> permissions = authorPlan.getPermissions();
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
+    String newUsername = authorPlan.getNewUsername();
     try {
       switch (authorType) {
         case UpdateUser:
+        case UpdateUserV2:
           authorizer.updateUserPassword(userName, newPassword);
+          break;
+        case RenameUser:
+          authorizer.renameUser(userName, newUsername);
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
@@ -135,6 +143,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           authorizer.createRole(roleName);
           break;
         case DropUser:
+        case DropUserV2:
           authorizer.deleteUser(userName);
           break;
         case DropRole:
@@ -207,6 +216,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  @Override
   public TSStatus executeRelationalAuthorNonQuery(AuthorRelationalPlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
@@ -222,6 +232,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         privileges.add(PrivilegeType.values()[permission]);
       }
     }
+    String newUsername = authorPlan.getNewUsername();
 
     try {
       switch (authorType) {
@@ -232,12 +243,17 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           authorizer.createRole(roleName);
           break;
         case RUpdateUser:
+        case RUpdateUserV2:
           authorizer.updateUserPassword(userName, authorPlan.getPassword());
+          break;
+        case RRenameUser:
+          authorizer.renameUser(userName, newUsername);
           break;
         case RDropRole:
           authorizer.deleteRole(roleName);
           break;
         case RDropUser:
+        case RDropUserV2:
           authorizer.deleteUser(userName);
           break;
         case RGrantUserRole:
@@ -439,6 +455,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  @Override
   public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> userList;
@@ -482,6 +499,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public PermissionInfoResp executeListRoles(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> permissionInfo = new ArrayList<>();
@@ -504,6 +522,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) throws AuthException {
     boolean isTreePlan = plan instanceof AuthorTreePlan;
     final PermissionInfoResp result = new PermissionInfoResp();
@@ -528,6 +547,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     boolean isTreePlan = plan instanceof AuthorTreePlan;
@@ -552,6 +572,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
    *
    * @param username The username of the user that needs to be cached
    */
+  @Override
   public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
       throws AuthException {
     TPermissionInfoResp result = new TPermissionInfoResp();
@@ -575,6 +596,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
     boolean status;
     TPermissionInfoResp result = new TPermissionInfoResp();
@@ -618,6 +640,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
       throws AuthException {
     TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
@@ -658,6 +681,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return resp;
   }
 
+  @Override
   public TPermissionInfoResp checkRoleOfUser(String username, String roleName)
       throws AuthException {
     TPermissionInfoResp result;
@@ -675,6 +699,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public TPermissionInfoResp getUser(String username) throws AuthException {
     TPermissionInfoResp result;
     User user = authorizer.getUser(username);
@@ -687,6 +712,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public String getUserName(long userId) throws AuthException {
     return authorizer.getUser(userId).getName();
   }

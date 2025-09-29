@@ -470,6 +470,7 @@ public class ConfigurationFileUtils {
   public enum EffectiveModeType {
     HOT_RELOAD,
     FIRST_START,
+    FIRST_START_OR_SET_CONFIGURATION,
     RESTART,
     UNKNOWN;
 
@@ -478,6 +479,8 @@ public class ConfigurationFileUtils {
         return HOT_RELOAD;
       } else if (FIRST_START.name().equalsIgnoreCase(effectiveMode)) {
         return FIRST_START;
+      } else if (FIRST_START_OR_SET_CONFIGURATION.name().equalsIgnoreCase(effectiveMode)) {
+        return FIRST_START_OR_SET_CONFIGURATION;
       } else if (RESTART.name().equalsIgnoreCase(effectiveMode)) {
         return RESTART;
       } else {

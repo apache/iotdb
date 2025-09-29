@@ -286,6 +286,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -846,8 +847,11 @@ public class ConfigManager implements IManager {
     final List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
     final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(false);
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
-    for (final String database : allDatabases) {
+    Iterator<String> iterator = allDatabases.iterator();
+    while (iterator.hasNext()) {
+      String database = iterator.next();
       if (!needAuditDB && TREE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(database)) {
+        iterator.remove();
         continue;
       }
       try {

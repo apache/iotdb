@@ -619,6 +619,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     req.setGrantOpt(false);
     req.setUserName(username);
     req.setRoleName(rolename);
+    req.setNewUsername("");
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -710,7 +711,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
         authorStatement.getGrantOpt(),
-        AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
+        AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()),
+        authorStatement.getExecutedByUserId(),
+        authorStatement.getNewUsername());
   }
 
   private TAuthorizerRelationalReq statementToAuthorizerReq(
@@ -725,6 +728,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getPrivilegeTypes() == null
             ? Collections.emptySet()
             : authorStatement.getPrivilegeIds(),
-        authorStatement.isGrantOption());
+        authorStatement.isGrantOption(),
+        authorStatement.getExecutedByUserId(),
+        authorStatement.getNewUsername());
   }
 }

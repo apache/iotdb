@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -201,15 +200,10 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
-      String userName = context.getSession().getUserName();
-      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        TSStatus status =
-            AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
-                PrivilegeType.EXTEND_TEMPLATE);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
-        }
+      TSStatus status =
+          AuthorityChecker.getAccessControl().checkCanAlterTemplate(context, () -> templateName);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
       }
     } finally {
       PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
@@ -222,15 +216,12 @@ class AutoCreateSchemaExecutor {
       Map<String, TemplateExtendInfo> templateExtendInfoMap, MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
-      String userName = context.getSession().getUserName();
-      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        TSStatus status =
-            AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
-                PrivilegeType.EXTEND_TEMPLATE);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
-        }
+      TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkCanAlterTemplate(
+                  context, () -> String.join(",", templateExtendInfoMap.keySet()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
       }
     } finally {
       PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
@@ -504,8 +495,7 @@ class AutoCreateSchemaExecutor {
   // Auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       final Statement statement, final MPPQueryContext context) {
-    final TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
+    final TSStatus status = AuthorityChecker.checkAuthority(statement, context);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }

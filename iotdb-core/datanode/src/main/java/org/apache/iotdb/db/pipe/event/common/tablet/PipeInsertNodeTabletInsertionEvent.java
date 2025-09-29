@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
@@ -39,7 +40,6 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -290,8 +290,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   private void checkTableName(final String tableName) {
-    if (!Coordinator.getInstance()
-        .getAccessControl()
+    if (!AuthorityChecker.getAccessControl()
         .checkCanSelectFromTable4Pipe(
             userName,
             new QualifiedObjectName(getTableModelDatabaseName(), tableName),
