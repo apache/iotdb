@@ -107,8 +107,10 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       if (commonConfig.isEnableInternalSSL()) {
         TSSLTransportFactory.TSSLTransportParameters params =
             new TSSLTransportFactory.TSSLTransportParameters();
-        params.setTrustStore(commonConfig.getTrustStorePath(), commonConfig.getTrustStorePwd());
-        params.setKeyStore(commonConfig.getKeyStorePath(), commonConfig.getKeyStorePwd());
+        params.setTrustStore(
+            commonConfig.getInternalTrustStorePath(), commonConfig.getInternalTrustStorePwd());
+        params.setKeyStore(
+            commonConfig.getInternalKeyStorePath(), commonConfig.getInternalKeyStorePwd());
         transport =
             new TFramedTransport.Factory()
                 .getTransport(

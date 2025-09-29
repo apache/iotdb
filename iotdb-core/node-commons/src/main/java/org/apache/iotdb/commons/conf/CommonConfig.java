@@ -431,9 +431,6 @@ public class CommonConfig {
   /** Enable the Thrift Client ssl. */
   private boolean enableThriftClientSSL = false;
 
-  /** Enable the cluster internal connection ssl. */
-  private boolean enableInternalSSL = false;
-
   /** ssl key Store Path. */
   private String keyStorePath = "";
 
@@ -445,6 +442,21 @@ public class CommonConfig {
 
   /** ssl trust Store password. */
   private String trustStorePwd = "";
+
+  /** Enable the cluster internal connection ssl. */
+  private boolean enableInternalSSL = false;
+
+  /** ssl key Store Path for internal connection */
+  private String internalKeyStorePath = "";
+
+  /** ssl key Store password for internal connection */
+  private String internalKeyStorePwd = "";
+
+  /** ssl trust Store Path for internal connection */
+  private String internalTrustStorePath = "";
+
+  /** ssl trust Store password for internal connection */
+  private String internalTrustStorePwd = "";
 
   private String userEncryptTokenHint = "not set yet";
 
@@ -2569,14 +2581,6 @@ public class CommonConfig {
     this.enableThriftClientSSL = enableThriftClientSSL;
   }
 
-  public boolean isEnableInternalSSL() {
-    return enableInternalSSL;
-  }
-
-  public void setEnableInternalSSL(boolean enableInternalSSL) {
-    this.enableInternalSSL = enableInternalSSL;
-  }
-
   public String getKeyStorePath() {
     return keyStorePath;
   }
@@ -2607,6 +2611,46 @@ public class CommonConfig {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public boolean isEnableInternalSSL() {
+    return enableInternalSSL;
+  }
+
+  public void setEnableInternalSSL(boolean enableInternalSSL) {
+    this.enableInternalSSL = enableInternalSSL;
+  }
+
+  public String getInternalKeyStorePath() {
+    return internalKeyStorePath;
+  }
+
+  public void setInternalKeyStorePath(String internalKeyStorePath) {
+    this.internalKeyStorePath = internalKeyStorePath;
+  }
+
+  public String getInternalKeyStorePwd() {
+    return internalKeyStorePwd;
+  }
+
+  public void setInternalKeyStorePwd(String internalKeyStorePwd) {
+    this.internalKeyStorePwd = internalKeyStorePwd;
+  }
+
+  public String getInternalTrustStorePath() {
+    return internalTrustStorePath;
+  }
+
+  public void setInternalTrustStorePath(String internalTrustStorePath) {
+    this.internalTrustStorePath = internalTrustStorePath;
+  }
+
+  public String getInternalTrustStorePwd() {
+    return internalTrustStorePwd;
+  }
+
+  public void setInternalTrustStorePwd(String internalTrustStorePwd) {
+    this.internalTrustStorePwd = internalTrustStorePwd;
   }
 
   public boolean isEnforceStrongPassword() {
