@@ -2292,6 +2292,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus enableSeparationOfAdminPower() throws TException {
+    return null;
+  }
+
+  @Override
   public TSStatus merge() throws TException {
     try {
       storageEngine.mergeAll();
