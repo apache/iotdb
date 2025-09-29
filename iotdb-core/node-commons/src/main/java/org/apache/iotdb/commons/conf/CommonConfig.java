@@ -444,19 +444,19 @@ public class CommonConfig {
   private String trustStorePwd = "";
 
   /** Enable the cluster internal connection ssl. */
-  private boolean enableInternalSSL = true;
+  private boolean enableInternalSSL = false;
 
   /** ssl key Store Path for internal connection */
-  private String internalKeyStorePath = "/Users/ht/.keystore";
+  private String internalKeyStorePath = "";
 
   /** ssl key Store password for internal connection */
-  private String internalKeyStorePwd = "123456";
+  private String internalKeyStorePwd = "";
 
   /** ssl trust Store Path for internal connection */
-  private String internalTrustStorePath = "/Users/ht/.truststore";
+  private String internalTrustStorePath = "";
 
   /** ssl trust Store password for internal connection */
-  private String internalTrustStorePwd = "123456";
+  private String internalTrustStorePwd = "";
 
   private String userEncryptTokenHint = "not set yet";
 
