@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -146,7 +147,18 @@ public class LoadTsFileTableSchemaCache {
           e);
     }
 
-    createTableAndDatabaseIfNecessary(device.getTableName());
+    try {
+      createTableAndDatabaseIfNecessary(device.getTableName());
+    } catch (final Exception e) {
+      if (PipeConfig.getInstance().isSkipFailedTableSchemaCheck()) {
+        LOGGER.info(
+            "Failed to check table schema, will skip because skipFailedTableSchemaCheck is set to true, message: {}",
+            e.getMessage());
+      } else {
+        throw e;
+      }
+    }
+
     // TODO: add permission check and record auth cost
     addDevice(device);
     if (shouldFlushDevices()) {
