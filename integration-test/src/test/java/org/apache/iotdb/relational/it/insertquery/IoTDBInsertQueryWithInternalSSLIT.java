@@ -64,10 +64,10 @@ public class IoTDBInsertQueryWithInternalSSLIT extends IoTDBInsertQueryIT {
         .setTrustStorePath(keyDir + "test-truststore")
         .setTrustStorePwd("thrift");
     CommonDescriptor.getInstance().getConfig().setEnableInternalSSL(true);
-    CommonDescriptor.getInstance().getConfig().setKeyStorePath(keyDir + "test-keystore");
-    CommonDescriptor.getInstance().getConfig().setKeyStorePwd("thrift");
-    CommonDescriptor.getInstance().getConfig().setTrustStorePath(keyDir + "test-truststore");
-    CommonDescriptor.getInstance().getConfig().setTrustStorePwd("thrift");
+    CommonDescriptor.getInstance().getConfig().setInternalKeyStorePath(keyDir + "test-keystore");
+    CommonDescriptor.getInstance().getConfig().setInternalKeyStorePwd("thrift");
+    CommonDescriptor.getInstance().getConfig().setInternalTrustStorePath(keyDir + "test-truststore");
+    CommonDescriptor.getInstance().getConfig().setInternalTrustStorePwd("thrift");
     EnvFactory.getEnv().initClusterEnvironment();
     prepareDatabase();
     prepareData();
@@ -82,9 +82,9 @@ public class IoTDBInsertQueryWithInternalSSLIT extends IoTDBInsertQueryIT {
       fail(e.getMessage());
     }
     CommonDescriptor.getInstance().getConfig().setEnableInternalSSL(false);
-    CommonDescriptor.getInstance().getConfig().setKeyStorePath("");
-    CommonDescriptor.getInstance().getConfig().setKeyStorePwd("");
-    CommonDescriptor.getInstance().getConfig().setTrustStorePath("");
-    CommonDescriptor.getInstance().getConfig().setTrustStorePwd("");
+    CommonDescriptor.getInstance().getConfig().setInternalKeyStorePath("");
+    CommonDescriptor.getInstance().getConfig().setInternalKeyStorePwd("");
+    CommonDescriptor.getInstance().getConfig().setInternalTrustStorePath("");
+    CommonDescriptor.getInstance().getConfig().setInternalTrustStorePwd("");
   }
 }

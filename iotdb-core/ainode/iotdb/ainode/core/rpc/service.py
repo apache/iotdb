@@ -84,11 +84,11 @@ class AINodeRPCService(threading.Thread):
                 context.verify_mode = ssl.CERT_REQUIRED
             context.check_hostname = False
             context.load_verify_locations(
-                cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file()
+                cafile=AINodeDescriptor().get_config().get_ain_internal_ssl_cert_file()
             )
             context.load_cert_chain(
-                certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
-                keyfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_key_file(),
+                certfile=AINodeDescriptor().get_config().get_ain_internal_ssl_cert_file(),
+                keyfile=AINodeDescriptor().get_config().get_ain_internal_ssl_key_file(),
             )
             transport = TSSLSocket.TSSLServerSocket(
                 host=AINodeDescriptor().get_config().get_ain_rpc_address(),
