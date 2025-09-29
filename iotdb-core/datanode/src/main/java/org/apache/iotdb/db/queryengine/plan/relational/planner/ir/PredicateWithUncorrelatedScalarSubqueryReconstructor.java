@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.ExplainType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
@@ -36,13 +37,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
+import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -140,7 +144,13 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
         checkArgument(
             tsBlock.get().getPositionCount() == 1 && !tsBlock.get().getColumn(0).isNull(0),
             "Scalar Subquery result should only have one row.");
-        switch (columns[0].getDataType()) {
+
+        // column type
+        DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
+        List<TSDataType> dataTypes = datasetHeader.getRespDataTypes();
+        checkArgument(dataTypes.size() == 1, "Scalar Subquery result should only have one column.");
+
+        switch (dataTypes.get(0)) {
           case INT32:
           case DATE:
             return Optional.of(new LongLiteral(Long.toString(columns[0].getInt(0))));
@@ -154,9 +164,10 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
           case BOOLEAN:
             return Optional.of(new BooleanLiteral(Boolean.toString(columns[0].getBoolean(0))));
           case BLOB:
+            return Optional.of(new BinaryLiteral(columns[0].getBinary(0).toString()));
           case TEXT:
           case STRING:
-            return Optional.of(new BinaryLiteral(columns[0].getBinary(0).toString()));
+            return Optional.of(new StringLiteral(columns[0].getBinary(0).toString()));
           default:
             throw new IllegalArgumentException(
                 String.format(
