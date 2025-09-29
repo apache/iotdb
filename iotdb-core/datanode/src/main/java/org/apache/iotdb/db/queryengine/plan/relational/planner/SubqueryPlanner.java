@@ -157,7 +157,7 @@ class SubqueryPlanner {
 
   private void tryFoldUncorrelatedScalarSubqueryInPredicate(
       Expression expression, MPPQueryContext context) {
-    PredicateWithUncorrelatedScalarSubqueryReconstructor
+    PredicateWithUncorrelatedScalarSubqueryReconstructor.getInstance()
         .reconstructPredicateWithUncorrelatedScalarSubquery(expression, context);
   }
 

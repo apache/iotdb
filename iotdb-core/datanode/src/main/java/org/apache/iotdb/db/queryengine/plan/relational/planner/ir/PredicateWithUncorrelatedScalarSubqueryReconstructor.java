@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.ExplainType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -57,11 +58,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
 
   private static final Coordinator coordinator = Coordinator.getInstance();
 
-  private PredicateWithUncorrelatedScalarSubqueryReconstructor() {
-    // utility class
-  }
-
-  public static void reconstructPredicateWithUncorrelatedScalarSubquery(
+  public void reconstructPredicateWithUncorrelatedScalarSubquery(
       Expression expression, MPPQueryContext context) {
     if (expression instanceof LogicalExpression) {
       LogicalExpression logicalExpression = (LogicalExpression) expression;
@@ -99,7 +96,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
    *     Optional.empty() if the subquery cannot be executed in advance or if it does not return a
    *     valid result.
    */
-  private static Optional<Literal> fetchUncorrelatedSubqueryResultForPredicate(
+  public Optional<Literal> fetchUncorrelatedSubqueryResultForPredicate(
       SubqueryExpression subqueryExpression, MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
@@ -181,5 +178,26 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
     return Optional.empty();
+  }
+
+  private static class PredicateWithUncorrelatedScalarSubqueryReconstructorHolder {
+    private static PredicateWithUncorrelatedScalarSubqueryReconstructor INSTANCE =
+        new PredicateWithUncorrelatedScalarSubqueryReconstructor();
+
+    private PredicateWithUncorrelatedScalarSubqueryReconstructorHolder() {
+      // Empty constructor
+    }
+  }
+
+  public static PredicateWithUncorrelatedScalarSubqueryReconstructor getInstance() {
+    return PredicateWithUncorrelatedScalarSubqueryReconstructor
+        .PredicateWithUncorrelatedScalarSubqueryReconstructorHolder.INSTANCE;
+  }
+
+  @TestOnly
+  public static void setInstance(PredicateWithUncorrelatedScalarSubqueryReconstructor instance) {
+    PredicateWithUncorrelatedScalarSubqueryReconstructor
+            .PredicateWithUncorrelatedScalarSubqueryReconstructorHolder.INSTANCE =
+        instance;
   }
 }
