@@ -51,8 +51,8 @@ public class AuthorInfo implements SnapshotProcessor {
   public static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final String NO_USER_MSG = "No such user : ";
 
-  private IAuthorizer authorizer;
-  private volatile IAuthorPlanExecutor authorPlanExecutor;
+  protected IAuthorizer authorizer;
+  protected volatile IAuthorPlanExecutor authorPlanExecutor;
 
   public AuthorInfo() {
     try {
@@ -147,6 +147,11 @@ public class AuthorInfo implements SnapshotProcessor {
   public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
       throws AuthException {
     return authorPlanExecutor.getUserPermissionInfo(username, type);
+  }
+
+  public TSStatus enableSeparationOfAdminPowers(
+      String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
+    throw new UnsupportedOperationException("EnableSeparationOfAdminPowers is not supported");
   }
 
   @TestOnly

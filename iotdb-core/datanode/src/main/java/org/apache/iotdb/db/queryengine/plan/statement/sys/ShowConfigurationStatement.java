@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 import java.util.Collection;
@@ -39,6 +40,7 @@ public class ShowConfigurationStatement extends Statement implements IConfigStat
 
   public ShowConfigurationStatement(
       boolean showAllConfigurations, int nodeId, boolean withDescription) {
+    this.statementType = StatementType.SHOW_CONFIGURATION;
     this.showAllConfigurations = showAllConfigurations;
     this.nodeId = nodeId;
     this.withDescription = withDescription;

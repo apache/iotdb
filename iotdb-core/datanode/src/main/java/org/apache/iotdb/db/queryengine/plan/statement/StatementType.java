@@ -188,5 +188,6 @@ public enum StatementType {
 
   SET_CONFIGURATION,
 
-  FAST_LAST_QUERY
+  FAST_LAST_QUERY,
+  SHOW_CONFIGURATION,
 }
