@@ -94,7 +94,9 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             use_ssl=AINodeDescriptor()
             .get_config()
             .get_ain_cluster_ingress_ssl_enabled(),
-            ca_certs=AINodeDescriptor().get_config().get_ain_cluster_ingress_ssl_cert_file(),
+            ca_certs=AINodeDescriptor()
+            .get_config()
+            .get_ain_cluster_ingress_ssl_cert_file(),
         )
         self.session.open(False)
         self.use_rate = use_rate
@@ -276,7 +278,9 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
             use_ssl=AINodeDescriptor()
             .get_config()
             .get_ain_cluster_ingress_ssl_enabled(),
-            ca_certs=AINodeDescriptor().get_config().get_ain_cluster_ingress_ssl_cert_file(),
+            ca_certs=AINodeDescriptor()
+            .get_config()
+            .get_ain_cluster_ingress_ssl_cert_file(),
         )
         self.session = TableSession(table_session_config)
         self.use_rate = use_rate

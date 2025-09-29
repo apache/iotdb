@@ -237,7 +237,9 @@ class AINodeConfig(object):
     def get_ain_cluster_ingress_ssl_cert_file(self) -> str:
         return self._ain_cluster_ingress_ssl_cert_file
 
-    def set_ain_cluster_ingress_ssl_cert_file(self, ain_cluster_ingress_ssl_cert_file: str) -> None:
+    def set_ain_cluster_ingress_ssl_cert_file(
+        self, ain_cluster_ingress_ssl_cert_file: str
+    ) -> None:
         self._ain_cluster_ingress_ssl_cert_file = ain_cluster_ingress_ssl_cert_file
 
     def get_ain_internal_ssl_enabled(self) -> bool:

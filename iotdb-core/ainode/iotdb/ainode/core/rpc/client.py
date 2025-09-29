@@ -123,7 +123,9 @@ class ConfigNodeClient(object):
                 cafile=AINodeDescriptor().get_config().get_ain_internal_ssl_cert_file()
             )
             context.load_cert_chain(
-                certfile=AINodeDescriptor().get_config().get_ain_internal_ssl_cert_file(),
+                certfile=AINodeDescriptor()
+                .get_config()
+                .get_ain_internal_ssl_cert_file(),
                 keyfile=AINodeDescriptor().get_config().get_ain_internal_ssl_key_file(),
             )
             socket = TSSLSocket.TSSLSocket(
