@@ -66,7 +66,9 @@ public class IoTDBInsertQueryWithInternalSSLIT extends IoTDBInsertQueryIT {
     CommonDescriptor.getInstance().getConfig().setEnableInternalSSL(true);
     CommonDescriptor.getInstance().getConfig().setInternalKeyStorePath(keyDir + "test-keystore");
     CommonDescriptor.getInstance().getConfig().setInternalKeyStorePwd("thrift");
-    CommonDescriptor.getInstance().getConfig().setInternalTrustStorePath(keyDir + "test-truststore");
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setInternalTrustStorePath(keyDir + "test-truststore");
     CommonDescriptor.getInstance().getConfig().setInternalTrustStorePwd("thrift");
     EnvFactory.getEnv().initClusterEnvironment();
     prepareDatabase();
