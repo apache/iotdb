@@ -149,13 +149,28 @@ public class TElasticFramedTransport extends TTransport {
             TTransportException.CORRUPTED_DATA,
             "Singular frame size ("
                 + size
-                + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, please confirm that you are using the right port");
+                + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, "
+                + "please confirm that you are using the right port");
       } else {
         throw new TTransportException(
             TTransportException.CORRUPTED_DATA,
             "Frame size (" + size + ") larger than protect max size (" + thriftMaxFrameSize + ")!");
       }
     }
+
+    int high24 = size >>> 8;
+    if (high24 >= 0x160300 && high24 <= 0x160303 && (i32buf[3] & 0xFF) <= 0x02) {
+      // The typical TLS ClientHello requests start with 0x160300 ~ 0x160303
+      // The 4th byte is typically in [0x00, 0x01, 0x02].
+      close();
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA,
+          "Singular frame size ("
+              + size
+              + ") detected, you may be sending TLS ClientHello requests to the Non-SSL Thrift-RPC"
+              + " port, please confirm that you are using the right configuration");
+    }
+
     readBuffer.fill(underlying, size);
   }
 

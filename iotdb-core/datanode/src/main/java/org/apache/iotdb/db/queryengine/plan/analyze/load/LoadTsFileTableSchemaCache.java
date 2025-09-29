@@ -100,13 +100,13 @@ public class LoadTsFileTableSchemaCache {
   private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
 
   // tableName -> Pair<device column count, device column mapping>
-  private Map<String, Pair<Integer, Map<Integer, Integer>>> tableIdColumnMapper = new HashMap<>();
+  private Map<String, Pair<Integer, Map<Integer, Integer>>> tableTagColumnMapper = new HashMap<>();
 
   private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
   private ITimeIndex currentTimeIndex;
 
   private long batchTable2DevicesMemoryUsageSizeInBytes = 0;
-  private long tableIdColumnMapperMemoryUsageSizeInBytes = 0;
+  private long tableTagColumnMapperMemoryUsageSizeInBytes = 0;
   private long currentModificationsMemoryUsageSizeInBytes = 0;
   private long currentTimeIndexMemoryUsageSizeInBytes = 0;
 
@@ -217,22 +217,22 @@ public class LoadTsFileTableSchemaCache {
       @Override
       public List<Object[]> getDeviceIdList() {
         final List<Object[]> devices = new ArrayList<>();
-        final Pair<Integer, Map<Integer, Integer>> idColumnCountAndMapper =
-            tableIdColumnMapper.get(tableName);
-        if (Objects.isNull(idColumnCountAndMapper)) {
+        final Pair<Integer, Map<Integer, Integer>> tagColumnCountAndMapper =
+            tableTagColumnMapper.get(tableName);
+        if (Objects.isNull(tagColumnCountAndMapper)) {
           // This should not happen
-          LOGGER.warn("Failed to find id column mapping for table {}", tableName);
+          LOGGER.warn("Failed to find tag column mapping for table {}", tableName);
         }
 
         for (final IDeviceID device : currentBatchTable2Devices.get(tableName)) {
-          if (Objects.isNull(idColumnCountAndMapper)) {
+          if (Objects.isNull(tagColumnCountAndMapper)) {
             devices.add(Arrays.copyOfRange(device.getSegments(), 1, device.getSegments().length));
             continue;
           }
 
-          final Object[] deviceIdArray = new String[idColumnCountAndMapper.getLeft()];
+          final Object[] deviceIdArray = new String[tagColumnCountAndMapper.getLeft()];
           for (final Map.Entry<Integer, Integer> fileColumn2RealColumn :
-              idColumnCountAndMapper.getRight().entrySet()) {
+              tagColumnCountAndMapper.getRight().entrySet()) {
             final int fileColumnIndex = fileColumn2RealColumn.getKey();
             final int realColumnIndex = fileColumn2RealColumn.getValue();
             deviceIdArray[realColumnIndex] =
@@ -294,7 +294,7 @@ public class LoadTsFileTableSchemaCache {
               "Failed to validate schema for table {%s, %s}",
               fileSchema.getTableName(), fileSchema));
     }
-    verifyTableDataTypeAndGenerateIdColumnMapper(fileSchema, realSchema);
+    verifyTableDataTypeAndGenerateTagColumnMapper(fileSchema, realSchema);
   }
 
   private void autoCreateTableDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
@@ -329,18 +329,18 @@ public class LoadTsFileTableSchemaCache {
     }
   }
 
-  private void verifyTableDataTypeAndGenerateIdColumnMapper(
+  private void verifyTableDataTypeAndGenerateTagColumnMapper(
       TableSchema fileSchema, TableSchema realSchema) throws LoadAnalyzeException {
-    final int realIdColumnCount = realSchema.getIdColumns().size();
-    final Map<Integer, Integer> idColumnMapping =
-        tableIdColumnMapper
+    final int realTagColumnCount = realSchema.getTagColumns().size();
+    final Map<Integer, Integer> tagColumnMapping =
+        tableTagColumnMapper
             .computeIfAbsent(
-                realSchema.getTableName(), k -> new Pair<>(realIdColumnCount, new HashMap<>()))
+                realSchema.getTableName(), k -> new Pair<>(realTagColumnCount, new HashMap<>()))
             .getRight();
 
-    Map<String, Integer> idColumnNameToIndex = new HashMap<>();
-    for (int i = 0; i < realSchema.getIdColumns().size(); i++) {
-      idColumnNameToIndex.put(realSchema.getIdColumns().get(i).getName(), i);
+    Map<String, Integer> tagColumnNameToIndex = new HashMap<>();
+    for (int i = 0; i < realSchema.getTagColumns().size(); i++) {
+      tagColumnNameToIndex.put(realSchema.getTagColumns().get(i).getName(), i);
     }
     Map<String, ColumnSchema> fieldColumnNameToSchema = new HashMap<>();
     for (ColumnSchema column : realSchema.getColumns()) {
@@ -349,16 +349,16 @@ public class LoadTsFileTableSchemaCache {
       }
     }
 
-    int idColumnIndex = 0;
+    int tagColumnIndex = 0;
     for (ColumnSchema fileColumn : fileSchema.getColumns()) {
       if (fileColumn.getColumnCategory() == TsTableColumnCategory.TAG) {
-        Integer realIndex = idColumnNameToIndex.get(fileColumn.getName());
+        Integer realIndex = tagColumnNameToIndex.get(fileColumn.getName());
         if (realIndex != null) {
-          idColumnMapping.put(idColumnIndex++, realIndex);
+          tagColumnMapping.put(tagColumnIndex++, realIndex);
         } else {
           throw new LoadAnalyzeException(
               String.format(
-                  "Id column %s in TsFile is not found in IoTDB table %s",
+                  "Tag column %s in TsFile is not found in IoTDB table %s",
                   fileColumn.getName(), realSchema.getTableName()));
         }
       } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
@@ -374,19 +374,19 @@ public class LoadTsFileTableSchemaCache {
         }
       }
     }
-    updateTableIdColumnMapperMemoryUsageSizeInBytes();
+    updateTableTagColumnMapperMemoryUsageSizeInBytes();
   }
 
-  private void updateTableIdColumnMapperMemoryUsageSizeInBytes() {
-    block.reduceMemoryUsage(tableIdColumnMapperMemoryUsageSizeInBytes);
-    tableIdColumnMapperMemoryUsageSizeInBytes = 0;
+  private void updateTableTagColumnMapperMemoryUsageSizeInBytes() {
+    block.reduceMemoryUsage(tableTagColumnMapperMemoryUsageSizeInBytes);
+    tableTagColumnMapperMemoryUsageSizeInBytes = 0;
     for (final Map.Entry<String, Pair<Integer, Map<Integer, Integer>>> entry :
-        tableIdColumnMapper.entrySet()) {
-      tableIdColumnMapperMemoryUsageSizeInBytes += computeStringMemUsage(entry.getKey());
-      tableIdColumnMapperMemoryUsageSizeInBytes +=
+        tableTagColumnMapper.entrySet()) {
+      tableTagColumnMapperMemoryUsageSizeInBytes += computeStringMemUsage(entry.getKey());
+      tableTagColumnMapperMemoryUsageSizeInBytes +=
           (4L + 4L * 2 * entry.getValue().getRight().size());
     }
-    block.addMemoryUsage(tableIdColumnMapperMemoryUsageSizeInBytes);
+    block.addMemoryUsage(tableTagColumnMapperMemoryUsageSizeInBytes);
   }
 
   public void setCurrentModificationsAndTimeIndex(
@@ -431,13 +431,13 @@ public class LoadTsFileTableSchemaCache {
 
   public void close() {
     clearDevices();
-    clearIdColumnMapper();
+    clearTagColumnMapper();
     clearModificationsAndTimeIndex();
 
     block.close();
 
     currentBatchTable2Devices = null;
-    tableIdColumnMapper = null;
+    tableTagColumnMapper = null;
   }
 
   private void clearDevices() {
@@ -456,9 +456,9 @@ public class LoadTsFileTableSchemaCache {
     currentTimeIndexMemoryUsageSizeInBytes = 0;
   }
 
-  public void clearIdColumnMapper() {
-    tableIdColumnMapper.clear();
-    block.reduceMemoryUsage(tableIdColumnMapperMemoryUsageSizeInBytes);
-    tableIdColumnMapperMemoryUsageSizeInBytes = 0;
+  public void clearTagColumnMapper() {
+    tableTagColumnMapper.clear();
+    block.reduceMemoryUsage(tableTagColumnMapperMemoryUsageSizeInBytes);
+    tableTagColumnMapperMemoryUsageSizeInBytes = 0;
   }
 }

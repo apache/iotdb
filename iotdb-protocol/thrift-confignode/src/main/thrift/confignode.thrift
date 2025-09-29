@@ -29,6 +29,13 @@ struct TSystemConfigurationResp {
   4: optional TCQConfig cqConfig
 }
 
+struct TAuditConfig {
+  1: required bool enableAuditLog
+  2: optional string auditableOperationType
+  3: optional string auditableOperationLevel
+  4: optional string auditableOperationResult
+}
+
 struct TGlobalConfig {
   1: required string dataRegionConsensusProtocolClass
   2: required string schemaRegionConsensusProtocolClass
@@ -109,6 +116,8 @@ struct TRuntimeConfiguration {
   5: required list<binary> allPipeInformation
   6: optional string clusterId
   7: optional binary tableInfo
+  8: required TAuditConfig auditConfig
+  9: required string superUserName
 }
 
 struct TDataNodeRegisterReq {
@@ -345,6 +354,7 @@ struct TAuthorizerReq {
   7: required bool grantOpt
   8: required binary nodeNameList
   9: required i64 executedByUserID
+  10: required string newUsername
 }
 
 struct TAuthorizerRelationalReq {
@@ -357,6 +367,7 @@ struct TAuthorizerRelationalReq {
    7: required set<i32> permissions
    8: required bool grantOpt
    9: required i64 executedByUserID
+   10: required string newUsername
 }
 
 struct TAuthorizerResp {

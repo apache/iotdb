@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
@@ -64,6 +65,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
@@ -80,6 +82,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
@@ -126,7 +129,7 @@ public class NodeManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
   protected final NodeInfo nodeInfo;
@@ -251,6 +254,17 @@ public class NodeManager {
     dataSet.setCqConfig(cqConfig);
   }
 
+  private TAuditConfig getAuditConfig() {
+    TAuditConfig auditConfig = new TAuditConfig();
+    auditConfig.setEnableAuditLog(COMMON_CONFIG.isEnableAuditLog());
+    if (COMMON_CONFIG.isEnableAuditLog()) {
+      auditConfig.setAuditableOperationType(COMMON_CONFIG.getAuditableOperationTypeInStr());
+      auditConfig.setAuditableOperationLevel(COMMON_CONFIG.getAuditableOperationLevelInStr());
+      auditConfig.setAuditableOperationResult(COMMON_CONFIG.getAuditableOperationResult());
+    }
+    return auditConfig;
+  }
+
   private TRuntimeConfiguration getRuntimeConfiguration() {
     getPipeManager().getPipePluginCoordinator().lock();
     try {
@@ -274,7 +288,12 @@ public class NodeManager {
           runtimeConfiguration.setTableInfo(
               getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
           runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
+          runtimeConfiguration.setAuditConfig(getAuditConfig());
+          runtimeConfiguration.setSuperUserName(getPermissionManager().getUserName(0));
           return runtimeConfiguration;
+        } catch (AuthException e) {
+          // This will never reach, definitely
+          throw new RuntimeException(e);
         } finally {
           getUDFManager().getUdfInfo().releaseUDFTableLock();
         }
@@ -1289,6 +1308,10 @@ public class NodeManager {
 
   private ClusterManager getClusterManager() {
     return configManager.getClusterManager();
+  }
+
+  private PermissionManager getPermissionManager() {
+    return configManager.getPermissionManager();
   }
 
   private PartitionManager getPartitionManager() {

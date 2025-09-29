@@ -369,7 +369,7 @@ public class IoTDBConstant {
 
   public static final String INTEGRATION_TEST_KILL_POINTS = "integrationTestKillPoints";
 
-  // Authority
-  public static final String INTERNAL_AUDIT_USER = "_internal_auditor";
-  public static final int INTERNAL_AUDIT_USER_ID = 4;
+  // Class Name
+  public static final String STRING_2D_ARRAY_CLASS_NAME = String[][].class.getName();
+  public static final String STRING_ARRAY_CLASS_NAME = String[].class.getName();
 }

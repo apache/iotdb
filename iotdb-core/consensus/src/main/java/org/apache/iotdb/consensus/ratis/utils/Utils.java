@@ -55,6 +55,7 @@ import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 import java.io.File;
 import java.io.InputStream;
@@ -385,7 +386,13 @@ public class Utils {
         TrustManagerFactory tmf =
             TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         tmf.init(trustStore);
-        TrustManager trustManager = tmf.getTrustManagers()[0];
+        TrustManager originalTrustManager = tmf.getTrustManagers()[0];
+
+        // The self-signed certification may not set Subject Alternative Name (SAN)
+        // Thrift with ssl didn't check it, but Grpc did.
+        // Wrap to disable the verification
+        TrustManager trustManager =
+            new NoHostnameVerificationTrustManager((X509TrustManager) originalTrustManager);
         GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
       } catch (Exception e) {
         LOGGER.error("Failed to read key store or trust store.", e);

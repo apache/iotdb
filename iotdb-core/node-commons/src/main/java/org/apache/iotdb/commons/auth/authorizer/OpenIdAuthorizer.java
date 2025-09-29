@@ -262,4 +262,9 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   public void updateUserPassword(String userName, String newPassword) {
     throwUnsupportedOperationException();
   }
+
+  @Override
+  public void renameUser(String username, String newUsername) {
+    throwUnsupportedOperationException();
+  }
 }

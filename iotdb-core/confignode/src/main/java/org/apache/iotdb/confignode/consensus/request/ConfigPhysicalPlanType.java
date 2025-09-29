@@ -319,11 +319,13 @@ public enum ConfigPhysicalPlanType {
 
   ShowSubscription((short) 2000),
 
+  // Authority version after and equal 2.0
   DropUserV2((short) 2100),
   UpdateUserV2((short) 2101),
-
   RUpdateUserV2((short) 2102),
   RDropUserV2((short) 2103),
+  RenameUser((short) 2104),
+  RRenameUser((short) 2105),
 
   EnableSeparationOfAdminPowers((short) 2200),
 

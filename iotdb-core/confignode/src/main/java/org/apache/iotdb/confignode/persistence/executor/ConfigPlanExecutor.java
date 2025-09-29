@@ -483,6 +483,7 @@ public class ConfigPlanExecutor {
       case RevokeRoleDep:
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
+      case RenameUser:
       case RCreateRole:
       case RCreateUser:
       case RDropUser:
@@ -514,6 +515,7 @@ public class ConfigPlanExecutor {
       case RRevokeRoleSysPri:
       case RRevokeRoleTBPriv:
       case RRevokeUserRole:
+      case RRenameUser:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);

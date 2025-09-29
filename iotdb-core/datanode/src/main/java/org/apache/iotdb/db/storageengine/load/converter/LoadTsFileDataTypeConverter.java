@@ -54,8 +54,12 @@ public class LoadTsFileDataTypeConverter {
 
   public static final LoadConvertedInsertTabletStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
       new LoadConvertedInsertTabletStatementTSStatusVisitor();
-  public static final LoadConvertedInsertTabletStatementExceptionVisitor
-      STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
+  public static final LoadTreeConvertedInsertTabletStatementExceptionVisitor
+      TREE_STATEMENT_EXCEPTION_VISITOR =
+          new LoadTreeConvertedInsertTabletStatementExceptionVisitor();
+  public static final LoadTableConvertedInsertTabletStatementExceptionVisitor
+      TABLE_STATEMENT_EXCEPTION_VISITOR =
+          new LoadTableConvertedInsertTabletStatementExceptionVisitor();
 
   private final boolean isGeneratedByPipe;
   private final MPPQueryContext context;

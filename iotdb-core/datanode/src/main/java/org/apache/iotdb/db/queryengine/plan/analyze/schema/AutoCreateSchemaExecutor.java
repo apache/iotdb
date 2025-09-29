@@ -200,7 +200,8 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
-      TSStatus status = AuthorityChecker.getAccessControl().checkCanAlterTemplate(context);
+      TSStatus status =
+          AuthorityChecker.getAccessControl().checkCanAlterTemplate(context, () -> templateName);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
       }
@@ -215,7 +216,10 @@ class AutoCreateSchemaExecutor {
       Map<String, TemplateExtendInfo> templateExtendInfoMap, MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
-      TSStatus status = AuthorityChecker.getAccessControl().checkCanAlterTemplate(context);
+      TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkCanAlterTemplate(
+                  context, () -> String.join(",", templateExtendInfoMap.keySet()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
       }
@@ -491,8 +495,7 @@ class AutoCreateSchemaExecutor {
   // Auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       final Statement statement, final MPPQueryContext context) {
-    final TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
+    final TSStatus status = AuthorityChecker.checkAuthority(statement, context);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
