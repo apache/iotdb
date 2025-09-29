@@ -145,9 +145,9 @@ public class TableHeaderSchemaValidator {
             if (indexIncoming != indexReal) {
               throw new LoadAnalyzeTableColumnDisorderException(
                   String.format(
-                      "Can not create table because incoming table has no less id columns than existing table, "
-                          + "and the existing id columns are not the prefix of the incoming id columns. "
-                          + "Existing id column: %s, index in existing table: %s, index in incoming table: %s",
+                      "Can not create table because incoming table has no less tag columns than existing table, "
+                          + "and the existing tag columns are not the prefix of the incoming tag columns. "
+                          + "Existing tag column: %s, index in existing table: %s, index in incoming table: %s",
                       tagName, indexReal, indexIncoming));
             }
           }
@@ -160,9 +160,9 @@ public class TableHeaderSchemaValidator {
             if (indexReal != indexIncoming) {
               throw new LoadAnalyzeTableColumnDisorderException(
                   String.format(
-                      "Can not create table because existing table has more id columns than incoming table, "
-                          + "and the incoming id columns are not the prefix of the existing id columns. "
-                          + "Incoming id column: %s, index in existing table: %s, index in incoming table: %s",
+                      "Can not create table because existing table has more tag columns than incoming table, "
+                          + "and the incoming tag columns are not the prefix of the existing tag columns. "
+                          + "Incoming tag column: %s, index in existing table: %s, index in incoming table: %s",
                       tagName, indexReal, indexIncoming));
             }
           }

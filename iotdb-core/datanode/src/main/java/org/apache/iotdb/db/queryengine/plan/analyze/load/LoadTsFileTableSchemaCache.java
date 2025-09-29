@@ -152,8 +152,8 @@ public class LoadTsFileTableSchemaCache {
     } catch (final Exception e) {
       if (PipeConfig.getInstance().isSkipFailedTableSchemaCheck()) {
         LOGGER.info(
-            "Failed to check table schema, will skip because skipFailedTableSchemaCheck is set to true",
-            e);
+            "Failed to check table schema, will skip because skipFailedTableSchemaCheck is set to true, message: {}",
+            e.getMessage());
       } else {
         throw e;
       }
