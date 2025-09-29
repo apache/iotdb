@@ -126,4 +126,5 @@ public enum CnToDnAsyncRequestType {
 
   // audit log and event write-back
   INSERT_RECORD,
+  ENABLE_SEPARATION_OF_ADMIN_POWERS,
 }
