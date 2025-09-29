@@ -163,10 +163,7 @@ public class IoTDBLoginLockManagerIT extends AbstractScriptIT {
             "-pw",
             password,
             "-e",
-            "\"SELECT 1\"",
-            "&",
-            "exit",
-            "%^errorlevel%");
+            "\"SELECT 1\"");
     builder.environment().put("IOTDB_HOME", homePath);
     testOutput(builder, expectOutput, statusCode);
   }

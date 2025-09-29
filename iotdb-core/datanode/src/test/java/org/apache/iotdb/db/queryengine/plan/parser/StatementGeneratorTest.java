@@ -630,7 +630,7 @@ public class StatementGeneratorTest {
 
   @Test
   public void testDCLUserOperation() {
-    AuthorStatement unlockDcl = createAuthDclStmt("ALTER USER test@'127.0.0.1' ACCOUNT UNLOCK;");
+    AuthorStatement unlockDcl = createAuthDclStmt("ALTER USER test @ '127.0.0.1' ACCOUNT UNLOCK;");
     assertEquals("test", unlockDcl.getUserName());
     assertEquals("127.0.0.1", unlockDcl.getLoginAddr());
     assertEquals(StatementType.ACCOUNT_UNLOCK, unlockDcl.getType());
