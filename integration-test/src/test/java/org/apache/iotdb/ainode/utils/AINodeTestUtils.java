@@ -60,7 +60,8 @@ public class AINodeTestUtils {
     }
   }
 
-  public static void concurrentInference(Statement statement, String sql, int threadCnt, int loop)
+  public static void concurrentInference(
+      Statement statement, String sql, int threadCnt, int loop, int expectedOutputLength)
       throws InterruptedException {
     Thread[] threads = new Thread[threadCnt];
     for (int i = 0; i < threadCnt; i++) {
@@ -70,9 +71,11 @@ public class AINodeTestUtils {
                 try {
                   for (int j = 0; j < loop; j++) {
                     try (ResultSet resultSet = statement.executeQuery(sql)) {
+                      int outputCnt = 0;
                       while (resultSet.next()) {
-                        // do nothing
+                        outputCnt++;
                       }
+                      assertEquals(expectedOutputLength, outputCnt);
                     } catch (SQLException e) {
                       fail(e.getMessage());
                     }
