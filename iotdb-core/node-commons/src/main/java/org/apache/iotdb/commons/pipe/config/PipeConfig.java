@@ -119,6 +119,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
   }
 
+  public boolean isSkipFailedTableSchemaCheck() {
+    return COMMON_CONFIG.isSkipFailedTableSchemaCheck();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
