@@ -145,4 +145,9 @@ public class PermissionManager {
   public String getUserName(long userId) throws AuthException {
     return authorInfo.getUserName(userId);
   }
+
+  public TSStatus enableSeparationOfPowers(
+      String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
+    throw new UnsupportedOperationException("Enable separation of powers is not supported");
+  }
 }
