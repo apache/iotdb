@@ -368,4 +368,8 @@ public class IoTDBConstant {
   public static final String TTL_INFINITE = "INF";
 
   public static final String INTEGRATION_TEST_KILL_POINTS = "integrationTestKillPoints";
+
+  // Class Name
+  public static final String STRING_2D_ARRAY_CLASS_NAME = String[][].class.getName();
+  public static final String STRING_ARRAY_CLASS_NAME = String[].class.getName();
 }
