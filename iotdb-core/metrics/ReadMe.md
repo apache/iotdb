@@ -128,5 +128,5 @@ MetricService.getInstance().count(1, "operation_count", MetricLevel.IMPORTANT, "
    2. These metrics will be managed by your MetricManager, and reported by your reporter.
 
 # 5. Some docs
-1. <a href = "https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/Metric-Tool.html">Metric Tool</a>
-2. <a href = "https://iotdb.apache.org/zh/UserGuide/Master/Maintenance-Tools/Metric-Tool.html">Metric Tool(zh)</a>
+1. <a href = "https://iotdb.apache.org/UserGuide/latest/Tools-System/Monitor-Tool.html">Metric Tool</a>
+2. <a href = "https://iotdb.apache.org/zh/UserGuide/latest/Tools-System/Monitor-Tool.html">Metric Tool(zh)</a>
