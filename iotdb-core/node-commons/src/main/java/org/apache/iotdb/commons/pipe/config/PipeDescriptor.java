@@ -278,6 +278,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_realTime_queue_max_waiting_tsFile_size",
                 String.valueOf(config.getPipeRealTimeQueueMaxWaitingTsFileSize()))));
+    config.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(config.isSkipFailedTableSchemaCheck()))));
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(
