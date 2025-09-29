@@ -40,7 +40,7 @@ public class LoginLockManagerTest {
   private static final long OTHER_USER_ID = 2002L;
   private static final String TEST_IP = "192.168.1.1";
   private static final String ANOTHER_IP = "10.0.0.1";
-  private static final long EXEMPT_USER_ID = 10000L; // root
+  private static final long EXEMPT_USER_ID = 0L; // root
 
   private final int failedLoginAttempts = 3;
   private final int failedLoginAttemptsPerUser = 5;

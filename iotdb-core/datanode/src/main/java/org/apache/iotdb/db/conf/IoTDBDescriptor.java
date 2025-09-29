@@ -707,15 +707,6 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty("max_expired_time", Long.toString(conf.getMaxExpiredTime()))));
 
-    conf.setFailedLoginAttempts(
-        Integer.parseInt(properties.getProperty("failed_login_attempts", "5")));
-
-    conf.setFailedLoginAttemptsPerUser(
-        Integer.parseInt(properties.getProperty("failed_login_attempts_per_user", "1000")));
-
-    conf.setPasswordLockTimeMinutes(
-        Integer.parseInt(properties.getProperty("password_lock_time_minutes", "10")));
-
     conf.setExpiredDataRatio(
         Float.parseFloat(
             properties.getProperty(

@@ -1148,9 +1148,7 @@ usernameWithRoot
     ;
 
 usernameWithRootWithOptionalHost
-    : ROOT
-    | identifier
-    | USERNAME_WITH_HOST
+    : usernameWithRoot (AT host=STRING_LITERAL)?
     ;
 
 /**

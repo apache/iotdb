@@ -60,7 +60,8 @@ public class LoginLockManager {
       int failedLoginAttempts, int failedLoginAttemptsPerUser, int passwordLockTimeMinutes) {
     // Initialize exempt users
     this.exemptUsers = new HashSet<>();
-    this.exemptUsers.add(10000L); // root
+    long rootUserid = 0L;
+    this.exemptUsers.add(rootUserid); // root
 
     // Set and validate failedLoginAttempts (IP level)
     if (failedLoginAttempts == -1) {

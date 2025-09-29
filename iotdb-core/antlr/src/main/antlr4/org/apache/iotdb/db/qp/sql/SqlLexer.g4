@@ -1218,6 +1218,7 @@ OPERATOR_NOT : '!';
  * 4. Constructors Symbols
  */
 
+AT : '@';
 DOT : '.';
 COMMA : ',';
 SEMI: ';';
@@ -1233,10 +1234,6 @@ DOUBLE_COLON: '::';
 /**
  * 5. Literals
  */
-
-USERNAME_WITH_HOST
-    : [a-zA-Z_] [a-zA-Z_0-9]* '@' '\'' .*? '\''
-    ;
 
 // String Literal
 
