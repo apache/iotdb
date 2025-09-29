@@ -158,6 +158,7 @@ statement
     | revokeUserRoleStatement
     | alterUserStatement
     | alterUserAccountUnlockStatement
+    | renameUserStatement
     | listUserPrivilegeStatement
     | listRolePrivilegeStatement
     | listUserStatement
@@ -717,6 +718,10 @@ usernameWithRootWithOptionalHost
     : ROOT
     | identifier
     | USERNAME_WITH_HOST
+    ;
+
+renameUserStatement
+    : ALTER USER username=identifier RENAME TO newUsername=identifier
     ;
 
 grantUserRoleStatement
@@ -1830,9 +1835,6 @@ CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
 
-USERNAME_WITH_HOST
-    : [a-zA-Z_] [a-zA-Z_0-9]* '@' '\'' .*? '\''
-    ;
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

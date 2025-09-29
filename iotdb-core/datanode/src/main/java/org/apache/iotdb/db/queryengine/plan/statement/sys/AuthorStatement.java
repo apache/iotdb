@@ -48,6 +48,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
   private long executedByUserId;
+  private String newUsername = "";
   private String loginAddr;
 
   /**
@@ -103,6 +104,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         break;
       case LIST_ROLE:
         this.setType(StatementType.LIST_ROLE);
+        break;
+      case RENAME_USER:
+        this.setType(StatementType.RENAME_USER);
         break;
       case ACCOUNT_UNLOCK:
         this.setType(StatementType.ACCOUNT_UNLOCK);
@@ -199,6 +203,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.executedByUserId = executedByUserId;
   }
 
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAuthor(this, context);
@@ -219,6 +231,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
       case REVOKE_USER_ROLE:
       case UPDATE_USER:
+      case RENAME_USER:
       case ACCOUNT_UNLOCK:
         queryType = QueryType.WRITE;
         break;

@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.audit.AuditLogger;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.BasicAuthorityCache;
 import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
@@ -105,8 +105,6 @@ public class SessionManager implements SessionManagerMBean {
   // The statementId is unique in one IoTDB instance.
   private final AtomicLong statementIdGenerator = new AtomicLong();
 
-  private static final AuthorStatement AUTHOR_STATEMENT = new AuthorStatement(StatementType.AUTHOR);
-
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
@@ -161,7 +159,7 @@ public class SessionManager implements SessionManagerMBean {
     lastDataQueryReq.setSessionId(0);
     lastDataQueryReq.setPaths(
         Collections.singletonList(
-            SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
+            DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
 
     long queryId = -1;
     try {
@@ -170,8 +168,8 @@ public class SessionManager implements SessionManagerMBean {
           new SessionInfo(
               0,
               new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
                   IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
               ZoneId.systemDefault());
 
@@ -261,11 +259,6 @@ public class SessionManager implements SessionManagerMBean {
     LoginLockManager loginLockManager = LoginLockManager.getInstance();
     if (enableLoginLock
         && loginLockManager.checkLock(user.getUserId(), session.getClientAddress())) {
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format("User %s opens Session failed with login locked", username),
-            AUTHOR_STATEMENT);
-      }
       // Generic authentication error
       openSessionResp
           .sessionId(-1)
@@ -334,23 +327,11 @@ public class SessionManager implements SessionManagerMBean {
             openSessionResp.getMessage(),
             username,
             session);
-        if (ENABLE_AUDIT_LOG) {
-          AuditLogger.log(
-              String.format(
-                  "%s: Login status: %s. User : %s, opens Session-%s",
-                  IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session),
-              AUTHOR_STATEMENT);
-        }
         if (enableLoginLock) {
           loginLockManager.clearFailure(tmpUser.getUserId(), session.getClientAddress());
         }
       }
     } else {
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format("User %s opens Session failed with an incorrect password", username),
-            AUTHOR_STATEMENT);
-      }
       openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
       if (enableLoginLock) {
         loginLockManager.recordFailure(user.getUserId(), session.getClientAddress());
@@ -370,21 +351,7 @@ public class SessionManager implements SessionManagerMBean {
             String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
-    if (session1 != null && session != session1) {
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "The client-%s is trying to close another session %s, pls check if it's a bug",
-                session, session1),
-            AUTHOR_STATEMENT);
-      }
-      return false;
-    } else {
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("Session-%s is closing", session), AUTHOR_STATEMENT);
-      }
-      return true;
-    }
+    return session1 == null || session == session1;
   }
 
   private void releaseSessionResource(IClientSession session, LongConsumer releaseQueryResource) {

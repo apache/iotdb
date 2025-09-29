@@ -315,6 +315,9 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
       visitUpdateUser(statement);
     }
+    if (statement.getAuthorType() == AuthorType.RENAME_USER) {
+      visitRenameUser(statement);
+    }
     TSStatus status = statement.checkStatementIsValid(context.getSession().getUserName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(status.getMessage());
@@ -329,6 +332,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     }
     statement.setPassWord(user.getPassword());
     DataNodeAuthUtils.verifyPasswordReuse(statement.getUserName(), statement.getNewPassword());
+  }
+
+  private void visitRenameUser(AuthorStatement statement) {
+    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
+    if (user == null) {
+      throw new SemanticException("User " + statement.getUserName() + " not found");
+    }
   }
 
   @Override

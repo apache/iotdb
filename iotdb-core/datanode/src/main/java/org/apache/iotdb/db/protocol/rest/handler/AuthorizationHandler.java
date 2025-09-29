@@ -19,29 +19,19 @@ package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.BasicAuthorityCache;
-import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
-import org.apache.iotdb.db.auth.IAuthorityFetcher;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import org.apache.ratis.util.MemoizedSupplier;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
 
-  private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
-      MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
-
   public Response checkAuthority(SecurityContext securityContext, Statement statement) {
     String userName = securityContext.getUserPrincipal().getName();
-    User user = authorityFetcher.get().getUser(userName);
-    long userId = user == null ? -1 : user.getUserId();
+    long userId = AuthorityChecker.getUserId(userName).orElse(-1L);
     TSStatus status =
         AuthorityChecker.checkAuthority(statement, new UserEntity(userId, userName, ""));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

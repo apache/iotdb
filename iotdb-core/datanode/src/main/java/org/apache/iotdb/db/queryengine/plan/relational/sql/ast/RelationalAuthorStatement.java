@@ -54,6 +54,7 @@ public class RelationalAuthorStatement extends Statement {
 
   private boolean grantOption;
   private long executedByUserId;
+  private String newUsername = "";
   private String loginAddr;
 
   public RelationalAuthorStatement(
@@ -175,6 +176,14 @@ public class RelationalAuthorStatement extends Statement {
     this.executedByUserId = executedByUserId;
   }
 
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
   public String getLoginAddr() {
     return loginAddr;
   }
@@ -244,6 +253,7 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_USER_ROLE:
+      case RENAME_USER:
       case ACCOUNT_UNLOCK:
         return QueryType.WRITE;
       case LIST_ROLE:
