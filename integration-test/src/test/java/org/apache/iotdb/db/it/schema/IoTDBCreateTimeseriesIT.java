@@ -300,4 +300,16 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
       fail();
     }
   }
+
+  @Test
+  public void testDifferentDeviceAlignment() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+      // Should ignore the alignment difference
+      statement.execute("create aligned timeseries root.sg2.d (s2 int64, s3 int64)");
+    } catch (SQLException ignored) {
+      fail();
+    }
+  }
 }
