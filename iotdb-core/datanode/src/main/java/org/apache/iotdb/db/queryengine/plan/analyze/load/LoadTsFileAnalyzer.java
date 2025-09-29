@@ -563,7 +563,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     getOrCreateTableSchemaCache().flush();
-    getOrCreateTableSchemaCache().clearIdColumnMapper();
+    getOrCreateTableSchemaCache().clearTagColumnMapper();
 
     TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);

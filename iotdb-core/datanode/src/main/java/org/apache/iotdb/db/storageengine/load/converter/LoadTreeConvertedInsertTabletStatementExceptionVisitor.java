@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class LoadConvertedInsertTabletStatementExceptionVisitor
+public class LoadTreeConvertedInsertTabletStatementExceptionVisitor
     extends StatementVisitor<TSStatus, Exception> {
 
   @Override

@@ -133,7 +133,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       validateTableSchema(incomingSchemaColumn, realSchemaColumn, i, innerTreeStatement);
     }
     // incoming schema should contain all id columns in real schema and have consistent order
-    final List<ColumnSchema> realIdColumns = realSchema.getIdColumns();
+    final List<ColumnSchema> realIdColumns = realSchema.getTagColumns();
     adjustIdColumns(realIdColumns, innerTreeStatement);
   }
 
