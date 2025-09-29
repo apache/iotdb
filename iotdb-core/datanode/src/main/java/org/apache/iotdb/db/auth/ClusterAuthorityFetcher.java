@@ -446,7 +446,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       SettableFuture<ConfigTaskResult> future = SettableFuture.create();
       User user = getUser(username);
       if (user == null) {
-        future.setException(new IoTDBException(String.format("User %s Not Found", username), 701));
+        future.setException(
+            new IoTDBException(
+                String.format("User %s does not exist", username),
+                TSStatusCode.USER_NOT_EXIST.getStatusCode()));
         return future;
       }
       String loginAddr =

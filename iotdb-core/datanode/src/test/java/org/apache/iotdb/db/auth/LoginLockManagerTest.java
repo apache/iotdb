@@ -335,13 +335,24 @@ public class LoginLockManagerTest {
 
   @Test
   public void testInvalidConfigurationDefaults() {
-    LoginLockManager invalidConfigManager = new LoginLockManager(-1, -1, -1);
-    for (int i = 0; i < 5; i++) {
-      invalidConfigManager.recordFailure(TEST_USER_ID, TEST_IP);
+    {
+      LoginLockManager invalidConfigManager = new LoginLockManager(-1, 0, -1);
+      for (int i = 0; i < 1000; i++) {
+        invalidConfigManager.recordFailure(TEST_USER_ID, TEST_IP);
+      }
+      assertTrue(
+          "Should use default config when invalid values provided",
+          invalidConfigManager.checkLock(TEST_USER_ID, TEST_IP));
     }
-    assertTrue(
-        "Should use default config when invalid values provided",
-        invalidConfigManager.checkLock(TEST_USER_ID, TEST_IP));
+    {
+      LoginLockManager invalidConfigManager = new LoginLockManager(-3, 0, -1);
+      for (int i = 0; i < 5; i++) {
+        invalidConfigManager.recordFailure(TEST_USER_ID, TEST_IP);
+      }
+      assertTrue(
+          "Should use default config when invalid values provided",
+          invalidConfigManager.checkLock(TEST_USER_ID, TEST_IP));
+    }
   }
 
   @Test
@@ -466,23 +477,7 @@ public class LoginLockManagerTest {
     failThread.start();
     clearThread.join();
     failThread.join();
-
-    // Validation: system should be in consistent state
-    boolean finalState = lockManager.checkLock(TEST_USER_ID, TEST_IP);
-    assertTrue(
-        "Final state should be either consistently locked or unlocked", finalState || !finalState);
-
-    // Additional verification: check internal counter state
-    try {
-      Field counterField = LoginLockManager.class.getDeclaredField("userIpLocks");
-      counterField.setAccessible(true);
-      ConcurrentMap<?, ?> locks = (ConcurrentMap<?, ?>) counterField.get(lockManager);
-      assertTrue(
-          "Internal counter should reflect concurrent operations",
-          locks.isEmpty() || !locks.isEmpty());
-    } catch (Exception e) {
-      fail("Reflection verification failed: " + e.getMessage());
-    }
+    lockManager.checkLock(TEST_USER_ID, TEST_IP);
   }
 
   @Test

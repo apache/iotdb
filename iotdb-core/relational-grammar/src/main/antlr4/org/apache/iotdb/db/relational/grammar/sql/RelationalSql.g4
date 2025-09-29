@@ -714,10 +714,13 @@ alterUserAccountUnlockStatement
     : ALTER USER userName=usernameWithRootWithOptionalHost ACCOUNT UNLOCK
     ;
 
-usernameWithRootWithOptionalHost
+usernameWithRoot
     : ROOT
     | identifier
-    | USERNAME_WITH_HOST
+    ;
+
+usernameWithRootWithOptionalHost
+    : usernameWithRoot (AT host=STRING_LITERAL)?
     ;
 
 renameUserStatement
@@ -1892,6 +1895,19 @@ fragment DATE_LITERAL
     : INTEGER_VALUE '-' INTEGER_VALUE '-' INTEGER_VALUE
     | INTEGER_VALUE '/' INTEGER_VALUE '/' INTEGER_VALUE
     | INTEGER_VALUE '.' INTEGER_VALUE '.' INTEGER_VALUE
+    ;
+
+fragment DQUOTA_STRING
+    : '"' ( '""' | ~('"') )* '"'
+    ;
+
+fragment SQUOTA_STRING
+    : '\'' ( '\'\'' | ~('\'') )* '\''
+    ;
+
+STRING_LITERAL
+    : DQUOTA_STRING
+    | SQUOTA_STRING
     ;
 
 fragment TIME_LITERAL
