@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
@@ -48,13 +49,14 @@ public class LoginLockManager {
   private final ConcurrentMap<String, UserLockInfo> userIpLocks = new ConcurrentHashMap<>();
 
   // Exempt users who should never be locked (only valid if request is from local host)
-  private static final Set<Long> EXEMPT_USERS =
-      Collections.unmodifiableSet(
-          new HashSet<Long>() {
-            {
-              add(0L); // root userid
-            }
-          });
+  private static final Set<Long> EXEMPT_USERS;
+
+  static {
+    Set<Long> tempSet = new HashSet<>();
+    tempSet.add((long) AuthorityChecker.SUPER_USER_ID); // root userid
+    tempSet.add(User.INTERNAL_SECURITY_ADMIN);
+    EXEMPT_USERS = Collections.unmodifiableSet(tempSet);
+  }
 
   public LoginLockManager() {
     this(
