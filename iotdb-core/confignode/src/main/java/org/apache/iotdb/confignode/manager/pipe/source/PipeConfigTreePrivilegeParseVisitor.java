@@ -47,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -152,7 +153,9 @@ public class PipeConfigTreePrivilegeParseVisitor
                               .checkUserPrivileges(
                                   userName,
                                   new PrivilegeUnion(
-                                      new PartialPath(path).concatNode(MULTI_LEVEL_PATH_WILDCARD),
+                                      Collections.singletonList(
+                                          new PartialPath(path)
+                                              .concatNode(MULTI_LEVEL_PATH_WILDCARD)),
                                       PrivilegeType.READ_SCHEMA))
                               .getStatus()
                               .getCode()
@@ -178,7 +181,9 @@ public class PipeConfigTreePrivilegeParseVisitor
                       .getPermissionManager()
                       .checkUserPrivileges(
                           userName,
-                          new PrivilegeUnion(new PartialPath(path), PrivilegeType.READ_SCHEMA))
+                          new PrivilegeUnion(
+                              Collections.singletonList(new PartialPath(path)),
+                              PrivilegeType.READ_SCHEMA))
                       .getStatus()
                       .getCode()
                   == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -188,7 +193,8 @@ public class PipeConfigTreePrivilegeParseVisitor
                   .checkUserPrivileges(
                       userName,
                       new PrivilegeUnion(
-                          new PartialPath(path).concatNode(MULTI_LEVEL_PATH_WILDCARD),
+                          Collections.singletonList(
+                              new PartialPath(path).concatNode(MULTI_LEVEL_PATH_WILDCARD)),
                           PrivilegeType.READ_SCHEMA))
                   .getStatus()
                   .getCode()
