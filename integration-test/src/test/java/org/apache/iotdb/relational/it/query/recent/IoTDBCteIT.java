@@ -106,48 +106,90 @@ public class IoTDBCteIT {
   }
 
   @Test
-  public void testQuery() {
-    final String mainQuery = "select * from cte order by deviceid";
-
+  public void testFilterQuery() {
     // case 1
+    String mainQuery = "select * from cte where time > 1000 order by deviceid";
     String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:01.000Z,d1,100.0,",
           "1970-01-01T00:00:02.000Z,d1,200.0,",
-          "1970-01-01T00:00:01.000Z,d2,300.0,"
         };
     String[] cteTemplateQueries = new String[] {"cte as %s (select * from testtb)"};
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
 
     // case 2
-    expectedHeader = new String[] {"deviceid", "voltage"};
-    retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
-    cteTemplateQueries = new String[] {"cte as %s (select deviceid, voltage from testtb)"};
+    mainQuery = "select * from cte where voltage > 200 order by deviceid";
+    expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    retArray = new String[] {"1970-01-01T00:00:01.000Z,d2,300.0,"};
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
+  }
 
-    // case 3
-    expectedHeader = new String[] {"deviceid", "avg_voltage"};
-    retArray = new String[] {"d1,150.0,", "d2,300.0,"};
-    cteTemplateQueries =
+  @Test
+  public void testSortQuery() {
+    final String mainQuery = "select * from cte order by deviceid, voltage desc";
+
+    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:02.000Z,d1,200.0,",
+          "1970-01-01T00:00:01.000Z,d1,100.0,",
+          "1970-01-01T00:00:01.000Z,d2,300.0,"
+        };
+    String[] cteTemplateQueries = new String[] {"cte as %s (select * from testtb)"};
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
+  }
+
+  @Test
+  public void testLimitOffsetQuery() {
+    final String mainQuery = "select * from cte limit 1 offset 1";
+
+    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:02.000Z,d1,200.0,",
+        };
+    String[] cteTemplateQueries =
+        new String[] {"cte as %s (select * from testtb where deviceid = 'd1') "};
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
+  }
+
+  @Test
+  public void testAggQuery() {
+    // case 1
+    String mainQuery = "select * from cte order by deviceid";
+    String[] expectedHeader = new String[] {"deviceid", "avg_voltage"};
+    String[] retArray = new String[] {"d1,150.0,", "d2,300.0,"};
+    String[] cteTemplateQueries =
         new String[] {
           "cte as %s (select deviceid, avg(voltage) as avg_voltage from testtb group by deviceid)"
         };
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
+
+    // case 2
+    mainQuery =
+        "select deviceid, avg(voltage) as avg_voltage from cte group by deviceid order by deviceid";
+    cteTemplateQueries = new String[] {"cte as %s (select deviceid, voltage from testtb)"};
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
   }
 
   @Test
   public void testPartialColumn() {
-    final String mainQuery = "select * from cte order by id";
-
     // case 1
-    String[] expectedHeader = new String[] {"id", "v"};
+    String mainQuery = "select * from cte order by deviceid";
+    String[] expectedHeader = new String[] {"deviceid", "voltage"};
     String[] retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
-    String[] cteTemplateQueries =
-        new String[] {"cte(id, v) as %s (select deviceid, voltage from testtb)"};
+    String[] cteTemplateQueries = new String[] {"cte as %s (select deviceid, voltage from testtb)"};
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
 
+    mainQuery = "select * from cte order by id";
+    expectedHeader = new String[] {"id", "v"};
+    retArray = new String[] {"d1,100.0,", "d1,200.0,", "d2,300.0,"};
+
     // case 2
+    cteTemplateQueries = new String[] {"cte(id, v) as %s (select deviceid, voltage from testtb)"};
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
+
+    // case 3
     cteTemplateQueries = new String[] {"cte(v) as %s (select deviceid, voltage from testtb)"};
     String errMsg = "701: Column alias list has 1 entries but relation has 2 columns";
     testCteFailureWithVariants(cteTemplateQueries, mainQuery, errMsg);
