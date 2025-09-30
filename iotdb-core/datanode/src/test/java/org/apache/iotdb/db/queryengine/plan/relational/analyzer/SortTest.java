@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.List;
@@ -77,6 +79,11 @@ public class SortTest {
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   DeviceTableScanNode deviceTableScanNode;
+
+  @BeforeClass
+  public static void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
 
   // order by some_ids, time, others; has filter
   @Test
