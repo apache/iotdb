@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -61,6 +62,14 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Comparison
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 
 public class UncorrelatedSubqueryTest {
+  private PlanTester planTester;
+
+  @Before
+  public void setUp() throws Exception {
+    planTester = new PlanTester();
+    mockPredicateWithUncorrelatedScalarSubquery();
+  }
+
   private void mockPredicateWithUncorrelatedScalarSubquery() {
     PredicateWithUncorrelatedScalarSubqueryReconstructor predicateWithUncorrelatedScalarSubquery =
         Mockito.spy(new PredicateWithUncorrelatedScalarSubqueryReconstructor());
@@ -74,9 +83,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedScalarSubqueryInWhereClause() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where s1 = (select max(s1) from table1)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -105,9 +111,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedScalarSubqueryInWhereClauseWithEnforceSingleRowNode() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where s1 = (select s2 from table1)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -129,9 +132,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedInPredicateSubquery() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where s1 in (select s1 from table1)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -183,9 +183,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedNotInPredicateSubquery() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where s1 not in (select s1 from table1)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -220,9 +217,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedAnyComparisonSubquery() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where s1 > any (select s1 from table1)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -350,9 +344,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedEqualsSomeComparisonSubquery() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where s1 = some (select s1 from table1)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -387,9 +378,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedAllComparisonSubquery() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where s1 != all (select s1 from table1)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -419,9 +407,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedExistsSubquery() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where exists(select s2 from table2)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -469,9 +454,6 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedNotExistsSubquery() {
-    PlanTester planTester = new PlanTester();
-    mockPredicateWithUncorrelatedScalarSubquery();
-
     String sql = "SELECT s1 FROM table1 where not exists(select s2 from table2)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
