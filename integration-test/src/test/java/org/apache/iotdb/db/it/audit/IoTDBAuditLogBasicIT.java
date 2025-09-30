@@ -26,6 +26,8 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.itbase.runtime.NodeConnection;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -96,7 +98,7 @@ public class IoTDBAuditLogBasicIT {
   private static final String AUDITABLE_OPERATION_RESULT = "SUCCESS,FAIL";
 
   @Before
-  public void setUp() throws SQLException {
+  public void setUp() throws SQLException, InterruptedException {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -108,27 +110,38 @@ public class IoTDBAuditLogBasicIT {
     // Init 1C1D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      // Ensure there exists audit database in tree model
-      ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.__audit");
-      Assert.assertTrue(resultSet.next());
-      Assert.assertEquals("root.__audit", resultSet.getString(1));
+    Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+    Statement statement = connection.createStatement();
+    ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.__audit");
+    Assert.assertTrue(resultSet.next());
+    Assert.assertEquals("root.__audit", resultSet.getString(1));
+    Thread.sleep(1000);
+    ((ClusterTestConnection) connection).writeConnection.close();
+    Thread.sleep(1000);
+    for (NodeConnection conn : ((ClusterTestConnection) connection).readConnections) {
+      Thread.sleep(1000);
+      conn.close();
+      Thread.sleep(1000);
     }
-
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      // Ensure there exists audit table
-      ResultSet resultSet = statement.executeQuery("DESC __audit.audit_log");
-      resultSet.next(); // Skip time column
-      int cnt = 0;
-      while (resultSet.next()) {
-        Assert.assertEquals(AUDIT_TABLE_COLUMNS.get(cnt), resultSet.getString(1));
-        Assert.assertEquals(AUDIT_TABLE_DATA_TYPES.get(cnt), resultSet.getString(2));
-        Assert.assertEquals(AUDIT_TABLE_CATEGORIES.get(cnt), resultSet.getString(3));
-        cnt++;
-      }
-      Assert.assertEquals(AUDIT_TABLE_COLUMNS.size(), cnt);
+    connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    statement = connection.createStatement();
+    resultSet = statement.executeQuery("DESC __audit.audit_log");
+    resultSet.next(); // Skip time column
+    int cnt = 0;
+    while (resultSet.next()) {
+      Assert.assertEquals(AUDIT_TABLE_COLUMNS.get(cnt), resultSet.getString(1));
+      Assert.assertEquals(AUDIT_TABLE_DATA_TYPES.get(cnt), resultSet.getString(2));
+      Assert.assertEquals(AUDIT_TABLE_CATEGORIES.get(cnt), resultSet.getString(3));
+      cnt++;
+    }
+    Assert.assertEquals(AUDIT_TABLE_COLUMNS.size(), cnt);
+    Thread.sleep(1000);
+    ((ClusterTestConnection) connection).writeConnection.close();
+    Thread.sleep(1000);
+    for (NodeConnection conn : ((ClusterTestConnection) connection).readConnections) {
+      Thread.sleep(1000);
+      conn.close();
+      Thread.sleep(1000);
     }
   }
 
@@ -176,7 +189,60 @@ public class IoTDBAuditLogBasicIT {
               "null",
               "null",
               "Successfully start the Audit service with configurations (auditableOperationType [DDL, DML, QUERY, CONTROL], auditableOperationLevel GLOBAL, auditableOperationResult SUCCESS,FAIL)"),
-          // Show audit database
+
+          // Environment init login/logout
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
           Arrays.asList(
               "node_1",
               "u_0",
@@ -190,6 +256,60 @@ public class IoTDBAuditLogBasicIT {
               "[root.__audit]",
               "SHOW DATABASES root.__audit",
               "User root (ID=0) requests authority on object root.__audit with result true"),
+          // Setup logout through tree model dialect, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          // Setup login through table model dialect, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
           // Desc audit table
           Arrays.asList(
               "node_1",
@@ -204,6 +324,58 @@ public class IoTDBAuditLogBasicIT {
               "__audit",
               "DESC __audit.audit_log",
               "User root (ID=0) requests authority on object audit_log with result true"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
           // Create database
           Arrays.asList(
               "node_1",
@@ -634,6 +806,54 @@ public class IoTDBAuditLogBasicIT {
               "CHANGE_AUDIT_OPTION",
               "null",
               "null"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session",
+              "",
+              "LOGIN",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "is closing",
+              "",
+              "LOGOUT",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session",
+              "",
+              "LOGIN",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session",
+              "",
+              "LOGIN",
+              "127.0.0.1",
+              "root"),
           // Show audit database
           Arrays.asList(
               "root.__audit.log.node_1.u_0",
@@ -647,6 +867,55 @@ public class IoTDBAuditLogBasicIT {
               "OBJECT_AUTHENTICATION",
               "127.0.0.1",
               "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "is closing",
+              "",
+              "LOGOUT",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "is closing",
+              "",
+              "LOGOUT",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session",
+              "",
+              "LOGIN",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session",
+              "",
+              "LOGIN",
+              "127.0.0.1",
+              "root"),
+
           // Desc audit table
           Arrays.asList(
               "root.__audit.log.node_1.u_0",
@@ -658,6 +927,54 @@ public class IoTDBAuditLogBasicIT {
               "User root (ID=0) requests authority on object audit_log with result true",
               "DESC __audit.audit_log",
               "OBJECT_AUTHENTICATION",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "is closing",
+              "",
+              "LOGOUT",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "is closing",
+              "",
+              "LOGOUT",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session",
+              "",
+              "LOGIN",
+              "127.0.0.1",
+              "root"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "null",
+              "",
+              "CONTROL",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session",
+              "",
+              "LOGIN",
               "127.0.0.1",
               "root"),
           // Create database
