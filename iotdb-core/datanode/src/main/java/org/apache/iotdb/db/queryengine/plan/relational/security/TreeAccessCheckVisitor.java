@@ -605,6 +605,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
+      case ACCOUNT_UNLOCK:
         context
             .setAuditLogOperation(AuditLogOperation.DDL)
             .setPrivilegeType(PrivilegeType.SECURITY);

@@ -2523,6 +2523,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
+  // Unlock User
+  @Override
+  public Statement visitAlterUserAccountUnlock(IoTDBSqlParser.AlterUserAccountUnlockContext ctx) {
+    String usernameWithRootWithOptionalHost = ctx.usernameWithRootWithOptionalHost().getText();
+    String[] parts = usernameWithRootWithOptionalHost.split("@", 2);
+    String username = parts[0];
+    String host = parts.length > 1 ? parts[1] : null;
+
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.ACCOUNT_UNLOCK);
+    authorStatement.setUserName(parseIdentifier(username));
+    if (host != null) {
+      authorStatement.setLoginAddr(parseStringLiteral(host));
+    }
+    return authorStatement;
+  }
+
   // Grant User Privileges
   @Override
   public Statement visitGrantUser(IoTDBSqlParser.GrantUserContext ctx) {

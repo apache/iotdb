@@ -431,6 +431,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_ROLE_SYS:
+      case ACCOUNT_UNLOCK:
         auditEntity
             .setAuditLogOperation(AuditLogOperation.DDL)
             .setPrivilegeType(PrivilegeType.SECURITY);
