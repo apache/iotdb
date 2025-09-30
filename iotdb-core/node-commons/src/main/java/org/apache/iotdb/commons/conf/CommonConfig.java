@@ -209,6 +209,7 @@ public class CommonConfig {
   // Sequentially poll the tsFile by default
   private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 1;
   private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
+  private boolean skipFailedTableSchemaCheck = false;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -1520,6 +1521,18 @@ public class CommonConfig {
     logger.info(
         "pipeRealTimeQueueMaxWaitingTsFileSize is set to {}.",
         pipeRealTimeQueueMaxWaitingTsFileSize);
+  }
+
+  public boolean isSkipFailedTableSchemaCheck() {
+    return skipFailedTableSchemaCheck;
+  }
+
+  public void setSkipFailedTableSchemaCheck(boolean skipFailedTableSchemaCheck) {
+    if (this.skipFailedTableSchemaCheck == skipFailedTableSchemaCheck) {
+      return;
+    }
+    this.skipFailedTableSchemaCheck = skipFailedTableSchemaCheck;
+    logger.info("skipFailedTableSchemaCheck is set to {}.", skipFailedTableSchemaCheck);
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {

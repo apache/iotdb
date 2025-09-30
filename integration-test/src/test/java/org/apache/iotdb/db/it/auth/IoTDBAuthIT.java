@@ -807,7 +807,7 @@ public class IoTDBAuthIT {
     }
   }
 
-  private void validateResultSet(ResultSet set, String ans) throws SQLException {
+  public static void validateResultSet(ResultSet set, String ans) throws SQLException {
     try {
       StringBuilder builder = new StringBuilder();
       ResultSetMetaData metaData = set.getMetaData();

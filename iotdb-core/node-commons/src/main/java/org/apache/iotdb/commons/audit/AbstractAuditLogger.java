@@ -76,10 +76,7 @@ public abstract class AbstractAuditLogger {
     if (result && !AUDITABLE_OPERATION_RESULT.contains("SUCCESS")) {
       return true;
     }
-    if (!result && !AUDITABLE_OPERATION_RESULT.contains("FAIL")) {
-      return true;
-    }
-    return false;
+    return !result && !AUDITABLE_OPERATION_RESULT.contains("FAIL");
   }
 
   public static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {

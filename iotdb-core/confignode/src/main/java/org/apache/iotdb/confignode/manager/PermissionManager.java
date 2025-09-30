@@ -46,8 +46,8 @@ public class PermissionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PermissionManager.class);
 
-  private final ConfigManager configManager;
-  private final AuthorInfo authorInfo;
+  protected final ConfigManager configManager;
+  protected final AuthorInfo authorInfo;
 
   public PermissionManager(final ConfigManager configManager, final AuthorInfo authorInfo) {
     this.configManager = configManager;
@@ -108,7 +108,7 @@ public class PermissionManager {
     }
   }
 
-  private ConsensusManager getConsensusManager() {
+  protected ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
   }
 
@@ -151,5 +151,10 @@ public class PermissionManager {
 
   public String getUserName(long userId) throws AuthException {
     return authorInfo.getUserName(userId);
+  }
+
+  public TSStatus enableSeparationOfPowers(
+      String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
+    throw new UnsupportedOperationException("Enable separation of powers is not supported");
   }
 }

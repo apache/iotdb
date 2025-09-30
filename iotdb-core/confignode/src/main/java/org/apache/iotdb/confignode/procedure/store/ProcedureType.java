@@ -114,6 +114,8 @@ public enum ProcedureType {
   /** Auth privilege */
   AUTH_OPERATE_PROCEDURE((short) 1300),
 
+  ENABLE_SEPARATION_OF_ADMIN_POWERS_PROCEDURE((short) 1301),
+
   /** TTL */
   SET_TTL_PROCEDURE((short) 1400),
 

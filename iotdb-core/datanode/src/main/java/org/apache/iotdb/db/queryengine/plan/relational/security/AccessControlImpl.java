@@ -252,11 +252,22 @@ public class AccessControlImpl implements AccessControl {
     switch (type) {
       case CREATE_USER:
       case DROP_USER:
-      case UPDATE_USER:
         auditEntity
             .setAuditLogOperation(AuditLogOperation.DDL)
             .setPrivilegeType(PrivilegeType.SECURITY);
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          return;
+        }
+        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
+        return;
+      case RENAME_USER:
+      case UPDATE_USER:
+        auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
+        // users can change the username and password of themselves
+        // the superuser can affect anyone
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
+            || statement.getUserName().equals(userName)) {
           ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
           return;
         }
@@ -477,7 +488,6 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public TSStatus checkFullPathWriteDataPermission(
       IAuditEntity auditEntity, IDeviceID device, String measurementId) {
-    String userName = auditEntity.getUsername();
     try {
       PartialPath path = new MeasurementPath(device, measurementId);
       // audit db is read-only
@@ -487,7 +497,7 @@ public class AccessControlImpl implements AccessControl {
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
       return checkTimeSeriesPermission(
-          auditEntity, Collections.singletonList(path), PrivilegeType.WRITE_DATA);
+          auditEntity, () -> Collections.singletonList(path), PrivilegeType.WRITE_DATA);
     } catch (IllegalPathException e) {
       // should never be here
       throw new IllegalStateException(e);
@@ -518,10 +528,10 @@ public class AccessControlImpl implements AccessControl {
     }
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (sourcePaths != null) {
-      status = checkTimeSeriesPermission(entity, sourcePaths, PrivilegeType.READ_SCHEMA);
+      status = checkTimeSeriesPermission(entity, () -> sourcePaths, PrivilegeType.READ_SCHEMA);
     }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return checkTimeSeriesPermission(entity, targetPaths, PrivilegeType.WRITE_SCHEMA);
+      return checkTimeSeriesPermission(entity, () -> targetPaths, PrivilegeType.WRITE_SCHEMA);
     }
     return status;
   }

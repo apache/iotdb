@@ -54,6 +54,7 @@ public class RelationalAuthorStatement extends Statement {
 
   private boolean grantOption;
   private long executedByUserId;
+  private String newUsername = "";
 
   public RelationalAuthorStatement(
       AuthorRType authorType,
@@ -174,6 +175,14 @@ public class RelationalAuthorStatement extends Statement {
     this.executedByUserId = executedByUserId;
   }
 
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -234,6 +243,7 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_USER_ROLE:
+      case RENAME_USER:
         return QueryType.WRITE;
       case LIST_ROLE:
       case LIST_USER:

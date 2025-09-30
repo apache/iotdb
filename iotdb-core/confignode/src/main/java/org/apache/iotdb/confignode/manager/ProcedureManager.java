@@ -1799,7 +1799,7 @@ public class ProcedureManager {
    * @param procedure The specific procedure
    * @return TSStatus the running result of this procedure
    */
-  private TSStatus waitingProcedureFinished(Procedure<?> procedure) {
+  protected TSStatus waitingProcedureFinished(Procedure<?> procedure) {
     if (procedure == null) {
       LOGGER.error("Unexpected null procedure parameters for waitingProcedureFinished");
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);

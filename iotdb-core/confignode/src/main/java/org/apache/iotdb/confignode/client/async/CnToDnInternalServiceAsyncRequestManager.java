@@ -470,6 +470,10 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.STOP_AND_CLEAR_DATA_NODE,
         (req, client, handler) ->
             client.stopAndClearDataNode((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.ENABLE_SEPARATION_OF_ADMIN_POWERS,
+        (req, client, handler) ->
+            client.enableSeparationOfAdminPower((DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override

@@ -93,7 +93,6 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String AUDIT_LOG_DEVICE = "root.__audit.log.node_%s.u_%s";
-  private static final String AUDIT_LOGIN_LOG_DEVICE = "root.__audit.login.node_%s.u_%s";
   private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.log.node_%s.u_all";
   private static final SessionInfo sessionInfo =
       new SessionInfo(
@@ -129,7 +128,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   @NotNull
   private static InsertRowStatement generateInsertStatement(
-      IAuditEntity auditLogFields, String log, PartialPath log_device) {
+      IAuditEntity auditLogFields, String log, PartialPath logDevice) {
     String username = auditLogFields.getUsername();
     String address = auditLogFields.getCliHostname();
     AuditEventType type = auditLogFields.getAuditEventType();
@@ -145,7 +144,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
     }
     String dataNodeId = String.valueOf(config.getDataNodeId());
     InsertRowStatement insertStatement = new InsertRowStatement();
-    insertStatement.setDevicePath(log_device);
+    insertStatement.setDevicePath(logDevice);
     insertStatement.setTime(CommonDateTimeUtils.currentTime());
     insertStatement.setMeasurements(
         new String[] {
@@ -291,7 +290,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
                   .status;
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
               && status.getCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-            logger.error("Failed to create view for audit log, because {}", status.getMessage());
+            logger.error(
+                "Failed to create database in table model for audit log, because {}",
+                status.getMessage());
           }
           stmt =
               relationSqlParser.createStatement(
@@ -392,6 +393,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
       try {
         TimeUnit.MILLISECONDS.sleep(INSERT_RETRY_INTERVAL_MS);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.error("Audit log insertion retry sleep was interrupted", e);
       }
     }
@@ -445,6 +447,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
       try {
         TimeUnit.MILLISECONDS.sleep(INSERT_RETRY_INTERVAL_MS);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.error("Audit log insertion retry sleep was interrupted", e);
       }
     }

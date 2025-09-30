@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
@@ -64,6 +65,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
@@ -287,7 +289,11 @@ public class NodeManager {
               getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
           runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
           runtimeConfiguration.setAuditConfig(getAuditConfig());
+          runtimeConfiguration.setSuperUserName(getPermissionManager().getUserName(0));
           return runtimeConfiguration;
+        } catch (AuthException e) {
+          // This will never reach, definitely
+          throw new RuntimeException(e);
         } finally {
           getUDFManager().getUdfInfo().releaseUDFTableLock();
         }
@@ -1302,6 +1308,10 @@ public class NodeManager {
 
   private ClusterManager getClusterManager() {
     return configManager.getClusterManager();
+  }
+
+  private PermissionManager getPermissionManager() {
+    return configManager.getPermissionManager();
   }
 
   private PartitionManager getPartitionManager() {

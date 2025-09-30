@@ -97,13 +97,13 @@ public class TableSchema {
   }
 
   /**
-   * Given the name of an ID column, return the index of this column among all ID columns, return -1
-   * if not found.
+   * Given the name of an TAG column, return the index of this column among all TAG columns, return
+   * -1 if not found.
    */
-  public int getIndexAmongIdColumns(final String idColumnName) {
+  public int getIndexAmongTagColumns(final String tagColumnName) {
     int index = 0;
-    for (final ColumnSchema column : getIdColumns()) {
-      if (column.getName().equals(idColumnName)) {
+    for (final ColumnSchema column : getTagColumns()) {
+      if (column.getName().equals(tagColumnName)) {
         return index;
       }
       index++;
@@ -222,7 +222,7 @@ public class TableSchema {
     return "TableSchema{" + "tableName='" + tableName + '\'' + ", columns=" + columns + '}';
   }
 
-  public List<ColumnSchema> getIdColumns() {
+  public List<ColumnSchema> getTagColumns() {
     return columns.stream()
         .filter(c -> c.getColumnCategory() == TsTableColumnCategory.TAG)
         .collect(Collectors.toList());

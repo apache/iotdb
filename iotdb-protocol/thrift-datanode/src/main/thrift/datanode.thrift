@@ -285,6 +285,9 @@ struct TDataNodeHeartbeatReq {
   13: optional map<i32, set<i32>> topology
   14: required i64 logicalClock
   15: optional list<common.TConsensusGroupId> currentRegionOperations
+  // Using 8 bit to represent 8 bool
+  // lowest bit: enable separation of admin powers
+  16: optional byte booleanVariables1
 }
 
 struct TDataNodeActivation {
@@ -978,6 +981,11 @@ service IDataNodeRPCService {
    * @param string:username, list<string>:roleList
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
+
+  /**
+   * Enable separation of admin powers in datanode
+   **/
+  common.TSStatus enableSeparationOfAdminPower()
 
   /**
    * Config node will create a pipe plugin on a list of data nodes.
