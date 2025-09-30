@@ -44,6 +44,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
@@ -70,6 +71,14 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.N
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
 
 public class CteMaterializerTest {
+  private PlanTester planTester;
+
+  @Before
+  public void setUp() {
+    planTester = new PlanTester();
+    mockSubquery();
+  }
+
   private Type convertType(String columnName) {
     switch (columnName) {
       case "time":
@@ -128,9 +137,6 @@ public class CteMaterializerTest {
 
   @Test
   public void testSimpleCte() {
-    PlanTester planTester = new PlanTester();
-    mockSubquery();
-
     String sql = "with cte1 as materialized (SELECT time, s1 FROM table1) select * from cte1";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -147,9 +153,6 @@ public class CteMaterializerTest {
 
   @Test
   public void testFieldFilterCte() {
-    PlanTester planTester = new PlanTester();
-    mockSubquery();
-
     String sql =
         "with cte1 as materialized (SELECT time, s1 as a1 FROM table1) select * from cte1 where a1 > 10";
 
@@ -170,9 +173,6 @@ public class CteMaterializerTest {
 
   @Test
   public void testTimeFilterCte() {
-    PlanTester planTester = new PlanTester();
-    mockSubquery();
-
     String sql =
         "with cte1 as materialized (SELECT time, s1 FROM table1) select * from cte1 where time > 1000";
 
@@ -194,9 +194,6 @@ public class CteMaterializerTest {
 
   @Test
   public void testSortCte() {
-    PlanTester planTester = new PlanTester();
-    mockSubquery();
-
     String sql =
         "with cte1 as materialized (SELECT time, s1 FROM table1) select * from cte1 order by s1";
 
@@ -216,9 +213,6 @@ public class CteMaterializerTest {
 
   @Test
   public void testLimitOffsetCte() {
-    PlanTester planTester = new PlanTester();
-    mockSubquery();
-
     String sql =
         "with cte1 as materialized (SELECT time, s1 FROM table1) select * from cte1 limit 1 offset 2";
 
@@ -238,9 +232,6 @@ public class CteMaterializerTest {
 
   @Test
   public void testAggCte() {
-    PlanTester planTester = new PlanTester();
-    mockSubquery();
-
     String sql =
         "with cte1 as materialized (SELECT time, s1 FROM table1) select s1, max(time) from cte1 group by s1";
 
@@ -269,7 +260,6 @@ public class CteMaterializerTest {
 
   @Test
   public void testCteQueryException() {
-    PlanTester planTester = new PlanTester();
     mockException();
 
     String sql = "with cte1 as materialized (SELECT time, s1 FROM table1) select * from cte1";
