@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -140,6 +141,22 @@ public class AllowAllAccessControl implements AccessControl {
   public TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
     return SUCCEED;
+  }
+
+  @Override
+  public TSStatus checkSeriesPrivilege4Pipe(
+      IAuditEntity context,
+      List<? extends PartialPath> checkedPathsSupplier,
+      PrivilegeType permission) {
+    return SUCCEED;
+  }
+
+  @Override
+  public List<Integer> checkSeriesPrivilegeWithIndexes4Pipe(
+      IAuditEntity context,
+      List<? extends PartialPath> checkedPathsSupplier,
+      PrivilegeType permission) {
+    return Collections.emptyList();
   }
 
   @Override
