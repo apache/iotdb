@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.response.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
@@ -118,7 +119,7 @@ public class PipeTableResp implements DataSet {
   public boolean isVisible4User(final String userName, final PipeStaticMeta meta) {
     try {
       return Objects.isNull(userName)
-          || BasicAuthorizer.getInstance().isAdmin(userName)
+          || BasicAuthorizer.getInstance().getUser(userName).checkSysPrivilege(PrivilegeType.SYSTEM)
           || isVisible4SourceUser(userName, meta.getSourceParameters())
           || isVisible4SinkUser(userName, meta.getSinkParameters());
     } catch (final Exception e) {
