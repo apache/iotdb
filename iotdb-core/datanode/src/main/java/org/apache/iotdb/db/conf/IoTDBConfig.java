@@ -522,13 +522,13 @@ public class IoTDBConfig {
   private long maxExpiredTime = 2_592_000_000L;
 
   /** The maximum number of consecutive failed login attempts for a specific user@address */
-  private int failedLoginAttempts = 5;
+  private int failedLoginAttempts = -1;
 
   /**
    * The maximum number of consecutive failed login attempts for a specific user (global) Note: Must
    * be enabled if failed_login_attempts is enabled
    */
-  private int failedLoginAttemptsPerUser = 1000;
+  private int failedLoginAttemptsPerUser = -1;
 
   /** The lock time duration (in minutes) after reaching failed login attempts threshold */
   private int passwordLockTimeMinutes = 10;
