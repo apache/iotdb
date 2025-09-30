@@ -47,6 +47,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
@@ -385,6 +391,97 @@ public class IoTDBCteIT {
       adminStmt.execute("DROP USER tmpuser");
       adminStmt.execute("DROP TABLE IF EXISTS testtb1");
     }
+  }
+
+  @Test
+  public void testConcurrentCteQueries() throws Exception {
+    final int threadCount = 10;
+    final int queriesPerThread = 20;
+    final AtomicInteger successCount = new AtomicInteger(0);
+    final AtomicInteger failureCount = new AtomicInteger(0);
+    final AtomicInteger totalCount = new AtomicInteger(0);
+    final CountDownLatch startLatch = new CountDownLatch(1);
+    final CountDownLatch finishLatch = new CountDownLatch(threadCount);
+
+    ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+
+    // Create CTE query tasks
+    Future<?>[] futures = new Future<?>[threadCount];
+    for (int i = 0; i < threadCount; i++) {
+      final int threadId = i;
+      futures[i] =
+          executorService.submit(
+              () -> {
+                try {
+                  startLatch.await(); // Wait for all threads to be ready
+
+                  try (Connection connection =
+                          EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+                      Statement statement = connection.createStatement()) {
+                    statement.execute("USE testdb");
+
+                    // Execute multiple CTE queries in each thread
+                    for (int j = 0; j < queriesPerThread; j++) {
+                      try {
+                        // Test different types of CTE queries
+                        String[] queries = {
+                          String.format(
+                              "WITH cte as %s (SELECT * FROM testtb WHERE voltage > 150) SELECT * FROM cte ORDER BY deviceid",
+                              cteKeywords[j % cteKeywords.length]),
+                          String.format(
+                              "WITH cte as %s (SELECT deviceid, avg(voltage) as avg_v FROM testtb GROUP BY deviceid) SELECT * FROM cte",
+                              cteKeywords[j % cteKeywords.length]),
+                          String.format(
+                              "WITH cte as %s (SELECT * FROM testtb WHERE time > 1000) SELECT count(*) as cnt FROM cte",
+                              cteKeywords[j % cteKeywords.length])
+                        };
+
+                        String query = queries[j % queries.length];
+                        ResultSet resultSet = statement.executeQuery(query);
+
+                        // Verify results
+                        int rowCount = 0;
+                        while (resultSet.next()) {
+                          rowCount++;
+                        }
+                        totalCount.getAndAdd(rowCount);
+
+                        successCount.incrementAndGet();
+
+                      } catch (SQLException e) {
+                        failureCount.incrementAndGet();
+                        System.err.println(
+                            "Thread " + threadId + " query " + j + " failed: " + e.getMessage());
+                      }
+                    }
+                  }
+                } catch (Exception e) {
+                  failureCount.incrementAndGet();
+                  System.err.println("Thread " + threadId + " failed: " + e.getMessage());
+                } finally {
+                  finishLatch.countDown();
+                }
+              });
+    }
+
+    // Start all threads at once
+    startLatch.countDown();
+
+    // Wait for all threads to complete
+    finishLatch.await(60, TimeUnit.SECONDS);
+
+    // Shutdown executor
+    executorService.shutdown();
+    boolean terminated = executorService.awaitTermination(10, TimeUnit.SECONDS);
+    if (!terminated) {
+      executorService.shutdownNow();
+    }
+
+    // Verify results
+    int totalQueries = threadCount * queriesPerThread;
+    assertEquals("All queries should succeed", totalQueries, successCount.get());
+    assertEquals("No queries should fail", 0, failureCount.get());
+    assertEquals("Total query count should match", 340, totalCount.get());
   }
 
   private static void prepareData() {
