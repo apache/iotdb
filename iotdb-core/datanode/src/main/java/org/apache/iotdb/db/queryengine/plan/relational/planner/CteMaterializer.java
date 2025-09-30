@@ -114,7 +114,7 @@ public class CteMaterializer {
     cteDataStores.clear();
   }
 
-  private CteDataStore fetchCteQueryResult(Table table, Query query, MPPQueryContext context) {
+  public CteDataStore fetchCteQueryResult(Table table, Query query, MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     try {
@@ -275,7 +275,7 @@ public class CteMaterializer {
   }
 
   private static class CteMaterializerHolder {
-    private static final CteMaterializer INSTANCE = new CteMaterializer();
+    private static CteMaterializer INSTANCE = new CteMaterializer();
 
     private CteMaterializerHolder() {
       // Empty constructor
@@ -284,5 +284,9 @@ public class CteMaterializer {
 
   public static CteMaterializer getInstance() {
     return CteMaterializerHolder.INSTANCE;
+  }
+
+  public static void setInstance(CteMaterializer instance) {
+    CteMaterializerHolder.INSTANCE = instance;
   }
 }
