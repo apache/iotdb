@@ -190,14 +190,11 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
   }
 
   public static PredicateWithUncorrelatedScalarSubqueryReconstructor getInstance() {
-    return PredicateWithUncorrelatedScalarSubqueryReconstructor
-        .PredicateWithUncorrelatedScalarSubqueryReconstructorHolder.INSTANCE;
+    return PredicateWithUncorrelatedScalarSubqueryReconstructorHolder.INSTANCE;
   }
 
   @TestOnly
   public static void setInstance(PredicateWithUncorrelatedScalarSubqueryReconstructor instance) {
-    PredicateWithUncorrelatedScalarSubqueryReconstructor
-            .PredicateWithUncorrelatedScalarSubqueryReconstructorHolder.INSTANCE =
-        instance;
+    PredicateWithUncorrelatedScalarSubqueryReconstructorHolder.INSTANCE = instance;
   }
 }

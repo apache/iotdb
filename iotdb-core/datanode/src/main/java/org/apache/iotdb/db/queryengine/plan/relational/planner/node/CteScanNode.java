@@ -57,6 +57,10 @@ public class CteScanNode extends SourceNode {
     this.dataStore = dataStore;
   }
 
+  public QualifiedName getQualifiedName() {
+    return qualifiedName;
+  }
+
   public CteDataStore getDataStore() {
     return dataStore;
   }
