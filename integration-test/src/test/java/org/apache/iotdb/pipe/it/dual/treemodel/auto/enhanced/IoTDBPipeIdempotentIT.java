@@ -452,6 +452,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     TestUtils.executeNonQueries(senderEnv, Arrays.asList(testSql, afterSql), null);
 
     // Assume that the afterSql is executed on receiverEnv
-    TestUtils.assertDataEventuallyOnEnv(receiverEnv, afterSqlQuery, expectedHeader, expectedResSet);
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, afterSqlQuery, expectedHeader, expectedResSet, 2);
   }
 }

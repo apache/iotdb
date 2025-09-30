@@ -1080,12 +1080,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   public static void checkAndEnrichSourceUser(
       final String pipeName,
-      final Map<String, String> replacedExtractorAttributes,
+      final Map<String, String> replacedSourceAttributes,
       final UserEntity userEntity,
       final boolean isAlter) {
-    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
+    final PipeParameters sourceParameters = new PipeParameters(replacedSourceAttributes);
     final String pluginName =
-        extractorParameters
+        sourceParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
@@ -1096,18 +1096,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       return;
     }
 
-    if (!extractorParameters.hasAnyAttributes(
+    if (!sourceParameters.hasAnyAttributes(
         PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
         PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
         PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
         PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
-      replacedExtractorAttributes.put(
+      replacedSourceAttributes.put(
           PipeSourceConstant.SOURCE_IOTDB_USER_ID, String.valueOf(userEntity.getUserId()));
-      replacedExtractorAttributes.put(
+      replacedSourceAttributes.put(
           PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, userEntity.getUsername());
-      replacedExtractorAttributes.put(
+      replacedSourceAttributes.put(
           PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, userEntity.getCliHostname());
-    } else if (!extractorParameters.hasAnyAttributes(
+    } else if (!sourceParameters.hasAnyAttributes(
         PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
         PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
