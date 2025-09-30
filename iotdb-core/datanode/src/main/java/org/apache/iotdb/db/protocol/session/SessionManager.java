@@ -365,34 +365,12 @@ public class SessionManager implements SessionManagerMBean {
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
     if (session1 != null && session != session1) {
-      //      AUDIT_LOGGER.log(
-      //          new AuditLogFields(
-      //              session.getUserId(),
-      //              session.getUsername(),
-      //              session.getClientAddress(),
-      //              AuditEventType.LOGOUT,
-      //              AuditLogOperation.CONTROL,
-      //              false),
-      //          () ->
-      //              String.format(
-      //                  "The client-%s is trying to close another session %s, pls check if it's a
-      // bug",
-      //                  session, session1));
       LOGGER.info(
           String.format(
               "The client-%s is trying to close another session %s, pls check if it's a bug",
               session, session1));
       return false;
     } else {
-      //      AUDIT_LOGGER.log(
-      //          new AuditLogFields(
-      //              session.getUserId(),
-      //              session.getUsername(),
-      //              session.getClientAddress(),
-      //              AuditEventType.LOGOUT,
-      //              AuditLogOperation.CONTROL,
-      //              true),
-      //          () -> String.format("Session-%s is closing", session));
       LOGGER.info(String.format("Session-%s is closing", session));
       return true;
     }
@@ -532,16 +510,6 @@ public class SessionManager implements SessionManagerMBean {
   public void removeCurrSession() {
     IClientSession session = currSession.get();
     if (session != null) {
-      // TODO: Enable logout audit after reconstruct session logout management
-      //      AUDIT_LOGGER.log(
-      //        new AuditLogFields(
-      //          session.getUserId(),
-      //          session.getUsername(),
-      //          session.getClientAddress(),
-      //          AuditEventType.LOGOUT,
-      //          AuditLogOperation.CONTROL,
-      //          true),
-      //        () -> String.format("Session-%s is closed", session));
       sessions.remove(session);
     }
     currSession.remove();
