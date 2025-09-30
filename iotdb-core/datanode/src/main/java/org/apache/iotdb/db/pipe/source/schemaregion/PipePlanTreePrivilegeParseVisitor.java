@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
@@ -77,7 +78,8 @@ public class PipePlanTreePrivilegeParseVisitor
   @Override
   public Optional<PlanNode> visitCreateTimeSeries(
       final CreateTimeSeriesNode node, final IAuditEntity auditEntity) {
-    return TreeAccessCheckVisitor.checkTimeSeriesPermission(
+    return AuthorityChecker.getAccessControl()
+                .checkSeriesPrivilege4Pipe(
                     auditEntity,
                     Collections.singletonList(node.getPath()),
                     PrivilegeType.READ_SCHEMA)
@@ -91,12 +93,13 @@ public class PipePlanTreePrivilegeParseVisitor
   public Optional<PlanNode> visitCreateAlignedTimeSeries(
       final CreateAlignedTimeSeriesNode node, final IAuditEntity auditEntity) {
     final List<Integer> failedIndexes =
-        TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(
-            auditEntity,
-            node.getMeasurements().stream()
-                .map(measurement -> node.getDevicePath().concatAsMeasurementPath(measurement))
-                .collect(Collectors.toList()),
-            PrivilegeType.READ_SCHEMA);
+        AuthorityChecker.getAccessControl()
+            .checkSeriesPrivilegeWithIndexes4Pipe(
+                auditEntity,
+                node.getMeasurements().stream()
+                    .map(measurement -> node.getDevicePath().concatAsMeasurementPath(measurement))
+                    .collect(Collectors.toList()),
+                PrivilegeType.READ_SCHEMA);
     if (!skip && !failedIndexes.isEmpty()) {
       throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
     }
@@ -141,12 +144,13 @@ public class PipePlanTreePrivilegeParseVisitor
       final PlanNode node) {
     final Set<Integer> failedIndexes =
         new HashSet<>(
-            TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(
-                entity,
-                group.getMeasurements().stream()
-                    .map(device::concatAsMeasurementPath)
-                    .collect(Collectors.toList()),
-                PrivilegeType.READ_SCHEMA));
+            AuthorityChecker.getAccessControl()
+                .checkSeriesPrivilegeWithIndexes4Pipe(
+                    entity,
+                    group.getMeasurements().stream()
+                        .map(device::concatAsMeasurementPath)
+                        .collect(Collectors.toList()),
+                    PrivilegeType.READ_SCHEMA));
     if (!skip && !failedIndexes.isEmpty()) {
       throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
     }
@@ -182,7 +186,8 @@ public class PipePlanTreePrivilegeParseVisitor
   @Override
   public Optional<PlanNode> visitAlterTimeSeries(
       final AlterTimeSeriesNode node, final IAuditEntity auditEntity) {
-    return TreeAccessCheckVisitor.checkTimeSeriesPermission(
+    return AuthorityChecker.getAccessControl()
+                .checkSeriesPrivilege4Pipe(
                     auditEntity,
                     Collections.singletonList(node.getPath()),
                     PrivilegeType.READ_SCHEMA)
@@ -208,10 +213,11 @@ public class PipePlanTreePrivilegeParseVisitor
   public Optional<PlanNode> visitActivateTemplate(
       final ActivateTemplateNode node, final IAuditEntity auditEntity) {
     final List<Integer> failedPos =
-        TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(
-            auditEntity,
-            ActivateTemplateStatement.getPaths(node.getActivatePath()),
-            PrivilegeType.READ_SCHEMA);
+        AuthorityChecker.getAccessControl()
+            .checkSeriesPrivilegeWithIndexes4Pipe(
+                auditEntity,
+                ActivateTemplateStatement.getPaths(node.getActivatePath()),
+                PrivilegeType.READ_SCHEMA);
     if (!failedPos.isEmpty()) {
       if (!skip) {
         throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
@@ -228,10 +234,11 @@ public class PipePlanTreePrivilegeParseVisitor
     for (final Map.Entry<PartialPath, Pair<Integer, Integer>> pathEntry :
         node.getTemplateActivationMap().entrySet()) {
       final List<Integer> failedIndexes =
-          TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(
-              auditEntity,
-              ActivateTemplateStatement.getPaths(pathEntry.getKey()),
-              PrivilegeType.READ_SCHEMA);
+          AuthorityChecker.getAccessControl()
+              .checkSeriesPrivilegeWithIndexes4Pipe(
+                  auditEntity,
+                  ActivateTemplateStatement.getPaths(pathEntry.getKey()),
+                  PrivilegeType.READ_SCHEMA);
       if (failedIndexes.isEmpty()) {
         filteredMap.put(pathEntry.getKey(), pathEntry.getValue());
       } else if (!skip) {
@@ -271,10 +278,11 @@ public class PipePlanTreePrivilegeParseVisitor
     for (final Map.Entry<PartialPath, Pair<Integer, Integer>> pathEntry :
         node.getTemplateActivationMap().entrySet()) {
       final List<Integer> failedIndexes =
-          TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(
-              auditEntity,
-              ActivateTemplateStatement.getPaths(pathEntry.getKey()),
-              PrivilegeType.READ_SCHEMA);
+          AuthorityChecker.getAccessControl()
+              .checkSeriesPrivilegeWithIndexes4Pipe(
+                  auditEntity,
+                  ActivateTemplateStatement.getPaths(pathEntry.getKey()),
+                  PrivilegeType.READ_SCHEMA);
       if (failedIndexes.isEmpty()) {
         filteredMap.put(pathEntry.getKey(), pathEntry.getValue());
       } else if (!skip) {
@@ -293,8 +301,9 @@ public class PipePlanTreePrivilegeParseVisitor
         new HashMap<>(node.getViewPathToSourceExpressionMap());
     final List<PartialPath> viewPathList = node.getViewPathList();
     final List<Integer> failedIndexes =
-        TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(
-            auditEntity, viewPathList, PrivilegeType.READ_SCHEMA);
+        AuthorityChecker.getAccessControl()
+            .checkSeriesPrivilegeWithIndexes4Pipe(
+                auditEntity, viewPathList, PrivilegeType.READ_SCHEMA);
     if (!skip && !failedIndexes.isEmpty()) {
       throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
     }
@@ -311,8 +320,9 @@ public class PipePlanTreePrivilegeParseVisitor
         new HashMap<>(node.getViewPathToSourceMap());
     final List<PartialPath> viewPathList = new ArrayList<>(node.getViewPathToSourceMap().keySet());
     final List<Integer> failedIndexes =
-        TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(
-            auditEntity, viewPathList, PrivilegeType.READ_SCHEMA);
+        AuthorityChecker.getAccessControl()
+            .checkSeriesPrivilegeWithIndexes4Pipe(
+                auditEntity, viewPathList, PrivilegeType.READ_SCHEMA);
     if (!skip && !failedIndexes.isEmpty()) {
       throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
     }

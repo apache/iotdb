@@ -47,7 +47,6 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -491,10 +490,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           }
         }
         final TSStatus status =
-            TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                new UserEntity(Long.parseLong(userId), userName, cliHostname),
-                measurementList,
-                PrivilegeType.READ_DATA);
+            AuthorityChecker.getAccessControl()
+                .checkSeriesPrivilege4Pipe(
+                    new UserEntity(Long.parseLong(userId), userName, cliHostname),
+                    measurementList,
+                    PrivilegeType.READ_DATA);
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
           if (skipIfNoPrivileges) {
             shouldParse4Privilege = true;
@@ -513,10 +513,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             measurementList.add(new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
           }
           final TSStatus status =
-              TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                  new UserEntity(Long.parseLong(userId), userName, cliHostname),
-                  measurementList,
-                  PrivilegeType.READ_DATA);
+              AuthorityChecker.getAccessControl()
+                  .checkSeriesPrivilege4Pipe(
+                      new UserEntity(Long.parseLong(userId), userName, cliHostname),
+                      measurementList,
+                      PrivilegeType.READ_DATA);
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
             if (skipIfNoPrivileges) {
               shouldParse4Privilege = true;

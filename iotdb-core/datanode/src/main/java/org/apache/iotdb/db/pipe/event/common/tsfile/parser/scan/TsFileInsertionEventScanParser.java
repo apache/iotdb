@@ -28,13 +28,13 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
-import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -455,11 +455,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
           if (Objects.nonNull(entity)) {
             final TSStatus status =
-                TreeAccessCheckVisitor.checkTimeSeriesPermission(
-                    entity,
-                    Collections.singletonList(
-                        new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
-                    PrivilegeType.READ_DATA);
+                AuthorityChecker.getAccessControl()
+                    .checkSeriesPrivilege4Pipe(
+                        entity,
+                        Collections.singletonList(
+                            new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
+                        PrivilegeType.READ_DATA);
             if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               if (skipIfNoPrivileges) {
                 continue;

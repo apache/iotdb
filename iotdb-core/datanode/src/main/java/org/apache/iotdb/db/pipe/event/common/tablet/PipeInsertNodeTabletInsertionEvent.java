@@ -52,7 +52,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -319,10 +318,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       }
     }
     final TSStatus status =
-        TreeAccessCheckVisitor.checkTimeSeriesPermission(
-            new UserEntity(Long.parseLong(userId), userName, cliHostname),
-            measurementList,
-            PrivilegeType.READ_DATA);
+        AuthorityChecker.getAccessControl()
+            .checkSeriesPrivilege4Pipe(
+                new UserEntity(Long.parseLong(userId), userName, cliHostname),
+                measurementList,
+                PrivilegeType.READ_DATA);
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
       if (skipIfNoPrivileges) {
         shouldParse4Privilege = true;

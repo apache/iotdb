@@ -537,6 +537,19 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  public TSStatus checkSeriesPrivilege4Pipe(
+      IAuditEntity context, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
+    return TreeAccessCheckVisitor.checkTimeSeriesPermission(
+        context, () -> checkedPaths, permission);
+  }
+
+  @Override
+  public List<Integer> checkSeriesPrivilegeWithIndexes4Pipe(
+      IAuditEntity context, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
+    return TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(context, checkedPaths, permission);
+  }
+
+  @Override
   public TSStatus allowUserToLogin(String userName) {
     return SUCCEED;
   }

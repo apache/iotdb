@@ -27,12 +27,12 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -129,7 +129,8 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
         try {
           if (pattern.matchesMeasurement(deviceId, measurement)
               && (Objects.isNull(entity)
-                  || TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                  || AuthorityChecker.getAccessControl()
+                          .checkSeriesPrivilege4Pipe(
                               entity,
                               Collections.singletonList(new MeasurementPath(deviceId, measurement)),
                               PrivilegeType.READ_DATA)
