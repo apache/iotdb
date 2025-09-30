@@ -117,7 +117,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             tabletRawReqSizes.clear();
 
             if (!handleTSStatus(result, loadTsFileStatement)) {
-              return Optional.empty();
+              return Optional.of(result);
             }
 
             tabletRawReqs.add(tabletRawReq);
@@ -127,7 +127,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.empty();
+          return Optional.of(
+              loadTsFileStatement.accept(
+                  LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
 
@@ -144,12 +146,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           tabletRawReqSizes.clear();
 
           if (!handleTSStatus(result, loadTsFileStatement)) {
-            return Optional.empty();
+            return Optional.of(result);
           }
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.empty();
+          return Optional.of(
+                  loadTsFileStatement.accept(
+                          LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
     } finally {
