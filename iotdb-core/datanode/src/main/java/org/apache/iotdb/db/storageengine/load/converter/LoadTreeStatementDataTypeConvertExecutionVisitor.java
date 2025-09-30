@@ -152,8 +152,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
           return Optional.of(
-                  loadTsFileStatement.accept(
-                          LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e));
+              loadTsFileStatement.accept(
+                  LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
     } finally {
