@@ -142,7 +142,6 @@ public class DNAuditLogger extends AbstractAuditLogger {
         }
       }
     }
-    String dataNodeId = String.valueOf(config.getDataNodeId());
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(logDevice);
     insertStatement.setTime(CommonDateTimeUtils.currentTime());

@@ -52,9 +52,6 @@ public abstract class AbstractAuditLogger {
   public abstract void log(IAuditEntity auditLogFields, Supplier<String> log);
 
   public boolean noNeedInsertAuditLog(IAuditEntity auditLogFields) {
-    String username = auditLogFields.getUsername();
-    String address = auditLogFields.getCliHostname();
-    AuditEventType type = auditLogFields.getAuditEventType();
     AuditLogOperation operation = auditLogFields.getAuditLogOperation();
     boolean result = auditLogFields.getResult();
 
