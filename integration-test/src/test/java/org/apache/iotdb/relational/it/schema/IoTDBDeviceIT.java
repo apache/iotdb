@@ -221,7 +221,7 @@ public class IoTDBDeviceIT {
         statement.execute("update table0 set model = cast(device_id as int32)");
         fail("Update shall fail when result type mismatch");
       } catch (final Exception e) {
-        assertEquals("701: Update's attribute value must be STRING or TEXT.", e.getMessage());
+        assertEquals("701: Update's attribute value must be STRING, TEXT or null.", e.getMessage());
       }
 
       // Test filter with no effect

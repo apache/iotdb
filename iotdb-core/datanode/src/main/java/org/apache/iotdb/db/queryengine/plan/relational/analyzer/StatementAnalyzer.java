@@ -225,6 +225,7 @@ import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
@@ -552,9 +553,10 @@ public class StatementAnalyzer {
                           analyzeAndRewriteExpression(
                               translationMap, translationMap.getScope(), assignment.getValue());
                       if (!expressionPair.getLeft().equals(StringType.STRING)
-                          && !expressionPair.getLeft().equals(BinaryType.TEXT)) {
+                          && !expressionPair.getLeft().equals(BinaryType.TEXT)
+                          && !expressionPair.getLeft().equals(UnknownType.UNKNOWN)) {
                         throw new SemanticException(
-                            "Update's attribute value must be STRING or TEXT.");
+                            "Update's attribute value must be STRING, TEXT or null.");
                       }
                       return new UpdateAssignment(parsedColumn, expressionPair.getRight());
                     })
