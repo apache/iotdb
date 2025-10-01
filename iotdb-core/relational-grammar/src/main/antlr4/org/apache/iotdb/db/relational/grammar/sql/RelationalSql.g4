@@ -691,7 +691,7 @@ showConfigurationStatement
 // ------------------------------------------- Authority Statement -----------------------------------------------------
 
 createUserStatement
-    : CREATE USER userName=identifier password=string
+    : CREATE USER userName=usernameWithRoot password=string
     ;
 
 createRoleStatement
@@ -724,7 +724,7 @@ usernameWithRootWithOptionalHost
     ;
 
 renameUserStatement
-    : ALTER USER username=identifier RENAME TO newUsername=identifier
+    : ALTER USER username=usernameWithRoot RENAME TO newUsername=usernameWithRoot
     ;
 
 grantUserRoleStatement

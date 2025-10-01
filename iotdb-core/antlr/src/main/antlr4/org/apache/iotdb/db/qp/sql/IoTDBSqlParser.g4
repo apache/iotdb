@@ -1046,7 +1046,7 @@ deleteStatement
 
 // Create User
 createUser
-    : CREATE USER userName=identifier password=STRING_LITERAL
+    : CREATE USER userName=usernameWithRoot password=STRING_LITERAL
     ;
 
 // Create Role
@@ -1061,7 +1061,7 @@ alterUser
 
 // Rename user
 renameUser
-    : ALTER USER username=usernameWithRoot RENAME TO newUsername=identifier
+    : ALTER USER username=usernameWithRoot RENAME TO newUsername=usernameWithRoot
     ;
 
 // ---- Alter User Account Unlock

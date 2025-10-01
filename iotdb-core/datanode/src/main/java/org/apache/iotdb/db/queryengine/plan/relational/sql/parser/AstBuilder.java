@@ -1707,7 +1707,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitCreateUserStatement(RelationalSqlParser.CreateUserStatementContext ctx) {
     RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.CREATE_USER);
-    stmt.setUserName(((Identifier) visit(ctx.userName)).getValue());
+    stmt.setUserName(parseIdentifier(ctx.userName.getText()));
     String password = ((StringLiteral) visit(ctx.password)).getValue();
     stmt.setPassword(password);
     return stmt;
@@ -1763,8 +1763,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitRenameUserStatement(RelationalSqlParser.RenameUserStatementContext ctx) {
     RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.RENAME_USER);
-    stmt.setUserName(((Identifier) visit(ctx.username)).getValue());
-    stmt.setNewUsername(((Identifier) visit(ctx.newUsername)).getValue());
+    stmt.setUserName(parseIdentifier(ctx.username.getText()));
+    stmt.setNewUsername(parseIdentifier(ctx.newUsername.getText()));
     return stmt;
   }
 
