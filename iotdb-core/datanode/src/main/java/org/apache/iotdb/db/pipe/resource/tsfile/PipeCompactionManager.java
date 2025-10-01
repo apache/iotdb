@@ -46,9 +46,7 @@ public class PipeCompactionManager {
   }
 
   public void emitResult(
-      final String storageGroupName,
       final String dataRegionId,
-      final long timePartition,
       final List<TsFileResource> seqFileResources,
       final List<TsFileResource> unseqFileResources,
       final List<TsFileResource> targetFileResources) {

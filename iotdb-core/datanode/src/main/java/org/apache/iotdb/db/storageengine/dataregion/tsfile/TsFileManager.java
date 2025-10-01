@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
@@ -339,15 +340,9 @@ public class TsFileManager {
     }
 
     // Currently disable
-    if (false) {
+    if (PipeConfig.getInstance().isPipeRealTimeQueueCompactionEnabled()) {
       PipeDataNodeResourceManager.compaction()
-          .emitResult(
-              storageGroupName,
-              dataRegionId,
-              timePartition,
-              seqFileResources,
-              unseqFileResources,
-              targetFileResources);
+          .emitResult(dataRegionId, seqFileResources, unseqFileResources, targetFileResources);
     }
   }
 
