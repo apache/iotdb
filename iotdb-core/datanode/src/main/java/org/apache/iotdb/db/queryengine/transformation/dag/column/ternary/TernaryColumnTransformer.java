@@ -46,7 +46,7 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  protected void evaluate() {
+  public void evaluate() {
     firstColumnTransformer.tryEvaluate();
     secondColumnTransformer.tryEvaluate();
     thirdColumnTransformer.tryEvaluate();
