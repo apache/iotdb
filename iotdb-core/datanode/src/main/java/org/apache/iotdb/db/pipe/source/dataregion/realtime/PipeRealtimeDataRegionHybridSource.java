@@ -205,10 +205,13 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    final long totalFloatingMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
+    // Use dynamic memory threshold instead of fixed value
+    final long effectiveTotalFloatingMemorySizeInBytes =
+        (long)
+            (PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes()
+                * PipeDataNodeAgent.task().getMemoryAdjustFactor(pipeName));
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
-        floatingMemoryUsageInByte * pipeCount >= totalFloatingMemorySizeInBytes;
+        floatingMemoryUsageInByte * pipeCount >= effectiveTotalFloatingMemorySizeInBytes;
     if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       final PipeDataNodeRemainingEventAndTimeOperator operator =
           PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.get(pipeID);
@@ -218,7 +221,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
           dataRegionId,
           event.getTsFileEpoch().getFilePath(),
           floatingMemoryUsageInByte,
-          totalFloatingMemorySizeInBytes / pipeCount,
+          effectiveTotalFloatingMemorySizeInBytes / pipeCount,
           Optional.ofNullable(operator)
               .map(PipeDataNodeRemainingEventAndTimeOperator::getInsertNodeEventCount)
               .orElse(0));
