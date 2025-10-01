@@ -135,7 +135,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   private int dataRegionId;
 
-  private TreePattern treePattern;
+  private List<TreePattern> treePatterns;
   private TablePattern tablePattern;
 
   private boolean isModelDetected = false;
@@ -325,7 +325,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     dataRegionId = environment.getRegionId();
 
-    treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    treePatterns = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
@@ -338,7 +338,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         if (isTableModel) {
           isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
         } else {
-          isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
+          isDbNameCoveredByPattern =
+              treePatterns.stream().allMatch(treePattern -> treePattern.coversDb(databaseName));
         }
       }
     }
@@ -718,8 +719,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                   ? (tablePattern.isTableModelDataAllowedToBeCaptured()
                       && tablePattern.matchesDatabase(resource.getDatabaseName())
                       && tablePattern.matchesTable(deviceID.getTableName()))
-                  : (treePattern.isTreeModelDataAllowedToBeCaptured()
-                      && treePattern.mayOverlapWithDevice(deviceID));
+                  : (treePatterns.stream()
+                      .anyMatch(
+                          treePattern ->
+                              treePattern.isTreeModelDataAllowedToBeCaptured()
+                                  && treePattern.mayOverlapWithDevice(deviceID)));
             });
   }
 
@@ -734,8 +738,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         isTableModel
             ? tablePattern.isTableModelDataAllowedToBeCaptured()
                 && tablePattern.coversDb(databaseName)
-            : treePattern.isTreeModelDataAllowedToBeCaptured()
-                && treePattern.coversDb(databaseName);
+            : treePatterns.stream()
+                .allMatch(
+                    treePattern ->
+                        treePattern.isTreeModelDataAllowedToBeCaptured()
+                            && treePattern.coversDb(databaseName));
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -858,7 +865,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             pipeName,
             creationTime,
             pipeTaskMeta,
-            treePattern,
+            treePatterns,
             tablePattern,
             userId,
             userName,
@@ -917,7 +924,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             pipeName,
             creationTime,
             pipeTaskMeta,
-            treePattern,
+            treePatterns,
             tablePattern,
             userId,
             userName,

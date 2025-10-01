@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
+import java.util.List;
+
 /**
  * {@link ProgressReportEvent} is an {@link EnrichedEvent} that is used only for progress report. It
  * is bind to a {@link ProgressIndex} and will be committed after all its preceding {@link
@@ -74,7 +76,7 @@ public class ProgressReportEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,

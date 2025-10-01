@@ -244,7 +244,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
       final PipeWritePlanEvent event) {
     return parseConfigPlan(
             ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(),
-            treePattern,
+            // TODO: handle multiple patterns
+            (IoTDBTreePattern) treePatterns.get(0),
             tablePattern)
         .map(
             configPhysicalPlan ->
@@ -289,7 +290,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
     return isTypeListened(
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(),
         listenedTypeSet,
-        treePattern,
+        // TODO: handle multiple patterns
+        (IoTDBTreePattern) treePatterns.get(0),
         tablePattern);
   }
 

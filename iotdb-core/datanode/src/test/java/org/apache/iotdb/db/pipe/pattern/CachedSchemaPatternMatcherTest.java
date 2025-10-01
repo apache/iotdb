@@ -181,7 +181,7 @@ public class CachedSchemaPatternMatcherTest {
   public static class PipeRealtimeDataRegionFakeSource extends PipeRealtimeDataRegionSource {
 
     public PipeRealtimeDataRegionFakeSource() {
-      treePattern = new PrefixTreePattern(null);
+      treePatterns = Collections.singletonList(new PrefixTreePattern(null));
     }
 
     @Override
@@ -201,13 +201,13 @@ public class CachedSchemaPatternMatcherTest {
                     match[0] =
                         match[0]
                             || (k + TsFileConstant.PATH_SEPARATOR + s)
-                                .startsWith(getTreePattern().getPattern());
+                                .startsWith(getTreePatterns().get(0).getPattern());
                   }
                 } else {
                   match[0] =
                       match[0]
-                          || (getTreePattern().getPattern().startsWith(k.toString())
-                              || k.toString().startsWith(getTreePattern().getPattern()));
+                          || (getTreePatterns().get(0).getPattern().startsWith(k.toString())
+                              || k.toString().startsWith(getTreePatterns().get(0).getPattern()));
                 }
               });
       Assert.assertTrue(match[0]);
