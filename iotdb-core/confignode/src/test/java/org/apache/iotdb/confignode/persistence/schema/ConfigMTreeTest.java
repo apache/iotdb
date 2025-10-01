@@ -281,7 +281,7 @@ public class ConfigMTreeTest {
 
     final ConfigMTree newTree = new ConfigMTree(false);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    newTree.deserialize(inputStream);
+    newTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
     for (int i = 0; i < pathList.length; i++) {
       final TDatabaseSchema storageGroupSchema =
@@ -357,7 +357,7 @@ public class ConfigMTreeTest {
 
     final ConfigMTree newTree = new ConfigMTree(true);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    newTree.deserialize(inputStream);
+    newTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
     for (int i = 0; i < pathList.length; i++) {
       final TDatabaseSchema storageGroupSchema =
