@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.ServerCommandLine;
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -161,17 +160,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
 
     try {
-      try {
-        loadSecretKey();
-        loadHardwareCode();
-        initEncryptProps();
-      } catch (IOException e) {
-        initSecretKey();
-        loadSecretKey();
-        loadHardwareCode();
-        initEncryptProps();
-      }
-      encryptConfigFile();
       processPid();
       // Add shutdown hook
       addShutDownHook();
@@ -449,18 +437,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   }
 
   protected void loadHardwareCode() throws IOException {
-    // Do nothing
-  }
-
-  protected void initEncryptProps() {
-    // Do nothing
-  }
-
-  protected void initSecretKey() throws AuthException, IOException {
-    // Do nothing
-  }
-
-  protected void encryptConfigFile() {
     // Do nothing
   }
 
