@@ -67,7 +67,7 @@ public class RestService implements IService {
     if (clientAuth) {
       sslContextFactory.setTrustStorePath(trustStorePath);
       sslContextFactory.setTrustStorePassword(trustStorePwd);
-      sslContextFactory.setNeedClientAuth(clientAuth);
+      sslContextFactory.setNeedClientAuth(true);
     }
 
     ServerConnector httpsConnector =
