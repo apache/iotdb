@@ -1071,7 +1071,7 @@ alterUserAccountUnlock
 
 // Grant User Privileges
 grantUser
-    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=identifier (grantOpt)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=usernameWithRoot (grantOpt)?
     ;
 
 // Grant Role Privileges
@@ -1086,12 +1086,12 @@ grantOpt
 
 // Grant User Role
 grantRoleToUser
-    : GRANT ROLE roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=usernameWithRoot
     ;
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=identifier
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=usernameWithRoot
     ;
 
 // Revoke Role Privileges
@@ -1101,12 +1101,12 @@ revokeRole
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=usernameWithRoot
     ;
 
 // Drop User
 dropUser
-    : DROP USER userName=identifier
+    : DROP USER userName=usernameWithRoot
     ;
 
 // Drop Role
