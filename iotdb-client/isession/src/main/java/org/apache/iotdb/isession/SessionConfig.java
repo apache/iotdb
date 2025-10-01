@@ -57,4 +57,10 @@ public class SessionConfig {
   public static final String SQL_DIALECT = "tree";
 
   private SessionConfig() {}
+
+  // Endpoint selection strategy constants
+  public static final String ENDPOINT_SELECTION_STRATEGY_RANDOM = "random";
+  public static final String ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL = "sequential";
+  public static final String DEFAULT_ENDPOINT_SELECTION_STRATEGY =
+      ENDPOINT_SELECTION_STRATEGY_RANDOM;
 }
