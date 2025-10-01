@@ -52,6 +52,7 @@ import java.util.concurrent.Callable;
 
 import static org.apache.iotdb.db.audit.DNAuditLogger.PREFIX_PASSWORD_HISTORY;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -1379,6 +1380,7 @@ public class IoTDBAuthIT {
           "tempuser,",
         };
     resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw123456");
+    executeNonQuery("SHOW AVAILABLE URLS", "tempuser", "temppw123456");
   }
 
   @Ignore
