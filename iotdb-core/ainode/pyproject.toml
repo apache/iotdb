@@ -14,6 +14,7 @@
 #  KIND, either express or implied.  See the License for the
 #  specific language governing permissions and limitations
 #  under the License.
+#
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -117,7 +118,6 @@ black = "25.1.0"
 isort = "6.0.1"
 
 [tool.poetry.scripts]
-# 如果你的入口确实在 iotdb/ainode/core/script.py，请改回：
 ainode = "iotdb.ainode.core.script:main"
 
 [tool.isort]
