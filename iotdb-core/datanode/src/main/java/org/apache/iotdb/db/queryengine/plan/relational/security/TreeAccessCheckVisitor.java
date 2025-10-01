@@ -1093,6 +1093,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return SUCCEED;
     }
     setCanSeeAuditDB(statement, context);
+    context.setPrivilegeType(PrivilegeType.READ_DATA);
     try {
       statement.setAuthorityScope(
           AuthorityChecker.getAuthorizedPathTree(context.getUsername(), PrivilegeType.READ_DATA));
@@ -1894,6 +1895,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                 auditEntity.getUsername(),
                 auditEntity.getUserId(),
                 auditObject.get(),
-                true));
+                auditEntity.getResult()));
   }
 }
