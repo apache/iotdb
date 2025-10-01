@@ -471,6 +471,8 @@ public class CommonConfig {
 
   private String auditableOperationResult = "SUCCESS, FAIL";
 
+  private long auditLogTtlInDays = -1; // -1 means forever
+
   CommonConfig() {
     // Empty constructor
   }
@@ -2723,5 +2725,13 @@ public class CommonConfig {
 
   public void setAuditableOperationResult(String auditableOperationResult) {
     this.auditableOperationResult = auditableOperationResult;
+  }
+
+  public long getAuditLogTtlInDays() {
+    return auditLogTtlInDays;
+  }
+
+  public void setAuditLogTtlInDays(long auditLogTtlInDays) {
+    this.auditLogTtlInDays = auditLogTtlInDays;
   }
 }
