@@ -26,6 +26,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationTemplateResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -44,6 +47,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -234,6 +238,8 @@ import static org.apache.iotdb.rpc.RpcUtils.TIME_PRECISION;
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClientRPCServiceImpl.class);
+
+  private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -3240,6 +3246,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     IClientSession session = SESSION_MANAGER.getCurrSession();
     if (session != null) {
       TSCloseSessionReq req = new TSCloseSessionReq();
+      if (!session.getUsername().contains("null")) {
+        AUDIT_LOGGER.log(
+            new AuditLogFields(
+                session.getUserId(),
+                session.getUsername(),
+                session.getClientAddress(),
+                AuditEventType.LOGOUT,
+                AuditLogOperation.CONTROL,
+                true),
+            () -> String.format("Session-%s is closing", session));
+      }
       closeSession(req);
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();

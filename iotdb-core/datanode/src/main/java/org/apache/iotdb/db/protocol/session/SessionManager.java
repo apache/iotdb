@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
@@ -34,9 +36,6 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.BasicAuthorityCache;
-import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
-import org.apache.iotdb.db.auth.IAuthorityFetcher;
 import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
@@ -61,7 +60,6 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,6 +83,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedExce
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
+  private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
 
   // When the client abnormally exits, we can still know who to disconnect
   /** currSession can be only used in client-thread model services. */
@@ -104,9 +103,6 @@ public class SessionManager implements SessionManagerMBean {
 
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-
-  private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
-      MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
 
   protected SessionManager() {
     // singleton
@@ -248,11 +244,10 @@ public class SessionManager implements SessionManagerMBean {
       return openSessionResp;
     }
 
-    User user = authorityFetcher.get().getUser(username);
-    boolean enableLoginLock = user != null;
+    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
+    boolean enableLoginLock = userId != -1;
     LoginLockManager loginLockManager = LoginLockManager.getInstance();
-    if (enableLoginLock
-        && loginLockManager.checkLock(user.getUserId(), session.getClientAddress())) {
+    if (enableLoginLock && loginLockManager.checkLock(userId, session.getClientAddress())) {
       // Generic authentication error
       openSessionResp
           .sessionId(-1)
@@ -270,8 +265,6 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        User tmpUser = AuthorityChecker.getUser(username);
-        long userId = tmpUser == null ? -1 : tmpUser.getUserId();
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
@@ -314,7 +307,22 @@ public class SessionManager implements SessionManagerMBean {
             .sessionId(session.getId())
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
             .setMessage(logInMessage);
-
+        AUDIT_LOGGER.log(
+            new AuditLogFields(
+                userId,
+                username,
+                session.getClientAddress(),
+                AuditEventType.LOGIN,
+                AuditLogOperation.CONTROL,
+                true),
+            () ->
+                String.format(
+                    "%s: Login status: %s. User %s (ID=%d), opens Session-%s",
+                    IoTDBConstant.GLOBAL_DB_NAME,
+                    openSessionResp.getMessage(),
+                    username,
+                    userId,
+                    session));
         LOGGER.info(
             "{}: Login status: {}. User : {}, opens Session-{}",
             IoTDBConstant.GLOBAL_DB_NAME,
@@ -322,16 +330,27 @@ public class SessionManager implements SessionManagerMBean {
             username,
             session);
         if (enableLoginLock) {
-          loginLockManager.clearFailure(tmpUser.getUserId(), session.getClientAddress());
+          loginLockManager.clearFailure(userId, session.getClientAddress());
         }
       }
     } else {
       openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
       if (enableLoginLock) {
-        loginLockManager.recordFailure(user.getUserId(), session.getClientAddress());
+        loginLockManager.recordFailure(userId, session.getClientAddress());
       }
+      AUDIT_LOGGER.log(
+          new AuditLogFields(
+              userId,
+              username,
+              session.getClientAddress(),
+              AuditEventType.LOGIN,
+              AuditLogOperation.CONTROL,
+              false),
+          () ->
+              String.format(
+                  "User %s (ID=%d) login failed with code: %d, %s",
+                  username, userId, loginStatus.getCode(), loginStatus.getMessage()));
     }
-
     return openSessionResp;
   }
 
@@ -345,7 +364,16 @@ public class SessionManager implements SessionManagerMBean {
             String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
-    return session1 == null || session == session1;
+    if (session1 != null && session != session1) {
+      LOGGER.info(
+          String.format(
+              "The client-%s is trying to close another session %s, pls check if it's a bug",
+              session, session1));
+      return false;
+    } else {
+      LOGGER.info(String.format("Session-%s is closing", session));
+      return true;
+    }
   }
 
   private void releaseSessionResource(IClientSession session, LongConsumer releaseQueryResource) {

@@ -109,7 +109,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getEntity(username);
     if (user == null || password == null) {
-      return false;
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("The user %s does not exist.", username));
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
@@ -123,7 +124,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       }
       return true;
     }
-    return false;
+    throw new AuthException(TSStatusCode.WRONG_LOGIN_PASSWORD, "Incorrect password.");
   }
 
   @Override
