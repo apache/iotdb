@@ -34,6 +34,10 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 include = [
+    { path = "iotdb/Session.py", format = "wheel" },
+    { path = "iotdb/SessionPool.py", format = "wheel" },
+    { path = "iotdb/table_session.py", format = "wheel" },
+    { path = "iotdb/table_session_pool.py", format = "wheel" },
     { path = "iotdb/dbapi/*", format = "wheel" },
     { path = "iotdb/sqlalchemy/*", format = "wheel" },
     { path = "iotdb/template/*", format = "wheel" },
@@ -51,7 +55,6 @@ include = [
     { path = "iotdb/__init__.py", format = "wheel" },
     { path = "iotdb/ainode/__init__.py", format = "wheel" },
     { path = "iotdb/ainode/conf/*", format = "wheel" },
-    { path = "iotdb/ainode/script.py", format = "wheel" }
 ]
 
 packages = [
