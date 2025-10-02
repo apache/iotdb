@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.template;
 
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

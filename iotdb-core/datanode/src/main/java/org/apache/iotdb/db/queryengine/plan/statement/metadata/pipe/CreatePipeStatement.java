@@ -34,11 +34,11 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
   private boolean ifNotExistsCondition;
-  private Map<String, String> extractorAttributes;
+  private Map<String, String> sourceAttributes;
   private Map<String, String> processorAttributes;
-  private Map<String, String> connectorAttributes;
+  private Map<String, String> sinkAttributes;
 
-  public CreatePipeStatement(StatementType createPipeStatement) {
+  public CreatePipeStatement(final StatementType createPipeStatement) {
     this.statementType = createPipeStatement;
   }
 
@@ -50,19 +50,19 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
     return ifNotExistsCondition;
   }
 
-  public Map<String, String> getExtractorAttributes() {
-    return extractorAttributes;
+  public Map<String, String> getSourceAttributes() {
+    return sourceAttributes;
   }
 
   public Map<String, String> getProcessorAttributes() {
     return processorAttributes;
   }
 
-  public Map<String, String> getConnectorAttributes() {
-    return connectorAttributes;
+  public Map<String, String> getSinkAttributes() {
+    return sinkAttributes;
   }
 
-  public void setPipeName(String pipeName) {
+  public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
   }
 
@@ -70,16 +70,16 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
     this.ifNotExistsCondition = ifNotExistsCondition;
   }
 
-  public void setExtractorAttributes(Map<String, String> extractorAttributes) {
-    this.extractorAttributes = extractorAttributes;
+  public void setSourceAttributes(final Map<String, String> sourceAttributes) {
+    this.sourceAttributes = sourceAttributes;
   }
 
-  public void setProcessorAttributes(Map<String, String> processorAttributes) {
+  public void setProcessorAttributes(final Map<String, String> processorAttributes) {
     this.processorAttributes = processorAttributes;
   }
 
-  public void setConnectorAttributes(Map<String, String> connectorAttributes) {
-    this.connectorAttributes = connectorAttributes;
+  public void setSinkAttributes(final Map<String, String> sinkAttributes) {
+    this.sinkAttributes = sinkAttributes;
   }
 
   @Override
@@ -93,7 +93,7 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitCreatePipe(this, context);
   }
 }

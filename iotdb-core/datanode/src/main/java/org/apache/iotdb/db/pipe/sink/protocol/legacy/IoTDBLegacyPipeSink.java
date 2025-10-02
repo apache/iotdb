@@ -88,6 +88,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
 @TreeModel
 public class IoTDBLegacyPipeSink implements PipeConnector {
@@ -325,7 +326,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     final List<Tablet> tablets = pipeInsertNodeInsertionEvent.convertToTablets();
     for (int i = 0; i < tablets.size(); ++i) {
       final Tablet tablet = tablets.get(i);
-      if (Objects.isNull(tablet) || tablet.getRowSize() == 0) {
+      if (Objects.isNull(tablet) || isTabletEmpty(tablet)) {
         continue;
       }
       if (pipeInsertNodeInsertionEvent.isAligned(i)) {
@@ -337,7 +338,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   }
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
+      throws Exception {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeRawTabletInsertionEvent.increaseReferenceCount(IoTDBLegacyPipeSink.class.getName())) {
       return;
@@ -351,7 +352,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   }
 
   private void doTransfer(final PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
+      throws Exception {
     final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
     if (pipeTabletInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
