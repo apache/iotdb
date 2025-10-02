@@ -264,10 +264,20 @@ public class AccessControlImpl implements AccessControl {
       case RENAME_USER:
       case UPDATE_USER:
         auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
-        // users can change the username and password of themselves
-        // the superuser can affect anyone
-        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
-            || statement.getUserName().equals(userName)) {
+        if (statement.getUserName().equals(userName)) {
+          // users can change the username and password of themselves
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          return;
+        }
+        if (AuthorityChecker.SUPER_USER_ID
+            == AuthorityChecker.getUserId(statement.getUserName()).orElse(-1L)) {
+          // Only the superuser can alter him/herself
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setResult(false), statement::getUserName);
+          throw new AccessDeniedException("Only the superuser can alter him/herself.");
+        }
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          // the superuser can alter anyone
           ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
           return;
         }

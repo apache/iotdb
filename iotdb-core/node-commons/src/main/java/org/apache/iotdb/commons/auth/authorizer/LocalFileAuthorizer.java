@@ -36,6 +36,6 @@ public class LocalFileAuthorizer extends BasicAuthorizer {
 
   @Override
   public boolean isAdmin(String username) {
-    return config.getAdminName().equals(username);
+    return config.getDefaultAdminName().equals(username);
   }
 }

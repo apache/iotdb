@@ -691,7 +691,7 @@ showConfigurationStatement
 // ------------------------------------------- Authority Statement -----------------------------------------------------
 
 createUserStatement
-    : CREATE USER userName=identifier password=string
+    : CREATE USER userName=usernameWithRoot password=string
     ;
 
 createRoleStatement
@@ -699,7 +699,7 @@ createRoleStatement
     ;
 
 dropUserStatement
-    : DROP USER userName=identifier
+    : DROP USER userName=usernameWithRoot
     ;
 
 dropRoleStatement
@@ -707,7 +707,7 @@ dropRoleStatement
     ;
 
 alterUserStatement
-    : ALTER USER userName=identifier SET PASSWORD password=string
+    : ALTER USER userName=usernameWithRoot SET PASSWORD password=string
     ;
 
 alterUserAccountUnlockStatement
@@ -724,15 +724,15 @@ usernameWithRootWithOptionalHost
     ;
 
 renameUserStatement
-    : ALTER USER username=identifier RENAME TO newUsername=identifier
+    : ALTER USER username=usernameWithRoot RENAME TO newUsername=usernameWithRoot
     ;
 
 grantUserRoleStatement
-    : GRANT ROLE roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=usernameWithRoot
     ;
 
 revokeUserRoleStatement
-    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=usernameWithRoot
     ;
 
 
@@ -741,7 +741,7 @@ grantStatement
     ;
 
 listUserPrivilegeStatement
-    : LIST PRIVILEGES OF USER userName=identifier
+    : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
 listRolePrivilegeStatement
@@ -753,7 +753,7 @@ listUserStatement
     ;
 
 listRoleStatement
-    : LIST ROLE (OF USER userName=identifier)?
+    : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
 

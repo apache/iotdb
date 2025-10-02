@@ -372,4 +372,6 @@ public class IoTDBConstant {
   // Class Name
   public static final String STRING_2D_ARRAY_CLASS_NAME = String[][].class.getName();
   public static final String STRING_ARRAY_CLASS_NAME = String[].class.getName();
+
+  public static final int SUPER_USER_ID = 0;
 }

@@ -267,6 +267,7 @@ struct TDropPipePluginInstanceReq {
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
+  3: optional bool needDisconnect
 }
 
 struct TDataNodeHeartbeatReq {

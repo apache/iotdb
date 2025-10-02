@@ -519,10 +519,20 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       case UPDATE_USER:
       case RENAME_USER:
         context.setAuditLogOperation(AuditLogOperation.DDL);
-        // users can change the username and password of themselves
         if (statement.getUserName().equals(context.getUsername())) {
+          // users can change the username and password of themselves
           recordObjectAuthenticationAuditLog(context.setResult(true), context::getUsername);
           return RpcUtils.SUCCESS_STATUS;
+        }
+        if (AuthorityChecker.SUPER_USER_ID
+            == AuthorityChecker.getUserId(statement.getUserName()).orElse(-1L)) {
+          // Only the superuser can alter him/herself
+          recordObjectAuthenticationAuditLog(context.setResult(false), context::getUsername);
+          return AuthorityChecker.getTSStatus(
+              false,
+              "Has no permission to execute "
+                  + authorType
+                  + ", because only the superuser can alter him/herself.");
         }
         context.setPrivilegeType(PrivilegeType.SECURITY);
         return checkGlobalAuth(
@@ -1093,6 +1103,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return SUCCEED;
     }
     setCanSeeAuditDB(statement, context);
+    context.setPrivilegeType(PrivilegeType.READ_DATA);
     try {
       statement.setAuthorityScope(
           AuthorityChecker.getAuthorizedPathTree(context.getUsername(), PrivilegeType.READ_DATA));
@@ -1894,6 +1905,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                 auditEntity.getUsername(),
                 auditEntity.getUserId(),
                 auditObject.get(),
-                true));
+                auditEntity.getResult()));
   }
 }
