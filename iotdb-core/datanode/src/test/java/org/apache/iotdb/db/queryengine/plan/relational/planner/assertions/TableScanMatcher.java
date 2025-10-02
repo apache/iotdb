@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +42,7 @@ public abstract class TableScanMatcher implements Matcher {
   protected final List<String> outputSymbols;
   // this field empty means no need to match
   protected Set<String> assignmentsKeys;
+  protected Expression pushDownPredicate;
 
   public TableScanMatcher(
       String expectedTableName,
@@ -51,6 +53,16 @@ public abstract class TableScanMatcher implements Matcher {
     this.hasTableLayout = requireNonNull(hasTableLayout, "hasTableLayout is null");
     this.outputSymbols = requireNonNull(outputSymbols, "outputSymbols is null");
     this.assignmentsKeys = requireNonNull(assignmentsKeys, "assignmentsKeys is null");
+  }
+
+  public TableScanMatcher(
+      String expectedTableName,
+      Optional<Boolean> hasTableLayout,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys,
+      Expression pushDownPredicate) {
+    this(expectedTableName, hasTableLayout, outputSymbols, assignmentsKeys);
+    this.pushDownPredicate = requireNonNull(pushDownPredicate, "pushDownPredicate is null");
   }
 
   @Override
@@ -81,6 +93,11 @@ public abstract class TableScanMatcher implements Matcher {
             tableScanNode.getAssignments().keySet().stream()
                 .map(Symbol::getName)
                 .collect(Collectors.toSet()))) {
+      return NO_MATCH;
+    }
+
+    if (pushDownPredicate != null
+        && !pushDownPredicate.equals(tableScanNode.getPushDownPredicate())) {
       return NO_MATCH;
     }
 

@@ -33,14 +33,20 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -82,7 +88,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
-  private boolean isExplainAnalyze = false;
+  // explainType & isVerbose are used by cte query in table model
+  private ExplainType explainType = ExplainType.NONE;
+  private boolean isVerbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
 
@@ -102,6 +110,13 @@ public class MPPQueryContext implements IAuditEntity {
   private LongConsumer reserveMemoryForSchemaTreeFunc = null;
 
   private boolean userQuery = false;
+
+  // table -> (maxLineLength, explain/explain analyze lines)
+  private final Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
+      new HashMap<>();
+  private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
+  // If this is a subquery, we do not release CTE query result
+  private boolean subquery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -282,12 +297,28 @@ public class MPPQueryContext implements IAuditEntity {
     return session.getZoneId();
   }
 
-  public void setExplainAnalyze(boolean explainAnalyze) {
-    isExplainAnalyze = explainAnalyze;
+  public void setExplainType(ExplainType explainType) {
+    this.explainType = explainType;
+  }
+
+  public ExplainType getExplainType() {
+    return explainType;
   }
 
   public boolean isExplainAnalyze() {
-    return isExplainAnalyze;
+    return explainType == ExplainType.EXPLAIN_ANALYZE;
+  }
+
+  public boolean isExplain() {
+    return explainType == ExplainType.EXPLAIN;
+  }
+
+  public void setVerbose(boolean verbose) {
+    isVerbose = verbose;
+  }
+
+  public boolean isVerbose() {
+    return isVerbose;
   }
 
   public long getAnalyzeCost() {
@@ -433,6 +464,38 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean isSubquery() {
+    return subquery;
+  }
+
+  public void setSubquery(boolean subquery) {
+    this.subquery = subquery;
+  }
+
+  public void addCteDataStore(Table table, CteDataStore dataStore) {
+    cteDataStores.put(NodeRef.of(table), dataStore);
+  }
+
+  public Map<NodeRef<Table>, CteDataStore> getCteDataStores() {
+    return cteDataStores;
+  }
+
+  public CteDataStore getCteDataStore(Table table) {
+    return cteDataStores.get(NodeRef.of(table));
+  }
+
+  public void setCteDataStores(Map<NodeRef<Table>, CteDataStore> cteDataStores) {
+    this.cteDataStores = cteDataStores;
+  }
+
+  public void addCteExplainResult(Table table, Pair<Integer, List<String>> cteExplainResult) {
+    cteExplainResults.put(NodeRef.of(table), cteExplainResult);
+  }
+
+  public Map<NodeRef<Table>, Pair<Integer, List<String>>> getCteExplainResults() {
+    return cteExplainResults;
   }
 
   // ================= Authentication Interfaces =========================
