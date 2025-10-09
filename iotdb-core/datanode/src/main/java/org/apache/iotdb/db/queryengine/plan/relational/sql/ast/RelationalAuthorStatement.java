@@ -57,6 +57,9 @@ public class RelationalAuthorStatement extends Statement {
   private String newUsername = "";
   private String loginAddr;
 
+  // the id of userName
+  private long associatedUserId = -1;
+
   public RelationalAuthorStatement(
       AuthorRType authorType,
       String userName,
@@ -162,6 +165,9 @@ public class RelationalAuthorStatement extends Statement {
 
   public void setUserName(String userName) {
     this.userName = userName;
+    if (authorType != AuthorRType.CREATE_USER) {
+      this.associatedUserId = AuthorityChecker.getUserId(userName).orElse(-1L);
+    }
   }
 
   public void setRoleName(String roleName) {
@@ -301,11 +307,12 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   private TSStatus onCreateUserSuccess() {
+    associatedUserId = AuthorityChecker.getUserId(userName).orElse(-1L);
     // the old password is expected to be encrypted during updates, so we also encrypt it here to
     // keep consistency
     TSStatus tsStatus =
         DataNodeAuthUtils.recordPasswordHistory(
-            userName,
+            associatedUserId,
             password,
             AuthUtils.encryptPassword(password),
             CommonDateTimeUtils.currentTime());
@@ -320,7 +327,7 @@ public class RelationalAuthorStatement extends Statement {
   private TSStatus onUpdateUserSuccess() {
     TSStatus tsStatus =
         DataNodeAuthUtils.recordPasswordHistory(
-            userName, password, oldPassword, CommonDateTimeUtils.currentTime());
+            associatedUserId, password, oldPassword, CommonDateTimeUtils.currentTime());
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -330,7 +337,7 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   private TSStatus onDropUserSuccess() {
-    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(userName);
+    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(associatedUserId);
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -434,5 +441,9 @@ public class RelationalAuthorStatement extends Statement {
         break;
     }
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public long getAssociatedUserId() {
+    return associatedUserId;
   }
 }
