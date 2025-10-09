@@ -88,7 +88,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
-  // explainType & isVerbose are used by cte query in table model
+  // Previously, the boolean value 'isExplainAnalyze' was needed to determine whether query
+  // statistics should be recorded during the query process. Now 'explainType' is used to
+  // determine whether query statistics or query plan should be recorded during the query process.
   private ExplainType explainType = ExplainType.NONE;
   private boolean isVerbose = false;
 
@@ -111,11 +113,13 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
-  // table -> (maxLineLength, explain/explain analyze lines)
+  private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
+  // table -> (maxLineLength, 'explain' or 'explain analyze' result)
+  // Max line length of each CTE should be remembered because we need to standardize
+  // the output format of main query and CTE query.
   private final Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
       new HashMap<>();
-  private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
-  // If this is a subquery, we do not release CTE query result
+  // Do not release CTE query result if it is a subquery.
   private boolean subquery = false;
 
   public MPPQueryContext(QueryId queryId) {

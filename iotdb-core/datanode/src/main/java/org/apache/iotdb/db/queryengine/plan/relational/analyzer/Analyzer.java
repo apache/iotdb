@@ -80,8 +80,7 @@ public class Analyzer {
             warningCollector);
 
     Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
-    // Here we register CTE into analysis. Later in RelationPlanner, we create CteScanNode or
-    // DeviceTableDeviceScanNode based on analysis.getNamedQuery result.
+    // Register CTE passed by parent query.
     context
         .getCteDataStores()
         .forEach(

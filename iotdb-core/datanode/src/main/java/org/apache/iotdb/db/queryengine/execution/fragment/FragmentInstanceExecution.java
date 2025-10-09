@@ -164,8 +164,8 @@ public class FragmentInstanceExecution {
     statistics.setFragmentInstanceId(context.getId().toThrift());
     statistics.setQueryStatistics(context.getQueryStatistics().toThrift());
     statistics.setState(getInstanceState().toString());
-
-    // Check if this fragment instance should be ignored for statistics
+    // Previously we ignore statistics when current data region is instance of
+    // VirtualDataRegion. Now data region of a CteScanNode is also virtual.
     if (shouldIgnoreForStatistics()) {
       // We don't need to output the region having ExplainAnalyzeOperator only.
       return false;

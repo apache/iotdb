@@ -250,6 +250,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitExplain(ExplainStatement explainStatement, MPPQueryContext context) {
     Analysis analysis = visitQuery(explainStatement.getQueryStatement(), context);
+    context.setExplainType(ExplainType.EXPLAIN);
     analysis.setRealStatement(explainStatement);
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setDatabaseName(context.getDatabaseName().orElse(null));
