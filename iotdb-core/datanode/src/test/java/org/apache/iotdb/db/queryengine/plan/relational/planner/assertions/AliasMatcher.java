@@ -66,9 +66,6 @@ public class AliasMatcher implements Matcher {
     if (symbol.isPresent() && alias.isPresent()) {
       return match(alias.get(), symbol.get().toSymbolReference());
     }
-    if (node instanceof CteScanNode) {
-      System.out.println("CteScanNode");
-    }
 
     return new MatchResult(symbol.isPresent());
   }
