@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
+import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -48,6 +52,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -75,6 +80,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
   private final PipeMemoryBlock allocatedMemoryBlockForTableSchema;
 
+  // mods entry
+  private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications;
+
   // Used to read tsfile data
   private IChunkReader chunkReader;
   private BatchData batchData;
@@ -96,6 +104,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private List<TSDataType> dataTypeList;
   private int deviceIdSize;
 
+  private List<ModsOperationUtil.ModsInfo> modsInfoList;
+
   // Used to record whether the same Tablet is generated when parsing starts. Different table
   // information cannot be placed in the same Tablet.
   private boolean isSameTableName;
@@ -112,6 +122,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final long startTime,
       final long endTime)
       throws IOException {
+    modifications =
+        ModsOperationUtil.loadModificationsFromTsFile(new File(tsFileSequenceReader.getFileName()));
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -200,6 +212,25 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                     || alignedChunkMetadata.getStartTime() > endTime) {
                   chunkMetadataIterator.remove();
                   continue;
+                }
+
+                Iterator<IChunkMetadata> iChunkMetadataIterator =
+                    alignedChunkMetadata.getValueChunkMetadataList().iterator();
+                if (iChunkMetadataIterator.hasNext()) {
+                  IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
+                  if (iChunkMetadata == null) {
+                    throw new PipeException(
+                        "Table model tsfile parsing does not support this type of ChunkMeta");
+                  }
+
+                  if (ModsOperationUtil.isAllDeletedByMods(
+                      deviceID,
+                      iChunkMetadata.getMeasurementUid(),
+                      alignedChunkMetadata.getStartTime(),
+                      alignedChunkMetadata.getEndTime(),
+                      modifications)) {
+                    iChunkMetadataIterator.remove();
+                  }
                 }
 
                 size +=
@@ -386,6 +417,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     }
 
     this.chunkReader = new TableChunkReader(timeChunk, valueChunkList, null);
+    this.modsInfoList =
+        ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications);
   }
 
   private void fillMeasurementValueColumns(
@@ -394,7 +427,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
     for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
       final TsPrimitiveType primitiveType = primitiveTypes[i - deviceIdSize];
-      if (primitiveType == null) {
+      if (primitiveType == null
+          || ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i))) {
         switch (dataTypeList.get(i)) {
           case TEXT:
           case BLOB:

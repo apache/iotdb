@@ -27,12 +27,12 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -43,7 +43,6 @@ import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -60,7 +59,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser {
 
@@ -125,11 +123,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
-      // Read mods file first
-      ModificationFile.readAllModifications(tsFile, true)
-          .forEach(
-              modification ->
-                  currentModifications.append(modification.keyOfPatternTree(), modification));
+      currentModifications = ModsOperationUtil.loadModificationsFromTsFile(tsFile);
 
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
@@ -208,11 +202,12 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
               try {
                 TimeseriesMetadata meta =
                     tsFileSequenceReader.readTimeseriesMetadata(deviceId, measurement, true);
-                return isAllDeletedByMods(
+                return ModsOperationUtil.isAllDeletedByMods(
                     deviceId,
                     measurement,
                     meta.getStatistics().getStartTime(),
-                    meta.getStatistics().getEndTime());
+                    meta.getStatistics().getEndTime(),
+                    currentModifications);
               } catch (IOException e) {
                 LOGGER.warn(
                     "Failed to read metadata for deviceId: {}, measurement: {}, removing",
@@ -479,24 +474,5 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     if (allocatedMemoryBlock != null) {
       allocatedMemoryBlock.close();
     }
-  }
-
-  public boolean isAllDeletedByMods(
-      IDeviceID deviceID, String measurementID, long startTime, long endTime) {
-    final List<ModEntry> mods = currentModifications.getOverlapped(deviceID, measurementID);
-    return mods.stream()
-        .anyMatch(
-            modification ->
-                modification.getTimeRange().contains(startTime, endTime)
-                    && (!deviceID.isTableModel() || modification.affects(deviceID)));
-  }
-
-  public List<TimeRange> getModTimeRanges(IDeviceID deviceID, String measurementID) {
-    final List<ModEntry> mods = currentModifications.getOverlapped(deviceID, measurementID);
-    return mods.stream()
-        .filter(modification -> (!deviceID.isTableModel() || modification.affects(deviceID)))
-        .map(ModEntry::getTimeRange)
-        .sorted()
-        .collect(Collectors.toList());
   }
 }

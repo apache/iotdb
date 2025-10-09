@@ -26,11 +26,11 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -45,7 +45,6 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
-import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
@@ -69,7 +68,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
@@ -86,9 +84,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private IDeviceID currentDevice;
   private boolean currentIsAligned;
   private final List<IMeasurementSchema> currentMeasurements = new ArrayList<>();
-  private final List<List<TimeRange>> measurementTimeRangeList = new ArrayList<>();
-  private final List<Integer> measurementTimeRangeIndexList = new ArrayList<>();
-
+  private final List<ModsOperationUtil.ModsInfo> modsInfos = new ArrayList<>();
   // Cached time chunk
   private final List<Chunk> timeChunkList = new ArrayList<>();
   private final List<Boolean> isMultiPageList = new ArrayList<>();
@@ -100,8 +96,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private byte lastMarker = Byte.MIN_VALUE;
 
   // mods entry
-  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications =
-      PatternTreeMapFactory.getModsPatternTreeMap();
+  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
 
   public TsFileInsertionEventScanParser(
       final String pipeName,
@@ -129,10 +124,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
 
     try {
-      ModificationFile.readAllModifications(tsFile, true)
-          .forEach(
-              modification ->
-                  currentModifications.append(modification.keyOfPatternTree(), modification));
+      currentModifications = ModsOperationUtil.loadModificationsFromTsFile(tsFile);
 
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -340,7 +332,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < tablet.getSchemas().size(); ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
-        if (Objects.isNull(primitiveType) || isDelete(i, data.currentTime())) {
+        if (Objects.isNull(primitiveType) || ModsOperationUtil.isDelete(i, modsInfos.get(i))) {
           switch (tablet.getSchemas().get(i).getType()) {
             case TEXT:
             case BLOB:
@@ -416,8 +408,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     long valueChunkSize = 0;
     final List<Chunk> valueChunkList = new ArrayList<>();
     currentMeasurements.clear();
-    measurementTimeRangeList.clear();
-    measurementTimeRangeIndexList.clear();
+    modsInfos.clear();
 
     if (lastMarker == MetaMarker.SEPARATOR) {
       chunkReader = null;
@@ -473,11 +464,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             // Skip the chunk if it is fully deleted by mods
             final Statistics statistics = chunk.getChunkStatistic();
             if (statistics != null
-                && isAllDeletedByMods(
+                && ModsOperationUtil.isAllDeletedByMods(
                     currentDevice,
                     chunkHeader.getMeasurementID(),
                     statistics.getStartTime(),
-                    statistics.getEndTime())) {
+                    statistics.getEndTime(),
+                    currentModifications)) {
               break;
             }
 
@@ -488,15 +480,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             currentIsAligned = false;
             currentMeasurements.add(
                 new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
-            List<TimeRange> timeRange =
-                getModTimeRanges(currentDevice, chunkHeader.getMeasurementID());
-            if (timeRange.isEmpty()) {
-              measurementTimeRangeList.add(Collections.EMPTY_LIST);
-              measurementTimeRangeIndexList.add(-1);
-            } else {
-              measurementTimeRangeList.add(timeRange);
-              measurementTimeRangeIndexList.add(0);
-            }
+            modsInfos.addAll(
+                ModsOperationUtil.initializeMeasurementMods(
+                    currentDevice,
+                    Collections.singletonList(chunkHeader.getMeasurementID()),
+                    currentModifications));
             return;
           }
         case MetaMarker.VALUE_CHUNK_HEADER:
@@ -564,11 +552,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             // Skip the chunk if it is fully deleted by mods
             final Statistics statistics = chunk.getChunkStatistic();
             if (statistics != null
-                && isAllDeletedByMods(
+                && ModsOperationUtil.isAllDeletedByMods(
                     currentDevice,
                     chunkHeader.getMeasurementID(),
                     statistics.getStartTime(),
-                    statistics.getEndTime())) {
+                    statistics.getEndTime(),
+                    currentModifications)) {
               break;
             }
 
@@ -576,15 +565,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             valueChunkList.add(chunk);
             currentMeasurements.add(
                 new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
-            List<TimeRange> timeRange =
-                getModTimeRanges(currentDevice, chunkHeader.getMeasurementID());
-            if (timeRange.isEmpty()) {
-              measurementTimeRangeList.add(Collections.EMPTY_LIST);
-              measurementTimeRangeIndexList.add(-1);
-            } else {
-              measurementTimeRangeList.add(timeRange);
-              measurementTimeRangeIndexList.add(0);
-            }
+            modsInfos.addAll(
+                ModsOperationUtil.initializeMeasurementMods(
+                    currentDevice,
+                    Collections.singletonList(chunkHeader.getMeasurementID()),
+                    currentModifications));
             break;
           }
         case MetaMarker.CHUNK_GROUP_HEADER:
@@ -646,46 +631,5 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (allocatedMemoryBlockForChunk != null) {
       allocatedMemoryBlockForChunk.close();
     }
-  }
-
-  public boolean isAllDeletedByMods(
-      IDeviceID deviceID, String measurementID, long startTime, long endTime) {
-    final List<ModEntry> mods = currentModifications.getOverlapped(deviceID, measurementID);
-    return mods.stream()
-        .anyMatch(
-            modification ->
-                modification.getTimeRange().contains(startTime, endTime)
-                    && (!deviceID.isTableModel() || modification.affects(deviceID)));
-  }
-
-  public List<TimeRange> getModTimeRanges(IDeviceID deviceID, String measurementID) {
-    final List<ModEntry> mods = currentModifications.getOverlapped(deviceID, measurementID);
-    return mods.stream()
-        .filter(modification -> (!deviceID.isTableModel() || modification.affects(deviceID)))
-        .map(ModEntry::getTimeRange)
-        .sorted()
-        .collect(Collectors.toList());
-  }
-
-  public boolean isDelete(int measurementIndex, long time) {
-    int index = measurementTimeRangeIndexList.get(measurementIndex);
-    if (index == -1 || measurementTimeRangeList.isEmpty()) {
-      return false;
-    }
-
-    List<TimeRange> timeRanges = measurementTimeRangeList.get(measurementIndex);
-    for (int i = index; i < timeRanges.size(); i++) {
-      TimeRange timeRange = timeRanges.get(i);
-      if (time < timeRange.getMin()) {
-        measurementTimeRangeIndexList.set(measurementIndex, i);
-        return false;
-      } else if (time >= timeRange.getMin() && time <= timeRange.getMax()) {
-        measurementTimeRangeIndexList.set(measurementIndex, i);
-        return true;
-      }
-    }
-
-    measurementTimeRangeIndexList.set(measurementIndex, -1);
-    return false;
   }
 }

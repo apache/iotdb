@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -44,8 +45,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +72,7 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
   private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
 
   // Maintain sorted mods list and current index for each measurement
-  private final Map<String, Pair<List<ModEntry>, Integer>> measurementModsMap = new HashMap<>();
+  private final List<ModsOperationUtil.ModsInfo> measurementModsList = new ArrayList<>();
 
   TsFileInsertionEventQueryParserTabletIterator(
       final TsFileReader tsFileReader,
@@ -104,7 +103,9 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
     this.allocatedBlockForTablet = Objects.requireNonNull(allocatedBlockForTablet);
     this.currentModifications = Objects.requireNonNull(currentModifications);
 
-    initializeMeasurementMods();
+    this.measurementModsList.addAll(
+        ModsOperationUtil.initializeMeasurementMods(
+            deviceId, this.measurements, currentModifications));
   }
 
   private QueryDataSet buildQueryDataSet() throws IOException {
@@ -187,7 +188,8 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
         final String measurement = measurements.get(i);
 
         // Check if this value is deleted by mods
-        if (field == null || isDelete(measurement, rowRecord.getTimestamp())) {
+        if (field == null
+            || ModsOperationUtil.isDelete(rowRecord.getTimestamp(), measurementModsList.get(i))) {
           tablet.getBitMaps()[i].mark(rowIndex);
         } else {
           tablet.addValue(measurement, rowIndex, field.getObjectValue(schemas.get(i).getType()));
@@ -200,66 +202,5 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
     }
 
     return tablet;
-  }
-
-  private void initializeMeasurementMods() {
-    for (final String measurement : measurements) {
-      final List<ModEntry> mods = currentModifications.getOverlapped(deviceId, measurement);
-      if (mods == null || mods.isEmpty()) {
-        // No mods, use empty list and index 0
-        measurementModsMap.put(measurement, new Pair<>(Collections.EMPTY_LIST, 0));
-        continue;
-      }
-
-      // Sort by time range for efficient lookup
-      final List<ModEntry> sortedMods =
-          mods.stream()
-              .filter(modification -> (!deviceId.isTableModel() || modification.affects(deviceId)))
-              .sorted(
-                  (m1, m2) -> Long.compare(m1.getTimeRange().getMin(), m2.getTimeRange().getMin()))
-              .collect(Collectors.toList());
-
-      // Store sorted mods and start index
-      measurementModsMap.put(measurement, new Pair<>(sortedMods, 0));
-    }
-  }
-
-  private boolean isDelete(String measurementID, long time) {
-    final Pair<List<ModEntry>, Integer> modsPair = measurementModsMap.get(measurementID);
-    if (modsPair == null) {
-      return false;
-    }
-
-    final List<ModEntry> mods = modsPair.getLeft();
-    if (mods == null || mods.isEmpty()) {
-      return false;
-    }
-
-    Integer currentIndex = modsPair.getRight();
-    if (currentIndex == null || currentIndex < 0) {
-      return false;
-    }
-
-    // Search from current index
-    for (int i = currentIndex; i < mods.size(); i++) {
-      final ModEntry mod = mods.get(i);
-      final long modStartTime = mod.getTimeRange().getMin();
-      final long modEndTime = mod.getTimeRange().getMax();
-
-      if (time < modStartTime) {
-        // Current time is before mod start time, update index and return false
-        measurementModsMap.put(measurementID, new Pair<>(mods, i));
-        return false;
-      } else if (time <= modEndTime) {
-        // Current time is within mod time range, update index and return true
-        measurementModsMap.put(measurementID, new Pair<>(mods, i));
-        return true;
-      }
-      // If time > modEndTime, continue to next mod
-    }
-
-    // All mods checked, clear mods list and reset index to 0
-    measurementModsMap.put(measurementID, new Pair<>(Collections.EMPTY_LIST, 0));
-    return false;
   }
 }
