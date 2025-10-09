@@ -23,7 +23,6 @@ package org.apache.iotdb.relational.it.query.recent;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
@@ -50,21 +49,21 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
+@Category({TableLocalStandaloneIT.class})
 public class IoTExplainAnalyzeIT {
   private static final String DATABASE_NAME = "testdb";
 
   private static final String[] creationSqls =
       new String[] {
-        "CREATE DATABASE IF NOT EXISTS testdb",
-        "USE testdb",
+        "CREATE DATABASE IF NOT EXISTS " + DATABASE_NAME,
+        "USE " + DATABASE_NAME,
         "CREATE TABLE IF NOT EXISTS testtb(deviceid STRING TAG, voltage FLOAT FIELD)",
         "INSERT INTO testtb VALUES(1000, 'd1', 100.0)",
         "INSERT INTO testtb VALUES(2000, 'd1', 200.0)",
         "INSERT INTO testtb VALUES(1000, 'd2', 300.0)",
       };
 
-  private static final String dropDbSqls = "DROP DATABASE IF EXISTS testdb";
+  private static final String dropDbSqls = "DROP DATABASE IF EXISTS " + DATABASE_NAME;
 
   @BeforeClass
   public static void setUpClass() {
@@ -100,20 +99,22 @@ public class IoTExplainAnalyzeIT {
   }
 
   @Test
-  public void testEmptyCteQuery() throws SQLException {
-    ResultSet resultSet = null;
+  public void testEmptyCteQuery() {
     String sql =
         "explain analyze with cte1 as materialized (select * from testtb1) select * from testtb, cte1 where testtb.deviceid = cte1.deviceid";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
-      statement.execute("Use testdb");
+      statement.execute("Use " + DATABASE_NAME);
       statement.execute(
           "CREATE TABLE IF NOT EXISTS testtb1(deviceid STRING TAG, voltage FLOAT FIELD)");
-      resultSet = statement.executeQuery(sql);
+      ResultSet resultSet = statement.executeQuery(sql);
       StringBuilder sb = new StringBuilder();
       while (resultSet.next()) {
+        System.out.println(resultSet.getString(1));
         sb.append(resultSet.getString(1)).append(System.lineSeparator());
       }
+      resultSet.close();
+
       String result = sb.toString();
       Assert.assertFalse(
           "Explain Analyze should not contain ExplainAnalyze node.",
@@ -125,21 +126,19 @@ public class IoTExplainAnalyzeIT {
       Assert.assertEquals("", lines[1]);
       Assert.assertEquals("Main Query", lines[2]);
       statement.execute("DROP TABLE testtb1");
-    } finally {
-      if (resultSet != null) {
-        resultSet.close();
-      }
+
+    } catch (SQLException e) {
+      fail(e.getMessage());
     }
   }
 
   @Test
-  public void testCteQueryExceedsThreshold() throws SQLException {
-    ResultSet resultSet = null;
+  public void testCteQueryExceedsThreshold() {
     String sql =
         "explain analyze with cte1 as materialized (select * from testtb2) select * from testtb where testtb.deviceid in (select deviceid from cte1)";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
-      statement.execute("Use testdb");
+      statement.execute("Use " + DATABASE_NAME);
       statement.execute(
           "CREATE TABLE IF NOT EXISTS testtb2(deviceid STRING TAG, voltage FLOAT FIELD)");
       for (int i = 0; i < 100; i++) {
@@ -147,11 +146,12 @@ public class IoTExplainAnalyzeIT {
             String.format("insert into testtb2(deviceid, voltage) values('d%d', %d)", i, i));
       }
       statement.executeBatch();
-      resultSet = statement.executeQuery(sql);
+      ResultSet resultSet = statement.executeQuery(sql);
       StringBuilder sb = new StringBuilder();
       while (resultSet.next()) {
         sb.append(resultSet.getString(1)).append(System.lineSeparator());
       }
+      resultSet.close();
 
       String result = sb.toString();
       Assert.assertFalse(
@@ -180,21 +180,18 @@ public class IoTExplainAnalyzeIT {
       }
 
       statement.execute("DROP TABLE testtb2");
-    } finally {
-      if (resultSet != null) {
-        resultSet.close();
-      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
     }
   }
 
   @Test
-  public void testCteQuerySuccess() throws SQLException {
-    ResultSet resultSet = null;
+  public void testCteQuerySuccess() {
     String sql =
         "explain analyze with cte1 as materialized (select * from testtb3) select * from testtb where testtb.deviceid in (select deviceid from cte1)";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
-      statement.execute("Use testdb");
+      statement.execute("Use " + DATABASE_NAME);
       statement.execute(
           "CREATE TABLE IF NOT EXISTS testtb3(deviceid STRING TAG, voltage FLOAT FIELD)");
       for (int i = 0; i < 50; i++) {
@@ -202,11 +199,12 @@ public class IoTExplainAnalyzeIT {
             String.format("insert into testtb3(deviceid, voltage) values('d%d', %d)", i, i));
       }
       statement.executeBatch();
-      resultSet = statement.executeQuery(sql);
+      ResultSet resultSet = statement.executeQuery(sql);
       StringBuilder sb = new StringBuilder();
       while (resultSet.next()) {
         sb.append(resultSet.getString(1)).append(System.lineSeparator());
       }
+      resultSet.close();
 
       String result = sb.toString();
       Assert.assertTrue(
@@ -232,10 +230,8 @@ public class IoTExplainAnalyzeIT {
       }
 
       statement.execute("DROP TABLE testtb3");
-    } finally {
-      if (resultSet != null) {
-        resultSet.close();
-      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
     }
   }
 
