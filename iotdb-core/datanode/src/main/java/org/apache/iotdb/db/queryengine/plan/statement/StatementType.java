@@ -27,6 +27,7 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 public enum StatementType {
   NULL,
 
+  ACCOUNT_UNLOCK,
   AUTHOR,
   LOAD_DATA,
   CREATE_USER,
@@ -188,5 +189,6 @@ public enum StatementType {
 
   SET_CONFIGURATION,
 
-  FAST_LAST_QUERY
+  FAST_LAST_QUERY,
+  SHOW_CONFIGURATION,
 }

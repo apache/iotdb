@@ -114,7 +114,8 @@ public class ConsensusPipeManager {
             .put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true))
             .put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true))
             .put(
-                EXTRACTOR_IOTDB_USER_KEY, CommonDescriptor.getInstance().getConfig().getAdminName())
+                EXTRACTOR_IOTDB_USER_KEY,
+                CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
             .build(),
         ImmutableMap.<String, String>builder()
             .put(PROCESSOR_KEY, config.getProcessorPluginName())

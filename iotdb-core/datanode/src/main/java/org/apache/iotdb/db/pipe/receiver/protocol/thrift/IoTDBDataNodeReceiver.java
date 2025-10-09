@@ -97,6 +97,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
@@ -126,7 +127,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -174,8 +174,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
-  private static final Set<String> ALREADY_CREATED_TABLE_MODEL_DATABASES =
-      ConcurrentHashMap.newKeySet();
   private final SqlParser tableSqlParser = new SqlParser();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -581,7 +579,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(validateTsFile.get());
-    statement.setAutoCreateDatabase(false);
+    statement.setAutoCreateDatabase(true);
     statement.setDatabase(dataBaseName);
 
     return executeStatementAndClassifyExceptions(statement);
@@ -966,8 +964,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
     } catch (final Exception e) {
-      ALREADY_CREATED_TABLE_MODEL_DATABASES.remove(databaseName);
-
       final Throwable rootCause = getRootCause(e);
       if (rootCause.getMessage() != null
           && rootCause
@@ -997,7 +993,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private void autoCreateDatabaseIfNecessary(final String database) {
-    if (ALREADY_CREATED_TABLE_MODEL_DATABASES.contains(database)
+    if (DataNodeTableCache.getInstance().isDatabaseExist(database)
         || !IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
       return;
     }
@@ -1026,8 +1022,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
       throw new PipeException("Auto create database failed because: " + e.getMessage());
     }
-
-    ALREADY_CREATED_TABLE_MODEL_DATABASES.add(database);
   }
 
   private TSStatus executeStatementForTreeModel(final Statement statement) {

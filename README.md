@@ -83,7 +83,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
+This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html).
 
 ## Prerequisites
 
@@ -220,7 +220,7 @@ IoTDB provides three installation methods, you can refer to the following sugges
 * Using Docker：The path to the dockerfile is [here](https://github.com/apache/iotdb/tree/master/docker/src/main).
 
 
-Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html).
 
 ## Build from source
 
@@ -307,10 +307,10 @@ you run `mvn package` successfully.**
 Configuration files are under the "conf" folder.
 
   * environment config module (`datanode-env.bat`, `datanode-env.sh`),
-  * system config module (`iotdb-datanode.properties`)
+  * system config module (`iotdb-system.properties`)
   * log config module (`logback.xml`).
 
-For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
+For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/latest/Reference/DataNode-Config-Manual.html).
 
 ## Start
 
@@ -482,7 +482,7 @@ or
 IoTDB> exit
 ```
 
-For more information about the commands supported by IoTDB SQL, please see [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
+For more information about the commands supported by IoTDB SQL, please see [User Guide](https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html).
 
 ### Stop IoTDB
 
@@ -496,12 +496,14 @@ The server can be stopped with "ctrl-C" or the following script:
 > sbin\stop-standalone.bat
 ```
 
-# The use of CSV Import and Export Tool
+# The use of Data Import and Export Tool
 
-see [The use of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/latest/Tools-System/Import-Export-Tool.html)
+see [The use of Data Import Tool](https://iotdb.apache.org/UserGuide/latest/Tools-System/Data-Import-Tool.html)
+see [The use of Data Export Tool](https://iotdb.apache.org/UserGuide/latest/Tools-System/Data-Export-Tool.html)
+
 
 # Frequent Questions for Compiling
-see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
+see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Community/Development-Guide.html#frequently-asked-questions)
 
 # Contact Us
 

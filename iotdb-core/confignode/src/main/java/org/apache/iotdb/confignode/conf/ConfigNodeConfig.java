@@ -1177,7 +1177,7 @@ public class ConfigNodeConfig {
     for (Field configField : ConfigNodeConfig.class.getDeclaredFields()) {
       try {
         String configType = configField.getGenericType().getTypeName();
-        if (configType.contains("java.lang.String[]")) {
+        if (configType.contains(IoTDBConstant.STRING_ARRAY_CLASS_NAME)) {
           String[] configList = (String[]) configField.get(this);
           configContent = Arrays.asList(configList).toString();
         } else {

@@ -521,6 +521,18 @@ public class IoTDBConfig {
    */
   private long maxExpiredTime = 2_592_000_000L;
 
+  /** The maximum number of consecutive failed login attempts for a specific user@address */
+  private int failedLoginAttempts = -1;
+
+  /**
+   * The maximum number of consecutive failed login attempts for a specific user (global) Note: Must
+   * be enabled if failed_login_attempts is enabled
+   */
+  private int failedLoginAttemptsPerUser = -1;
+
+  /** The lock time duration (in minutes) after reaching failed login attempts threshold */
+  private int passwordLockTimeMinutes = 10;
+
   /**
    * The expired device ratio. If the number of expired device in one tsfile exceeds this value,
    * then expired data of this tsfile will be cleaned by compaction.
@@ -3404,14 +3416,14 @@ public class IoTDBConfig {
           continue;
         }
         String configType = configField.getGenericType().getTypeName();
-        if (configType.contains("java.lang.String[][]")) {
+        if (configType.contains(IoTDBConstant.STRING_2D_ARRAY_CLASS_NAME)) {
           String[][] configList = (String[][]) configField.get(this);
           StringBuilder builder = new StringBuilder();
           for (String[] strings : configList) {
             builder.append(Arrays.asList(strings)).append(";");
           }
           configContent = builder.toString();
-        } else if (configType.contains("java.lang.String[]")) {
+        } else if (configType.contains(IoTDBConstant.STRING_ARRAY_CLASS_NAME)) {
           String[] configList = (String[]) configField.get(this);
           configContent = Arrays.asList(configList).toString();
         } else {
@@ -4188,5 +4200,29 @@ public class IoTDBConfig {
   public void setIncludeNullValueInWriteThroughputMetric(
       boolean includeNullValueInWriteThroughputMetric) {
     this.includeNullValueInWriteThroughputMetric = includeNullValueInWriteThroughputMetric;
+  }
+
+  public int getFailedLoginAttempts() {
+    return failedLoginAttempts;
+  }
+
+  public void setFailedLoginAttempts(int failedLoginAttempts) {
+    this.failedLoginAttempts = failedLoginAttempts;
+  }
+
+  public int getFailedLoginAttemptsPerUser() {
+    return failedLoginAttemptsPerUser;
+  }
+
+  public void setFailedLoginAttemptsPerUser(int failedLoginAttemptsPerUser) {
+    this.failedLoginAttemptsPerUser = failedLoginAttemptsPerUser;
+  }
+
+  public int getPasswordLockTimeMinutes() {
+    return passwordLockTimeMinutes;
+  }
+
+  public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
+    this.passwordLockTimeMinutes = passwordLockTimeMinutes;
   }
 }

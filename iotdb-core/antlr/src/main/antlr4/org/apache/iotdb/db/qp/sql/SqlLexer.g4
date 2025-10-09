@@ -37,6 +37,10 @@ WS
 
 // Common Keywords
 
+ACCOUNT
+    : A C C O U N T
+    ;
+
 ADD
     : A D D
     ;
@@ -962,6 +966,10 @@ UNLOAD
     : U N L O A D
     ;
 
+UNLOCK
+    : U N L O C K
+    ;
+
 UNSET
     : U N S E T
     ;
@@ -1210,6 +1218,7 @@ OPERATOR_NOT : '!';
  * 4. Constructors Symbols
  */
 
+AT : '@';
 DOT : '.';
 COMMA : ',';
 SEMI: ';';

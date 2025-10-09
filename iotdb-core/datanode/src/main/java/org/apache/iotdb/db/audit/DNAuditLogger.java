@@ -141,6 +141,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
           break;
         }
       }
+    } else {
+      privilegeLevel = PrivilegeLevel.GLOBAL;
     }
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(logDevice);

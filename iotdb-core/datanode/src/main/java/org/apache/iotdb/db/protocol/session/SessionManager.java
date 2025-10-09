@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -33,6 +36,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -79,6 +83,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedExce
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
+  private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
 
   // When the client abnormally exits, we can still know who to disconnect
   /** currSession can be only used in client-thread model services. */
@@ -239,6 +244,18 @@ public class SessionManager implements SessionManagerMBean {
       return openSessionResp;
     }
 
+    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
+    boolean enableLoginLock = userId != -1;
+    LoginLockManager loginLockManager = LoginLockManager.getInstance();
+    if (enableLoginLock && loginLockManager.checkLock(userId, session.getClientAddress())) {
+      // Generic authentication error
+      openSessionResp
+          .sessionId(-1)
+          .setMessage("Authentication failed.")
+          .setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
+      return openSessionResp;
+    }
+
     TSStatus loginStatus = AuthorityChecker.checkUser(username, password);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
@@ -248,7 +265,6 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        long userId = AuthorityChecker.getUserId(username).orElse(-1L);
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
@@ -291,18 +307,50 @@ public class SessionManager implements SessionManagerMBean {
             .sessionId(session.getId())
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
             .setMessage(logInMessage);
-
+        AUDIT_LOGGER.log(
+            new AuditLogFields(
+                userId,
+                username,
+                session.getClientAddress(),
+                AuditEventType.LOGIN,
+                AuditLogOperation.CONTROL,
+                true),
+            () ->
+                String.format(
+                    "%s: Login status: %s. User %s (ID=%d), opens Session-%s",
+                    IoTDBConstant.GLOBAL_DB_NAME,
+                    openSessionResp.getMessage(),
+                    username,
+                    userId,
+                    session));
         LOGGER.info(
             "{}: Login status: {}. User : {}, opens Session-{}",
             IoTDBConstant.GLOBAL_DB_NAME,
             openSessionResp.getMessage(),
             username,
             session);
+        if (enableLoginLock) {
+          loginLockManager.clearFailure(userId, session.getClientAddress());
+        }
       }
     } else {
       openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
+      if (enableLoginLock) {
+        loginLockManager.recordFailure(userId, session.getClientAddress());
+      }
+      AUDIT_LOGGER.log(
+          new AuditLogFields(
+              userId,
+              username,
+              session.getClientAddress(),
+              AuditEventType.LOGIN,
+              AuditLogOperation.CONTROL,
+              false),
+          () ->
+              String.format(
+                  "User %s (ID=%d) login failed with code: %d, %s",
+                  username, userId, loginStatus.getCode(), loginStatus.getMessage()));
     }
-
     return openSessionResp;
   }
 
@@ -316,7 +364,16 @@ public class SessionManager implements SessionManagerMBean {
             String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
-    return session1 == null || session == session1;
+    if (session1 != null && session != session1) {
+      LOGGER.info(
+          String.format(
+              "The client-%s is trying to close another session %s, pls check if it's a bug",
+              session, session1));
+      return false;
+    } else {
+      LOGGER.info(String.format("Session-%s is closing", session));
+      return true;
+    }
   }
 
   private void releaseSessionResource(IClientSession session, LongConsumer releaseQueryResource) {

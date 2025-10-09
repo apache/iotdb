@@ -52,6 +52,8 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -420,13 +422,54 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
-    return operatePermissionInternal(authorStatement, false);
+    return handleAccountUnlock(
+        authorStatement,
+        authorStatement.getUserName(),
+        false,
+        () -> onOperatePermissionSuccess(authorStatement));
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(
       RelationalAuthorStatement authorStatement) {
-    return operatePermissionInternal(authorStatement, true);
+    return handleAccountUnlock(
+        authorStatement,
+        authorStatement.getUserName(),
+        true,
+        () -> onOperatePermissionSuccess(authorStatement));
+  }
+
+  private SettableFuture<ConfigTaskResult> handleAccountUnlock(
+      Object authorStatement, String username, boolean isRelational, Runnable successCallback) {
+
+    if (isUnlockStatement(authorStatement, isRelational)) {
+      SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      User user = getUser(username);
+      if (user == null) {
+        future.setException(
+            new IoTDBException(
+                String.format("User %s does not exist", username),
+                TSStatusCode.USER_NOT_EXIST.getStatusCode()));
+        return future;
+      }
+      String loginAddr =
+          isRelational
+              ? ((RelationalAuthorStatement) authorStatement).getLoginAddr()
+              : ((AuthorStatement) authorStatement).getLoginAddr();
+
+      LoginLockManager.getInstance().unlock(user.getUserId(), loginAddr);
+      successCallback.run();
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      return future;
+    }
+    return operatePermissionInternal(authorStatement, isRelational);
+  }
+
+  private boolean isUnlockStatement(Object statement, boolean isRelational) {
+    if (isRelational) {
+      return ((RelationalAuthorStatement) statement).getAuthorType() == AuthorRType.ACCOUNT_UNLOCK;
+    }
+    return ((AuthorStatement) statement).getType() == StatementType.ACCOUNT_UNLOCK;
   }
 
   private SettableFuture<ConfigTaskResult> queryPermissionInternal(

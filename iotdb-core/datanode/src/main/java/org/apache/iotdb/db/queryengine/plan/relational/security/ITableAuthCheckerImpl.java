@@ -487,6 +487,6 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 auditEntity.getUsername(),
                 auditEntity.getUserId(),
                 auditObject.get(),
-                true));
+                auditEntity.getResult()));
   }
 }

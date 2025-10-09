@@ -325,7 +325,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case CreateSchemaTemplate:
       case CommitSetSchemaTemplate:
       case PipeUnsetTemplate:
-        return CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)
+        return CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)
             ? StatusUtils.OK
             : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
                 .setMessage("Only the admin user can perform this operation");

@@ -118,6 +118,7 @@ struct TRuntimeConfiguration {
   7: optional binary tableInfo
   8: required TAuditConfig auditConfig
   9: required string superUserName
+  10: optional bool enableSeparationOfAdminPowers
 }
 
 struct TDataNodeRegisterReq {

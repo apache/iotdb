@@ -138,7 +138,7 @@ public class HeartbeatService {
             });
   }
 
-  private TDataNodeHeartbeatReq genHeartbeatReq() {
+  protected TDataNodeHeartbeatReq genHeartbeatReq() {
     /* Generate heartbeat request */
     TDataNodeHeartbeatReq heartbeatReq = new TDataNodeHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
