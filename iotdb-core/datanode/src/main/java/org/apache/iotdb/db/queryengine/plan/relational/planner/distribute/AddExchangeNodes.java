@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -96,6 +97,14 @@ public class AddExchangeNodes
     context.nodeDistributionMap.put(
         node.getPlanNodeId(),
         new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));
+    return node;
+  }
+
+  @Override
+  public PlanNode visitCteScan(
+      CteScanNode node, TableDistributedPlanGenerator.PlanContext context) {
+    context.nodeDistributionMap.put(
+        node.getPlanNodeId(), new NodeDistribution(NO_CHILD, DataPartition.NOT_ASSIGNED));
     return node;
   }
 
