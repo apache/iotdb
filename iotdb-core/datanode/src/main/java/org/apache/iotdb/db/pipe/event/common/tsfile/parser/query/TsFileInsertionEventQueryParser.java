@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -30,14 +31,19 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -54,6 +60,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser {
 
@@ -66,6 +73,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
+
+  // mods entry
+  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications =
+      PatternTreeMapFactory.getModsPatternTreeMap();
 
   @TestOnly
   public TsFileInsertionEventQueryParser(
@@ -114,6 +125,12 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
+      // Read mods file first
+      ModificationFile.readAllModifications(tsFile, true)
+          .forEach(
+              modification ->
+                  currentModifications.append(modification.keyOfPatternTree(), modification));
+
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
 
@@ -157,6 +174,61 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       }
       allocatedMemoryBlock =
           PipeDataNodeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
+
+      final Iterator<Map.Entry<IDeviceID, List<String>>> iterator =
+          deviceMeasurementsMap.entrySet().iterator();
+      while (iterator.hasNext()) {
+        final Map.Entry<IDeviceID, List<String>> entry = iterator.next();
+        final IDeviceID deviceId = entry.getKey();
+        final List<String> measurements = entry.getValue();
+
+        // Check if deviceId is deleted
+        if (deviceId == null) {
+          LOGGER.warn("Found null deviceId, removing entry");
+          iterator.remove();
+          continue;
+        }
+
+        // Check if measurements list is deleted or empty
+        if (measurements == null || measurements.isEmpty()) {
+          LOGGER.warn(
+              "Found null or empty measurements list for deviceId: {}, removing entry", deviceId);
+          iterator.remove();
+          continue;
+        }
+
+        // Safely filter measurements, remove non-existent measurements
+        measurements.removeIf(
+            measurement -> {
+              if (measurement == null || measurement.isEmpty()) {
+                LOGGER.warn("Found null or empty measurement for deviceId: {}, removing", deviceId);
+                return true;
+              }
+
+              try {
+                TimeseriesMetadata meta =
+                    tsFileSequenceReader.readTimeseriesMetadata(deviceId, measurement, true);
+                return isAllDeletedByMods(
+                    deviceId,
+                    measurement,
+                    meta.getStatistics().getStartTime(),
+                    meta.getStatistics().getEndTime());
+              } catch (IOException e) {
+                LOGGER.warn(
+                    "Failed to read metadata for deviceId: {}, measurement: {}, removing",
+                    deviceId,
+                    measurement,
+                    e);
+                return true;
+              }
+            });
+
+        // If measurements list is empty after filtering, remove the entire entry
+        if (measurements.isEmpty()) {
+          LOGGER.warn("No valid measurements left for deviceId: {}, removing entry", deviceId);
+          iterator.remove();
+        }
+      }
 
       // Filter again to get the final deviceMeasurementsMap that exactly matches the pattern.
       deviceMeasurementsMapIterator =
@@ -303,7 +375,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                               entry.getKey(),
                               entry.getValue(),
                               timeFilterExpression,
-                              allocatedMemoryBlockForTablet);
+                              allocatedMemoryBlockForTablet,
+                              currentModifications);
                     } catch (final Exception e) {
                       close();
                       throw new PipeException(
@@ -406,5 +479,24 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     if (allocatedMemoryBlock != null) {
       allocatedMemoryBlock.close();
     }
+  }
+
+  public boolean isAllDeletedByMods(
+      IDeviceID deviceID, String measurementID, long startTime, long endTime) {
+    final List<ModEntry> mods = currentModifications.getOverlapped(deviceID, measurementID);
+    return mods.stream()
+        .anyMatch(
+            modification ->
+                modification.getTimeRange().contains(startTime, endTime)
+                    && (!deviceID.isTableModel() || modification.affects(deviceID)));
+  }
+
+  public List<TimeRange> getModTimeRanges(IDeviceID deviceID, String measurementID) {
+    final List<ModEntry> mods = currentModifications.getOverlapped(deviceID, measurementID);
+    return mods.stream()
+        .filter(modification -> (!deviceID.isTableModel() || modification.affects(deviceID)))
+        .map(ModEntry::getTimeRange)
+        .sorted()
+        .collect(Collectors.toList());
   }
 }
