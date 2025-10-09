@@ -51,7 +51,7 @@ public class ClusterTestStatement implements Statement {
   public ClusterTestStatement(
       NodeConnection writeConnection, List<NodeConnection> readConnections) {
     try {
-      this.writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
+      this.writeStatement = writeConnection.getUnderlyingConnection().createStatement();
       updateConfig(writeStatement, 0);
       writEndpoint = writeConnection.toString();
     } catch (SQLException e) {
@@ -60,7 +60,7 @@ public class ClusterTestStatement implements Statement {
 
     for (NodeConnection readConnection : readConnections) {
       try {
-        Statement readStatement = readConnection.getUnderlyingConnecton().createStatement();
+        Statement readStatement = readConnection.getUnderlyingConnection().createStatement();
         this.readStatements.add(readStatement);
         this.readEndpoints.add(readConnection.toString());
         updateConfig(readStatement, queryTimeout);

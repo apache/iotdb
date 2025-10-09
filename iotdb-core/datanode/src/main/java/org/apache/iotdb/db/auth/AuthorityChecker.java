@@ -77,7 +77,8 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_U
 public class AuthorityChecker {
 
   public static int SUPER_USER_ID = 0;
-  public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
+  public static String SUPER_USER =
+      CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
   public static String SUPER_USER_ID_IN_STR = "0";
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

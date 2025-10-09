@@ -68,6 +68,11 @@ public class IoTDBUserRenameIT {
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER user1 'IoTDB@2021abc'");
       adminStmt.execute("CREATE USER user2 'IoTDB@2023abc'");
+      if (BaseEnv.TABLE_SQL_DIALECT.equals(dialect)) {
+        adminStmt.execute("GRANT SECURITY TO USER user2");
+      } else {
+        adminStmt.execute("GRANT SECURITY ON root.** TO USER user2");
+      }
       try (Connection userCon =
               EnvFactory.getEnv().getConnection("user1", "IoTDB@2021abc", dialect);
           Statement userStmt = userCon.createStatement()) {
@@ -77,20 +82,36 @@ public class IoTDBUserRenameIT {
         // A normal user can only rename himself
         userStmt.execute("ALTER USER user1 RENAME TO user3");
       }
+      try (Connection userCon =
+              EnvFactory.getEnv().getConnection("user2", "IoTDB@2023abc", dialect);
+          Statement userStmt = userCon.createStatement()) {
+        // User with SECURITY privilege can rename other users
+        userStmt.execute("ALTER USER user3 RENAME TO user1");
+        // Nobody can rename superuser
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("ALTER USER root RENAME TO admin"));
+      }
       // Cannot rename an unexisting user
       Assert.assertThrows(
           SQLException.class, () -> adminStmt.execute("ALTER USER user4 RENAME TO user5"));
       // Cannot rename to an already existed user
       Assert.assertThrows(
-          SQLException.class, () -> adminStmt.execute("ALTER USER user2 RENAME TO user3"));
-      // The superuser can rename anyone
-      adminStmt.execute("ALTER USER user3 RENAME TO user4");
+          SQLException.class, () -> adminStmt.execute("ALTER USER user2 RENAME TO user1"));
+      // Cannot rename to an illegal name
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("ALTER USER user2 RENAME TO p00"));
+      // Only the superuser can rename him/herself
       adminStmt.execute("ALTER USER root RENAME TO admin");
     }
-    // Ensure every rename works
     try (Connection adminCon = EnvFactory.getEnv().getConnection("admin", "root", dialect);
         Statement adminStmt = adminCon.createStatement()) {
-      final String ans = "0,admin,\n" + "10000,user4,\n" + "10001,user2,\n";
+      // We can rename other user to root
+      adminStmt.execute("ALTER USER user1 RENAME TO root");
+      adminStmt.execute("ALTER USER root RENAME TO user4");
+      // We can create another root
+      adminStmt.execute("CREATE USER root 'IoTDB@2025abc'");
+      // Ensure everything works
+      final String ans = "0,admin,\n" + "10000,user4,\n" + "10001,user2,\n" + "10002,root,\n";
       ResultSet resultSet = adminStmt.executeQuery("LIST USER");
       validateResultSet(resultSet, ans);
     }

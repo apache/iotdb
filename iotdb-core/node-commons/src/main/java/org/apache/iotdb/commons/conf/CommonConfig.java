@@ -537,7 +537,7 @@ public class CommonConfig {
     this.authorizerProvider = authorizerProvider;
   }
 
-  public String getAdminName() {
+  public String getDefaultAdminName() {
     return adminName;
   }
 

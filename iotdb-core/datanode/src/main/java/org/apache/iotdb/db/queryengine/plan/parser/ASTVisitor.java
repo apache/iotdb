@@ -2486,12 +2486,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   /** Data Control Language (DCL). */
+  private static String parseUsernameWithRoot(IoTDBSqlParser.UsernameWithRootContext ctx) {
+    String src = ctx.identifier() != null ? ctx.identifier().getText() : "root";
+    if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      src =
+          src.substring(1, src.length() - 1)
+              .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
+    }
+    return src;
+  }
 
   // Create User
   @Override
   public Statement visitCreateUser(IoTDBSqlParser.CreateUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.CREATE_USER);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     authorStatement.setPassWord(parseStringLiteral(ctx.password.getText()));
     return authorStatement;
   }
@@ -2508,7 +2518,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
     return authorStatement;
   }
@@ -2516,8 +2526,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitRenameUser(IoTDBSqlParser.RenameUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.RENAME_USER);
-    authorStatement.setUserName(parseIdentifier(ctx.username.getText()));
-    authorStatement.setNewUsername(parseIdentifier(ctx.newUsername.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.username));
+    authorStatement.setNewUsername(parseUsernameWithRoot(ctx.newUsername));
+    return authorStatement;
+  }
+
+  // Unlock User
+  @Override
+  public Statement visitAlterUserAccountUnlock(IoTDBSqlParser.AlterUserAccountUnlockContext ctx) {
+    String usernameWithRootWithOptionalHost = ctx.usernameWithRootWithOptionalHost().getText();
+    String[] parts = usernameWithRootWithOptionalHost.split("@", 2);
+    String username = parts[0];
+    String host = parts.length > 1 ? parts[1] : null;
+
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.ACCOUNT_UNLOCK);
+    authorStatement.setUserName(parseIdentifier(username));
+    if (host != null) {
+      authorStatement.setLoginAddr(parseStringLiteral(host));
+    }
     return authorStatement;
   }
 
@@ -2534,7 +2560,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String[] priviParsed = parsePrivilege(privileges);
 
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.GRANT_USER);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     authorStatement.setPrivilegeList(priviParsed);
     authorStatement.setNodeNameList(nodeNameList);
     if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOption()
@@ -2579,7 +2605,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitGrantRoleToUser(IoTDBSqlParser.GrantRoleToUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.GRANT_USER_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     return authorStatement;
   }
 
@@ -2597,7 +2623,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String[] priviParsed = parsePrivilege(privileges);
 
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.REVOKE_USER);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     authorStatement.setPrivilegeList(priviParsed);
     authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
@@ -2690,7 +2716,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.REVOKE_USER_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     return authorStatement;
   }
 
@@ -2699,7 +2725,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitDropUser(IoTDBSqlParser.DropUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.DROP_USER);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     return authorStatement;
   }
 
@@ -2729,7 +2755,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitListRole(IoTDBSqlParser.ListRoleContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.LIST_ROLE);
     if (ctx.userName != null) {
-      authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+      authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     }
     return authorStatement;
   }
@@ -2739,7 +2765,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitListPrivilegesUser(IoTDBSqlParser.ListPrivilegesUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.LIST_USER_PRIVILEGE);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    authorStatement.setUserName(parseUsernameWithRoot(ctx.userName));
     return authorStatement;
   }
 

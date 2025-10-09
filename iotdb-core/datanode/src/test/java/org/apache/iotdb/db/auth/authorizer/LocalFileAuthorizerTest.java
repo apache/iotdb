@@ -65,7 +65,7 @@ public class LocalFileAuthorizerTest {
   @Test
   public void testLogin() throws AuthException {
     Assert.assertTrue(authorizer.login("root", "root"));
-    Assert.assertFalse(authorizer.login("root", "error"));
+    Assert.assertThrows(AuthException.class, () -> authorizer.login("root", "error"));
   }
 
   @Test
@@ -250,7 +250,7 @@ public class LocalFileAuthorizerTest {
     IAuthorizer authorizer = BasicAuthorizer.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
-    assertEquals(CommonDescriptor.getInstance().getConfig().getAdminName(), userList.get(0));
+    assertEquals(CommonDescriptor.getInstance().getConfig().getDefaultAdminName(), userList.get(0));
 
     int userCnt = 10;
     for (int i = 0; i < userCnt; i++) {
