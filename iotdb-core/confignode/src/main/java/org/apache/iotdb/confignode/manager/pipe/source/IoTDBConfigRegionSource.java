@@ -142,8 +142,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
   @Override
   protected long getMaxBlockingTimeMs() {
-    // The connector continues to submit and relies on the queue to sleep if empty
-    // Here we return with block to be consistent with the dataNode connector
+    // The sink continues to submit and relies on the queue to sleep if empty
+    // Here we return with block to be consistent with the dataNode sink
     return PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
   }
 

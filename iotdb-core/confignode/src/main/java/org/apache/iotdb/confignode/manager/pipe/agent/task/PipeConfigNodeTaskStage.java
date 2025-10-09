@@ -32,9 +32,9 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
   public PipeConfigNodeTaskStage(
       final String pipeName,
       final long creationTime,
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final Map<String, String> processorAttributes,
-      final Map<String, String> connectorAttributes,
+      final Map<String, String> sinkAttributes,
       final PipeTaskMeta pipeTaskMeta) {
 
     try {
@@ -42,9 +42,9 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
           new PipeConfigNodeSubtask(
               pipeName,
               creationTime,
-              extractorAttributes,
+              sourceAttributes,
               processorAttributes,
-              connectorAttributes,
+              sinkAttributes,
               pipeTaskMeta);
     } catch (final Exception e) {
       throw new PipeException(
