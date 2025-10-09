@@ -63,6 +63,9 @@ public class CorrelatedSubqueryTest {
 
     PlanMatchPattern tableScan2 = tableScan("testdb.table2", ImmutableMap.of("s2_7", "s2"));
 
+    Expression filterPredicate =
+        new CoalesceExpression(new BooleanLiteral("true"), new BooleanLiteral("false"));
+
     // Verify full LogicalPlan
     /*
     *   └──OutputNode

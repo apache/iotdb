@@ -3096,7 +3096,8 @@ public class StatementAnalyzer {
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
-      // if table schema is not found in metada, we check if it's a CTE defined in the parent query
+      // if table schema is not found in metadata, we check if it's a CTE defined in the parent
+      // query
       if (!tableSchema.isPresent()) {
         CteDataStore dataStore = queryContext.getCteDataStore(table);
         if (dataStore != null) {
