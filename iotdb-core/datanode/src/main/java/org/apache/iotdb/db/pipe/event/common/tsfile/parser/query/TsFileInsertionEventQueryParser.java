@@ -73,8 +73,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private final Map<String, TSDataType> measurementDataTypeMap;
 
   // mods entry
-  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications =
-      PatternTreeMapFactory.getModsPatternTreeMap();
+  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
 
   @TestOnly
   public TsFileInsertionEventQueryParser(
@@ -84,29 +83,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent);
-  }
-
-  public TsFileInsertionEventQueryParser(
-      final String pipeName,
-      final long creationTime,
-      final File tsFile,
-      final TreePattern pattern,
-      final long startTime,
-      final long endTime,
-      final PipeTaskMeta pipeTaskMeta,
-      final PipeInsertionEvent sourceEvent)
-      throws IOException {
-    this(
-        pipeName,
-        creationTime,
-        tsFile,
-        pattern,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        sourceEvent,
-        null);
+    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -118,12 +95,40 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
-      final Map<IDeviceID, Boolean> deviceIsAlignedMap)
+      final boolean isWithMod)
+      throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        null,
+        isWithMod);
+  }
+
+  public TsFileInsertionEventQueryParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap,
+      final boolean isWithMod)
       throws IOException {
     super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
-      currentModifications = ModsOperationUtil.loadModificationsFromTsFile(tsFile);
+      currentModifications =
+          isWithMod
+              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
+              : PatternTreeMapFactory.getModsPatternTreeMap();
 
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
@@ -171,7 +176,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
       final Iterator<Map.Entry<IDeviceID, List<String>>> iterator =
           deviceMeasurementsMap.entrySet().iterator();
-      while (iterator.hasNext()) {
+      while (isWithMod && iterator.hasNext()) {
         final Map.Entry<IDeviceID, List<String>> entry = iterator.next();
         final IDeviceID deviceId = entry.getKey();
         final List<String> measurements = entry.getValue();

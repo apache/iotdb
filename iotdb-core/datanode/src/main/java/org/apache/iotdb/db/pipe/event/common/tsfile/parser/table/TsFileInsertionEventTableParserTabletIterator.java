@@ -52,7 +52,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -119,11 +118,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final PipeMemoryBlock allocatedMemoryBlockForChunk,
       final PipeMemoryBlock allocatedMemoryBlockForChunkMeta,
       final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
       final long startTime,
       final long endTime)
       throws IOException {
-    modifications =
-        ModsOperationUtil.loadModificationsFromTsFile(new File(tsFileSequenceReader.getFileName()));
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -216,7 +214,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
                 Iterator<IChunkMetadata> iChunkMetadataIterator =
                     alignedChunkMetadata.getValueChunkMetadataList().iterator();
-                if (iChunkMetadataIterator.hasNext()) {
+                while (iChunkMetadataIterator.hasNext()) {
                   IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
                   if (iChunkMetadata == null) {
                     throw new PipeException(

@@ -96,7 +96,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private byte lastMarker = Byte.MIN_VALUE;
 
   // mods entry
-  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
+  private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
 
   public TsFileInsertionEventScanParser(
       final String pipeName,
@@ -106,7 +106,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipeInsertionEvent sourceEvent)
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
       throws IOException {
     super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
@@ -124,7 +125,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
 
     try {
-      currentModifications = ModsOperationUtil.loadModificationsFromTsFile(tsFile);
+      currentModifications =
+          isWithMod
+              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
+              : PatternTreeMapFactory.getModsPatternTreeMap();
 
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -142,9 +146,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipeInsertionEvent sourceEvent)
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
       throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, isWithMod);
   }
 
   @Override

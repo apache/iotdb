@@ -66,13 +66,10 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
 
   private final PipeMemoryBlock allocatedBlockForTablet;
 
-  private RowRecord rowRecord;
-
-  // mods entry
-  private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
-
   // Maintain sorted mods list and current index for each measurement
-  private final List<ModsOperationUtil.ModsInfo> measurementModsList = new ArrayList<>();
+  private final List<ModsOperationUtil.ModsInfo> measurementModsList;
+
+  private RowRecord rowRecord;
 
   TsFileInsertionEventQueryParserTabletIterator(
       final TsFileReader tsFileReader,
@@ -101,11 +98,10 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
     this.queryDataSet = buildQueryDataSet();
 
     this.allocatedBlockForTablet = Objects.requireNonNull(allocatedBlockForTablet);
-    this.currentModifications = Objects.requireNonNull(currentModifications);
 
-    this.measurementModsList.addAll(
+    this.measurementModsList =
         ModsOperationUtil.initializeMeasurementMods(
-            deviceId, this.measurements, currentModifications));
+            deviceId, this.measurements, currentModifications);
   }
 
   private QueryDataSet buildQueryDataSet() throws IOException {
