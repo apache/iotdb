@@ -26,28 +26,18 @@ import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LoginLockManager;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
-import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -56,11 +46,9 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
-import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,10 +56,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
@@ -132,99 +118,6 @@ public class SessionManager implements SessionManagerMBean {
         IClientSession.SqlDialect.TREE);
   }
 
-  /**
-   * Check if the password for the give user has expired.
-   *
-   * @return the timestamp when the password will expire. Long.MAX if the password never expires.
-   *     Null if the password history cannot be found.
-   */
-  public Long checkPasswordExpiration(String username, String password) {
-    // check password expiration
-    long passwordExpirationDays =
-        CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
-    boolean mayBypassPasswordCheckInException =
-        CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException();
-
-    TSLastDataQueryReq lastDataQueryReq = new TSLastDataQueryReq();
-    lastDataQueryReq.setSessionId(0);
-    lastDataQueryReq.setPaths(
-        Collections.singletonList(
-            DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
-
-    long queryId = -1;
-    try {
-      Statement statement = StatementGenerator.createStatement(lastDataQueryReq);
-      SessionInfo sessionInfo =
-          new SessionInfo(
-              0,
-              new UserEntity(
-                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
-                  AuthorityChecker.INTERNAL_AUDIT_USER,
-                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
-              ZoneId.systemDefault());
-
-      queryId = requestQueryId();
-      ExecutionResult result =
-          Coordinator.getInstance()
-              .executeForTreeModel(
-                  statement,
-                  queryId,
-                  sessionInfo,
-                  "",
-                  ClusterPartitionFetcher.getInstance(),
-                  ClusterSchemaFetcher.getInstance());
-      if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn("Fail to check password expiration: {}", result.status);
-        throw new IoTDBRuntimeException(
-            "Cannot query password history because: "
-                + result
-                + ", please log in later or disable password expiration.",
-            result.status.getCode());
-      }
-
-      IQueryExecution queryExecution = Coordinator.getInstance().getQueryExecution(queryId);
-      Optional<TsBlock> batchResult = queryExecution.getBatchResult();
-      if (batchResult.isPresent()) {
-        TsBlock tsBlock = batchResult.get();
-        if (tsBlock.getPositionCount() <= 0) {
-          // no password history, may have upgraded from an older version
-          return null;
-        }
-        long lastPasswordTime =
-            CommonDateTimeUtils.convertIoTDBTimeToMillis(tsBlock.getTimeByIndex(0));
-        // columns of last query: [timeseriesName, value, dataType]
-        String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
-        if (oldPassword.equals(AuthUtils.encryptPassword(password))) {
-          if (lastPasswordTime + passwordExpirationDays * 1000 * 86400 <= lastPasswordTime) {
-            // overflow or passwordExpirationDays <= 0
-            return Long.MAX_VALUE;
-          } else {
-            return lastPasswordTime + passwordExpirationDays * 1000 * 86400;
-          }
-        } else {
-          // 1. the password is incorrect, later logIn will fail
-          // 2. the password history does not record correctly, use the current time to create one
-          return null;
-        }
-      } else {
-        return null;
-      }
-    } catch (Throwable e) {
-      LOGGER.error("Fail to check password expiration", e);
-      if (mayBypassPasswordCheckInException) {
-        return Long.MAX_VALUE;
-      } else {
-        throw new IoTDBRuntimeException(
-            "Internal server error " + ", please log in later or disable password expiration.",
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      }
-    } finally {
-      if (queryId != -1) {
-        Coordinator.getInstance().cleanupQueryExecution(queryId);
-      }
-    }
-  }
-
   public BasicOpenSessionResp login(
       IClientSession session,
       String username,
@@ -235,7 +128,9 @@ public class SessionManager implements SessionManagerMBean {
       IClientSession.SqlDialect sqlDialect) {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    Long timeToExpire = checkPasswordExpiration(username, password);
+    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
+
+    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password);
     if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
       openSessionResp
           .sessionId(-1)
@@ -244,7 +139,6 @@ public class SessionManager implements SessionManagerMBean {
       return openSessionResp;
     }
 
-    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
     boolean enableLoginLock = userId != -1;
     LoginLockManager loginLockManager = LoginLockManager.getInstance();
     if (enableLoginLock && loginLockManager.checkLock(userId, session.getClientAddress())) {
@@ -281,7 +175,7 @@ public class SessionManager implements SessionManagerMBean {
               username);
           long currentTime = CommonDateTimeUtils.currentTime();
           TSStatus tsStatus =
-              DataNodeAuthUtils.recordPasswordHistory(username, password, password, currentTime);
+              DataNodeAuthUtils.recordPasswordHistory(userId, password, password, currentTime);
           if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             openSessionResp
                 .sessionId(-1)
