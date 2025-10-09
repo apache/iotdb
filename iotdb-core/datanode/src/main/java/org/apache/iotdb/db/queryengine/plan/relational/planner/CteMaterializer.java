@@ -69,8 +69,6 @@ import java.util.stream.IntStream;
 
 public class CteMaterializer {
   private static final Logger LOGGER = LoggerFactory.getLogger(CteMaterializer.class);
-  private static String CTE_MATERIALIZATION_FAILURE_WARNING =
-      "***** Failed to materialize CTE! INLINE mode is adopted in the main query *****";
 
   private static final Coordinator coordinator = Coordinator.getInstance();
 
@@ -160,7 +158,10 @@ public class CteMaterializer {
               "Fail to materialize CTE because the data size exceeded memory or the row count threshold");
           if (context.isExplainAnalyze()) {
             handleCteExplainAnalyzeResults(
-                context, queryId, table, CTE_MATERIALIZATION_FAILURE_WARNING);
+                context,
+                queryId,
+                table,
+                "!!! Failed to materialize CTE. The main query falls back to INLINE mode !!!");
           }
           return null;
         }
