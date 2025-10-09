@@ -2643,7 +2643,7 @@ public class ConfigManager implements IManager {
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       final PathPatternTree patternTree) {
     return getRelatedDataRegionGroup(
-        getSchemaPartition(patternTree, false).getSchemaPartitionTable());
+        getSchemaPartition(patternTree, true).getSchemaPartitionTable());
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup4TableModel(
