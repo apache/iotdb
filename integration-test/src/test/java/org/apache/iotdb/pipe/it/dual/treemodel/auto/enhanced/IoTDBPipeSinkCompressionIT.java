@@ -96,42 +96,42 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
 
   @Test
   public void testCompression1() throws Exception {
-    doTest("iotdb-thrift-connector", "stream", true, "snappy");
+    doTest("iotdb-thrift-sink", "stream", true, "snappy");
   }
 
   @Test
   public void testCompression2() throws Exception {
-    doTest("iotdb-thrift-connector", "batch", true, "snappy, lzma2");
+    doTest("iotdb-thrift-sink", "batch", true, "snappy, lzma2");
   }
 
   @Test
   public void testCompression3() throws Exception {
-    doTest("iotdb-thrift-sync-connector", "stream", false, "snappy, snappy");
+    doTest("iotdb-thrift-sync-sink", "stream", false, "snappy, snappy");
   }
 
   @Test
   public void testCompression4() throws Exception {
-    doTest("iotdb-thrift-sync-connector", "batch", true, "gzip, zstd");
+    doTest("iotdb-thrift-sync-sink", "batch", true, "gzip, zstd");
   }
 
   @Test
   public void testCompression5() throws Exception {
-    doTest("iotdb-air-gap-connector", "stream", false, "lzma2, lz4");
+    doTest("iotdb-air-gap-sink", "stream", false, "lzma2, lz4");
   }
 
   @Test
   public void testCompression6() throws Exception {
-    doTest("iotdb-air-gap-connector", "batch", true, "lzma2");
+    doTest("iotdb-air-gap-sink", "batch", true, "lzma2");
   }
 
   private void doTest(
-      String connectorType, String realtimeMode, boolean useBatchMode, String compressionTypes)
+      String sinkType, String realtimeMode, boolean useBatchMode, String compressionTypes)
       throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort =
-        connectorType.contains("air-gap")
+        sinkType.contains("air-gap")
             ? receiverDataNode.getPipeAirGapReceiverPort()
             : receiverDataNode.getPort();
 
@@ -150,27 +150,28 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
               "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
               "flush"),
           null);
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("extractor.realtime.mode", realtimeMode);
+      sourceAttributes.put("source", "iotdb-source");
+      sourceAttributes.put("source.realtime.mode", realtimeMode);
+      sourceAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
-      connectorAttributes.put("connector", connectorType);
-      connectorAttributes.put("connector.batch.enable", useBatchMode ? "true" : "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.user", "root");
-      connectorAttributes.put("connector.password", "root");
-      connectorAttributes.put("connector.compressor", compressionTypes);
+      sinkAttributes.put("sink", sinkType);
+      sinkAttributes.put("sink.batch.enable", useBatchMode ? "true" : "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.user", "root");
+      sinkAttributes.put("sink.password", "root");
+      sinkAttributes.put("sink.compressor", compressionTypes);
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -238,12 +239,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
         statement.execute(
             String.format(
                 "create pipe p1"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s1')"
-                    + " with connector ("
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='3')",
+                    + " with source ('source.pattern'='root.db.d1.s1')"
+                    + " with sink ("
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.compressor'='zstd, zstd',"
+                    + "'sink.compressor.zstd.level'='3')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -255,12 +256,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
         statement.execute(
             String.format(
                 "create pipe p2"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s2')"
-                    + " with connector ("
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='22')",
+                    + " with source ('source.pattern'='root.db.d1.s2')"
+                    + " with sink ("
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.compressor'='zstd, zstd',"
+                    + "'sink.compressor.zstd.level'='22')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -272,12 +273,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
         statement.execute(
             String.format(
                 "create pipe p3"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s3')"
-                    + " with connector ("
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='-131072')",
+                    + " with source ('source.pattern'='root.db.d1.s3')"
+                    + " with sink ("
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.compressor'='zstd, zstd',"
+                    + "'sink.compressor.zstd.level'='-131072')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -289,12 +290,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s4')"
-                    + " with connector ("
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='-131073')",
+                    + " with source ('source.pattern'='root.db.d1.s4')"
+                    + " with sink ("
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.compressor'='zstd, zstd',"
+                    + "'sink.compressor.zstd.level'='-131073')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException e) {
@@ -307,12 +308,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
         statement.execute(
             String.format(
                 "create pipe p5"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s5')"
-                    + " with connector ("
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='23')",
+                    + " with source ('source.pattern'='root.db.d1.s5')"
+                    + " with sink ("
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.compressor'='zstd, zstd',"
+                    + "'sink.compressor.zstd.level'='23')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException e) {

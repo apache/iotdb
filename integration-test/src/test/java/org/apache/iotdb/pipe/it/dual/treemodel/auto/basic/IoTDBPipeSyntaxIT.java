@@ -77,11 +77,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           statement.execute(
               String.format(
                   "create pipe %s"
-                      + " with connector ("
-                      + "'connector'='iotdb-thrift-connector',"
-                      + "'connector.ip'='%s',"
-                      + "'connector.port'='%s',"
-                      + "'connector.batch.enable'='false')",
+                      + " with sink ("
+                      + "'sink'='iotdb-thrift-sink',"
+                      + "'sink.ip'='%s',"
+                      + "'sink.port'='%s',"
+                      + "'sink.batch.enable'='false')",
                   pipeName, receiverIp, receiverPort));
         } catch (SQLException e) {
           e.printStackTrace();
@@ -127,14 +127,14 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
       statement.execute(
           String.format(
               "create pipe p1"
-                  + " with extractor ("
-                  + "'extractor.realtime.mode'='hybrid',"
-                  + "'extractor.history.enable'='false') "
-                  + " with connector ("
-                  + "'connector.batch.enable'='false', "
-                  + "'connector.port'='%s',"
-                  + "'connector.ip'='%s',"
-                  + "'connector'='iotdb-thrift-connector')",
+                  + " with source ("
+                  + "'source.realtime.mode'='hybrid',"
+                  + "'source.history.enable'='false') "
+                  + " with sink ("
+                  + "'sink.batch.enable'='false', "
+                  + "'sink.port'='%s',"
+                  + "'sink.ip'='%s',"
+                  + "'sink'='iotdb-thrift-sink')",
               receiverIp, receiverPort));
       fail();
     } catch (SQLException ignore) {
@@ -156,14 +156,14 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p1"
-                    + " with connector ("
-                    + "'connector.batch.enable'='false', "
-                    + "'connector.port'='%s',"
-                    + "'connector.ip'='%s',"
-                    + "'connector'='iotdb-thrift-connector') "
-                    + " with extractor ("
-                    + "'extractor.realtime.mode'='hybrid',"
-                    + "'extractor.history.enable'='false')",
+                    + " with sink ("
+                    + "'sink.batch.enable'='false', "
+                    + "'sink.port'='%s',"
+                    + "'sink.ip'='%s',"
+                    + "'sink'='iotdb-thrift-sink') "
+                    + " with source ("
+                    + "'source.realtime.mode'='hybrid',"
+                    + "'source.history.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -194,7 +194,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
 
       try (final Connection connection = senderEnv.getConnection();
           final Statement statement = connection.createStatement()) {
-        statement.execute("create pipe p2 with extractor ('extractor'='iotdb-extractor')");
+        statement.execute("create pipe p2 with source ('source'='iotdb-source')");
         fail();
       } catch (SQLException ignored) {
       }
@@ -203,7 +203,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             "create pipe p3"
-                + " with extractor ('extractor'='iotdb-extractor')"
+                + " with source ('source'='iotdb-source')"
                 + " with processor ('processor'='do-nothing-processor')");
         fail();
       } catch (SQLException ignored) {
@@ -214,11 +214,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -230,13 +230,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p5"
-                    + " with extractor ('extractor'='iotdb-extractor')"
+                    + " with source ('source'='iotdb-source')"
                     + " with processor ('processor'='do-nothing-processor')"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -264,13 +264,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p1"
-                    + " with extractor ()"
+                    + " with source ()"
                     + " with processor ()"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -282,13 +282,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p2"
-                    + " with extractor ('extractor'='invalid-param')"
+                    + " with source ('source'='invalid-param')"
                     + " with processor ()"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -299,13 +299,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p3"
-                    + " with extractor ()"
+                    + " with source ()"
                     + " with processor ('processor'='invalid-param')"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -316,13 +316,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with extractor ()"
+                    + " with source ()"
                     + " with processor ()"
-                    + " with connector ("
-                    + "'connector'='invalid-param',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='invalid-param',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -348,13 +348,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe extractor1"
-                    + " with extractor ('extractor'='iotdb-extractor')"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                "create pipe source1"
+                    + " with source ('source'='iotdb-source')"
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -365,13 +365,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe extractor2"
-                    + " with extractor (\"extractor\"=\"iotdb-extractor\")"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                "create pipe source2"
+                    + " with source (\"source\"=\"iotdb-source\")"
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -382,13 +382,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe extractor3"
-                    + " with extractor ('extractor'=\"iotdb-extractor\")"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                "create pipe source3"
+                    + " with source ('source'=\"iotdb-source\")"
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -399,13 +399,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe extractor4"
-                    + " with extractor (extractor=iotdb-extractor)"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                "create pipe source4"
+                    + " with source (source=iotdb-source)"
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -415,13 +415,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe extractor5"
-                    + " with extractor ('extractor'=`iotdb-extractor`)"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                "create pipe source5"
+                    + " with source ('source'=`iotdb-source`)"
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -433,11 +433,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
             String.format(
                 "create pipe processor1"
                     + " with processor ('processor'='do-nothing-processor')"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -450,11 +450,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
             String.format(
                 "create pipe processor2"
                     + " with processor (\"processor\"=\"do-nothing-processor\")"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -467,11 +467,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
             String.format(
                 "create pipe processor3"
                     + " with processor ('processor'=\"do-nothing-processor\")"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -484,11 +484,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
             String.format(
                 "create pipe processor4"
                     + " with processor (processor=do-nothing-processor)"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -500,11 +500,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
             String.format(
                 "create pipe processor5"
                     + " with processor ('processor'=`do-nothing-processor`)"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -514,12 +514,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe connector1"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                "create pipe sink1"
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -530,12 +530,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe connector2"
-                    + " with connector ("
-                    + "\"connector\"=\"iotdb-thrift-connector\","
-                    + "\"connector.ip\"=\"%s\","
-                    + "\"connector.port\"=\"%s\","
-                    + "\"connector.batch.enable\"=\"false\")",
+                "create pipe sink2"
+                    + " with sink ("
+                    + "\"sink\"=\"iotdb-thrift-sink\","
+                    + "\"sink.ip\"=\"%s\","
+                    + "\"sink.port\"=\"%s\","
+                    + "\"sink.batch.enable\"=\"false\")",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -546,12 +546,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe connector3"
-                    + " with connector ("
-                    + "'connector'=\"iotdb-thrift-connector\","
-                    + "\"connector.ip\"='%s',"
-                    + "'connector.port'=\"%s\","
-                    + "\"connector.batch.enable\"='false')",
+                "create pipe sink3"
+                    + " with sink ("
+                    + "'sink'=\"iotdb-thrift-sink\","
+                    + "\"sink.ip\"='%s',"
+                    + "'sink.port'=\"%s\","
+                    + "\"sink.batch.enable\"='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -562,12 +562,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe connector4"
-                    + " with connector ("
-                    + "connector=iotdb-thrift-connector,"
-                    + "connector.ip=%s,"
-                    + "connector.port=%s,"
-                    + "connector.batch.enable=false)",
+                "create pipe sink4"
+                    + " with sink ("
+                    + "sink=iotdb-thrift-sink,"
+                    + "sink.ip=%s,"
+                    + "sink.port=%s,"
+                    + "sink.batch.enable=false)",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -577,12 +577,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
-                "create pipe connector5"
-                    + " with connector ("
-                    + "'connector'=`iotdb-thrift-connector`,"
-                    + "'connector.ip'=`%s`,"
-                    + "'connector.port'=`%s`,"
-                    + "'connector.batch.enable'=`false`)",
+                "create pipe sink5"
+                    + " with sink ("
+                    + "'sink'=`iotdb-thrift-sink`,"
+                    + "'sink.ip'=`%s`,"
+                    + "'sink.port'=`%s`,"
+                    + "'sink.batch.enable'=`false`)",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -604,35 +604,37 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      connectorAttributes.replace("connector.batch.enable", "true");
+      sinkAttributes.replace("sink.batch.enable", "true");
 
       status =
           client.createPipe(
-              new TCreatePipeReq("p3", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p3", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -647,8 +649,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p3")));
 
-      // Show all pipes whose connector is also used by p1.
-      // p1 and p2 share the same connector parameters, so they have the same connector.
+      // Show all pipes whose sink is also used by p1.
+      // p1 and p2 share the same sink parameters, so they have the same sink.
       showPipeResult =
           client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
@@ -673,13 +675,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p2"
-                    + " with extractor ('extractor.inclusion'='schema, auth.role', 'extractor.inclusion.exclusion'='all')"
+                    + " with source ('source.inclusion'='schema, auth.role', 'source.inclusion.exclusion'='all')"
                     + " with processor ()"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -691,13 +693,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p3"
-                    + " with extractor ('extractor.inclusion'='wrong')"
+                    + " with source ('source.inclusion'='wrong')"
                     + " with processor ()"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -709,13 +711,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with extractor ('extractor.inclusion.exclusion'='wrong')"
+                    + " with source ('source.inclusion.exclusion'='wrong')"
                     + " with processor ()"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -727,13 +729,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with extractor ('extractor.inclusion'='all', 'extractor.inclusion.exclusion'='schema.database.drop, auth.role')"
+                    + " with source ('source.inclusion'='all', 'source.inclusion.exclusion'='schema.database.drop, auth.role')"
                     + " with processor ()"
-                    + " with connector ("
-                    + "'connector'='iotdb-thrift-connector',"
-                    + "'connector.ip'='%s',"
-                    + "'connector.port'='%s',"
-                    + "'connector.batch.enable'='false')",
+                    + " with sink ("
+                    + "'sink'='iotdb-thrift-sink',"
+                    + "'sink.ip'='%s',"
+                    + "'sink.port'='%s',"
+                    + "'sink.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
