@@ -104,7 +104,6 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
     this.allocatedBlockForTablet = Objects.requireNonNull(allocatedBlockForTablet);
     this.currentModifications = Objects.requireNonNull(currentModifications);
 
-    // 初始化每个measurement的mods列表
     initializeMeasurementMods();
   }
 
