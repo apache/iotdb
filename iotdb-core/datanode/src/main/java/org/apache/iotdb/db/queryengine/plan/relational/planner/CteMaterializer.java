@@ -93,7 +93,6 @@ public class CteMaterializer {
                   return;
                 }
 
-                context.reserveMemoryForFrontEnd(dataStore.getCachedBytes());
                 context.addCteDataStore(table, dataStore);
                 query.setCteDataStore(dataStore);
               }
@@ -115,6 +114,7 @@ public class CteMaterializer {
   public CteDataStore fetchCteQueryResult(Table table, Query query, MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
+    CteDataStore cteDataStore = null;
     try {
       final ExecutionResult executionResult =
           coordinator.executeForTableModel(
@@ -139,7 +139,7 @@ public class CteMaterializer {
       DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
       TableSchema tableSchema = getTableSchema(datasetHeader, table.getName().toString());
 
-      CteDataStore cteDataStore =
+      cteDataStore =
           new CteDataStore(
               query, tableSchema, datasetHeader.getColumnIndex2TsBlockColumnIndexList());
       while (execution.hasNextResult()) {
@@ -153,6 +153,7 @@ public class CteMaterializer {
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           continue;
         }
+        context.reserveMemoryForFrontEnd(tsBlock.get().getRetainedSizeInBytes());
         if (!cteDataStore.addTsBlock(tsBlock.get())) {
           LOGGER.warn(
               "Fail to materialize CTE because the data size exceeded memory or the row count threshold");
@@ -163,6 +164,7 @@ public class CteMaterializer {
                 table,
                 "!!! Failed to materialize CTE. The main query falls back to INLINE mode !!!");
           }
+          context.releaseMemoryReservedForFrontEnd(cteDataStore.getCachedBytes());
           return null;
         }
       }
@@ -175,6 +177,9 @@ public class CteMaterializer {
 
       return cteDataStore;
     } catch (final Throwable throwable) {
+      if (cteDataStore != null) {
+        context.releaseMemoryReservedForFrontEnd(cteDataStore.getCachedBytes());
+      }
       t = throwable;
     } finally {
       coordinator.cleanupQueryExecution(queryId, null, t);
