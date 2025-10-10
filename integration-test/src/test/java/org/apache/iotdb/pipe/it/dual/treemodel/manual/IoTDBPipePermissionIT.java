@@ -127,6 +127,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", sink);
       sinkAttributes.put("sink.ip", receiverIp);
@@ -199,6 +200,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-async-sink");
       sinkAttributes.put("sink.ip", receiverIp);

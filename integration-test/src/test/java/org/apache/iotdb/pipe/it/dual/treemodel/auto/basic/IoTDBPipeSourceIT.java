@@ -989,6 +989,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     sourceAttributes.put("source.start-time", "2000");
     sourceAttributes.put("source.end-time", "10000");
     sourceAttributes.put("source.realtime.mode", "batch");
+    sourceAttributes.put("user", "root");
 
     sinkAttributes.put("sink", "iotdb-thrift-sink");
     sinkAttributes.put("sink.batch.enable", "false");

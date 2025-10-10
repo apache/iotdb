@@ -1045,6 +1045,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source", "iotdb-source");
+      sourceAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
