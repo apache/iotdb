@@ -85,6 +85,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
 
       sourceAttributes.put("source.inclusion", "data, schema");
       sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
@@ -164,6 +165,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
 
       sourceAttributes.put("source.inclusion", "data, schema");
       sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
