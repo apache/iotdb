@@ -318,7 +318,7 @@ public class CommonConfig {
   private volatile long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private volatile long pipeCheckMemoryEnoughIntervalMs = 10L;
   private volatile float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
-  private volatile long pipeMaxReaderChunkSize = (long) 16 * 1024 * 1024; // 16MB;
+  private volatile long pipeMaxReaderChunkSize = 16 * MB; // 16MB;
   private volatile long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private volatile int pipeSnapshotExecutionMaxBatchSize = 1000;
   private volatile long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
