@@ -32,7 +32,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -123,7 +122,7 @@ public class ModsOperationUtil {
       List<String> measurements,
       PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
 
-    List<ModsInfo> modsInfos = new ArrayList<>();
+    List<ModsInfo> modsInfos = new ArrayList<>(measurements.size());
 
     for (final String measurement : measurements) {
       final List<ModEntry> mods = modifications.getOverlapped(deviceID, measurement);
@@ -143,7 +142,6 @@ public class ModsOperationUtil {
                 .filter(
                     modification ->
                         modification.affects(deviceID) && modification.affects(measurement))
-                .sorted()
                 .collect(Collectors.toList());
       } else {
         // For tree model: no additional filtering needed
@@ -200,21 +198,6 @@ public class ModsOperationUtil {
     modsInfo.setMods(Collections.emptyList());
     modsInfo.setCurrentIndex(0);
     return false;
-  }
-
-  /**
-   * Update index in measurement mods mapping
-   *
-   * @param measurementID measurement ID
-   * @param newIndex new index
-   * @param measurementModsMap measurement mods mapping
-   */
-  public static void updateModsIndex(
-      String measurementID, int newIndex, Map<String, ModsInfo> measurementModsMap) {
-    final ModsInfo modsInfo = measurementModsMap.get(measurementID);
-    if (modsInfo != null) {
-      measurementModsMap.put(measurementID, new ModsInfo(modsInfo.getMods(), newIndex));
-    }
   }
 
   /** Mods information wrapper class, containing mods list and current index */

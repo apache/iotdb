@@ -223,7 +223,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   }
 
                   if (ModsOperationUtil.isAllDeletedByMods(
-                      deviceID,
+                      pair.getLeft(),
                       iChunkMetadata.getMeasurementUid(),
                       alignedChunkMetadata.getStartTime(),
                       alignedChunkMetadata.getEndTime(),
