@@ -2770,6 +2770,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TDeleteTimeSeriesReq(
             queryId,
             serializePatternListToByteBuffer(deleteTimeSeriesStatement.getPathPatternList()));
+    req.setMayDeleteAudit(deleteTimeSeriesStatement.isMayDeleteAudit());
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
