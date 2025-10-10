@@ -1197,7 +1197,6 @@ service IDataNodeRPCService {
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
 
-
   /**
    * Construct table device black list
    */
