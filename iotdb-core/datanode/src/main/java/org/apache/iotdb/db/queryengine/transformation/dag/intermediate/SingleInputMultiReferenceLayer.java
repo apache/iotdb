@@ -616,7 +616,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
           }
 
           if (!findWindow) {
-            if (cachedTimes.getEndTime() < displayWindowEnd) {
+            if (cachedTimes.getLong(cachedTimes.getPositionCount() - 1) < displayWindowEnd) {
               YieldableState state = yieldAndCache();
               if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
                 return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
