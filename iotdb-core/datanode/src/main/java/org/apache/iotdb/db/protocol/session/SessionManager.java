@@ -223,6 +223,7 @@ public class SessionManager implements SessionManagerMBean {
             openSessionResp.getMessage(),
             username,
             session);
+        updateIdleTime();
         if (enableLoginLock) {
           loginLockManager.clearFailure(userId, session.getClientAddress());
         }
