@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
-import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -30,7 +29,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUti
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -94,9 +92,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private ChunkHeader firstChunkHeader4NextSequentialValueChunks;
 
   private byte lastMarker = Byte.MIN_VALUE;
-
-  // mods entry
-  private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
 
   public TsFileInsertionEventScanParser(
       final String pipeName,
@@ -436,11 +431,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-            final long nextChunkHeaderOffset =
+            final long nextMarkerOffset =
                 tsFileSequenceReader.position() + chunkHeader.getDataSize();
 
             if (Objects.isNull(currentDevice)) {
-              tsFileSequenceReader.position(nextChunkHeaderOffset);
+              tsFileSequenceReader.position(nextMarkerOffset);
               break;
             }
 
@@ -454,7 +449,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             }
 
             if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
-              tsFileSequenceReader.position(nextChunkHeaderOffset);
+              tsFileSequenceReader.position(nextMarkerOffset);
               break;
             }
 
@@ -498,12 +493,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-              final long nextChunkHeaderOffset =
+              final long nextMarkerOffset =
                   tsFileSequenceReader.position() + chunkHeader.getDataSize();
               if (Objects.isNull(currentDevice)
                   || !treePattern.matchesMeasurement(
                       currentDevice, chunkHeader.getMeasurementID())) {
-                tsFileSequenceReader.position(nextChunkHeaderOffset);
+                tsFileSequenceReader.position(nextMarkerOffset);
                 break;
               }
 

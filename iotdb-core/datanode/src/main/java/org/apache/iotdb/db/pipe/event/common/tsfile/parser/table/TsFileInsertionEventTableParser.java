@@ -74,6 +74,11 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
     this.isWithMod = isWithMod;
     try {
+      currentModifications =
+          this.isWithMod
+              ? ModsOperationUtil.loadModificationsFromTsFile(
+                  new File(tsFileSequenceReader.getFileName()))
+              : PatternTreeMapFactory.getModsPatternTreeMap();
       long tableSize =
           Math.min(
               PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
@@ -152,10 +157,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                               allocatedMemoryBlockForChunk,
                               allocatedMemoryBlockForChunkMeta,
                               allocatedMemoryBlockForTableSchemas,
-                              isWithMod
-                                  ? ModsOperationUtil.loadModificationsFromTsFile(
-                                      new File(tsFileSequenceReader.getFileName()))
-                                  : PatternTreeMapFactory.getModsPatternTreeMap(),
+                              currentModifications,
                               startTime,
                               endTime);
                     }

@@ -125,6 +125,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
     this.startTime = startTime;
     this.endTime = endTime;
+    this.modifications = modifications;
 
     this.reader = tsFileSequenceReader;
     this.metadataQuerier = new MetadataQuerierByFileImpl(reader);
