@@ -736,13 +736,16 @@ public abstract class TVList implements WALEntryValue {
       if (timeRange == null || index >= rows) {
         return;
       }
-      if (probeNext && timeRange.contains(getTime(getScanOrderIndex(index)))) {
+      if (timeRange.contains(getTime(getScanOrderIndex(index)))) {
         return;
       }
 
       int indexInTVList;
       if (scanOrder.isAscending()) {
         long searchTimestamp = timeRange.getMin();
+        if (searchTimestamp <= outer.getMinTime()) {
+          return;
+        }
         if (searchTimestamp > outer.getMaxTime()) {
           // all satisfied data has been consumed
           index = rows;
@@ -755,9 +758,11 @@ public abstract class TVList implements WALEntryValue {
         boolean foundSearchedTime = searchTimestamp == getTime(indexInTVList);
         if (!foundSearchedTime) {
           // move to the min index of next timestamp index
-          do {
-            indexInTVList++;
-          } while (indexInTVList < rows && getTime(indexInTVList) == searchTimestamp);
+          if (indexInTVList != 0) {
+            do {
+              indexInTVList++;
+            } while (indexInTVList < rows && getTime(indexInTVList) == searchTimestamp);
+          }
         } else {
           // move to the min index of current timestamp
           while (indexInTVList > 0 && getTime(indexInTVList - 1) == searchTimestamp) {
@@ -766,6 +771,9 @@ public abstract class TVList implements WALEntryValue {
         }
       } else {
         long searchTimestamp = timeRange.getMax();
+        if (searchTimestamp >= outer.getMaxTime()) {
+          return;
+        }
         if (searchTimestamp < outer.getMinTime()) {
           // all satisfied data has been consumed
           index = rows;

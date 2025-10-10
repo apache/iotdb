@@ -845,7 +845,7 @@ public class AlignedTVListIteratorTest {
   }
 
   @Test
-  public void test() throws QueryProcessException, IOException {
+  public void testSkipTimeRange() throws QueryProcessException, IOException {
     List<Map<TVList, Integer>> list =
         Arrays.asList(
             buildAlignedSingleTvListMap(

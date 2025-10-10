@@ -449,15 +449,15 @@ public class NonAlignedTVListIteratorTest {
         deletions,
         true,
         expectedCount);
-    //    testNonAligned(
-    //        largeMergeSortMultiTvListMap,
-    //        scanOrder,
-    //        globalTimeFilter,
-    //        pushDownFilter,
-    //        duplicatePaginationController(paginationController),
-    //        deletions,
-    //        true,
-    //        expectedCount);
+    testNonAligned(
+        largeMergeSortMultiTvListMap,
+        scanOrder,
+        globalTimeFilter,
+        pushDownFilter,
+        duplicatePaginationController(paginationController),
+        deletions,
+        true,
+        expectedCount);
   }
 
   private PaginationController duplicatePaginationController(
@@ -632,7 +632,7 @@ public class NonAlignedTVListIteratorTest {
   }
 
   @Test
-  public void test() throws QueryProcessException, IOException {
+  public void testSkipTimeRange() throws QueryProcessException, IOException {
     List<Map<TVList, Integer>> list =
         Arrays.asList(
             buildNonAlignedSingleTvListMap(

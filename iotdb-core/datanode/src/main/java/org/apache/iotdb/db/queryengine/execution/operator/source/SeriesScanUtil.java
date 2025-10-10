@@ -134,7 +134,8 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(IDeviceID.class)
           + RamUsageEstimator.shallowSizeOfInstance(TimeOrderUtils.class)
           + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
-          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
+          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
 
   protected TimeRange satisfiedTimeRange;
   protected boolean noMoreSatisfiedData = false;
