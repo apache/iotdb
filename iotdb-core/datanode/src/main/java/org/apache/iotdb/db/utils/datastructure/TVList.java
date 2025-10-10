@@ -204,6 +204,32 @@ public abstract class TVList implements WALEntryValue {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
+  public int binarySearchTimestampStartPosition(long time, int low, int high, boolean exactSearch) {
+    if (!sorted) {
+      throw new UnsupportedOperationException("Current TVList is not sorted");
+    }
+
+    int mid;
+    while (low <= high) {
+      mid = low + high >>> 1;
+      long midTime = getTime(mid);
+      int cmp = Long.compare(midTime, time);
+      if (cmp < 0) {
+        low = mid + 1;
+      } else if (cmp > 0) {
+        high = mid - 1;
+      } else {
+        return mid;
+      }
+    }
+
+    if (exactSearch) {
+      return -1;
+    } else {
+      return low == 0 ? low : low - 1;
+    }
+  }
+
   protected void set(int src, int dest) {
     long srcT = getTime(src);
     int srcV = getValueIndex(src);
@@ -703,6 +729,70 @@ public abstract class TVList implements WALEntryValue {
       int cursor =
           (deletionList == null || scanOrder.isAscending()) ? 0 : (deletionList.size() - 1);
       deleteCursor = new int[] {cursor};
+    }
+
+    @Override
+    protected void skipToCurrentTimeRangeStartPosition() {
+      if (timeRange == null || index >= rows) {
+        return;
+      }
+      if (probeNext && timeRange.contains(getTime(getScanOrderIndex(index)))) {
+        return;
+      }
+
+      int indexInTVList;
+      if (scanOrder.isAscending()) {
+        long searchTimestamp = timeRange.getMin();
+        if (searchTimestamp > outer.getMaxTime()) {
+          // all satisfied data has been consumed
+          index = rows;
+          probeNext = true;
+          return;
+        }
+        indexInTVList =
+            binarySearchTimestampStartPosition(
+                searchTimestamp, getScanOrderIndex(index), rows - 1, false);
+        boolean foundSearchedTime = searchTimestamp == getTime(indexInTVList);
+        if (!foundSearchedTime) {
+          // move to the min index of next timestamp index
+          do {
+            indexInTVList++;
+          } while (indexInTVList < rows && getTime(indexInTVList) == searchTimestamp);
+        } else {
+          // move to the min index of current timestamp
+          while (indexInTVList > 0 && getTime(indexInTVList - 1) == searchTimestamp) {
+            indexInTVList--;
+          }
+        }
+      } else {
+        long searchTimestamp = timeRange.getMax();
+        if (searchTimestamp < outer.getMinTime()) {
+          // all satisfied data has been consumed
+          index = rows;
+          probeNext = true;
+          return;
+        }
+        indexInTVList =
+            binarySearchTimestampStartPosition(searchTimestamp, 0, getScanOrderIndex(index), false);
+        while (indexInTVList < rows - 1 && getTime(indexInTVList) == getTime(indexInTVList + 1)) {
+          indexInTVList++;
+        }
+      }
+      int newIndex = getScanOrderIndex(indexInTVList);
+      System.out.println(
+          "skip to newIndex: "
+              + newIndex
+              + ", old index is "
+              + getScanOrderIndex(index)
+              + ", current time range is "
+              + timeRange
+              + ", current time is "
+              + getTime(getScanOrderIndex(newIndex)));
+      if (newIndex > index) {
+        index = newIndex;
+      }
+
+      probeNext = false;
     }
 
     protected void prepareNext() {

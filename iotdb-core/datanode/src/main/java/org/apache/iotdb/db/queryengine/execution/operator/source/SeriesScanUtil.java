@@ -136,6 +136,9 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
           + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
 
+  protected TimeRange satisfiedTimeRange;
+  protected boolean noMoreSatisfiedData = false;
+
   public SeriesScanUtil(
       IFullPath seriesPath,
       Ordering scanOrder,
@@ -214,6 +217,22 @@ public class SeriesScanUtil implements Accountable {
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
     curUnseqFileIndex = 0;
+
+    if (satisfiedTimeRange == null) {
+      long startTime = Long.MAX_VALUE;
+      long endTime = Long.MIN_VALUE;
+      if (scanOptions.getGlobalTimeFilter() == null) {
+        satisfiedTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+        return;
+      }
+      List<TimeRange> timeRanges = scanOptions.getGlobalTimeFilter().getTimeRanges();
+      for (TimeRange timeRange : timeRanges) {
+        startTime = Math.min(startTime, timeRange.getMin());
+        endTime = Math.max(endTime, timeRange.getMax());
+      }
+      satisfiedTimeRange = new TimeRange(startTime, endTime);
+    }
+    noMoreSatisfiedData = false;
   }
 
   protected PriorityMergeReader getPriorityMergeReader() {
@@ -234,7 +253,7 @@ public class SeriesScanUtil implements Accountable {
   // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
   // execution time slice.
   public Optional<Boolean> hasNextFile() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    if (!paginationController.hasCurLimit() || noMoreSatisfiedData) {
       return Optional.of(false);
     }
 
@@ -325,7 +344,7 @@ public class SeriesScanUtil implements Accountable {
    * @throws IllegalStateException illegal state
    */
   public Optional<Boolean> hasNextChunk() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    if (!paginationController.hasCurLimit() || noMoreSatisfiedData) {
       return Optional.of(false);
     }
 
@@ -368,6 +387,10 @@ public class SeriesScanUtil implements Accountable {
 
   private void filterFirstChunkMetadata() {
     if (firstChunkMetadata == null) {
+      return;
+    }
+    if (!checkHasMoreSatisfiedData(firstChunkMetadata)) {
+      skipCurrentChunk();
       return;
     }
 
@@ -493,7 +516,7 @@ public class SeriesScanUtil implements Accountable {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   public boolean hasNextPage() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    if (!paginationController.hasCurLimit() || noMoreSatisfiedData) {
       return false;
     }
 
@@ -824,6 +847,10 @@ public class SeriesScanUtil implements Accountable {
 
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
+      return;
+    }
+    if (!checkHasMoreSatisfiedData(firstPageReader.getPageReader())) {
+      skipCurrentPage();
       return;
     }
 
@@ -1328,6 +1355,15 @@ public class SeriesScanUtil implements Accountable {
     return filter == null || filter.allSatisfy(metadata);
   }
 
+  protected boolean checkHasMoreSatisfiedData(IMetadata metadata) {
+    long orderTime = orderUtils.getOrderTime(metadata.getStatistics());
+    noMoreSatisfiedData =
+        orderUtils.getAscending()
+            ? (orderTime > satisfiedTimeRange.getMax())
+            : (orderTime < satisfiedTimeRange.getMin());
+    return !noMoreSatisfiedData;
+  }
+
   protected interface IVersionPageReader {
     Statistics getStatistics();
 
@@ -1629,7 +1665,7 @@ public class SeriesScanUtil implements Accountable {
     @SuppressWarnings("squid:S3740")
     @Override
     public long getOverlapCheckTime(Statistics range) {
-      return range.getStartTime();
+      return Math.max(satisfiedTimeRange.getMin(), range.getStartTime());
     }
 
     @SuppressWarnings("squid:S3740")
@@ -1758,7 +1794,7 @@ public class SeriesScanUtil implements Accountable {
     @SuppressWarnings("squid:S3740")
     @Override
     public long getOverlapCheckTime(Statistics range) {
-      return range.getEndTime();
+      return Math.min(satisfiedTimeRange.getMax(), range.getEndTime());
     }
 
     @SuppressWarnings("squid:S3740")
