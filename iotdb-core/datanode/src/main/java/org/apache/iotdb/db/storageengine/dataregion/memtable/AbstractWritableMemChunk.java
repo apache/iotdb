@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -227,4 +228,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract int serializedSize();
+
+  @Override
+  public abstract void setEncryptParameter(EncryptParameter encryptParameter);
 }

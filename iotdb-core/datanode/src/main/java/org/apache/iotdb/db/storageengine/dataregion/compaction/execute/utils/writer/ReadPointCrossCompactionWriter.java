@@ -26,6 +26,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -43,7 +45,20 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
   public ReadPointCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
-    super(targetResources, seqFileResources);
+    super(
+        targetResources,
+        seqFileResources,
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+  }
+
+  public ReadPointCrossCompactionWriter(
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqFileResources,
+      EncryptParameter encryptParameter)
+      throws IOException {
+    super(targetResources, seqFileResources, encryptParameter);
   }
 
   @Override

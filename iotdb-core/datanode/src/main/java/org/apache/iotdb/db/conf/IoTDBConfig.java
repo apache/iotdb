@@ -49,6 +49,7 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -62,9 +63,11 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -1175,6 +1178,10 @@ public class IoTDBConfig {
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
   private boolean includeNullValueInWriteThroughputMetric = false;
+
+  private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
+      new ConcurrentHashMap<>(
+          Collections.singletonMap("root.__audit", new EncryptParameter("UNENCRYPTED", null)));
 
   IoTDBConfig() {}
 
@@ -4224,5 +4231,9 @@ public class IoTDBConfig {
 
   public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
     this.passwordLockTimeMinutes = passwordLockTimeMinutes;
+  }
+
+  public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {
+    return tsFileDBToEncryptMap;
   }
 }

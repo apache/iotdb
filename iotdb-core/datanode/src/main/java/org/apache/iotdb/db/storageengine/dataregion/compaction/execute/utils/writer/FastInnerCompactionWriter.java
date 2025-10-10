@@ -24,6 +24,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -40,12 +42,33 @@ import java.util.List;
 
 public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
+  private EncryptParameter encryptParameter;
+
   public FastInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    super(targetFileResource);
+    super(
+        targetFileResource,
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+  }
+
+  public FastInnerCompactionWriter(
+      TsFileResource targetFileResource, EncryptParameter encryptParameter) throws IOException {
+    super(targetFileResource, encryptParameter);
   }
 
   public FastInnerCompactionWriter(List<TsFileResource> targetFileResources) throws IOException {
-    super(targetFileResources);
+    super(
+        targetFileResources,
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+  }
+
+  public FastInnerCompactionWriter(
+      List<TsFileResource> targetFileResources, EncryptParameter encryptParameter)
+      throws IOException {
+    super(targetFileResources, encryptParameter);
   }
 
   @Override

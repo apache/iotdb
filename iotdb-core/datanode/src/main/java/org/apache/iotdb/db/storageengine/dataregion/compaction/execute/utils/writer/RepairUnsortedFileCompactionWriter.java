@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wr
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -37,7 +39,17 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
   private List<TimeValuePair>[] dataOfCurrentSeriesArr;
 
   public RepairUnsortedFileCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    super(targetFileResource);
+    super(
+        targetFileResource,
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+    dataOfCurrentSeriesArr = new ArrayList[subTaskNum];
+  }
+
+  public RepairUnsortedFileCompactionWriter(
+      TsFileResource targetFileResource, EncryptParameter encryptParameter) throws IOException {
+    super(targetFileResource, encryptParameter);
     dataOfCurrentSeriesArr = new ArrayList[subTaskNum];
   }
 

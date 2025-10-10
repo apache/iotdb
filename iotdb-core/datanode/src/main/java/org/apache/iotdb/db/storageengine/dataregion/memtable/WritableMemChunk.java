@@ -29,6 +29,8 @@ import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
@@ -65,10 +67,20 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final int TVLIST_SORT_THRESHOLD = CONFIG.getTvListSortThreshold();
 
+  private EncryptParameter encryptParameter;
+
   public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
     this.list = TVList.newList(schema.getType());
     this.sortedList = new ArrayList<>();
+    this.encryptParameter = EncryptUtils.getEncryptParameter();
+  }
+
+  public WritableMemChunk(IMeasurementSchema schema, EncryptParameter encryptParameter) {
+    this.schema = schema;
+    this.list = TVList.newList(schema.getType());
+    this.sortedList = new ArrayList<>();
+    this.encryptParameter = encryptParameter;
   }
 
   private WritableMemChunk() {}
@@ -330,7 +342,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public ChunkWriterImpl createIChunkWriter() {
-    return new ChunkWriterImpl(schema);
+    return new ChunkWriterImpl(schema, encryptParameter);
   }
 
   @Override
@@ -593,5 +605,10 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     long[] filteredTimestamps = distinctTimestamps.stream().mapToLong(Long::longValue).toArray();
     Arrays.sort(filteredTimestamps);
     return filteredTimestamps;
+  }
+
+  @Override
+  public void setEncryptParameter(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
   }
 }

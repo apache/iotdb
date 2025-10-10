@@ -30,6 +30,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Sett
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -53,9 +56,21 @@ public class CompactionScheduleContext {
 
   private final Set<Long> timePartitionsDelayInsertionSelection;
 
+  private EncryptParameter encryptParameter;
+
   public CompactionScheduleContext() {
     this.partitionFileDeviceInfoCache = new HashMap<>();
     this.timePartitionsDelayInsertionSelection = new HashSet<>();
+    this.encryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+  }
+
+  public CompactionScheduleContext(EncryptParameter encryptParameter) {
+    this.partitionFileDeviceInfoCache = new HashMap<>();
+    this.timePartitionsDelayInsertionSelection = new HashSet<>();
+    this.encryptParameter = encryptParameter;
   }
 
   public void delayInsertionSelection(long timePartitionId) {
@@ -177,7 +192,7 @@ public class CompactionScheduleContext {
     return IoTDBDescriptor.getInstance()
         .getConfig()
         .getInnerSeqCompactionPerformer()
-        .createInstance();
+        .createInstance(encryptParameter);
   }
 
   public IUnseqCompactionPerformer getUnseqCompactionPerformer() {
@@ -185,11 +200,14 @@ public class CompactionScheduleContext {
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getInnerUnseqCompactionPerformer()
-            .createInstance();
+            .createInstance(encryptParameter);
     return unseqCompactionPerformer;
   }
 
   public ICrossCompactionPerformer getCrossCompactionPerformer() {
-    return IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer().createInstance();
+    return IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getCrossCompactionPerformer()
+        .createInstance(encryptParameter);
   }
 }

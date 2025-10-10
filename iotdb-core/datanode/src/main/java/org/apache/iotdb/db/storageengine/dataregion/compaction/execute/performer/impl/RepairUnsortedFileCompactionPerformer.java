@@ -29,6 +29,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collections;
@@ -38,7 +41,14 @@ import java.util.List;
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
 
   public RepairUnsortedFileCompactionPerformer() {
-    super();
+    super(
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+  }
+
+  public RepairUnsortedFileCompactionPerformer(EncryptParameter encryptParameter) {
+    super(encryptParameter);
   }
 
   @Override
@@ -47,7 +57,8 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)
       throws IOException {
-    return new RepairUnsortedFileCompactionWriter(targetFileResources.get(0));
+    return new RepairUnsortedFileCompactionWriter(
+        targetFileResources.get(0), getEncryptParameter());
   }
 
   @Override

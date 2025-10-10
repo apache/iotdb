@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
@@ -46,12 +48,14 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
   private ChunkWriterFlushCallback beforeChunkWriterFlushCallback;
 
   public FirstBatchCompactionAlignedChunkWriter(VectorMeasurementSchema schema) {
+    this.encryptParam = EncryptUtils.getEncryptParameter();
     timeChunkWriter =
         new FirstBatchCompactionTimeChunkWriter(
             schema.getMeasurementName(),
             schema.getCompressor(),
             schema.getTimeTSEncoding(),
-            schema.getTimeEncoder());
+            schema.getTimeEncoder(),
+            encryptParam);
 
     List<String> valueMeasurementIdList = schema.getSubMeasurementsList();
     List<TSDataType> valueTSDataTypeList = schema.getSubMeasurementsTSDataTypeList();
@@ -66,7 +70,8 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
               schema.getCompressor(),
               valueTSDataTypeList.get(i),
               valueTSEncodingList.get(i),
-              valueEncoderList.get(i)));
+              valueEncoderList.get(i),
+              encryptParam));
     }
 
     this.valueIndex = 0;
@@ -75,12 +80,21 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
 
   public FirstBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema, List<IMeasurementSchema> valueSchemaList) {
+    this(timeSchema, valueSchemaList, EncryptUtils.getEncryptParameter());
+  }
+
+  public FirstBatchCompactionAlignedChunkWriter(
+      IMeasurementSchema timeSchema,
+      List<IMeasurementSchema> valueSchemaList,
+      EncryptParameter param) {
+    this.encryptParam = param;
     timeChunkWriter =
         new FirstBatchCompactionTimeChunkWriter(
             timeSchema.getMeasurementName(),
             timeSchema.getCompressor(),
             timeSchema.getEncodingType(),
-            timeSchema.getTimeEncoder());
+            timeSchema.getTimeEncoder(),
+            param);
 
     valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
     for (int i = 0; i < valueSchemaList.size(); i++) {
@@ -90,7 +104,8 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
               valueSchemaList.get(i).getCompressor(),
               valueSchemaList.get(i).getType(),
               valueSchemaList.get(i).getEncodingType(),
-              valueSchemaList.get(i).getValueEncoder()));
+              valueSchemaList.get(i).getValueEncoder(),
+              param));
     }
 
     this.valueIndex = 0;
@@ -98,6 +113,7 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
   }
 
   public FirstBatchCompactionAlignedChunkWriter(List<IMeasurementSchema> schemaList) {
+    this.encryptParam = EncryptUtils.getEncryptParameter();
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
@@ -108,7 +124,8 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
             "",
             timeCompression,
             timeEncoding,
-            TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType));
+            TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType),
+            encryptParam);
 
     valueChunkWriterList = new ArrayList<>(schemaList.size());
     for (int i = 0; i < schemaList.size(); i++) {
@@ -118,7 +135,8 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
               schemaList.get(i).getCompressor(),
               schemaList.get(i).getType(),
               schemaList.get(i).getEncodingType(),
-              schemaList.get(i).getValueEncoder()));
+              schemaList.get(i).getValueEncoder(),
+              encryptParam));
     }
 
     this.valueIndex = 0;
@@ -154,7 +172,21 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
         CompressionType compressionType,
         TSEncoding encodingType,
         Encoder timeEncoder) {
-      super(measurementId, compressionType, encodingType, timeEncoder);
+      super(
+          measurementId,
+          compressionType,
+          encodingType,
+          timeEncoder,
+          EncryptUtils.getEncryptParameter());
+    }
+
+    public FirstBatchCompactionTimeChunkWriter(
+        String measurementId,
+        CompressionType compressionType,
+        TSEncoding encodingType,
+        Encoder timeEncoder,
+        EncryptParameter encryptParam) {
+      super(measurementId, compressionType, encodingType, timeEncoder, encryptParam);
     }
 
     @Override

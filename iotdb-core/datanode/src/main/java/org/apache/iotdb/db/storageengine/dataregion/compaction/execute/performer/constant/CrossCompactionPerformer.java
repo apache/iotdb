@@ -24,6 +24,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
+
 public enum CrossCompactionPerformer {
   READ_POINT,
   FAST;
@@ -44,6 +46,18 @@ public enum CrossCompactionPerformer {
         return new ReadPointCompactionPerformer();
       case FAST:
         return new FastCompactionPerformer(true);
+      default:
+        throw new IllegalCompactionPerformerException(
+            "Illegal compaction performer for cross compaction " + this);
+    }
+  }
+
+  public ICrossCompactionPerformer createInstance(EncryptParameter encryptParameter) {
+    switch (this) {
+      case READ_POINT:
+        return new ReadPointCompactionPerformer(encryptParameter);
+      case FAST:
+        return new FastCompactionPerformer(true, encryptParameter);
       default:
         throw new IllegalCompactionPerformerException(
             "Illegal compaction performer for cross compaction " + this);

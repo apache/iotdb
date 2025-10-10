@@ -47,6 +47,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -96,6 +98,8 @@ public class FastCompactionPerformer
 
   private final boolean isCrossCompaction;
 
+  private EncryptParameter encryptParameter;
+
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -109,10 +113,40 @@ public class FastCompactionPerformer
     } else {
       isCrossCompaction = true;
     }
+    this.encryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+  }
+
+  public FastCompactionPerformer(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      List<TsFileResource> targetFiles,
+      EncryptParameter encryptParameter) {
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
+    this.targetFiles = targetFiles;
+    if (seqFiles.isEmpty() || unseqFiles.isEmpty()) {
+      // inner space compaction
+      isCrossCompaction = false;
+    } else {
+      isCrossCompaction = true;
+    }
+    this.encryptParameter = encryptParameter;
   }
 
   public FastCompactionPerformer(boolean isCrossCompaction) {
     this.isCrossCompaction = isCrossCompaction;
+    this.encryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+  }
+
+  public FastCompactionPerformer(boolean isCrossCompaction, EncryptParameter encryptParameter) {
+    this.isCrossCompaction = isCrossCompaction;
+    this.encryptParameter = encryptParameter;
   }
 
   @Override
@@ -122,8 +156,9 @@ public class FastCompactionPerformer
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
-                ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
-                : new FastInnerCompactionWriter(targetFiles)) {
+                ? new FastCrossCompactionWriter(
+                    targetFiles, seqFiles, readerCacheMap, encryptParameter)
+                : new FastInnerCompactionWriter(targetFiles, encryptParameter)) {
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(seqFiles, unseqFiles, readerCacheMap);
       compactionWriter.setSchemaForAllTargetFile(schemas);

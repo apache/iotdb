@@ -24,6 +24,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -49,7 +51,22 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       List<TsFileResource> seqSourceResources,
       Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
-    super(targetResources, seqSourceResources);
+    super(
+        targetResources,
+        seqSourceResources,
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+    this.readerMap = readerMap;
+  }
+
+  public FastCrossCompactionWriter(
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqSourceResources,
+      Map<TsFileResource, TsFileSequenceReader> readerMap,
+      EncryptParameter encryptParameter)
+      throws IOException {
+    super(targetResources, seqSourceResources, encryptParameter);
     this.readerMap = readerMap;
   }
 

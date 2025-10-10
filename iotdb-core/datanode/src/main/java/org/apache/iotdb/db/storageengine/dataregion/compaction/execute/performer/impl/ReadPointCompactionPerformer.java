@@ -44,7 +44,10 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -83,6 +86,8 @@ public class ReadPointCompactionPerformer
 
   protected List<TsFileResource> targetFiles = Collections.emptyList();
 
+  private EncryptParameter encryptParameter;
+
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -90,15 +95,52 @@ public class ReadPointCompactionPerformer
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.targetFiles = targetFiles;
+    this.encryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+  }
+
+  public ReadPointCompactionPerformer(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      List<TsFileResource> targetFiles,
+      EncryptParameter encryptParameter) {
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
+    this.targetFiles = targetFiles;
+    this.encryptParameter = encryptParameter;
   }
 
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
+    this.encryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
   }
 
-  public ReadPointCompactionPerformer() {}
+  public ReadPointCompactionPerformer(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      EncryptParameter encryptParameter) {
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
+    this.encryptParameter = encryptParameter;
+  }
+
+  public ReadPointCompactionPerformer() {
+    this.encryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+  }
+
+  public ReadPointCompactionPerformer(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+  }
 
   @SuppressWarnings("squid:S2095") // Do not close device iterator
   @Override
@@ -159,6 +201,10 @@ public class ReadPointCompactionPerformer
     this.summary = summary;
   }
 
+  public EncryptParameter getEncryptParameter() {
+    return encryptParameter;
+  }
+
   private void compactAlignedSeries(
       IDeviceID device,
       MultiTsFileDeviceIterator deviceIterator,
@@ -194,7 +240,10 @@ public class ReadPointCompactionPerformer
       measurementSchemas.add(0, timeSchema);
       compactionWriter.startMeasurement(
           TsFileConstant.TIME_COLUMN_ID,
-          new AlignedChunkWriterImpl(measurementSchemas.remove(0), measurementSchemas),
+          new AlignedChunkWriterImpl(
+              measurementSchemas.remove(0),
+              measurementSchemas,
+              EncryptUtils.getEncryptParameter(getEncryptParameter())),
           0);
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
@@ -303,10 +352,11 @@ public class ReadPointCompactionPerformer
       throws IOException {
     if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
       // cross space
-      return new ReadPointCrossCompactionWriter(targetFileResources, seqFileResources);
+      return new ReadPointCrossCompactionWriter(
+          targetFileResources, seqFileResources, encryptParameter);
     } else {
       // inner space
-      return new ReadPointInnerCompactionWriter(targetFileResources);
+      return new ReadPointInnerCompactionWriter(targetFileResources, encryptParameter);
     }
   }
 

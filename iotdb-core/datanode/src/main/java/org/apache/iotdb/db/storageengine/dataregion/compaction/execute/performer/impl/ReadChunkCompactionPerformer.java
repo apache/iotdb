@@ -36,6 +36,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -66,6 +68,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
   private Schema schema = null;
 
+  private EncryptParameter firstEncryptParameter;
+
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this(sourceFiles, Collections.singletonList(targetFile));
   }
@@ -74,13 +78,30 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       List<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
+    this.firstEncryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
   }
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
     setSourceFiles(sourceFiles);
+    this.firstEncryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
   }
 
-  public ReadChunkCompactionPerformer() {}
+  public ReadChunkCompactionPerformer() {
+    this.firstEncryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+  }
+
+  public ReadChunkCompactionPerformer(EncryptParameter encryptParameter) {
+    this.firstEncryptParameter = encryptParameter;
+  }
 
   @Override
   public void perform()
@@ -161,7 +182,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         new CompactionTsFileWriter(
             targetResources.get(currentTargetFileIndex).getTsFile(),
             memoryBudgetForFileWriter,
-            CompactionType.INNER_SEQ_COMPACTION);
+            CompactionType.INNER_SEQ_COMPACTION,
+            firstEncryptParameter);
     currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
   }
 
