@@ -922,6 +922,7 @@ struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional bool mayDeleteAudit
 }
 
 struct TDeleteLogicalViewReq {

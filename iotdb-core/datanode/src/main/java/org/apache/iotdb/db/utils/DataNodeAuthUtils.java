@@ -216,6 +216,7 @@ public class DataNodeAuthUtils {
 
   public static TSStatus deletePasswordHistory(long userId) {
     DeleteTimeSeriesStatement deleteTimeSeriesStatement = new DeleteTimeSeriesStatement();
+    deleteTimeSeriesStatement.setMayDeleteAudit(true);
     try {
       PartialPath devicePath =
           new PartialPath(DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + userId + "`");
