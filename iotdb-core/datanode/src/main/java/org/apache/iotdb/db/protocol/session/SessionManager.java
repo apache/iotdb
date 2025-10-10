@@ -145,12 +145,7 @@ public class SessionManager implements SessionManagerMBean {
       // Generic authentication error
       openSessionResp
           .sessionId(-1)
-          .setMessage(
-              String.format(
-                  "Access denied for user '%s'@'%s'. Account is blocked due to %d consecutive failed logins.",
-                  username,
-                  session.getClientAddress(),
-                  LoginLockManager.getInstance().getFailedLoginAttempts()))
+          .setMessage("Account is blocked due to consecutive failed logins.")
           .setCode(TSStatusCode.USER_LOGIN_LOCKED.getStatusCode());
       return openSessionResp;
     }
