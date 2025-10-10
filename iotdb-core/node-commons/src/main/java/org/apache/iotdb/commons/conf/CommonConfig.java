@@ -318,7 +318,7 @@ public class CommonConfig {
   private volatile long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private volatile long pipeCheckMemoryEnoughIntervalMs = 10L;
   private volatile float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
-  private volatile long pipeMaxAlignedSeriesChunkSizeInOneBatch = (long) 16 * 1024 * 1024; // 16MB;
+  private volatile long pipeMaxReaderChunkSize = (long) 16 * 1024 * 1024; // 16MB;
   private volatile long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private volatile int pipeSnapshotExecutionMaxBatchSize = 1000;
   private volatile long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
@@ -1769,19 +1769,16 @@ public class CommonConfig {
         "pipeLeaderCacheMemoryUsagePercentage is set to {}", pipeLeaderCacheMemoryUsagePercentage);
   }
 
-  public long getPipeMaxAlignedSeriesChunkSizeInOneBatch() {
-    return pipeMaxAlignedSeriesChunkSizeInOneBatch;
+  public long getPipeMaxReaderChunkSize() {
+    return pipeMaxReaderChunkSize;
   }
 
-  public void setPipeMaxAlignedSeriesChunkSizeInOneBatch(
-      long pipeMaxAlignedSeriesChunkSizeInOneBatch) {
-    if (this.pipeMaxAlignedSeriesChunkSizeInOneBatch == pipeMaxAlignedSeriesChunkSizeInOneBatch) {
+  public void setPipeMaxReaderChunkSize(long pipeMaxReaderChunkSize) {
+    if (this.pipeMaxReaderChunkSize == pipeMaxReaderChunkSize) {
       return;
     }
-    this.pipeMaxAlignedSeriesChunkSizeInOneBatch = pipeMaxAlignedSeriesChunkSizeInOneBatch;
-    logger.info(
-        "pipeMaxAlignedSeriesChunkSizeInOneBatch is set to {}",
-        pipeMaxAlignedSeriesChunkSizeInOneBatch);
+    this.pipeMaxReaderChunkSize = pipeMaxReaderChunkSize;
+    logger.info("pipeMaxReaderChunkSize is set to {}", pipeMaxReaderChunkSize);
   }
 
   public long getPipeListeningQueueTransferSnapshotThreshold() {

@@ -478,11 +478,10 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
-    config.setPipeMaxAlignedSeriesChunkSizeInOneBatch(
+    config.setPipeMaxReaderChunkSize(
         Long.parseLong(
             properties.getProperty(
-                "pipe_max_aligned_series_chunk_size_in_one_batch",
-                String.valueOf(config.getPipeMaxAlignedSeriesChunkSizeInOneBatch()))));
+                "pipe_max_reader_chunk_size", String.valueOf(config.getPipeMaxReaderChunkSize()))));
 
     config.setPipeTransferTsFileSync(
         Boolean.parseBoolean(

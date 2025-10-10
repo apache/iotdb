@@ -139,10 +139,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
   }
 
-  public long getPipeSubtaskExecutorForcedRestartIntervalMs() {
-    return COMMON_CONFIG.getPipeSubtaskExecutorForcedRestartIntervalMs();
-  }
-
   public long getPipeMaxWaitFinishTime() {
     return COMMON_CONFIG.getPipeMaxWaitFinishTime();
   }
@@ -235,8 +231,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
 
-  public long getPipeMaxAlignedSeriesChunkSizeInOneBatch() {
-    return COMMON_CONFIG.getPipeMaxAlignedSeriesChunkSizeInOneBatch();
+  public long getPipeMaxReaderChunkSize() {
+    return COMMON_CONFIG.getPipeMaxReaderChunkSize();
   }
 
   public long getPipeListeningQueueTransferSnapshotThreshold() {
@@ -481,9 +477,6 @@ public class PipeConfig {
     LOGGER.info(
         "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}",
         getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
-    LOGGER.info(
-        "PipeSubtaskExecutorForcedRestartIntervalMs: {}",
-        getPipeSubtaskExecutorForcedRestartIntervalMs());
     LOGGER.info("PipeMaxWaitFinishTime: {}", getPipeMaxWaitFinishTime());
 
     LOGGER.info(
@@ -506,9 +499,7 @@ public class PipeConfig {
         isPipeConnectorRPCThriftCompressionEnabled());
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
-    LOGGER.info(
-        "PipeMaxAlignedSeriesChunkSizeInOneBatch: {}",
-        getPipeMaxAlignedSeriesChunkSizeInOneBatch());
+    LOGGER.info("PipeMaxAlignedSeriesChunkSizeInOneBatch: {}", getPipeMaxReaderChunkSize());
     LOGGER.info(
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
