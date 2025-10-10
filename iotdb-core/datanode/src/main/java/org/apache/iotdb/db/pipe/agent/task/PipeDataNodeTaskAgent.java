@@ -786,12 +786,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final long remainingMemory =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes()
             - allocatedMemorySizeInBytes;
-    if (remainingMemory < PipeConfig.getInstance().PipeInsertNodeQueueMemory()) {
+    if (remainingMemory < PipeConfig.getInstance().getPipeInsertNodeQueueMemory()) {
       final String message =
           String.format(
               "%s Need Floating memory: %d  bytes, free Floating memory: %d bytes",
               MESSAGE_PIPE_NOT_ENOUGH_MEMORY,
-              PipeConfig.getInstance().PipeInsertNodeQueueMemory(),
+              PipeConfig.getInstance().getPipeInsertNodeQueueMemory(),
               remainingMemory);
       LOGGER.warn(message);
       throw new PipeException(message);

@@ -69,15 +69,13 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
-  public double getPipeDataStructureBatchMemoryProportion() {
-    return COMMON_CONFIG.getPipeDataStructureBatchMemoryProportion();
-  }
+  /////////////////////////////// Estimation ///////////////////////////////
 
   public boolean isPipeEnableMemoryCheck() {
     return COMMON_CONFIG.isPipeEnableMemoryChecked();
   }
 
-  public long PipeInsertNodeQueueMemory() {
+  public long getPipeInsertNodeQueueMemory() {
     return COMMON_CONFIG.getPipeInsertNodeQueueMemory();
   }
 
@@ -460,8 +458,6 @@ public class PipeConfig {
         getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
     LOGGER.info("PipeTotalFloatingMemoryProportion: {}", getPipeTotalFloatingMemoryProportion());
 
-    LOGGER.info(
-        "PipeDataStructureBatchMemoryProportion: {}", getPipeDataStructureBatchMemoryProportion());
     LOGGER.info("IsPipeEnableMemoryCheck: {}", isPipeEnableMemoryCheck());
     LOGGER.info("PipeTsFileParserMemory: {}", getTsFileParserMemory());
     LOGGER.info("SinkBatchMemoryInsertNode: {}", getSinkBatchMemoryInsertNode());

@@ -219,7 +219,6 @@ public class CommonConfig {
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.3;
-  private double PipeDataStructureBatchMemoryProportion = 0.2;
   private volatile double pipeTotalFloatingMemoryProportion = 0.5;
 
   // Check if memory check is enabled for Pipe
@@ -888,21 +887,6 @@ public class CommonConfig {
     logger.info(
         "pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold is set to {}.",
         pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold);
-  }
-
-  public double getPipeDataStructureBatchMemoryProportion() {
-    return PipeDataStructureBatchMemoryProportion;
-  }
-
-  public void setPipeDataStructureBatchMemoryProportion(
-      double PipeDataStructureBatchMemoryProportion) {
-    if (this.PipeDataStructureBatchMemoryProportion == PipeDataStructureBatchMemoryProportion) {
-      return;
-    }
-    this.PipeDataStructureBatchMemoryProportion = PipeDataStructureBatchMemoryProportion;
-    logger.info(
-        "PipeDataStructureBatchMemoryProportion is set to {}.",
-        PipeDataStructureBatchMemoryProportion);
   }
 
   public boolean isPipeEnableMemoryChecked() {
