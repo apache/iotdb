@@ -57,6 +57,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeInsertionEvent sourceEvent; // used to report progress
 
   // mods entry
+  protected PipeMemoryBlock allocatedMemoryBlockForModifications;
   protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
 
   protected final long initialTimeNano = System.nanoTime();
@@ -129,6 +130,15 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
     if (allocatedMemoryBlockForTablet != null) {
       allocatedMemoryBlockForTablet.close();
+    }
+
+    if (currentModifications != null) {
+      // help GC
+      currentModifications = null;
+    }
+
+    if (allocatedMemoryBlockForModifications != null) {
+      allocatedMemoryBlockForModifications.close();
     }
   }
 }

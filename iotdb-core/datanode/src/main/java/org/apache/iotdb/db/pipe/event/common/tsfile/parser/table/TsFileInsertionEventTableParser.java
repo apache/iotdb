@@ -75,10 +75,12 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     this.isWithMod = isWithMod;
     try {
       currentModifications =
-          this.isWithMod
-              ? ModsOperationUtil.loadModificationsFromTsFile(
-                  new File(tsFileSequenceReader.getFileName()))
+          isWithMod
+              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
+      allocatedMemoryBlockForModifications =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
       long tableSize =
           Math.min(
               PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
