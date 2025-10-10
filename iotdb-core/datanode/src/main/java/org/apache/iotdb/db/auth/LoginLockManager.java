@@ -166,6 +166,15 @@ public class LoginLockManager {
   }
 
   /**
+   * Returns the number of consecutive failed login attempts.
+   *
+   * @return the number of failed login attempts
+   */
+  public int getFailedLoginAttempts() {
+    return failedLoginAttempts;
+  }
+
+  /**
    * Record a failed login attempt
    *
    * @param userId user ID
