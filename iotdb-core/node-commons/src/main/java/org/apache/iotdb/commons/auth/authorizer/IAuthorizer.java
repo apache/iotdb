@@ -35,8 +35,6 @@ import java.util.Set;
 /** This interface provides all authorization-relative operations. */
 public interface IAuthorizer extends SnapshotProcessor {
 
-  boolean isAdmin(String userName);
-
   /**
    * Login for a user.
    *
