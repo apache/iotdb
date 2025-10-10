@@ -166,12 +166,15 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
                                   "SSL handshake completed successfully for {}:{}", host, port);
                             }
                           } else {
-                            if (logger.isDebugEnabled()) {
+                            if (!future
+                                .cause()
+                                .getMessage()
+                                .contains("SslHandler removed before handshake completed")) {
+                              logger.warn(
+                                  "SSL handshake failed for {}:{}", host, port, future.cause());
+                            } else if (logger.isDebugEnabled()) {
                               logger.debug(
-                                  "SSL handshake failed for {}:{}: {}",
-                                  host,
-                                  port,
-                                  future.cause().getMessage());
+                                  "SSL handshake failed for {}:{}", host, port, future.cause());
                             }
                           }
                         });
