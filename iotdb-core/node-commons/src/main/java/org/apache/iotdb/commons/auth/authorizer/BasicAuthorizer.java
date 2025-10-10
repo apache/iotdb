@@ -178,7 +178,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    checkAdmin(getUser(username).getUserId(), "Default administrator cannot be deleted");
+    checkAdmin(userManager.getUserId(username), "Default administrator cannot be deleted");
     if (!userManager.deleteEntity(username)) {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
@@ -188,7 +188,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void grantPrivilegeToUser(String username, PrivilegeUnion union) throws AuthException {
     checkAdmin(
-        getUser(username).getUserId(),
+        userManager.getUserId(username),
         "Invalid operation, administrator already has all privileges");
     userManager.grantPrivilegeToEntity(username, union);
   }
@@ -196,14 +196,16 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void revokePrivilegeFromUser(String username, PrivilegeUnion union) throws AuthException {
     checkAdmin(
-        getUser(username).getUserId(), "Invalid operation, administrator must have all privileges");
+        userManager.getUserId(username),
+        "Invalid operation, administrator must have all privileges");
     userManager.revokePrivilegeFromEntity(username, union);
   }
 
   @Override
   public void revokeAllPrivilegeFromUser(String userName) throws AuthException {
     checkAdmin(
-        getUser(userName).getUserId(), "Invalid operation, administrator cannot revoke privileges");
+        userManager.getUserId(userName),
+        "Invalid operation, administrator cannot revoke privileges");
     User user = userManager.getEntity(userName);
     if (user == null) {
       throw new AuthException(
@@ -268,7 +270,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void grantRoleToUser(String roleName, String userName) throws AuthException {
     checkAdmin(
-        getUser(userName).getUserId(), "Invalid operation, cannot grant role to administrator");
+        userManager.getUserId(userName), "Invalid operation, cannot grant role to administrator");
     Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
@@ -285,7 +287,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void revokeRoleFromUser(String roleName, String userName) throws AuthException {
-    if (getUser(userName).getUserId() == IoTDBConstant.SUPER_USER_ID) {
+    if (userManager.getUserId(userName) == IoTDBConstant.SUPER_USER_ID) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION, "Invalid operation, cannot revoke role from administrator ");
     }
@@ -339,7 +341,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException {
-    if (getUser(userName).getUserId() == IoTDBConstant.SUPER_USER_ID) {
+    if (userManager.getUserId(userName) == IoTDBConstant.SUPER_USER_ID) {
       return true;
     }
     User user = userManager.getEntity(userName);
