@@ -661,8 +661,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorTreePlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getPassword(),
@@ -710,8 +709,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorRelationalPlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getDatabase(),
