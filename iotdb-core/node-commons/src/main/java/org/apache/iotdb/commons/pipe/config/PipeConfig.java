@@ -227,20 +227,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeConnectorRequestSliceThresholdBytes();
   }
 
-  public float getPipeLeaderCacheMemoryUsagePercentage() {
-    return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
-  }
-
   public long getPipeMaxReaderChunkSize() {
     return COMMON_CONFIG.getPipeMaxReaderChunkSize();
-  }
-
-  public long getPipeListeningQueueTransferSnapshotThreshold() {
-    return COMMON_CONFIG.getPipeListeningQueueTransferSnapshotThreshold();
-  }
-
-  public int getPipeSnapshotExecutionMaxBatchSize() {
-    return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
   }
 
   public long getPipeRemainingTimeCommitAutoSwitchSeconds() {
@@ -401,6 +389,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeCheckMemoryEnoughIntervalMs();
   }
 
+  public float getPipeLeaderCacheMemoryUsagePercentage() {
+    return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
+  }
+
   /////////////////////////////// TwoStage ///////////////////////////////
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
@@ -413,6 +405,16 @@ public class PipeConfig {
 
   public long getTwoStageAggregateSenderEndPointsCacheInMs() {
     return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
+  }
+
+  /////////////////////////////// Meta ///////////////////////////////
+
+  public long getPipeListeningQueueTransferSnapshotThreshold() {
+    return COMMON_CONFIG.getPipeListeningQueueTransferSnapshotThreshold();
+  }
+
+  public int getPipeSnapshotExecutionMaxBatchSize() {
+    return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
   }
 
   /////////////////////////////// Ref ///////////////////////////////
