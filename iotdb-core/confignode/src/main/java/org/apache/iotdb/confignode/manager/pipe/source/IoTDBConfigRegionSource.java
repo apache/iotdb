@@ -59,6 +59,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -193,8 +194,9 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
                             .checkUserPrivileges(
                                 userName,
                                 new PrivilegeUnion(
-                                    new PartialPath(
-                                        new String[] {PATH_ROOT, MULTI_LEVEL_PATH_WILDCARD}),
+                                    Collections.singletonList(
+                                        new PartialPath(
+                                            new String[] {PATH_ROOT, MULTI_LEVEL_PATH_WILDCARD})),
                                     PrivilegeType.READ_SCHEMA))
                             .getStatus()
                             .getCode()

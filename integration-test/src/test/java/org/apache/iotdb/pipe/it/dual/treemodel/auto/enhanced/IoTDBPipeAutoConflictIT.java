@@ -441,7 +441,8 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv,
           "count devices root.sg_aligned.**",
           "count(devices),",
-          Collections.singleton("3,"));
+          Collections.singleton("3,"),
+          10);
     }
   }
 }
