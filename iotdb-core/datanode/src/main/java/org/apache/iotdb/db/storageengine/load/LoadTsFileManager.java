@@ -488,7 +488,7 @@ public class LoadTsFileManager {
         // If the table does not exist, it means that the table is all deleted by mods
         final TsTable table =
             DataNodeTableCache.getInstance()
-                .getTable(partitionInfo.getDataRegion().getDatabaseName(), tableName);
+                .getTable(partitionInfo.getDataRegion().getDatabaseName(), tableName, false);
         if (Objects.nonNull(table)) {
           writer
               .getSchema()

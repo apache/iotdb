@@ -211,6 +211,16 @@ The following files include code modified from Apache HBase project.
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/impl/StateMachineProcedure.java
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/TimeoutExecutorThread.java
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/StoppableThread.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/CompletedProcedureRecycler.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/RootProcedureStack.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/scheduler/AbstractProcedureScheduler.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/scheduler/ProcedureScheduler.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/scheduler/SimpleProcedureScheduler.java
+./iotdb-core/consensus/src/main/java/org/apache/iotdb/consensus/ratis/metrics/RefCountingMap.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/DataNodeThrottleQuotaManager.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/DefaultOperationQuota.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/NoopOperationQuota.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/QuotaLimiter.java
 
 Project page: https://github.com/apache/hbase
 License: https://github.com/apache/hbase/blob/master/LICENSE.txt
@@ -257,6 +267,17 @@ The following files include code modified from Trino project.
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceState.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceStateMachine.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/common/QueryId.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/FutureStateChange.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/QueryIdGenerator.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceFailureInfo.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentState.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/ExchangeOperator.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/queue/multilevelqueue/DriverTaskHandle.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/queue/multilevelqueue/MultilevelPriorityQueue.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/queue/multilevelqueue/Priority.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/utils/SetThreadName.java
+iotdb-core/datanode/src/main/java/org/apache/iotdb/db/utils/stats/CpuTimer.java
 
 Trino is open source software licensed under the Apache License 2.0 and supported by the Trino Software Foundation.
 Project page: https://github.com/trinodb/trino
@@ -285,3 +306,15 @@ The following files include code modified from Stream-Lib project.
 
 Project page: https://github.com/addthis/stream-lib
 License: https://github.com/addthis/stream-lib/blob/master/LICENSE.txt
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Dropwizard Metrics project.
+
+./iotdb-core/metrics/core/src/main/java/org/apache/iotdb/metrics/core/utils/IoTDBCachedGauge.java
+./iotdb-core/metrics/core/src/main/java/org/apache/iotdb/metrics/core/utils/IoTDBMetricObjNameFactory.java
+./iotdb-core/metrics/core/src/main/java/org/apache/iotdb/metrics/core/utils/IoTDBMovingAverage.java
+
+Copyright (c) 2010-2013 Coda Hale, Yammer.com, 2014-2021 Dropwizard Team
+Project page: https://github.com/dropwizard/metrics
+License: https://github.com/dropwizard/metrics/blob/release/4.2.x/LICENSE

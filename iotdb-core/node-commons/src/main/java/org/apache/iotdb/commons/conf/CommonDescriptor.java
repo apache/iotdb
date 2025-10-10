@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import org.slf4j.Logger;
@@ -211,10 +212,28 @@ public class CommonDescriptor {
             properties.getProperty(
                 "timestamp_precision_check_enabled",
                 String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
-
     config.setDatanodeTokenTimeoutMS(
         Integer.parseInt(
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
+
+    config.setEnableAuditLog(
+        Boolean.parseBoolean(
+            properties
+                .getProperty("enable_audit_log", String.valueOf(config.isEnableAuditLog()))
+                .trim()));
+    config.setAuditableOperationType(
+        properties.getProperty("auditable_operation_type", "DDL,DML,QUERY,CONTROL").trim());
+    config.setAuditableOperationLevel(
+        properties
+            .getProperty(
+                "auditable_operation_level", config.getAuditableOperationLevel().toString())
+            .trim()
+            .toUpperCase());
+    config.setAuditableOperationResult(
+        properties
+            .getProperty("auditable_operation_result", config.getAuditableOperationResult())
+            .trim()
+            .toUpperCase());
 
     PipeDescriptor.loadPipeProps(config, properties, false);
     loadSubscriptionProps(properties);
@@ -454,6 +473,15 @@ public class CommonDescriptor {
     config.setSchemaEngineMode(globalConfig.schemaEngineMode);
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
+  }
+
+  public void loadAuditConfig(TAuditConfig auditConfig) {
+    config.setEnableAuditLog(auditConfig.isEnableAuditLog());
+    if (auditConfig.isEnableAuditLog()) {
+      config.setAuditableOperationType(auditConfig.getAuditableOperationType());
+      config.setAuditableOperationLevel(auditConfig.getAuditableOperationLevel());
+      config.setAuditableOperationResult(auditConfig.getAuditableOperationResult());
+    }
   }
 
   public void initThriftSSL(TrimProperties properties) {

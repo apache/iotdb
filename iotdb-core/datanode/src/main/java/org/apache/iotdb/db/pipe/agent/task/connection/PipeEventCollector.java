@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.connection;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -130,12 +131,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (skipParsing) {
-      collectEvent(sourceEvent);
-      return;
-    }
-
-    if (!forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
+    if (skipParsing || !forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }
@@ -182,7 +178,11 @@ public class PipeEventCollector implements EventCollector {
                 .flatMap(
                     planNode ->
                         IoTDBSchemaRegionSource.TABLE_PRIVILEGE_PARSE_VISITOR.process(
-                            planNode, deleteDataEvent.getUserName())))
+                            planNode,
+                            new UserEntity(
+                                Long.parseLong(deleteDataEvent.getUserId()),
+                                deleteDataEvent.getUserName(),
+                                deleteDataEvent.getCliHostname()))))
         .map(
             planNode ->
                 new PipeDeleteDataNodeEvent(
@@ -192,7 +192,9 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getTreePattern(),
                     deleteDataEvent.getTablePattern(),
+                    deleteDataEvent.getUserId(),
                     deleteDataEvent.getUserName(),
+                    deleteDataEvent.getCliHostname(),
                     deleteDataEvent.isSkipIfNoPrivileges(),
                     deleteDataEvent.isGeneratedByPipe()))
         .ifPresent(

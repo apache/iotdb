@@ -37,6 +37,7 @@ public class SeriesSchemaFetchStatement extends Statement {
   private final boolean withAttributes;
   private final boolean withTemplate;
   private final boolean withAliasForce;
+  private final boolean canSeeAuditDB;
 
   public SeriesSchemaFetchStatement(
       PathPatternTree patternTree,
@@ -44,7 +45,8 @@ public class SeriesSchemaFetchStatement extends Statement {
       boolean withTags,
       boolean withAttributes,
       boolean withTemplate,
-      boolean withAliasForce) {
+      boolean withAliasForce,
+      boolean canSeeAuditDB) {
     super();
     this.patternTree = patternTree;
     this.templateMap = templateMap;
@@ -52,6 +54,7 @@ public class SeriesSchemaFetchStatement extends Statement {
     this.withAttributes = withAttributes;
     this.withTemplate = withTemplate;
     this.withAliasForce = withAliasForce;
+    this.canSeeAuditDB = canSeeAuditDB;
     setType(StatementType.FETCH_SCHEMA);
   }
 
@@ -61,6 +64,10 @@ public class SeriesSchemaFetchStatement extends Statement {
 
   public Map<Integer, Template> getTemplateMap() {
     return templateMap;
+  }
+
+  public boolean isCanSeeAuditDB() {
+    return canSeeAuditDB;
   }
 
   @Override

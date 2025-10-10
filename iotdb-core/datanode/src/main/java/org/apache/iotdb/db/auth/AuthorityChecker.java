@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -30,6 +33,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
@@ -38,6 +42,11 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertio
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
@@ -51,21 +60,33 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_COLUMN_HEADERS;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
 
 // Authority checker is SingleTon working at datanode.
 // It checks permission in local. DCL statement will send to configNode.
 public class AuthorityChecker {
 
-  public static final String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
+  public static int SUPER_USER_ID = 0;
+  public static String SUPER_USER =
+      CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
+  public static String SUPER_USER_ID_IN_STR = "0";
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+  public static final int INTERNAL_AUDIT_USER_ID = 4;
+  public static final String INTERNAL_AUDIT_USER = "__internal_auditor";
+
+  public static String ANY_SCOPE = "any";
 
   public static final String ONLY_ADMIN_ALLOWED =
       "No permissions for this operation, only root user is allowed";
@@ -82,8 +103,23 @@ public class AuthorityChecker {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
+  private static volatile AccessControl accessControl =
+      new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
+
   private AuthorityChecker() {
     // empty constructor
+  }
+
+  public static AccessControl getAccessControl() {
+    return accessControl;
+  }
+
+  public static void setAccessControl(AccessControl accessControl) {
+    AuthorityChecker.accessControl = accessControl;
+  }
+
+  public static void setSuperUser(String superUser) {
+    SUPER_USER = superUser;
   }
 
   public static IAuthorityFetcher getAuthorityFetcher() {
@@ -95,8 +131,21 @@ public class AuthorityChecker {
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
+  public static User getUser(String username) {
+    return authorityFetcher.get().getUser(username);
+  }
+
+  public static Optional<Long> getUserId(String username) {
+    User user = authorityFetcher.get().getUser(username);
+    return Optional.ofNullable(user == null ? null : user.getUserId());
+  }
+
   public static TSStatus checkUser(String userName, String password) {
-    return authorityFetcher.get().checkUser(userName, password);
+    TSStatus status = authorityFetcher.get().checkUser(userName, password);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    return accessControl.allowUserToLogin(userName);
   }
 
   public static SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
@@ -118,20 +167,32 @@ public class AuthorityChecker {
     return authorityFetcher.get().operatePermission(authorStatement);
   }
 
-  /** Check whether specific Session has the authorization to given plan. */
-  public static TSStatus checkAuthority(Statement statement, IClientSession session) {
-    long startTime = System.nanoTime();
-    try {
-      return statement.checkPermissionBeforeProcess(session.getUsername());
-    } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
+  public static IAuditEntity createIAuditEntity(String userName, IClientSession clientSession) {
+    if (clientSession != null && clientSession.getUsername() != null) {
+      return new UserEntity(
+          clientSession.getUserId(), clientSession.getUsername(), clientSession.getClientAddress());
+    } else if (userName != null) {
+      return new UserEntity(AuthorityChecker.getUserId(userName).orElse(-1L), userName, "");
+    } else {
+      return new UserEntity(-1, "unknown", "");
     }
   }
 
-  public static TSStatus checkAuthority(Statement statement, String userName) {
+  public static TSStatus checkAuthority(Statement statement, IAuditEntity auditEntity) {
     long startTime = System.nanoTime();
     try {
-      return statement.checkPermissionBeforeProcess(userName);
+      if (auditEntity instanceof TreeAccessCheckContext) {
+        return accessControl.checkPermissionBeforeProcess(
+            statement, (TreeAccessCheckContext) auditEntity);
+      }
+      return accessControl.checkPermissionBeforeProcess(
+          statement,
+          (TreeAccessCheckContext)
+              new TreeAccessCheckContext(
+                      auditEntity.getUserId(),
+                      auditEntity.getUsername(),
+                      auditEntity.getCliHostname())
+                  .setSqlString(auditEntity.getSqlString()));
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
@@ -150,11 +211,38 @@ public class AuthorityChecker {
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(errMsg);
   }
 
+  public static TSStatus getTSStatus(Collection<PrivilegeType> missingPrivileges) {
+    return missingPrivileges.isEmpty()
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(
+                NO_PERMISSION_PROMOTION + getMissingAllNeededPrivilegeString(missingPrivileges));
+  }
+
   public static TSStatus getTSStatus(boolean hasPermission, PrivilegeType neededPrivilege) {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + getSatisfyAnyNeededPrivilegeString(
+                        neededPrivilege.getReplacedPrivilegeType()));
+  }
+
+  private static String getSatisfyAnyNeededPrivilegeString(PrivilegeType... privileges) {
+    StringJoiner sj = new StringJoiner("/");
+    for (PrivilegeType privilege : privileges) {
+      sj.add(privilege.toString());
+    }
+    return sj.toString();
+  }
+
+  private static String getMissingAllNeededPrivilegeString(Collection<PrivilegeType> privileges) {
+    StringJoiner sj = new StringJoiner(",");
+    for (PrivilegeType privilege : privileges) {
+      sj.add(privilege.toString());
+    }
+    return sj.toString();
   }
 
   public static TSStatus getGrantOptTSStatus(
@@ -243,7 +331,7 @@ public class AuthorityChecker {
   }
 
   public static boolean checkSystemPermission(String userName, PrivilegeType permission) {
-    return authorityFetcher.get().checkUserSysPrivileges(userName, permission).getCode()
+    return authorityFetcher.get().checkUserSysPrivilege(userName, permission).getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
@@ -318,13 +406,12 @@ public class AuthorityChecker {
     return authorityFetcher.get().checkRole(username, roleName);
   }
 
-  public static TSStatus checkSuperUserOrMaintain(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public static Collection<PrivilegeType> checkUserMissingSystemPermissions(
+      String userName, Collection<PrivilegeType> permissions) {
+    if (SUPER_USER.equals(userName)) {
+      return Collections.emptySet();
     }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
-        PrivilegeType.MAINTAIN);
+    return authorityFetcher.get().checkUserSysPrivileges(userName, permissions);
   }
 
   public static void buildTSBlock(
@@ -336,7 +423,7 @@ public class AuthorityChecker {
 
     List<ColumnHeader> headerList = new ArrayList<>();
     TsBlockBuilder builder;
-    if (listRoleUser) {
+    if (authResp.tag.equals(ColumnHeaderConstant.ROLE)) {
       headerList.add(new ColumnHeader(authResp.getTag(), TSDataType.TEXT));
       types.add(TSDataType.TEXT);
       builder = new TsBlockBuilder(types);
@@ -345,6 +432,22 @@ public class AuthorityChecker {
         builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
         builder.declarePosition();
       }
+    } else if (authResp.tag.equals(ColumnHeaderConstant.USER)) {
+      headerList = LIST_USER_COLUMN_HEADERS;
+      types =
+          LIST_USER_COLUMN_HEADERS.stream()
+              .map(ColumnHeader::getColumnType)
+              .collect(Collectors.toList());
+      builder = new TsBlockBuilder(types);
+      for (TListUserInfo userinfo : authResp.getUsersInfo()) {
+        builder.getTimeColumnBuilder().writeLong(0L);
+        builder.getColumnBuilder(0).writeLong(userinfo.getUserId());
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(new Binary(userinfo.getUsername(), TSFileConfig.STRING_CHARSET));
+        builder.declarePosition();
+      }
+
     } else {
       headerList = LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
       types =
@@ -369,6 +472,9 @@ public class AuthorityChecker {
   private static void appendPriBuilder(
       String name, String scope, Set<Integer> priv, Set<Integer> grantOpt, TsBlockBuilder builder) {
     for (int i : priv) {
+      if (isIgnoredPrivilege(i)) {
+        continue;
+      }
       builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary(scope, TSFileConfig.STRING_CHARSET));
       builder
@@ -379,6 +485,10 @@ public class AuthorityChecker {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();
     }
+  }
+
+  private static boolean isIgnoredPrivilege(int i) {
+    return PrivilegeType.values()[i].isHided();
   }
 
   private static void appendEntryInfo(String name, TRoleResp resp, TsBlockBuilder builder) {

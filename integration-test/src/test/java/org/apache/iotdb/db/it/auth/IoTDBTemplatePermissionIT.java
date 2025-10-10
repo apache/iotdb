@@ -26,8 +26,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,16 +48,16 @@ import static org.apache.iotdb.db.it.utils.TestUtils.revokeUserSeriesPrivilege;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBTemplatePermissionIT {
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123123456");
     executeNonQuery("create database root.test1");
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -65,42 +65,38 @@ public class IoTDBTemplatePermissionIT {
   public void adminOperationsTest() {
     assertNonQueryTestFail(
         "create device template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "drop device template t1",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "alter device template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
-    assertNonQueryTestFail(
-        "show device templates",
-        "803: Only the admin user can perform this operation",
-        "test",
-        "test123123456");
+    executeNonQuery("show device templates");
     assertNonQueryTestFail(
         "show nodes in device template t1",
-        "803: Only the admin user can perform this operation",
+        "507: Template t1 does not exist",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "set device template t1 to root.sg1",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "unset device template t1 from root.sg1",
-        "803: Only the admin user can perform this operation",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
         "show paths set device template t1",
-        "803: Only the admin user can perform this operation",
+        "305: org.apache.iotdb.commons.exception.IoTDBException: Template t1 does not exist",
         "test",
         "test123123456");
   }
@@ -133,10 +129,10 @@ public class IoTDBTemplatePermissionIT {
         "insert into root.sg1.d1(time, temperature) values(1,1)", "test", "test123123456");
     assertNonQueryTestFail(
         "insert into root.sg1.d1(time, s1) values(1,1)",
-        "803: No permissions for this operation, please add privilege EXTEND_TEMPLATE",
+        "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
-    grantUserSeriesPrivilege("test", PrivilegeType.EXTEND_TEMPLATE, "root.**");
+    grantUserSeriesPrivilege("test", PrivilegeType.SYSTEM, "root.**");
     executeNonQuery("insert into root.sg1.d1(time, s1) values(1,1)", "test", "test123123456");
 
     // show

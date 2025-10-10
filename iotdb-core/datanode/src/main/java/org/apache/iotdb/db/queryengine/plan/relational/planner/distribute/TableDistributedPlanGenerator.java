@@ -140,6 +140,7 @@ import static org.apache.tsfile.utils.Preconditions.checkArgument;
 /** This class is used to generate distributed plan for table model. */
 public class TableDistributedPlanGenerator
     extends PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
+  private final MPPQueryContext queryContext;
   private final QueryId queryId;
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
@@ -152,6 +153,7 @@ public class TableDistributedPlanGenerator
       final Analysis analysis,
       final SymbolAllocator symbolAllocator,
       final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
+    this.queryContext = queryContext;
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -1146,6 +1148,7 @@ public class TableDistributedPlanGenerator
         if (regionReplicaSets.size() > 1) {
           needSplit = true;
           context.deviceCrossRegion = true;
+          queryContext.setNeedUpdateScanNumForLastQuery(node.mayUseLastCache());
         }
         regionReplicaSetsList.add(regionReplicaSets);
       }

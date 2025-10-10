@@ -316,7 +316,7 @@ public class CompressionRatio {
   }
 
   @TestOnly
-  void reset() throws IOException {
+  public void reset() throws IOException {
     if (!directory.exists()) {
       return;
     }
@@ -328,7 +328,24 @@ public class CompressionRatio {
       Files.delete(file.toPath());
     }
     totalMemorySize = new AtomicLong(0);
+    dataRegionRatioMap.clear();
     totalDiskSize = 0L;
+  }
+
+  public synchronized File getCompressionRatioFile(String dataRegionId) {
+    Pair<Long, Long> dataRegionCompressionRatio = dataRegionRatioMap.get(dataRegionId);
+    if (dataRegionCompressionRatio == null) {
+      return null;
+    }
+    return SystemFileFactory.INSTANCE.getFile(
+        directory,
+        String.format(
+                Locale.ENGLISH,
+                RATIO_FILE_PATH_FORMAT,
+                dataRegionCompressionRatio.getLeft(),
+                dataRegionCompressionRatio.getRight())
+            + "."
+            + dataRegionId);
   }
 
   public Map<String, Pair<Long, Long>> getDataRegionRatioMap() {

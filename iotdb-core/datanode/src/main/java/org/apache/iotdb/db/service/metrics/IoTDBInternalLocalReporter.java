@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -88,7 +90,14 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   public IoTDBInternalLocalReporter() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
-    sessionInfo = new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+    sessionInfo =
+        new SessionInfo(
+            0,
+            new UserEntity(
+                AuthorityChecker.SUPER_USER_ID,
+                AuthorityChecker.SUPER_USER,
+                IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+            ZoneId.systemDefault());
 
     IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
         ConfigNodeClientManager.getInstance();
@@ -129,9 +138,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     currentServiceFuture =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
             service,
-            () -> {
-              writeMetricToIoTDB(autoGauges);
-            },
+            () -> writeMetricToIoTDB(autoGauges),
             1,
             MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
             TimeUnit.SECONDS);

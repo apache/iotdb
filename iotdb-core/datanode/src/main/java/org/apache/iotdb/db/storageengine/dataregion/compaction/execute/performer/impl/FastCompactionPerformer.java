@@ -125,7 +125,8 @@ public class FastCompactionPerformer
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
                 : new FastInnerCompactionWriter(targetFiles)) {
       List<Schema> schemas =
-          CompactionTableSchemaCollector.collectSchema(seqFiles, unseqFiles, readerCacheMap);
+          CompactionTableSchemaCollector.collectSchema(
+              seqFiles, unseqFiles, readerCacheMap, deviceIterator.getDeprecatedTableSchemaMap());
       compactionWriter.setSchemaForAllTargetFile(schemas);
       readModification(seqFiles);
       readModification(unseqFiles);
@@ -147,18 +148,13 @@ public class FastCompactionPerformer
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device).get()));
+        ModEntry ttlDeletion = null;
         if (ttl != Long.MAX_VALUE) {
-          ModEntry ttlDeletion =
+          ttlDeletion =
               CompactionUtils.convertTtlToDeletion(
                   device, deviceIterator.getTimeLowerBoundForCurrentDevice());
-          for (TsFileResource sourceFile : sortedSourceFiles) {
-            modificationCache
-                .computeIfAbsent(
-                    sourceFile.getTsFile().getName(),
-                    k -> PatternTreeMapFactory.getModsPatternTreeMap())
-                .append(ttlDeletion.keyOfPatternTree(), ttlDeletion);
-          }
         }
+        compactionWriter.setTTLDeletion(ttlDeletion);
 
         if (sortedSourceFiles.isEmpty()) {
           // device is out of dated in all source files
@@ -214,6 +210,10 @@ public class FastCompactionPerformer
         deviceIterator.getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice().entrySet()) {
       measurementSchemas.add(entry.getValue().left);
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
+    }
+    // current device may be ignored by some conditions
+    if (measurementSchemas.isEmpty()) {
+      return;
     }
 
     FastCompactionTaskSummary taskSummary = new FastCompactionTaskSummary();

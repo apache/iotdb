@@ -42,6 +42,8 @@ public class ProgressReportEvent extends EnrichedEvent {
         null,
         null,
         null,
+        null,
+        null,
         false,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -74,7 +76,9 @@ public class ProgressReportEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String clientHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {

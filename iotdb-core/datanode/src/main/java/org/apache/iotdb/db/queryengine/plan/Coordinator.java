@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -55,9 +56,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
@@ -77,6 +75,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
@@ -93,6 +92,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAIDevices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -105,6 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowLoadedModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -113,6 +114,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -185,7 +187,6 @@ public class Coordinator {
   private final StatementRewrite statementRewrite;
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
-  private final AccessControl accessControl;
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
   private Coordinator() {
@@ -200,7 +201,6 @@ public class Coordinator {
             dispatchThreadNum,
             dispatchThreadNum,
             new ThreadPoolExecutor.CallerRunsPolicy());
-    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
@@ -397,7 +397,7 @@ public class Coordinator {
             statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
-            accessControl,
+            AuthorityChecker.getAccessControl(),
             dataNodeLocationSupplier);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
@@ -466,14 +466,20 @@ public class Coordinator {
         || statement instanceof CreateModel
         || statement instanceof CreateTraining
         || statement instanceof ShowModels
+        || statement instanceof ShowAIDevices
         || statement instanceof DropModel
+        || statement instanceof LoadModel
+        || statement instanceof UnloadModel
+        || statement instanceof ShowLoadedModels
         || statement instanceof RemoveRegion) {
       return new ConfigExecution(
           queryContext,
           null,
           executor,
           statement.accept(
-              new TableConfigTaskVisitor(clientSession, metadata, accessControl), queryContext));
+              new TableConfigTaskVisitor(
+                  clientSession, metadata, AuthorityChecker.getAccessControl()),
+              queryContext));
     }
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
@@ -489,7 +495,7 @@ public class Coordinator {
             statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
-            accessControl,
+            AuthorityChecker.getAccessControl(),
             dataNodeLocationSupplier);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
@@ -596,10 +602,6 @@ public class Coordinator {
 
   public static Coordinator getInstance() {
     return INSTANCE;
-  }
-
-  public AccessControl getAccessControl() {
-    return accessControl;
   }
 
   public void recordExecutionTime(long queryId, long executionTime) {

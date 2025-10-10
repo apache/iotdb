@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 
 public class ExportSchemaTree extends AbstractExportSchema {
@@ -89,6 +90,7 @@ public class ExportSchemaTree extends AbstractExportSchema {
           RowRecord rowRecord = sessionDataSet.next();
           List<Field> fields = rowRecord.getFields();
           if (fields.get(timeseriesIndex).getStringValue().startsWith(SYSTEM_DATABASE + ".")
+              || fields.get(timeseriesIndex).getStringValue().startsWith(AUDIT_DATABASE + ".")
               || !fields.get(viewTypeIndex).getStringValue().equals(Constants.BASE_VIEW_TYPE)) {
             continue;
           }

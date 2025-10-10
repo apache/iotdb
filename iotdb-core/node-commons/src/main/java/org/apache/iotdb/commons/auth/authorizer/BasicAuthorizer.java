@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -98,9 +99,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  /** Checks if a user has admin privileges */
-  protected abstract boolean isAdmin(String username);
-
   private void checkAdmin(String username, String errmsg) throws AuthException {
     if (isAdmin(username)) {
       throw new AuthException(TSStatusCode.NO_PERMISSION, errmsg);
@@ -111,7 +109,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getEntity(username);
     if (user == null || password == null) {
-      return false;
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("The user %s does not exist.", username));
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
@@ -125,7 +124,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       }
       return true;
     }
-    return false;
+    throw new AuthException(TSStatusCode.WRONG_LOGIN_PASSWORD, "Incorrect password.");
   }
 
   @Override
@@ -320,6 +319,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
+  @Override
+  public void renameUser(String username, String newUsername) throws AuthException {
+    userManager.renameUser(username, newUsername);
+  }
+
   private void forceUpdateUserPassword(String userName, String newPassword) throws AuthException {
     if (!userManager.updateUserPassword(userName, newPassword, true)) {
       throw new AuthException(
@@ -454,6 +458,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public List<TListUserInfo> listAllUsersInfo() {
+    return userManager.listAllEntitiesInfo();
+  }
+
+  @Override
   public List<String> listAllRoles() {
     return roleManager.listAllEntities();
   }
@@ -466,6 +475,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public User getUser(String username) throws AuthException {
     return userManager.getEntity(username);
+  }
+
+  @Override
+  public User getUser(long userId) throws AuthException {
+    return userManager.getEntity(userId);
   }
 
   @Override

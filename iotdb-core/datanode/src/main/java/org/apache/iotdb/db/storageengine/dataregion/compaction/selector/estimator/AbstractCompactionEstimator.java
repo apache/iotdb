@@ -247,6 +247,10 @@ public abstract class AbstractCompactionEstimator {
     return roughFileInfo;
   }
 
+  public boolean supportsRoughEstimation() {
+    return true;
+  }
+
   public static void removeFileInfoFromGlobalFileInfoCache(TsFileResource resource) {
     if (resource == null || resource.getTsFile() == null) {
       return;

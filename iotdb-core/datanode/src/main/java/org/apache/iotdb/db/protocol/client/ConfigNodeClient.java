@@ -135,6 +135,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -152,6 +153,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowAIDevicesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -160,6 +162,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
@@ -183,6 +187,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
@@ -195,10 +200,12 @@ import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLHandshakeException;
+
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -264,27 +271,23 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
-    try {
-      transport =
-          commonConfig.isEnableInternalSSL()
-              ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                  endpoint.getIp(),
-                  endpoint.getPort(),
-                  timeoutMs,
-                  commonConfig.getTrustStorePath(),
-                  commonConfig.getTrustStorePwd(),
-                  commonConfig.getKeyStorePath(),
-                  commonConfig.getKeyStorePwd())
-              : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                  // As there is a try-catch already, we do not need to use TSocket.wrap
-                  endpoint.getIp(), endpoint.getPort(), timeoutMs);
-      if (!transport.isOpen()) {
-        transport.open();
-      }
-      configNode = endpoint;
-    } catch (TTransportException e) {
-      throw new TException(e);
+    transport =
+        commonConfig.isEnableInternalSSL()
+            ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                endpoint.getIp(),
+                endpoint.getPort(),
+                timeoutMs,
+                commonConfig.getTrustStorePath(),
+                commonConfig.getTrustStorePwd(),
+                commonConfig.getKeyStorePath(),
+                commonConfig.getKeyStorePwd())
+            : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                // As there is a try-catch already, we do not need to use TSocket.wrap
+                endpoint.getIp(), endpoint.getPort(), timeoutMs);
+    if (!transport.isOpen()) {
+      transport.open();
     }
+    configNode = endpoint;
 
     client = new IConfigNodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
   }
@@ -310,13 +313,15 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   private void tryToConnect(int timeoutMs) throws TException {
+    TException exception = null;
     if (configLeader != null) {
       try {
         connect(configLeader, timeoutMs);
         return;
-      } catch (TException ignore) {
+      } catch (TException e) {
         logger.warn("The current node leader may have been down {}, try next node", configLeader);
         configLeader = null;
+        exception = e;
       }
     } else {
       try {
@@ -339,9 +344,16 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       try {
         connect(tryEndpoint, timeoutMs);
         return;
-      } catch (TException ignore) {
+      } catch (TException e) {
         logger.warn("The current node may have been down {},try next node", tryEndpoint);
+        exception = e;
       }
+    }
+    if (exception != null
+        && exception.getCause() != null
+        && exception.getCause().getCause() != null
+        && exception.getCause().getCause() instanceof IOException) {
+      throw new TException(exception.getCause().getCause());
     }
 
     throw new TException(MSG_RECONNECTION_FAIL);
@@ -428,6 +440,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
                 Thread.currentThread().getStackTrace()[2].getMethodName());
         logger.warn(message, e);
         configLeader = null;
+        if (e.getCause() != null && e.getCause() instanceof SSLHandshakeException) {
+          throw e;
+        }
       }
 
       // If we have detected all configNodes and still not return
@@ -851,9 +866,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus killQuery(String queryId, int dataNodeId) throws TException {
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername)
+      throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.killQuery(queryId, dataNodeId), status -> !updateConfigNodeLeader(status));
+        () -> client.killQuery(queryId, dataNodeId, allowedUsername),
+        status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -1333,6 +1350,29 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TShowModelResp showModel(TShowModelReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showModel(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showLoadedModel(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TShowAIDevicesResp showAIDevices() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showAIDevices(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus loadModel(TLoadModelReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.loadModel(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  public TSStatus unloadModel(TUnloadModelReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.unloadModel(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

@@ -30,6 +30,7 @@ public class GetNodePathsPartitionPlan extends ConfigPhysicalReadPlan {
   private PartialPath partialPath;
   private PathPatternTree scope;
   private int level = -1;
+  private boolean needAuditDB = false;
 
   public GetNodePathsPartitionPlan() {
     super(ConfigPhysicalPlanType.GetNodePathsPartition);
@@ -57,6 +58,14 @@ public class GetNodePathsPartitionPlan extends ConfigPhysicalReadPlan {
 
   public void setLevel(final int level) {
     this.level = level;
+  }
+
+  public boolean isNeedAuditDB() {
+    return needAuditDB;
+  }
+
+  public void setNeedAuditDB(boolean needAuditDB) {
+    this.needAuditDB = needAuditDB;
   }
 
   @Override

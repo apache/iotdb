@@ -442,7 +442,10 @@ public class IoTDBRegionOperationReliabilityITFramework {
               .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))
           && !showRegionsResult
               .getString(ColumnHeaderConstant.DATABASE)
-              .equals(SystemConstant.SYSTEM_DATABASE)) {
+              .equals(SystemConstant.SYSTEM_DATABASE)
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.AUDIT_DATABASE)) {
         int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
         int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
         regionMap.computeIfAbsent(regionId, id -> new HashSet<>()).add(dataNodeId);
@@ -460,7 +463,10 @@ public class IoTDBRegionOperationReliabilityITFramework {
               .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))
           && !showRegionsResult
               .getString(ColumnHeaderConstant.DATABASE)
-              .equals(SystemConstant.SYSTEM_DATABASE)) {
+              .equals(SystemConstant.SYSTEM_DATABASE)
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.AUDIT_DATABASE)) {
         int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
         int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
         Pair<Integer, Set<Integer>> leaderNodesPair =

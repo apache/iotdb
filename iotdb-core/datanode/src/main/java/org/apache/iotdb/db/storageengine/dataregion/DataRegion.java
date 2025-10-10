@@ -59,11 +59,11 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
-import org.apache.iotdb.db.exception.runtime.TableNotExistsRuntimeException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -157,6 +158,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -248,6 +251,15 @@ public class DataRegion implements IDataRegionForQuery {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
+
+  // Cache TableSchema to prevent OOM
+  private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
+      Caffeine.newBuilder()
+          .maximumWeight(config.getDataNodeTableSchemaCacheSize())
+          .weigher(
+              (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
+                  (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
+          .build();
 
   /**
    * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -1414,18 +1426,19 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileProcessor.registerToTsFile(
           tableName,
           t -> {
-            TsTable tsTable = DataNodeTableCache.getInstance().getTable(getDatabaseName(), t);
+            TsTable tsTable =
+                DataNodeTableCache.getInstance().getTable(getDatabaseName(), t, false);
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.
               if (node.isGeneratedByRemoteConsensusLeader()) {
                 // If current node is follower, after request config node and get the answer that
                 // table is exist or not, then tell leader node when table is not exist.
-                try {
-                  TDescTableResp resp =
-                      ConfigNodeClientManager.getInstance()
-                          .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)
-                          .describeTable(getDatabaseName(), tableName, false);
+                TDescTableResp resp;
+                try (ConfigNodeClient client =
+                    ConfigNodeClientManager.getInstance()
+                        .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+                  resp = client.describeTable(getDatabaseName(), tableName, false);
                   tsTable =
                       (resp != null) && (resp.tableInfo != null)
                           ? TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo())
@@ -1436,7 +1449,7 @@ public class DataRegion implements IDataRegionForQuery {
                       e.getMessage());
                 }
                 if (tsTable == null) {
-                  throw new TableNotExistsRuntimeException(getDatabaseName(), tableName);
+                  TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
                 }
               } else {
                 // Here may be invoked by leader node, the table is very unexpected not exist in the
@@ -1446,7 +1459,16 @@ public class DataRegion implements IDataRegionForQuery {
                 throw new TableLostRuntimeException(getDatabaseName(), tableName);
               }
             }
-            return TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
+
+            org.apache.tsfile.file.metadata.TableSchema tableSchema =
+                TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
+            org.apache.tsfile.file.metadata.TableSchema cachedSchema =
+                SCHEMA_CACHE.getIfPresent(tableName);
+            if (Objects.equals(cachedSchema, tableSchema)) {
+              return cachedSchema;
+            }
+            SCHEMA_CACHE.put(tableName, tableSchema);
+            return tableSchema;
           });
     }
   }
@@ -2195,6 +2217,9 @@ public class DataRegion implements IDataRegionForQuery {
           clearAlreadyLockedList(needToUnLockList);
           Thread.currentThread().interrupt();
           return false;
+        } catch (Throwable throwable) {
+          clearAlreadyLockedList(needToUnLockList);
+          throw throwable;
         }
       }
     }
@@ -2204,6 +2229,21 @@ public class DataRegion implements IDataRegionForQuery {
           && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, false, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
+          if (tsFileProcessor == null) {
+            // tsFileProcessor == null means this tsfile is being closed, here we try to busy loop
+            // until status in TsFileResource has been changed which is supposed to be the last step
+            // of closing
+            while (!tsFileResource.isClosed() && waitTimeInMs > 0) {
+              TimeUnit.MILLISECONDS.sleep(5);
+              waitTimeInMs -= 5;
+            }
+            if (tsFileResource.isClosed()) {
+              continue;
+            } else {
+              clearAlreadyLockedList(needToUnLockList);
+              return false;
+            }
+          }
           long startTime = System.nanoTime();
           if (tsFileProcessor.tryReadLock(waitTimeInMs)) {
             // minus already consumed time
@@ -2223,6 +2263,9 @@ public class DataRegion implements IDataRegionForQuery {
           clearAlreadyLockedList(needToUnLockList);
           Thread.currentThread().interrupt();
           return false;
+        } catch (Throwable throwable) {
+          clearAlreadyLockedList(needToUnLockList);
+          throw throwable;
         }
       }
     }
@@ -3254,6 +3297,9 @@ public class DataRegion implements IDataRegionForQuery {
       return Optional.empty();
     }
     if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+      return Optional.empty();
+    }
+    if (databaseName.startsWith(SchemaConstant.AUDIT_DATABASE)) {
       return Optional.empty();
     }
     int lastIndex = databaseName.lastIndexOf("-");

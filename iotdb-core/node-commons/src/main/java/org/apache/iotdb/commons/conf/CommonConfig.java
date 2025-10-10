@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.PrivilegeLevel;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
@@ -34,6 +36,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -204,6 +209,7 @@ public class CommonConfig {
   // Sequentially poll the tsFile by default
   private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 1;
   private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
+  private boolean skipFailedTableSchemaCheck = false;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -298,7 +304,7 @@ public class CommonConfig {
   private int pipeReceiverReqDecompressedMaxLengthInBytes = 1073741824; // 1GB
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long pipePeriodicalLogMinIntervalSeconds = 60;
-  private volatile long pipeLoggerCacheMaxSizeInBytes = 10 * MB;
+  private volatile long pipeLoggerCacheMaxSizeInBytes = 16 * MB;
 
   private volatile double pipeMetaReportMaxLogNumPerRound = 0.1;
   private volatile int pipeMetaReportMaxLogIntervalRounds = 360;
@@ -449,6 +455,22 @@ public class CommonConfig {
   private long passwordReuseIntervalDays = -1;
   private boolean mayBypassPasswordCheckInException = true;
 
+  /** whether to enable the audit log * */
+  private boolean enableAuditLog = false;
+
+  /** Indicates the category collection of audit logs * */
+  private List<AuditLogOperation> auditableOperationType =
+      Arrays.asList(
+          AuditLogOperation.DML,
+          AuditLogOperation.DDL,
+          AuditLogOperation.QUERY,
+          AuditLogOperation.CONTROL);
+
+  /** The level of privilege required to record audit logs * */
+  private PrivilegeLevel auditableOperationLevel = PrivilegeLevel.GLOBAL;
+
+  private String auditableOperationResult = "SUCCESS, FAIL";
+
   CommonConfig() {
     // Empty constructor
   }
@@ -515,7 +537,7 @@ public class CommonConfig {
     this.authorizerProvider = authorizerProvider;
   }
 
-  public String getAdminName() {
+  public String getDefaultAdminName() {
     return adminName;
   }
 
@@ -1499,6 +1521,18 @@ public class CommonConfig {
     logger.info(
         "pipeRealTimeQueueMaxWaitingTsFileSize is set to {}.",
         pipeRealTimeQueueMaxWaitingTsFileSize);
+  }
+
+  public boolean isSkipFailedTableSchemaCheck() {
+    return skipFailedTableSchemaCheck;
+  }
+
+  public void setSkipFailedTableSchemaCheck(boolean skipFailedTableSchemaCheck) {
+    if (this.skipFailedTableSchemaCheck == skipFailedTableSchemaCheck) {
+      return;
+    }
+    this.skipFailedTableSchemaCheck = skipFailedTableSchemaCheck;
+    logger.info("skipFailedTableSchemaCheck is set to {}.", skipFailedTableSchemaCheck);
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {
@@ -2618,5 +2652,76 @@ public class CommonConfig {
 
   public void setMayBypassPasswordCheckInException(boolean mayBypassPasswordCheckInException) {
     this.mayBypassPasswordCheckInException = mayBypassPasswordCheckInException;
+  }
+
+  public boolean isEnableAuditLog() {
+    return enableAuditLog;
+  }
+
+  public void setEnableAuditLog(boolean enableAuditLog) {
+    this.enableAuditLog = enableAuditLog;
+  }
+
+  public String getAuditableOperationTypeInStr() {
+    StringBuilder result = new StringBuilder();
+    for (AuditLogOperation operation : auditableOperationType) {
+      result.append(operation.name()).append(",");
+    }
+    result.deleteCharAt(result.length() - 1);
+    return result.toString();
+  }
+
+  public List<AuditLogOperation> getAuditableOperationType() {
+    return auditableOperationType;
+  }
+
+  public void setAuditableOperationType(String auditableOperationTypeStr) {
+    List<AuditLogOperation> auditableOperationType = new ArrayList<>();
+    if (auditableOperationTypeStr == null || auditableOperationTypeStr.isEmpty()) {
+      this.auditableOperationType = auditableOperationType;
+      return;
+    }
+    String[] operationTypes = auditableOperationTypeStr.split(",");
+    for (String operationType : operationTypes) {
+      try {
+        auditableOperationType.add(AuditLogOperation.valueOf(operationType.trim().toUpperCase()));
+      } catch (IllegalArgumentException e) {
+        logger.warn("Unsupported audit log operation type: {}", operationType);
+        throw new IllegalArgumentException(
+            "Unsupported audit log operation type: " + operationType);
+      }
+    }
+    this.auditableOperationType = auditableOperationType;
+  }
+
+  public String getAuditableOperationLevelInStr() {
+    return auditableOperationLevel.name();
+  }
+
+  public PrivilegeLevel getAuditableOperationLevel() {
+    return auditableOperationLevel;
+  }
+
+  public void setAuditableOperationLevel(String auditableOperationLevelStr) {
+    if (auditableOperationLevelStr == null || auditableOperationLevelStr.isEmpty()) {
+      this.auditableOperationLevel = PrivilegeLevel.GLOBAL;
+      return;
+    }
+    try {
+      this.auditableOperationLevel =
+          PrivilegeLevel.valueOf(auditableOperationLevelStr.trim().toUpperCase());
+    } catch (IllegalArgumentException e) {
+      logger.warn("Unsupported audit log operation level: {}", auditableOperationLevelStr);
+      throw new IllegalArgumentException(
+          "Unsupported audit log operation level: " + auditableOperationLevelStr);
+    }
+  }
+
+  public String getAuditableOperationResult() {
+    return auditableOperationResult;
+  }
+
+  public void setAuditableOperationResult(String auditableOperationResult) {
+    this.auditableOperationResult = auditableOperationResult;
   }
 }

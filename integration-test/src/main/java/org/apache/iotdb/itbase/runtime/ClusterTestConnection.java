@@ -43,8 +43,8 @@ import java.util.concurrent.Executor;
 /** The implementation of {@link Connection} in cluster test. */
 public class ClusterTestConnection implements Connection {
 
-  private final NodeConnection writeConnection;
-  private final List<NodeConnection> readConnections;
+  public final NodeConnection writeConnection;
+  public final List<NodeConnection> readConnections;
   private boolean isClosed;
 
   public ClusterTestConnection(
@@ -110,7 +110,7 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public DatabaseMetaData getMetaData() throws SQLException {
-    return writeConnection.getUnderlyingConnecton().getMetaData();
+    return writeConnection.getUnderlyingConnection().getMetaData();
   }
 
   @Override
@@ -269,9 +269,9 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public void setClientInfo(String name, String value) throws SQLClientInfoException {
-    writeConnection.getUnderlyingConnecton().setClientInfo(name, value);
+    writeConnection.getUnderlyingConnection().setClientInfo(name, value);
     for (NodeConnection conn : readConnections) {
-      conn.getUnderlyingConnecton().setClientInfo(name, value);
+      conn.getUnderlyingConnection().setClientInfo(name, value);
     }
   }
 

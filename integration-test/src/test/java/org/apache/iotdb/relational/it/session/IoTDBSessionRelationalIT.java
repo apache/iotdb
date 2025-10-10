@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -49,6 +50,7 @@ import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -1224,6 +1226,86 @@ public class IoTDBSessionRelationalIT {
         cnt++;
       }
       assertEquals(30, cnt);
+    }
+  }
+
+  @Test
+  public void autoCreateChineseCharacterTableTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+
+      long timestamp = 0;
+      Tablet tablet =
+          new Tablet(
+              "\"表一表一\"",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+          session.insert(tablet);
+          tablet.reset();
+        }
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("show tables from db1");
+      DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertEquals("\"表一表一\"", iterator.getString(1));
+      }
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db2\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+
+      long timestamp = 0;
+      Tablet tablet =
+          new Tablet(
+              "\"表一\"",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+          session.insert(tablet);
+          tablet.reset();
+        }
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("show tables from db2");
+      DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertEquals("\"表一\"", iterator.getString(1));
+      }
     }
   }
 

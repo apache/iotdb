@@ -20,15 +20,18 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -40,7 +43,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -50,6 +55,8 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Optional;
 
@@ -63,22 +70,29 @@ public class DataNodeAuthUtils {
    * @return the timestamp when the password of the user is lastly changed from the given one to a
    *     new one, or -1 if the password has not been changed.
    */
-  public static long getPasswordChangeTimeMillis(String username, String password) {
+  public static long getPasswordChangeTimeMillis(long userId, String password) {
 
     long queryId = -1;
     try {
       Statement statement =
           StatementGenerator.createStatement(
               "SELECT password from "
-                  + SystemConstant.PREFIX_PASSWORD_HISTORY
+                  + DNAuditLogger.PREFIX_PASSWORD_HISTORY
                   + ".`_"
-                  + username
+                  + userId
                   + "` where oldPassword='"
                   + AuthUtils.encryptPassword(password)
                   + "' order by time desc limit 1",
               ZoneId.systemDefault());
+
       SessionInfo sessionInfo =
-          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
 
       queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
@@ -117,14 +131,14 @@ public class DataNodeAuthUtils {
     return -1;
   }
 
-  public static void verifyPasswordReuse(String username, String password) {
+  public static void verifyPasswordReuse(long userId, String password) {
     long passwordReuseIntervalDays =
         CommonDescriptor.getInstance().getConfig().getPasswordReuseIntervalDays();
     if (password == null || passwordReuseIntervalDays <= 0) {
       return;
     }
 
-    long passwordChangeTime = DataNodeAuthUtils.getPasswordChangeTimeMillis(username, password);
+    long passwordChangeTime = DataNodeAuthUtils.getPasswordChangeTimeMillis(userId, password);
     long currentTimeMillis = System.currentTimeMillis();
     long elapsedTime = currentTimeMillis - passwordChangeTime;
     long reuseIntervalMillis =
@@ -144,13 +158,13 @@ public class DataNodeAuthUtils {
         currentTimeMillis);
   }
 
-  public static TSStatus recordPassword(
-      String username, String password, String oldPassword, long timeToRecord) {
+  public static TSStatus recordPasswordHistory(
+      long userId, String password, String oldPassword, long timeToRecord) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     try {
       insertRowStatement.setDevicePath(
-          new PartialPath(SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`"));
-      insertRowStatement.setTime(CommonDateTimeUtils.currentTime());
+          new PartialPath(DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + userId + "`"));
+      insertRowStatement.setTime(timeToRecord);
       insertRowStatement.setMeasurements(new String[] {"password", "oldPassword"});
       insertRowStatement.setValues(
           new Object[] {
@@ -161,15 +175,19 @@ public class DataNodeAuthUtils {
     } catch (IllegalPathException ignored) {
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage(
-              "Cannot create password history for "
-                  + username
-                  + " because the path will be illegal");
+              "Cannot create password history for " + userId + " because the path will be illegal");
     }
 
     long queryId = -1;
     try {
       SessionInfo sessionInfo =
-          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
 
       queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
@@ -186,9 +204,159 @@ public class DataNodeAuthUtils {
       if (CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException()) {
         return StatusUtils.OK;
       }
-      LOGGER.error("Cannot create password history for {} because {}", username, e.getMessage());
+      LOGGER.error("Cannot create password history for {}", userId, e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage("The server is not ready for login, please check the server log for details");
+    } finally {
+      if (queryId != -1) {
+        Coordinator.getInstance().cleanupQueryExecution(queryId);
+      }
+    }
+  }
+
+  public static TSStatus deletePasswordHistory(long userId) {
+    DeleteTimeSeriesStatement deleteTimeSeriesStatement = new DeleteTimeSeriesStatement();
+    deleteTimeSeriesStatement.setMayDeleteAudit(true);
+    try {
+      PartialPath devicePath =
+          new PartialPath(DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + userId + "`");
+      deleteTimeSeriesStatement.setPathPatternList(
+          Arrays.asList(
+              devicePath.concatAsMeasurementPath("password"),
+              devicePath.concatAsMeasurementPath("oldPassword")));
+    } catch (IllegalPathException ignored) {
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(
+              "Cannot delete password history for " + userId + " because the path will be illegal");
+    }
+
+    long queryId = -1;
+    try {
+      SessionInfo sessionInfo =
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
+
+      queryId = SessionManager.getInstance().requestQueryId();
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .executeForTreeModel(
+                  deleteTimeSeriesStatement,
+                  queryId,
+                  sessionInfo,
+                  "",
+                  ClusterPartitionFetcher.getInstance(),
+                  ClusterSchemaFetcher.getInstance());
+      return result.status;
+    } catch (Exception e) {
+      if (CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException()) {
+        return StatusUtils.OK;
+      }
+      LOGGER.error("Cannot delete password history for {}", userId, e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(
+              "The server is not ready for this operation, please check the server log for details");
+    } finally {
+      if (queryId != -1) {
+        Coordinator.getInstance().cleanupQueryExecution(queryId);
+      }
+    }
+  }
+
+  /**
+   * Check if the password for the give user has expired.
+   *
+   * @return the timestamp when the password will expire. Long.MAX if the password never expires.
+   *     Null if the password history cannot be found.
+   */
+  public static Long checkPasswordExpiration(long userId, String password) {
+    if (userId == -1) {
+      return null;
+    }
+
+    // check password expiration
+    long passwordExpirationDays =
+        CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
+    boolean mayBypassPasswordCheckInException =
+        CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException();
+
+    TSLastDataQueryReq lastDataQueryReq = new TSLastDataQueryReq();
+    lastDataQueryReq.setSessionId(0);
+    lastDataQueryReq.setPaths(
+        Collections.singletonList(
+            DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + userId + "`.password"));
+
+    long queryId = -1;
+    try {
+      Statement statement = StatementGenerator.createStatement(lastDataQueryReq);
+      SessionInfo sessionInfo =
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                  AuthorityChecker.INTERNAL_AUDIT_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
+
+      queryId = SessionManager.getInstance().requestQueryId();
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .executeForTreeModel(
+                  statement,
+                  queryId,
+                  sessionInfo,
+                  "",
+                  ClusterPartitionFetcher.getInstance(),
+                  ClusterSchemaFetcher.getInstance());
+      if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn("Fail to check password expiration: {}", result.status);
+        throw new IoTDBRuntimeException(
+            "Cannot query password history because: "
+                + result
+                + ", please log in later or disable password expiration.",
+            result.status.getCode());
+      }
+
+      IQueryExecution queryExecution = Coordinator.getInstance().getQueryExecution(queryId);
+      Optional<TsBlock> batchResult = queryExecution.getBatchResult();
+      if (batchResult.isPresent()) {
+        TsBlock tsBlock = batchResult.get();
+        if (tsBlock.getPositionCount() <= 0) {
+          // no password history, may have upgraded from an older version
+          return null;
+        }
+        long lastPasswordTime =
+            CommonDateTimeUtils.convertIoTDBTimeToMillis(tsBlock.getTimeByIndex(0));
+        // columns of last query: [timeseriesName, value, dataType]
+        String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
+        if (oldPassword.equals(AuthUtils.encryptPassword(password))) {
+          if (lastPasswordTime + passwordExpirationDays * 1000 * 86400 <= lastPasswordTime) {
+            // overflow or passwordExpirationDays <= 0
+            return Long.MAX_VALUE;
+          } else {
+            return lastPasswordTime + passwordExpirationDays * 1000 * 86400;
+          }
+        } else {
+          // 1. the password is incorrect, later logIn will fail
+          // 2. the password history does not record correctly, use the current time to create one
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } catch (Throwable e) {
+      LOGGER.error("Fail to check password expiration", e);
+      if (mayBypassPasswordCheckInException) {
+        return Long.MAX_VALUE;
+      } else {
+        throw new IoTDBRuntimeException(
+            "Internal server error " + ", please log in later or disable password expiration.",
+            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
     } finally {
       if (queryId != -1) {
         Coordinator.getInstance().cleanupQueryExecution(queryId);

@@ -185,12 +185,8 @@ public class TemplateTable {
     }
   }
 
-  private void serializeTemplate(Template template, OutputStream outputStream) {
-    try {
-      template.serialize(outputStream);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+  private void serializeTemplate(Template template, OutputStream outputStream) throws IOException {
+    template.serialize(outputStream);
   }
 
   private void deserialize(InputStream inputStream) throws IOException {

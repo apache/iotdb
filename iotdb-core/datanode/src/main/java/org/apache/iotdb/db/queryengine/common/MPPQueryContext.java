@@ -21,6 +21,11 @@ package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -33,7 +38,9 @@ import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,7 +50,7 @@ import java.util.function.LongConsumer;
  * This class is used to record the context of a query including QueryId, query statement, session
  * info and so on.
  */
-public class MPPQueryContext {
+public class MPPQueryContext implements IAuditEntity {
   private String sql;
   private final QueryId queryId;
 
@@ -103,6 +110,7 @@ public class MPPQueryContext {
         new NotThreadSafeMemoryReservationManager(queryId, this.getClass().getName());
   }
 
+  @TestOnly
   public MPPQueryContext(
       String sql,
       QueryId queryId,
@@ -426,4 +434,110 @@ public class MPPQueryContext {
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
   }
+
+  // ================= Authentication Interfaces =========================
+
+  private AuditEventType auditEventType;
+
+  private AuditLogOperation auditLogOperation;
+
+  private List<PrivilegeType> privilegeTypeList;
+
+  private String databaseName;
+
+  private boolean result;
+
+  @Override
+  public long getUserId() {
+    return session.getUserId();
+  }
+
+  @Override
+  public String getUsername() {
+    return session.getUserName();
+  }
+
+  @Override
+  public String getCliHostname() {
+    return session.getCliHostname();
+  }
+
+  @Override
+  public AuditEventType getAuditEventType() {
+    return auditEventType;
+  }
+
+  @Override
+  public IAuditEntity setAuditEventType(AuditEventType auditEventType) {
+    this.auditEventType = auditEventType;
+    return this;
+  }
+
+  @Override
+  public AuditLogOperation getAuditLogOperation() {
+    return auditLogOperation;
+  }
+
+  @Override
+  public IAuditEntity setAuditLogOperation(AuditLogOperation auditLogOperation) {
+    this.auditLogOperation = auditLogOperation;
+    return this;
+  }
+
+  @Override
+  public List<PrivilegeType> getPrivilegeTypes() {
+    return privilegeTypeList;
+  }
+
+  @Override
+  public String getPrivilegeTypeString() {
+    return privilegeTypeList.toString();
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeType(PrivilegeType privilegeType) {
+    this.privilegeTypeList = Collections.singletonList(privilegeType);
+    return this;
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeTypes(List<PrivilegeType> privilegeTypes) {
+    this.privilegeTypeList = privilegeTypes;
+    return this;
+  }
+
+  @Override
+  public boolean getResult() {
+    return result;
+  }
+
+  @Override
+  public IAuditEntity setResult(boolean result) {
+    this.result = result;
+    return this;
+  }
+
+  @Override
+  public String getDatabase() {
+    return databaseName;
+  }
+
+  @Override
+  public IAuditEntity setDatabase(String database) {
+    this.databaseName = database;
+    return this;
+  }
+
+  @Override
+  public String getSqlString() {
+    return sql;
+  }
+
+  @Override
+  public IAuditEntity setSqlString(String sqlString) {
+    // Do nothing
+    return this;
+  }
+
+  // ================= Authentication Interfaces =========================
 }

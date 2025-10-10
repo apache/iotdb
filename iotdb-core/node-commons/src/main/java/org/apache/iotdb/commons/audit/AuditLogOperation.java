@@ -17,11 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.audit;
+package org.apache.iotdb.commons.audit;
 
-public enum AuditLogStorage {
-  IOTDB,
-  LOGGER;
+public enum AuditLogOperation {
+  DDL,
+  DML,
+  QUERY,
+  CONTROL;
 
   @Override
   public String toString() {

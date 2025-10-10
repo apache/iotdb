@@ -22,20 +22,14 @@ package org.apache.iotdb.commons.pipe.datastructure.visibility;
 import org.apache.iotdb.commons.pipe.datastructure.result.Result;
 import org.apache.iotdb.pipe.api.PipePlugin;
 
-import org.reflections.Reflections;
-import org.reflections.scanners.SubTypesScanner;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 public class VisibilityTestUtils {
 
-  public static Result<Void, String> testVisibilityCompatibilityEntry(final String prefix) {
-    // Use the Reflections library to scan the classpath
-    final Reflections reflections = new Reflections(prefix, new SubTypesScanner(false));
-    final Set<Class<? extends PipePlugin>> subTypes = reflections.getSubTypesOf(PipePlugin.class);
-
+  public static Result<Void, String> testVisibilityCompatibilityEntry(
+      final Set<Class<? extends PipePlugin>> subTypes) {
     // Create root node
     final TreeNode root = new TreeNode(PipePlugin.class);
 

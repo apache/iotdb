@@ -441,22 +441,26 @@ dn_metric_internal_reporter_type=MEMORY
 # Whether enable SSL for thrift client connections
 # effectiveMode: restart
 # Datatype: boolean
+# Privilege: SECURITY
 enable_thrift_ssl=false
 
 # Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean
+# Privilege: SECURITY
 enable_https=false
 
 # SSL key store path
 # linux e.g. /home/iotdb/server.keystore (absolute path) or server.keystore (relative path)
 # windows e.g. C:\\iotdb\\server.keystore (absolute path) or server.keystore (relative path)
 # effectiveMode: restart
+# Privilege: SECURITY
 key_store_path=
 
 # SSL key store password
 # effectiveMode: restart
 # Datatype: String
+# Privilege: SECURITY
 key_store_pwd=
 
 # SSL trust store path
@@ -806,6 +810,11 @@ device_path_cache_proportion=0.05
 # effectiveMode: restart
 # Datatype: double
 write_memory_variation_report_proportion=0.001
+
+# The maximum memory size in bytes for DataNode to table schema cache
+# effectiveMode: restart
+# Datatype: long
+data_node_table_schema_cache_max_size_in_bytes=1048576
 
 # When an inserting is rejected, waiting period (in ms) to check system again, 50 by default.
 # If the insertion has been rejected and the read load is low, it can be set larger.
@@ -1683,10 +1692,12 @@ compressor=LZ4
 # which class to serve for authorization. By default, it is LocalFileAuthorizer.
 # Another choice is org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 # effectiveMode: restart
+# Privilege: SECURITY
 authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer
 
 # If OpenIdAuthorizer is enabled, then openID_url must be set.
 # effectiveMode: restart
+# Privilege: SECURITY
 openID_url=
 
 # encryption provider class

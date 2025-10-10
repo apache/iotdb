@@ -951,7 +951,10 @@ public abstract class PipeTaskAgent {
    * Using try lock method to prevent deadlock when stopping all pipes with critical exceptions and
    * {@link PipeTaskAgent#handlePipeMetaChanges(List)}} concurrently.
    */
-  protected void stopAllPipesWithCriticalException(final int currentNodeId) {
+  protected void stopAllPipesWithCriticalException(
+      final int currentNodeId,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeRuntimeException pipeRuntimeException) {
     // To avoid deadlock, we use a new thread to stop all pipes.
     CompletableFuture.runAsync(
         () -> {
@@ -960,6 +963,7 @@ public abstract class PipeTaskAgent {
             while (true) {
               if (tryWriteLockWithTimeOut(5)) {
                 try {
+                  pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
                   stopAllPipesWithCriticalExceptionInternal(currentNodeId);
                   LOGGER.info("Stopped all pipes with critical exception.");
                   return;

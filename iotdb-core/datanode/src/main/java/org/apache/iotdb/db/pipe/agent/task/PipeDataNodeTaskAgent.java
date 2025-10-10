@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
@@ -373,8 +374,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return true;
   }
 
-  public void stopAllPipesWithCriticalException() {
-    super.stopAllPipesWithCriticalException(CONFIG.getDataNodeId());
+  public void stopAllPipesWithCriticalExceptionAndTrackException(
+      final PipeTaskMeta pipeTaskMeta, final PipeRuntimeException pipeRuntimeException) {
+    super.stopAllPipesWithCriticalException(
+        CONFIG.getDataNodeId(), pipeTaskMeta, pipeRuntimeException);
   }
 
   ///////////////////////// Heartbeat /////////////////////////
@@ -646,8 +649,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
+      final TPipeHeartbeatResp resp = new TPipeHeartbeatResp(new ArrayList<>());
       collectPipeMetaList(new TPipeHeartbeatReq(Long.MIN_VALUE), resp);
+      if (resp.getPipeMetaList().isEmpty()) {
+        return;
+      }
       final TSStatus result =
           configNodeClient.pushHeartbeat(
               IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);

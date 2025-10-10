@@ -20,7 +20,7 @@ package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
-import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -204,11 +205,9 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     }
   }
 
-  private InsertTabletStatement constructInsertTabletStatement(TableMessage message)
-      throws IllegalPathException {
+  private InsertTabletStatement constructInsertTabletStatement(TableMessage message) {
     InsertTabletStatement insertStatement = new InsertTabletStatement();
-    insertStatement.setDevicePath(
-        DataNodeDevicePathCache.getInstance().getPartialPath(message.getTable()));
+    insertStatement.setDevicePath(new PartialPath(message.getTable(), false));
     List<String> measurements =
         Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
             .flatMap(List::stream)
@@ -281,7 +280,11 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       }
       statement.setAligned(false);
 
-      tsStatus = AuthorityChecker.checkAuthority(statement, session);
+      tsStatus =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  session.getUserId(), session.getUsername(), session.getClientAddress()));
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOG.warn(tsStatus.message);
       } else {

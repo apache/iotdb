@@ -260,7 +260,7 @@ public class TranslationMap {
 
             return getSymbolForColumn(node)
                 .map(symbol -> (Expression) symbol.toSymbolReference())
-                .orElseGet(() -> node);
+                .orElse(node);
           }
 
           @Override

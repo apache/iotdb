@@ -280,7 +280,7 @@ public class IoTDBDeletionTableIT {
         statement.execute("DELETE FROM vehicleNonExist");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: Table vehiclenonexist not found", e.getMessage());
+        assertEquals("550: Table 'test.vehiclenonexist' does not exist.", e.getMessage());
       }
 
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle1")) {
@@ -1625,8 +1625,8 @@ public class IoTDBDeletionTableIT {
               allDeviceUndeletedRanges.set(i, mergeRanges(deviceUndeletedRanges));
               List<TimeRange> remainingRanges =
                   collectDataRanges(statement, currentWrittenTime, testNum);
-              LOGGER.debug("Expected ranges: {}", deviceUndeletedRanges);
-              LOGGER.debug("Remaining ranges: {}", remainingRanges);
+              LOGGER.info("Expected ranges: {}", deviceUndeletedRanges);
+              LOGGER.info("Remaining ranges: {}", remainingRanges);
               fail(
                   String.format(
                       "Inconsistent number of points %d - %d", expectedCnt, set.getLong(1)));

@@ -122,6 +122,7 @@ class RatisConsensus implements IConsensus {
 
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
+  private final Parameters parameters;
 
   private final IClientManager<RaftGroup, RatisClient> clientManager;
   private final IClientManager<RaftGroup, RatisClient> reconfigurationClientManager;
@@ -158,7 +159,7 @@ class RatisConsensus implements IConsensus {
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
-    Parameters parameters = Utils.initRatisConfig(properties, config.getRatisConfig());
+    this.parameters = Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
     this.readOption = this.config.getRead().getReadOption();
     this.canServeStaleRead =
@@ -223,6 +224,7 @@ class RatisConsensus implements IConsensus {
                     .setServerId(myself.getId())
                     .setProperties(properties)
                     .setOption(RaftStorage.StartupOption.RECOVER)
+                    .setParameters(parameters)
                     .setStateMachineRegistry(
                         raftGroupId ->
                             new ApplicationStateMachineProxy(
@@ -1034,8 +1036,9 @@ class RatisConsensus implements IConsensus {
           new GenericKeyedObjectPool<>(
               isReconfiguration
                   ? new RatisClient.EndlessRetryFactory(
-                      manager, properties, clientRpc, config.getClient())
-                  : new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
+                      manager, properties, clientRpc, config.getClient(), parameters)
+                  : new RatisClient.Factory(
+                      manager, properties, clientRpc, config.getClient(), parameters),
               new ClientPoolProperty.Builder<RatisClient>()
                   .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
                   .build()

@@ -37,12 +37,20 @@ WS
 
 // Common Keywords
 
+ACCOUNT
+    : A C C O U N T
+    ;
+
 ADD
     : A D D
     ;
 
 AFTER
     : A F T E R
+    ;
+
+AI_DEVICES
+    : A I '_' D E V I C E S
     ;
 
 ALIAS
@@ -476,6 +484,10 @@ LIST
 
 LOAD
     : L O A D
+    ;
+
+LOADED
+    : L O A D E D
     ;
 
 LOCAL
@@ -954,6 +966,10 @@ UNLOAD
     : U N L O A D
     ;
 
+UNLOCK
+    : U N L O C K
+    ;
+
 UNSET
     : U N S E T
     ;
@@ -1130,6 +1146,14 @@ MAINTAIN
     : M A I N T A I N
     ;
 
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
+    ;
+
 REPAIR
     : R E P A I R
     ;
@@ -1194,6 +1218,7 @@ OPERATOR_NOT : '!';
  * 4. Constructors Symbols
  */
 
+AT : '@';
 DOT : '.';
 COMMA : ',';
 SEMI: ';';

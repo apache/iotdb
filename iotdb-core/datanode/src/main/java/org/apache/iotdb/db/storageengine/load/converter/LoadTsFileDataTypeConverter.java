@@ -54,24 +54,31 @@ public class LoadTsFileDataTypeConverter {
 
   public static final LoadConvertedInsertTabletStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
       new LoadConvertedInsertTabletStatementTSStatusVisitor();
-  public static final LoadConvertedInsertTabletStatementExceptionVisitor
-      STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
+  public static final LoadTreeConvertedInsertTabletStatementExceptionVisitor
+      TREE_STATEMENT_EXCEPTION_VISITOR =
+          new LoadTreeConvertedInsertTabletStatementExceptionVisitor();
+  public static final LoadTableConvertedInsertTabletStatementExceptionVisitor
+      TABLE_STATEMENT_EXCEPTION_VISITOR =
+          new LoadTableConvertedInsertTabletStatementExceptionVisitor();
 
   private final boolean isGeneratedByPipe;
   private final MPPQueryContext context;
 
   private final SqlParser relationalSqlParser = new SqlParser();
   private final LoadTableStatementDataTypeConvertExecutionVisitor
-      tableStatementDataTypeConvertExecutionVisitor =
-          new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
+      tableStatementDataTypeConvertExecutionVisitor;
   private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor =
-          new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
+      treeStatementDataTypeConvertExecutionVisitor;
 
   public LoadTsFileDataTypeConverter(
       final MPPQueryContext context, final boolean isGeneratedByPipe) {
     this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
+
+    tableStatementDataTypeConvertExecutionVisitor =
+        new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
+    treeStatementDataTypeConvertExecutionVisitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
   }
 
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {
