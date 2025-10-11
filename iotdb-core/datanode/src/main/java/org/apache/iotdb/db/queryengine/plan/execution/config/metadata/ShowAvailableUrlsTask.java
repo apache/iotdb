@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -56,16 +57,14 @@ public class ShowAvailableUrlsTask implements IConfigTask {
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     if (showDataNodesResp.getDataNodesInfoList() != null) {
       for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+        String status = dataNodeInfo.getStatus();
+        if (RegionStatus.Removing.getStatus().equals(status)) {
+          continue;
+        }
         builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeInt(dataNodeInfo.getDataNodeId());
-        builder
-            .getColumnBuilder(1)
-            .writeBinary(
-                BytesUtils.valueOf(
-                    dataNodeInfo.getStatus() == null ? "" : dataNodeInfo.getStatus()));
 
-        builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(dataNodeInfo.getRpcAddresss()));
-        builder.getColumnBuilder(3).writeInt(dataNodeInfo.getRpcPort());
+        builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(dataNodeInfo.getRpcAddresss()));
+        builder.getColumnBuilder(1).writeInt(dataNodeInfo.getRpcPort());
         builder.declarePosition();
       }
     }

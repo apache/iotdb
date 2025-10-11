@@ -232,13 +232,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
         client.executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
       updateAvailableNodes(sessionDataSet);
     } catch (Exception e1) {
-      try (SessionDataSet sessionDataSet =
-          client.executeQueryStatement(SHOW_DATA_NODES_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
-        updateAvailableNodes(sessionDataSet);
-      } catch (Exception e2) {
-        LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint);
-        return false;
-      }
+      LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint);
+      return false;
     }
     return true;
   }
@@ -249,8 +244,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     while (iterator.next()) {
       String ip = iterator.getString(IP_COLUMN_NAME);
       // ignore 0.0.0.0 and removing DN
-      if (!REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
-          && !"0.0.0.0".equals(ip)) {
+      if (!"0.0.0.0".equals(ip)) {
         String port = iterator.getString(PORT_COLUMN_NAME);
         if (ip != null && port != null) {
           res.add(new TEndPoint(ip, Integer.parseInt(port)));
