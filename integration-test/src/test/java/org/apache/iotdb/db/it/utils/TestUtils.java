@@ -976,9 +976,26 @@ public class TestUtils {
     }
   }
 
-  public static void executeNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
+  public static void executeNonQuery(final BaseEnv env, final String sql) {
+    executeNonQuery(env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, null);
+  }
+
+  public static void executeNonQuery(
+      final BaseEnv env, final String sql, final Connection defaultConnection) {
     executeNonQuery(
         env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
+  }
+
+  public static void executeNonQuery(
+      final String dataBaseName, final String sqlDialect, final BaseEnv env, final String sql) {
+    executeNonQuery(
+        env,
+        sql,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        dataBaseName,
+        sqlDialect,
+        null);
   }
 
   public static void executeNonQuery(
@@ -1018,6 +1035,17 @@ public class TestUtils {
         dataBaseName,
         sqlDialect,
         defaultConnection);
+  }
+
+  public static void executeNonQueries(BaseEnv env, List<String> sqlList) {
+    executeNonQueries(
+        env,
+        sqlList,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        null,
+        TREE_SQL_DIALECT,
+        null);
   }
 
   public static void executeNonQueries(
@@ -1466,7 +1494,7 @@ public class TestUtils {
 
   public static void assertDataEventuallyOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
-    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 10);
   }
 
   public static void assertDataEventuallyOnEnv(

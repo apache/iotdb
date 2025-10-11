@@ -563,7 +563,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitShowPipes(
       ShowPipesStatement showPipesStatement, MPPQueryContext context) {
-    return new ShowPipeTask(showPipesStatement);
+    return new ShowPipeTask(showPipesStatement, context.getUsername());
   }
 
   @Override
