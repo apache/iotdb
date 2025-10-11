@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.net.InetSocketAddress;
+import java.nio.file.AccessDeniedException;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
@@ -216,7 +217,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
         String currentAlias = aliases.nextElement();
         checkCertificate(keystore, currentAlias);
       }
-
+    } catch (AccessDeniedException e) {
+      throw new TTransportException("Failed to load keystore or truststore file");
     } catch (Exception e) {
       throw new TTransportException(e);
     }
