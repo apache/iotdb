@@ -1597,6 +1597,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowAvailableUrls(
       ShowAvailableUrlsStatement showAvailableUrlsStatement, TreeAccessCheckContext context) {
+    recordObjectAuthenticationAuditLog(
+        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true), () -> "");
     return SUCCEED;
   }
 
