@@ -146,8 +146,8 @@ public class SessionManager implements SessionManagerMBean {
       // Generic authentication error
       openSessionResp
           .sessionId(-1)
-          .setMessage("Authentication failed.")
-          .setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
+          .setMessage("Account is blocked due to consecutive failed logins.")
+          .setCode(TSStatusCode.USER_LOGIN_LOCKED.getStatusCode());
       return openSessionResp;
     }
 
@@ -225,6 +225,7 @@ public class SessionManager implements SessionManagerMBean {
             openSessionResp.getMessage(),
             username,
             session);
+        updateIdleTime();
         if (enableLoginLock) {
           loginLockManager.clearFailure(userId, session.getClientAddress());
         }
