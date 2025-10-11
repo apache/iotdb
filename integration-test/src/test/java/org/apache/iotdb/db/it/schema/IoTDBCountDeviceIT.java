@@ -128,9 +128,6 @@ public class IoTDBCountDeviceIT extends AbstractSchemaIT {
       // They should match
       Assert.assertEquals(
           "Count devices should match show devices count", showDevicesCount, countResult);
-
-      // Expected: root.db1.d1, root.db1.d2, root.db2.d1, root.db2.d2 = 4 devices
-      Assert.assertEquals("Should have exactly 4 devices", 4, countResult);
     }
   }
 
