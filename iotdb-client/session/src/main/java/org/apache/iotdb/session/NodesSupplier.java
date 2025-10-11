@@ -238,7 +238,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     List<TEndPoint> res = new ArrayList<>();
     while (iterator.next()) {
       String ip = iterator.getString(IP_COLUMN_NAME);
-      // ignore 0.0.0.0 and removing DN
+      // ignore 0.0.0.0
       if (!"0.0.0.0".equals(ip)) {
         String port = iterator.getString(PORT_COLUMN_NAME);
         if (ip != null && port != null) {
