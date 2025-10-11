@@ -130,7 +130,7 @@ public class LocalFileAuthorizerTest {
       authorizer.grantPrivilegeToUser(
           "error", new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA, false));
     } catch (AuthException e) {
-      assertEquals("No such user error", e.getMessage());
+      assertEquals("User error does not exist", e.getMessage());
     }
 
     try {
