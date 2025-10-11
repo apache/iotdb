@@ -115,14 +115,7 @@ public class IoTDBAuditLogBasicIT {
     ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.__audit");
     Assert.assertTrue(resultSet.next());
     Assert.assertEquals("root.__audit", resultSet.getString(1));
-    Thread.sleep(1000);
-    ((ClusterTestConnection) connection).writeConnection.close();
-    Thread.sleep(1000);
-    for (NodeConnection conn : ((ClusterTestConnection) connection).readConnections) {
-      Thread.sleep(1000);
-      conn.close();
-      Thread.sleep(1000);
-    }
+    closeConnectionCompletely(connection);
     connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
     statement = connection.createStatement();
     resultSet = statement.executeQuery("DESC __audit.audit_log");
@@ -135,6 +128,18 @@ public class IoTDBAuditLogBasicIT {
       cnt++;
     }
     Assert.assertEquals(AUDIT_TABLE_COLUMNS.size(), cnt);
+    closeConnectionCompletely(connection);
+  }
+
+  @After
+  public void tearDown() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private static void closeConnectionCompletely(Connection connection) throws InterruptedException {
+    // Ensure the session conns in test env are closed completely,
+    // in order to generate logout audit log
+    // TODO: Optimize this func after the close func of connection is optimized
     Thread.sleep(1000);
     ((ClusterTestConnection) connection).writeConnection.close();
     Thread.sleep(1000);
@@ -145,34 +150,53 @@ public class IoTDBAuditLogBasicIT {
     }
   }
 
-  @After
-  public void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  private static final List<String> TABLE_MODEL_AUDIT_SQLS =
+  private static final List<String> TABLE_MODEL_AUDIT_SQLS_USER_ROOT =
       Arrays.asList(
           "CREATE DATABASE test",
-          //          "SHOW DATABASES",
-          "ALTER DATABASE test SET PROPERTIES TTL='INF'",
           "USE test",
-          "CREATE TABLE table1(t1 STRING TAG, a1 STRING ATTRIBUTE, s1 TEXT FIELD)",
+          //  "SHOW CURRENT_DATABASE",
+          //  "SHOW DATABASES",
+          "ALTER DATABASE test SET PROPERTIES TTL='INF'",
+          "CREATE TABLE table1(t1 STRING TAG, a1 STRING ATTRIBUTE, s1 STRING FIELD)",
           "SHOW TABLES",
           "DESC table1",
           "ALTER TABLE table1 set properties TTL='INF'",
-          "CREATE USER user1 'IoTDB@2021abc'",
-          "CREATE role role1",
-          "GRANT SELECT, ALTER, INSERT, DELETE ON test.table1 TO ROLE role1",
-          "GRANT ROLE role1 TO user1",
-          "LIST USER",
-          "LIST ROLE",
-          "DROP ROLE role1",
-          "DROP USER user1",
+          "CREATE USER user1 'IoTDB@2025abc'",
+          "CREATE USER user2 'IoTDB@2025abc'",
+          "CREATE ROLE role1",
+          "GRANT SELECT,ALTER,INSERT,DELETE ON TEST.TABLE1 TO USER user1",
+          "GRANT SELECT ON ANY TO ROLE role1",
+          "GRANT ROLE role1 TO user2",
+          "list user",
+          "list role");
+  private static final List<String> TABLE_MODEL_AUDIT_SQLS_USER_USER1 =
+      Arrays.asList(
+          "LIST PRIVILEGES OF USER user1",
+          "USE test",
           "INSERT INTO table1(time, t1, a1, s1) values(1, 't1', 'a1', 's1')",
           "SELECT * FROM table1",
-          "DELETE FROM table1",
+          "UPDATE table1 SET a1 = t1",
+          "DELETE FROM table1");
+  private static final List<String> TABLE_MODEL_AUDIT_SQLS_USER_USER2 =
+      Arrays.asList(
+          "LIST PRIVILEGES OF USER user2",
+          "LIST PRIVILEGES OF ROLE role1",
+          "list user",
+          "USE test",
+          "INSERT INTO table1(time, t1, a1, s1) values(1, 't1', 'a1', 's1')",
+          "SELECT * FROM table1",
+          "UPDATE table1 SET a1 = t1",
+          "DELETE FROM table1");
+  private static final List<String> TABLE_MODEL_AUDIT_SQLS_USER_ROOT_FINAL =
+      Arrays.asList(
+          "USE test",
           "DROP TABLE table1",
-          "DROP DATABASE IF EXISTS test");
+          "DROP DATABASE IF EXISTS test",
+          "REVOKE SELECT,ALTER,INSERT,DELETE ON TEST.TABLE1 FROM USER user1",
+          "REVOKE SELECT ON ANY FROM ROLE role1",
+          "DROP USER user1",
+          "DROP USER user2",
+          "DROP ROLE role1");
   private static final List<List<String>> TABLE_MODEL_AUDIT_FIELDS =
       Arrays.asList(
           // Start audit service
@@ -189,7 +213,6 @@ public class IoTDBAuditLogBasicIT {
               "null",
               "null",
               "Successfully start the Audit service with configurations (auditableOperationType [DDL, DML, QUERY, CONTROL], auditableOperationLevel GLOBAL, auditableOperationResult SUCCESS,FAIL)"),
-
           // Environment init login/logout
           Arrays.asList(
               "node_1",
@@ -324,6 +347,7 @@ public class IoTDBAuditLogBasicIT {
               "__audit",
               "DESC __audit.audit_log",
               "User root (ID=0) requests authority on object audit_log with result true"),
+          // Setup logout through table model dialect, twice for both read and write connections
           Arrays.asList(
               "node_1",
               "u_0",
@@ -337,6 +361,8 @@ public class IoTDBAuditLogBasicIT {
               "",
               "",
               "is closing"),
+          // =============================Audit user root=============================
+          // Root login, twice for both read and write connections
           Arrays.asList(
               "node_1",
               "u_0",
@@ -389,6 +415,33 @@ public class IoTDBAuditLogBasicIT {
               "true",
               "test",
               "CREATE DATABASE test",
+              "User root (ID=0) requests authority on object test with result true"),
+          // Use database, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[READ_SCHEMA]",
+              "OBJECT",
+              "true",
+              "test",
+              "USE test",
+              "User root (ID=0) requests authority on object test with result true"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[READ_SCHEMA]",
+              "OBJECT",
+              "true",
+              "test",
+              "USE test",
               "User root (ID=0) requests authority on object test with result true"),
           // Show database TODO: Enable only when the order of show databases authentication fixed
           //        Arrays.asList(
@@ -445,33 +498,6 @@ public class IoTDBAuditLogBasicIT {
               "test",
               "ALTER DATABASE test SET PROPERTIES TTL='INF'",
               "User root (ID=0) requests authority on object test with result true"),
-          // Use database, twice for both read and write connections
-          Arrays.asList(
-              "node_1",
-              "u_0",
-              "root",
-              "127.0.0.1",
-              "OBJECT_AUTHENTICATION",
-              "QUERY",
-              "[READ_SCHEMA]",
-              "OBJECT",
-              "true",
-              "test",
-              "USE test",
-              "User root (ID=0) requests authority on object test with result true"),
-          Arrays.asList(
-              "node_1",
-              "u_0",
-              "root",
-              "127.0.0.1",
-              "OBJECT_AUTHENTICATION",
-              "QUERY",
-              "[READ_SCHEMA]",
-              "OBJECT",
-              "true",
-              "test",
-              "USE test",
-              "User root (ID=0) requests authority on object test with result true"),
           // Create table
           Arrays.asList(
               "node_1",
@@ -484,7 +510,7 @@ public class IoTDBAuditLogBasicIT {
               "OBJECT",
               "true",
               "test",
-              "CREATE TABLE table1(t1 STRING TAG, a1 STRING ATTRIBUTE, s1 TEXT FIELD)",
+              "CREATE TABLE table1(t1 STRING TAG, a1 STRING ATTRIBUTE, s1 STRING FIELD)",
               "User root (ID=0) requests authority on object table1 with result true"),
           // Show table
           Arrays.asList(
@@ -528,6 +554,20 @@ public class IoTDBAuditLogBasicIT {
               "null",
               "CREATE USER user1 ...",
               "User root (ID=0) requests authority on object user1 with result true"),
+          // Create user
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DDL",
+              "[SECURITY]",
+              "GLOBAL",
+              "true",
+              "null",
+              "CREATE USER user2 ...",
+              "User root (ID=0) requests authority on object user2 with result true"),
           // Create role
           Arrays.asList(
               "node_1",
@@ -540,9 +580,9 @@ public class IoTDBAuditLogBasicIT {
               "GLOBAL",
               "true",
               "null",
-              "CREATE role role1",
+              "CREATE ROLE role1",
               "User root (ID=0) requests authority on object role1 with result true"),
-          // Grant privileges to role
+          // Grant privileges to user
           Arrays.asList(
               "node_1",
               "u_0",
@@ -554,7 +594,21 @@ public class IoTDBAuditLogBasicIT {
               "GLOBAL",
               "true",
               "test",
-              "GRANT SELECT, ALTER, INSERT, DELETE ON test.table1 TO ROLE role1",
+              "GRANT SELECT,ALTER,INSERT,DELETE ON TEST.TABLE1 TO USER user1",
+              "User root (ID=0) requests authority on object user1 with result true"),
+          // Grant privileges to role
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DDL",
+              "[SECURITY]",
+              "GLOBAL",
+              "true",
+              "null",
+              "GRANT SELECT ON ANY TO ROLE role1",
               "User root (ID=0) requests authority on object role1 with result true"),
           // Grant role to user
           Arrays.asList(
@@ -568,9 +622,9 @@ public class IoTDBAuditLogBasicIT {
               "GLOBAL",
               "true",
               "null",
-              "GRANT ROLE role1 TO user1",
-              "User root (ID=0) requests authority on object user: user1, role: role1 with result true"),
-          // List user TODO: whether to include user object?
+              "GRANT ROLE role1 TO user2",
+              "User root (ID=0) requests authority on object user: user2, role: role1 with result true"),
+          // List user, the user object is null since the root can list all users
           Arrays.asList(
               "node_1",
               "u_0",
@@ -582,9 +636,9 @@ public class IoTDBAuditLogBasicIT {
               "GLOBAL",
               "true",
               "null",
-              "LIST USER",
+              "list user",
               "User root (ID=0) requests authority on object null with result true"),
-          // List role TODO: whether to include role object?
+          // List role, the role object is null since the root can list all roles
           Arrays.asList(
               "node_1",
               "u_0",
@@ -596,41 +650,109 @@ public class IoTDBAuditLogBasicIT {
               "GLOBAL",
               "true",
               "null",
-              "LIST ROLE",
+              "list role",
               "User root (ID=0) requests authority on object null with result true"),
-          // Drop role
+          // Root logout, twice for both read and write connections
           Arrays.asList(
               "node_1",
               "u_0",
               "root",
               "127.0.0.1",
-              "OBJECT_AUTHENTICATION",
-              "DDL",
-              "[SECURITY]",
+              "LOGOUT",
+              "CONTROL",
+              "null",
               "GLOBAL",
               "true",
-              "null",
-              "DROP ROLE role1",
-              "User root (ID=0) requests authority on object role1 with result true"),
-          // Drop user
+              "",
+              "",
+              "is closing"),
           Arrays.asList(
               "node_1",
               "u_0",
               "root",
               "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          // =============================Audit user user1=============================
+          // User1 login, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_10000",
+              "user1",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User user1 (ID=10000), opens Session"),
+          Arrays.asList(
+              "node_1",
+              "u_10000",
+              "user1",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User user1 (ID=10000), opens Session"),
+          // List privileges of user1
+          Arrays.asList(
+              "node_1",
+              "u_10000",
+              "user1",
+              "127.0.0.1",
               "OBJECT_AUTHENTICATION",
-              "DDL",
-              "[SECURITY]",
+              "QUERY",
+              "null",
               "GLOBAL",
               "true",
               "null",
-              "DROP USER user1",
-              "User root (ID=0) requests authority on object user1 with result true"),
+              "LIST PRIVILEGES OF USER user1",
+              "User user1 (ID=10000) requests authority on object user1 with result true"),
+          // Use database, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_10000",
+              "user1",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[READ_SCHEMA]",
+              "OBJECT",
+              "true",
+              "test",
+              "USE test",
+              "User user1 (ID=10000) requests authority on object test with result true"),
+          Arrays.asList(
+              "node_1",
+              "u_10000",
+              "user1",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[READ_SCHEMA]",
+              "OBJECT",
+              "true",
+              "test",
+              "USE test",
+              "User user1 (ID=10000) requests authority on object test with result true"),
           // Insert into table
           Arrays.asList(
               "node_1",
-              "u_0",
-              "root",
+              "u_10000",
+              "user1",
               "127.0.0.1",
               "OBJECT_AUTHENTICATION",
               "DML",
@@ -639,12 +761,12 @@ public class IoTDBAuditLogBasicIT {
               "true",
               "test",
               "INSERT INTO table1(time, t1, a1, s1) values(...)",
-              "User root (ID=0) requests authority on object table1 with result true"),
+              "User user1 (ID=10000) requests authority on object table1 with result true"),
           // Select from table, including fetch device
           Arrays.asList(
               "node_1",
-              "u_0",
-              "root",
+              "u_10000",
+              "user1",
               "127.0.0.1",
               "OBJECT_AUTHENTICATION",
               "QUERY",
@@ -653,11 +775,11 @@ public class IoTDBAuditLogBasicIT {
               "true",
               "test",
               "SELECT * FROM table1",
-              "User root (ID=0) requests authority on object table1 with result true"),
+              "User user1 (ID=10000) requests authority on object table1 with result true"),
           Arrays.asList(
               "node_1",
-              "u_0",
-              "root",
+              "u_10000",
+              "user1",
               "127.0.0.1",
               "OBJECT_AUTHENTICATION",
               "QUERY",
@@ -666,12 +788,26 @@ public class IoTDBAuditLogBasicIT {
               "true",
               "test",
               "fetch device for query",
-              "User root (ID=0) requests authority on object table1 with result true"),
-          // Delete table
+              "User user1 (ID=10000) requests authority on object table1 with result true"),
+          // Update table
           Arrays.asList(
               "node_1",
-              "u_0",
-              "root",
+              "u_10000",
+              "user1",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DML",
+              "[INSERT]",
+              "OBJECT",
+              "true",
+              "test",
+              "UPDATE table1 SET a1 = t1",
+              "User user1 (ID=10000) requests authority on object table1 with result true"),
+          // Delete from table
+          Arrays.asList(
+              "node_1",
+              "u_10000",
+              "user1",
               "127.0.0.1",
               "OBJECT_AUTHENTICATION",
               "DML",
@@ -680,7 +816,282 @@ public class IoTDBAuditLogBasicIT {
               "true",
               "test",
               "DELETE FROM table1",
-              "User root (ID=0) requests authority on object table1 with result true"),
+              "User user1 (ID=10000) requests authority on object table1 with result true"),
+          // User1 logout, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_10000",
+              "user1",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          Arrays.asList(
+              "node_1",
+              "u_10000",
+              "user1",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          // =============================Audit user user2=============================
+          // User2 login, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User user2 (ID=10001), opens Session"),
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User user2 (ID=10001), opens Session"),
+          // List privileges of user2
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "null",
+              "GLOBAL",
+              "true",
+              "null",
+              "LIST PRIVILEGES OF USER user2",
+              "User user2 (ID=10001) requests authority on object user2 with result true"),
+          // List privileges of role1
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "null",
+              "GLOBAL",
+              "true",
+              "null",
+              "LIST PRIVILEGES OF ROLE role1",
+              "User user2 (ID=10001) requests authority on object role1 with result true"),
+          // List user, only him/herself
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "null",
+              "GLOBAL",
+              "true",
+              "null",
+              "list user",
+              "User user2 (ID=10001) requests authority on object user2 with result true"),
+          // Use database, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[READ_SCHEMA]",
+              "OBJECT",
+              "true",
+              "test",
+              "USE test",
+              "User user2 (ID=10001) requests authority on object test with result true"),
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[READ_SCHEMA]",
+              "OBJECT",
+              "true",
+              "test",
+              "USE test",
+              "User user2 (ID=10001) requests authority on object test with result true"),
+          // Failed to insert since no privilege
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DML",
+              "[INSERT]",
+              "OBJECT",
+              "false",
+              "test",
+              "INSERT INTO table1(time, t1, a1, s1) values(...)",
+              "User user2 (ID=10001) requests authority on object table1 with result false"),
+          // Select from table1, including fetch device
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[SELECT]",
+              "OBJECT",
+              "true",
+              "test",
+              "SELECT * FROM table1",
+              "User user2 (ID=10001) requests authority on object table1 with result true"),
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[SELECT]",
+              "OBJECT",
+              "true",
+              "test",
+              "fetch device for query",
+              "User user2 (ID=10001) requests authority on object table1 with result true"),
+          // Update table
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DML",
+              "[INSERT]",
+              "OBJECT",
+              "false",
+              "test",
+              "UPDATE table1 SET a1 = t1",
+              "User user2 (ID=10001) requests authority on object table1 with result false"),
+          // Delete from table
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DML",
+              "[DELETE]",
+              "OBJECT",
+              "false",
+              "test",
+              "DELETE FROM table1",
+              "User user2 (ID=10001) requests authority on object table1 with result false"),
+          // User2 logout, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          Arrays.asList(
+              "node_1",
+              "u_10001",
+              "user2",
+              "127.0.0.1",
+              "LOGOUT",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "is closing"),
+          // =============================Audit user root=============================
+          // Root login, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "LOGIN",
+              "CONTROL",
+              "null",
+              "GLOBAL",
+              "true",
+              "",
+              "",
+              "IoTDB: Login status: Login successfully. User root (ID=0), opens Session"),
+          // Use database, twice for both read and write connections
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[READ_SCHEMA]",
+              "OBJECT",
+              "true",
+              "test",
+              "USE test",
+              "User root (ID=0) requests authority on object test with result true"),
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "QUERY",
+              "[READ_SCHEMA]",
+              "OBJECT",
+              "true",
+              "test",
+              "USE test",
+              "User root (ID=0) requests authority on object test with result true"),
           // Drop table
           Arrays.asList(
               "node_1",
@@ -709,6 +1120,76 @@ public class IoTDBAuditLogBasicIT {
               "test",
               "DROP DATABASE IF EXISTS test",
               "User root (ID=0) requests authority on object test with result true"),
+          // Revoke user privilege
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DDL",
+              "[SECURITY]",
+              "GLOBAL",
+              "true",
+              "test",
+              "REVOKE SELECT,ALTER,INSERT,DELETE ON TEST.TABLE1 FROM USER user1",
+              "User root (ID=0) requests authority on object user1 with result true"),
+          // Revoke role privilege
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DDL",
+              "[SECURITY]",
+              "GLOBAL",
+              "true",
+              "null",
+              "REVOKE SELECT ON ANY FROM ROLE role1",
+              "User root (ID=0) requests authority on object role1 with result true"),
+          // Drop user
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DDL",
+              "[SECURITY]",
+              "GLOBAL",
+              "true",
+              "null",
+              "DROP USER user1",
+              "User root (ID=0) requests authority on object user1 with result true"),
+          // Drop user
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DDL",
+              "[SECURITY]",
+              "GLOBAL",
+              "true",
+              "null",
+              "DROP USER user2",
+              "User root (ID=0) requests authority on object user2 with result true"),
+          // Drop role
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "DDL",
+              "[SECURITY]",
+              "GLOBAL",
+              "true",
+              "null",
+              "DROP ROLE role1",
+              "User root (ID=0) requests authority on object role1 with result true"),
           // Select audit log
           Arrays.asList(
               "node_1",
@@ -740,34 +1221,56 @@ public class IoTDBAuditLogBasicIT {
       Stream.of(11, 12).collect(Collectors.toSet());
 
   @Test
-  public void basicAuditLogTestForTableModel() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      for (String sql : TABLE_MODEL_AUDIT_SQLS) {
-        statement.execute(sql);
-      }
-      int count = 0;
-      ResultSet resultSet = statement.executeQuery("SELECT * FROM __audit.audit_log ORDER BY TIME");
-      while (resultSet.next()) {
-        LOGGER.info("Expected audit log: {}", TABLE_MODEL_AUDIT_FIELDS.get(count));
-        List<String> actualFields = new ArrayList<>();
-        for (int i = 1; i <= 12; i++) {
-          actualFields.add(resultSet.getString(i + 1));
-        }
-        LOGGER.info("Actual audit log: {}", actualFields);
-        List<String> expectedFields = TABLE_MODEL_AUDIT_FIELDS.get(count);
-        for (int i = 1; i <= 12; i++) {
-          if (TABLE_INDEX_FOR_CONTAIN.contains(i)) {
-            Assert.assertTrue(resultSet.getString(i + 1).contains(expectedFields.get(i - 1)));
-            continue;
-          }
-          Assert.assertEquals(expectedFields.get(i - 1), resultSet.getString(i + 1));
-        }
-
-        count++;
-      }
-      Assert.assertEquals(TABLE_MODEL_AUDIT_FIELDS.size(), count);
+  public void basicAuditLogTestForTableModel() throws SQLException, InterruptedException {
+    Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    Statement statement = connection.createStatement();
+    for (String sql : TABLE_MODEL_AUDIT_SQLS_USER_ROOT) {
+      statement.execute(sql);
     }
+    closeConnectionCompletely(connection);
+    connection =
+        EnvFactory.getEnv().getConnection("user1", "IoTDB@2025abc", BaseEnv.TABLE_SQL_DIALECT);
+    statement = connection.createStatement();
+    for (String sql : TABLE_MODEL_AUDIT_SQLS_USER_USER1) {
+      statement.execute(sql);
+    }
+    closeConnectionCompletely(connection);
+    connection =
+        EnvFactory.getEnv().getConnection("user2", "IoTDB@2025abc", BaseEnv.TABLE_SQL_DIALECT);
+    statement = connection.createStatement();
+    for (String sql : TABLE_MODEL_AUDIT_SQLS_USER_USER2) {
+      try {
+        statement.execute(sql);
+      } catch (SQLException e) {
+        // Ignore, only record audit log
+      }
+    }
+    closeConnectionCompletely(connection);
+    connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    statement = connection.createStatement();
+    for (String sql : TABLE_MODEL_AUDIT_SQLS_USER_ROOT_FINAL) {
+      statement.execute(sql);
+    }
+    int count = 0;
+    ResultSet resultSet = statement.executeQuery("SELECT * FROM __audit.audit_log ORDER BY TIME");
+    while (resultSet.next()) {
+      LOGGER.info("Expected audit log: {}", TABLE_MODEL_AUDIT_FIELDS.get(count));
+      List<String> actualFields = new ArrayList<>();
+      for (int i = 1; i <= 12; i++) {
+        actualFields.add(resultSet.getString(i + 1));
+      }
+      LOGGER.info("Actual audit log: {}", actualFields);
+      List<String> expectedFields = TABLE_MODEL_AUDIT_FIELDS.get(count);
+      for (int i = 1; i <= 12; i++) {
+        if (TABLE_INDEX_FOR_CONTAIN.contains(i)) {
+          Assert.assertTrue(resultSet.getString(i + 1).contains(expectedFields.get(i - 1)));
+          continue;
+        }
+        Assert.assertEquals(expectedFields.get(i - 1), resultSet.getString(i + 1));
+      }
+      count++;
+    }
+    Assert.assertEquals(TABLE_MODEL_AUDIT_FIELDS.size(), count);
   }
 
   private static final List<String> TREE_MODEL_AUDIT_SQLS =

@@ -284,23 +284,31 @@ public class AccessControlImpl implements AccessControl {
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
         return;
       case LIST_USER_PRIV:
-        auditEntity
-            .setAuditLogOperation(AuditLogOperation.QUERY)
-            .setPrivilegeType(PrivilegeType.SECURITY);
-        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
-            || statement.getUserName().equals(userName)) {
+        auditEntity.setAuditLogOperation(AuditLogOperation.QUERY);
+        if (statement.getUserName().equals(userName)) {
+          // No need any privilege to list him/herself
           ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          return;
+        }
+        // Require SECURITY privilege to list other users' privileges
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+              statement::getUserName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
         return;
       case LIST_USER:
-        auditEntity.setAuditLogOperation(AuditLogOperation.QUERY);
+        auditEntity.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true);
         if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_USER)) {
+          // No need to check privilege to list himself/herself
           statement.setUserName(userName);
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity, statement::getUserName);
         } else {
-          auditEntity.setPrivilegeType(PrivilegeType.SECURITY);
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          // Require SECURITY privilege to list other users
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setPrivilegeType(PrivilegeType.SECURITY), statement::getUserName);
         }
         return;
       case CREATE_ROLE:
@@ -343,12 +351,17 @@ public class AccessControlImpl implements AccessControl {
         }
         return;
       case LIST_ROLE_PRIV:
-        auditEntity
-            .setAuditLogOperation(AuditLogOperation.QUERY)
-            .setPrivilegeType(PrivilegeType.SECURITY);
-        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
-            || AuthorityChecker.checkRole(userName, statement.getRoleName())) {
+        auditEntity.setAuditLogOperation(AuditLogOperation.QUERY);
+        if (AuthorityChecker.checkRole(userName, statement.getRoleName())) {
+          // No need any privilege to list his/hers own role
           ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
+          return;
+        }
+        // Require SECURITY privilege to list other roles' privileges
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+              statement::getRoleName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
