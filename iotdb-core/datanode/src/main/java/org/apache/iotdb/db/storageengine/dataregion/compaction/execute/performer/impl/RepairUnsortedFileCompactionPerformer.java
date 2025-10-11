@@ -28,8 +28,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 
 import java.io.IOException;
@@ -40,11 +40,9 @@ import java.util.List;
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
 
+  @Deprecated
   public RepairUnsortedFileCompactionPerformer() {
-    super(
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+    super(EncryptDBUtils.getDefaultFirstEncryptParam());
   }
 
   public RepairUnsortedFileCompactionPerformer(EncryptParameter encryptParameter) {

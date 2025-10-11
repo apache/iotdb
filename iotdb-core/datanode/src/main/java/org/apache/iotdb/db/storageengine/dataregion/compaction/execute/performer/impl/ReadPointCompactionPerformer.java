@@ -43,8 +43,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
@@ -88,6 +88,7 @@ public class ReadPointCompactionPerformer
 
   private EncryptParameter encryptParameter;
 
+  @Deprecated
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -95,10 +96,7 @@ public class ReadPointCompactionPerformer
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.targetFiles = targetFiles;
-    this.encryptParameter =
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
   public ReadPointCompactionPerformer(
@@ -112,14 +110,12 @@ public class ReadPointCompactionPerformer
     this.encryptParameter = encryptParameter;
   }
 
+  @Deprecated
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
-    this.encryptParameter =
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
   public ReadPointCompactionPerformer(
@@ -131,11 +127,9 @@ public class ReadPointCompactionPerformer
     this.encryptParameter = encryptParameter;
   }
 
+  @Deprecated
   public ReadPointCompactionPerformer() {
-    this.encryptParameter =
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
   public ReadPointCompactionPerformer(EncryptParameter encryptParameter) {

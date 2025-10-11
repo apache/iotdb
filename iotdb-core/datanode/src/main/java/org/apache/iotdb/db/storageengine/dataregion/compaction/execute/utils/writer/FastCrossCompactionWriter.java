@@ -23,8 +23,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
@@ -46,17 +46,13 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   // Only used for fast compaction performer
   protected Map<TsFileResource, TsFileSequenceReader> readerMap;
 
+  @Deprecated
   public FastCrossCompactionWriter(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqSourceResources,
       Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
-    super(
-        targetResources,
-        seqSourceResources,
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+    super(targetResources, seqSourceResources, EncryptDBUtils.getDefaultFirstEncryptParam());
     this.readerMap = readerMap;
   }
 

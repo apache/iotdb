@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -70,28 +71,48 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   private EncryptParameter firstEncryptParameter;
 
+  @Deprecated
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this(sourceFiles, Collections.singletonList(targetFile));
   }
 
   public ReadChunkCompactionPerformer(
+      List<TsFileResource> sourceFiles,
+      TsFileResource targetFile,
+      EncryptParameter encryptParameter) {
+    this(sourceFiles, Collections.singletonList(targetFile), encryptParameter);
+  }
+
+  @Deprecated
+  public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
-    this.firstEncryptParameter =
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
+  public ReadChunkCompactionPerformer(
+      List<TsFileResource> sourceFiles,
+      List<TsFileResource> targetFiles,
+      EncryptParameter encryptParameter) {
+    setSourceFiles(sourceFiles);
+    setTargetFiles(targetFiles);
+    this.firstEncryptParameter = encryptParameter;
+  }
+
+  @Deprecated
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
     setSourceFiles(sourceFiles);
-    this.firstEncryptParameter =
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
+  public ReadChunkCompactionPerformer(
+      List<TsFileResource> sourceFiles, EncryptParameter encryptParameter) {
+    setSourceFiles(sourceFiles);
+    this.firstEncryptParameter = encryptParameter;
+  }
+
+  @Deprecated
   public ReadChunkCompactionPerformer() {
     this.firstEncryptParameter =
         new EncryptParameter(

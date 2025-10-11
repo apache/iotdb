@@ -37,16 +37,18 @@ public class EncryptDBUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EncryptDBUtils.class);
 
+  private static volatile EncryptParameter defaultFirstEncryptParam;
+
   public static EncryptParameter getFirstEncryptParamFromDatabase(String database) {
     if (database == null || database.isEmpty()) {
       return new EncryptParameter(tsFileConfig.getEncryptType(), tsFileConfig.getEncryptKey());
     }
     for (Map.Entry<String, EncryptParameter> entry : conf.getTSFileDBToEncryptMap().entrySet()) {
-      if (database.startsWith(entry.getKey())) {
+      if (database.trim().equals(entry.getKey().trim())) {
         return entry.getValue();
       }
     }
-    return new EncryptParameter(tsFileConfig.getEncryptType(), tsFileConfig.getEncryptKey());
+    return getDefaultFirstEncryptParam();
   }
 
   public static EncryptParameter getSecondEncryptParamFromDatabase(String database) {
@@ -67,6 +69,18 @@ public class EncryptDBUtils {
         }
       }
     }
-    return new EncryptParameter(tsFileConfig.getEncryptType(), tsFileConfig.getEncryptKey());
+    return getDefaultFirstEncryptParam();
+  }
+
+  public static EncryptParameter getDefaultFirstEncryptParam() {
+    if (defaultFirstEncryptParam == null) {
+      synchronized (EncryptDBUtils.class) {
+        if (defaultFirstEncryptParam == null) {
+          defaultFirstEncryptParam =
+              new EncryptParameter(tsFileConfig.getEncryptType(), tsFileConfig.getEncryptKey());
+        }
+      }
+    }
+    return defaultFirstEncryptParam;
   }
 }

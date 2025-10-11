@@ -29,8 +29,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 
 import java.util.HashMap;
@@ -58,13 +58,11 @@ public class CompactionScheduleContext {
 
   private EncryptParameter encryptParameter;
 
+  @Deprecated
   public CompactionScheduleContext() {
     this.partitionFileDeviceInfoCache = new HashMap<>();
     this.timePartitionsDelayInsertionSelection = new HashSet<>();
-    this.encryptParameter =
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
   public CompactionScheduleContext(EncryptParameter encryptParameter) {

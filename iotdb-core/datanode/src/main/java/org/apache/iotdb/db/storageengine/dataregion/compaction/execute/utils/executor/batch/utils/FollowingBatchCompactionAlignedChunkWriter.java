@@ -45,6 +45,7 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   private CompactChunkPlan compactChunkPlan;
   private ChunkWriterFlushCallback afterChunkWriterFlushCallback;
 
+  @Deprecated
   public FollowingBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema,
       List<IMeasurementSchema> valueSchemaList,

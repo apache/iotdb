@@ -40,6 +40,7 @@ public enum CrossCompactionPerformer {
         "Illegal compaction performer for cross compaction " + name);
   }
 
+  @Deprecated
   public ICrossCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:

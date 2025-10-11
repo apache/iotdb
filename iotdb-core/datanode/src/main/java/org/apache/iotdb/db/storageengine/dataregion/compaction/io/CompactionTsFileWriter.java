@@ -23,8 +23,8 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -56,15 +56,10 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   private EncryptParameter firstEncryptParameter;
 
+  @Deprecated
   public CompactionTsFileWriter(File file, long maxMetadataSize, CompactionType type)
       throws IOException {
-    this(
-        file,
-        maxMetadataSize,
-        type,
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+    this(file, maxMetadataSize, type, EncryptDBUtils.getDefaultFirstEncryptParam());
   }
 
   public CompactionTsFileWriter(

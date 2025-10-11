@@ -40,6 +40,7 @@ public enum InnerUnseqCompactionPerformer {
         "Illegal compaction performer for unseq inner compaction " + name);
   }
 
+  @Deprecated
   public IUnseqCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:

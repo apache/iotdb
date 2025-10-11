@@ -23,9 +23,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
@@ -40,12 +40,9 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
+  @Deprecated
   public ReadPointInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    super(
-        targetFileResource,
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+    super(targetFileResource, EncryptDBUtils.getDefaultFirstEncryptParam());
   }
 
   public ReadPointInnerCompactionWriter(
@@ -53,13 +50,10 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
     super(targetFileResource, encryptParameter);
   }
 
+  @Deprecated
   public ReadPointInnerCompactionWriter(List<TsFileResource> targetFileResources)
       throws IOException {
-    super(
-        targetFileResources,
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey()));
+    super(targetFileResources, EncryptDBUtils.getDefaultFirstEncryptParam());
   }
 
   public ReadPointInnerCompactionWriter(

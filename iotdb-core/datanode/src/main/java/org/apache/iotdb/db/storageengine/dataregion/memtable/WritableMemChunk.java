@@ -69,6 +69,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   private EncryptParameter encryptParameter;
 
+  @Deprecated
   public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
     this.list = TVList.newList(schema.getType());
@@ -83,7 +84,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     this.encryptParameter = encryptParameter;
   }
 
-  private WritableMemChunk() {}
+  private WritableMemChunk() {
+    this.encryptParameter = EncryptUtils.getEncryptParameter();
+  }
 
   protected void handoverTvList() {
     if (!list.isSorted()) {

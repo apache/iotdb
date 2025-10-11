@@ -26,8 +26,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -52,26 +52,22 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
               / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
+  @Deprecated
   protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) {
-    this(Collections.singletonList(targetFileResource));
-    this.encryptParameter =
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this(
+        Collections.singletonList(targetFileResource),
+        EncryptDBUtils.getDefaultFirstEncryptParam());
   }
 
   protected AbstractInnerCompactionWriter(
       TsFileResource targetFileResource, EncryptParameter encryptParameter) {
-    this(Collections.singletonList(targetFileResource));
-    this.encryptParameter = encryptParameter;
+    this(Collections.singletonList(targetFileResource), encryptParameter);
   }
 
+  @Deprecated
   protected AbstractInnerCompactionWriter(List<TsFileResource> targetFileResources) {
     this.targetResources = targetFileResources;
-    this.encryptParameter =
-        new EncryptParameter(
-            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
-            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
   protected AbstractInnerCompactionWriter(

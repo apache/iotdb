@@ -100,6 +100,7 @@ public class FastCompactionPerformer
 
   private EncryptParameter encryptParameter;
 
+  @Deprecated
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -136,6 +137,7 @@ public class FastCompactionPerformer
     this.encryptParameter = encryptParameter;
   }
 
+  @Deprecated
   public FastCompactionPerformer(boolean isCrossCompaction) {
     this.isCrossCompaction = isCrossCompaction;
     this.encryptParameter =
