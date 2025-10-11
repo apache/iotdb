@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -69,7 +70,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   private EncryptParameter encryptParameter;
 
-  @Deprecated
+  @TestOnly
   public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
     this.list = TVList.newList(schema.getType());

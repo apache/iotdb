@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
@@ -100,7 +101,7 @@ public class FastCompactionPerformer
 
   private EncryptParameter encryptParameter;
 
-  @Deprecated
+  @TestOnly
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -137,7 +138,7 @@ public class FastCompactionPerformer
     this.encryptParameter = encryptParameter;
   }
 
-  @Deprecated
+  @TestOnly
   public FastCompactionPerformer(boolean isCrossCompaction) {
     this.isCrossCompaction = isCrossCompaction;
     this.encryptParameter =

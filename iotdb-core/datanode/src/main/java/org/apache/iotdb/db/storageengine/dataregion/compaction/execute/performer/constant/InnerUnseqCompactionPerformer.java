@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionPerformerException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -40,7 +41,7 @@ public enum InnerUnseqCompactionPerformer {
         "Illegal compaction performer for unseq inner compaction " + name);
   }
 
-  @Deprecated
+  @TestOnly
   public IUnseqCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:

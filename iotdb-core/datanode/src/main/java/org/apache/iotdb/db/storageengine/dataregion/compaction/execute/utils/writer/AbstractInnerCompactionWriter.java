@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -52,7 +53,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
               / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
-  @Deprecated
+  @TestOnly
   protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) {
     this(
         Collections.singletonList(targetFileResource),

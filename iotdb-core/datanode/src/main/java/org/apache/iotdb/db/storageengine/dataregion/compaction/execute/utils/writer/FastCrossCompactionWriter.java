@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
@@ -46,7 +47,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   // Only used for fast compaction performer
   protected Map<TsFileResource, TsFileSequenceReader> readerMap;
 
-  @Deprecated
+  @TestOnly
   public FastCrossCompactionWriter(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqSourceResources,

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -45,7 +46,7 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   private CompactChunkPlan compactChunkPlan;
   private ChunkWriterFlushCallback afterChunkWriterFlushCallback;
 
-  @Deprecated
+  @TestOnly
   public FollowingBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema,
       List<IMeasurementSchema> valueSchemaList,

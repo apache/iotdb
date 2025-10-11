@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
@@ -40,7 +41,7 @@ import java.util.List;
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
 
-  @Deprecated
+  @TestOnly
   public RepairUnsortedFileCompactionPerformer() {
     super(EncryptDBUtils.getDefaultFirstEncryptParam());
   }

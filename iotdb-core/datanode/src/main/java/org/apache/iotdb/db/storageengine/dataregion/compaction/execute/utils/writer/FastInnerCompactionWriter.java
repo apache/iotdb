@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
@@ -42,7 +43,7 @@ import java.util.List;
 
 public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
-  @Deprecated
+  @TestOnly
   public FastInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     super(targetFileResource, EncryptDBUtils.getDefaultFirstEncryptParam());
   }
@@ -52,7 +53,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     super(targetFileResource, encryptParameter);
   }
 
-  @Deprecated
+  @TestOnly
   public FastInnerCompactionWriter(List<TsFileResource> targetFileResources) throws IOException {
     super(targetFileResources, EncryptDBUtils.getDefaultFirstEncryptParam());
   }

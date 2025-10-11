@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
@@ -71,7 +72,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   private EncryptParameter firstEncryptParameter;
 
-  @Deprecated
+  @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this(sourceFiles, Collections.singletonList(targetFile));
   }
@@ -83,7 +84,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     this(sourceFiles, Collections.singletonList(targetFile), encryptParameter);
   }
 
-  @Deprecated
+  @TestOnly
   public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
     setSourceFiles(sourceFiles);
@@ -100,7 +101,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     this.firstEncryptParameter = encryptParameter;
   }
 
-  @Deprecated
+  @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
     setSourceFiles(sourceFiles);
     this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
@@ -112,7 +113,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     this.firstEncryptParameter = encryptParameter;
   }
 
-  @Deprecated
+  @TestOnly
   public ReadChunkCompactionPerformer() {
     this.firstEncryptParameter =
         new EncryptParameter(

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
@@ -38,7 +39,7 @@ import java.util.List;
 public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompactionWriter {
   private List<TimeValuePair>[] dataOfCurrentSeriesArr;
 
-  @Deprecated
+  @TestOnly
   public RepairUnsortedFileCompactionWriter(TsFileResource targetFileResource) throws IOException {
     super(targetFileResource, EncryptDBUtils.getDefaultFirstEncryptParam());
     dataOfCurrentSeriesArr = new ArrayList[subTaskNum];

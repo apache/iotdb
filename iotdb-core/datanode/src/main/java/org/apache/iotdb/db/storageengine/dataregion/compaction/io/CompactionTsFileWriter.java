@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
@@ -56,7 +57,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   private EncryptParameter firstEncryptParameter;
 
-  @Deprecated
+  @TestOnly
   public CompactionTsFileWriter(File file, long maxMetadataSize, CompactionType type)
       throws IOException {
     this(file, maxMetadataSize, type, EncryptDBUtils.getDefaultFirstEncryptParam());

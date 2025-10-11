@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -88,7 +89,7 @@ public class ReadPointCompactionPerformer
 
   private EncryptParameter encryptParameter;
 
-  @Deprecated
+  @TestOnly
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -110,7 +111,7 @@ public class ReadPointCompactionPerformer
     this.encryptParameter = encryptParameter;
   }
 
-  @Deprecated
+  @TestOnly
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles;
@@ -127,7 +128,7 @@ public class ReadPointCompactionPerformer
     this.encryptParameter = encryptParameter;
   }
 
-  @Deprecated
+  @TestOnly
   public ReadPointCompactionPerformer() {
     this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }

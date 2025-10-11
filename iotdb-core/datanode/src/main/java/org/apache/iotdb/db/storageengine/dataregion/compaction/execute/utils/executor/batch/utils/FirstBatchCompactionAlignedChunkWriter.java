@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
@@ -47,7 +49,7 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
 
   private ChunkWriterFlushCallback beforeChunkWriterFlushCallback;
 
-  @Deprecated
+  @TestOnly
   public FirstBatchCompactionAlignedChunkWriter(VectorMeasurementSchema schema) {
     this.encryptParam = EncryptUtils.getEncryptParameter();
     timeChunkWriter =
@@ -79,7 +81,7 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
     this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
-  @Deprecated
+  @TestOnly
   public FirstBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema, List<IMeasurementSchema> valueSchemaList) {
     this(timeSchema, valueSchemaList, EncryptUtils.getEncryptParameter());
@@ -114,7 +116,7 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
     this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
-  @Deprecated
+  @TestOnly
   public FirstBatchCompactionAlignedChunkWriter(List<IMeasurementSchema> schemaList) {
     this.encryptParam = EncryptUtils.getEncryptParameter();
     TSEncoding timeEncoding =
