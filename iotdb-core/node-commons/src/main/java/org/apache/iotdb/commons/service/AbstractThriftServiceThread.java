@@ -45,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.net.InetSocketAddress;
 import java.nio.file.AccessDeniedException;
 import java.security.KeyStore;
@@ -219,6 +220,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
       }
     } catch (AccessDeniedException e) {
       throw new TTransportException("Failed to load keystore or truststore file");
+    } catch (FileNotFoundException e) {
+      throw new TTransportException("keystore or truststore file not found");
     } catch (Exception e) {
       throw new TTransportException(e);
     }
