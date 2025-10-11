@@ -367,71 +367,83 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
         switch (sourceType) {
           case INT64:
           case TIMESTAMP:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((long[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((long[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case INT32:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((int[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((int[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case DOUBLE:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((double[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((double[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case FLOAT:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((float[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((float[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case DATE:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i)
-                        ? null
-                        : DateUtils.parseDateExpressionToInt(((LocalDate[]) values[j])[i]));
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((LocalDate[]) values[j])[i];
+            if (targetType == TSDataType.DATE) {
+              insertRecord.add(value);
+              break;
+            }
+            if (value != null) {
+              value = DateUtils.parseDateExpressionToInt((LocalDate) value);
+            }
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case TEXT:
           case STRING:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
-            break;
           case BLOB:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case BOOLEAN:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((boolean[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((boolean[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
         }
       }
