@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
+// If you need to add a new type, you need to add it to the end because the ordinal will be used as
+// offset to calculate ConfigPhysicalPlanType
 public enum AuthorType {
+  // The ConfigPhysicalPlanType in this part can be automatically converted according to the offset
+  // in this class
   CREATE_USER,
   CREATE_ROLE,
   DROP_USER,
@@ -35,101 +39,14 @@ public enum AuthorType {
   LIST_ROLE,
   LIST_USER_PRIVILEGE,
   LIST_ROLE_PRIVILEGE,
+
   ACCOUNT_UNLOCK,
+
   // Remind to renew the convert codes in ConfigNodeRPCServiceProcessor
+  // If the config node plan is involved, the type defined in following lines needs to manually add
+  // conversion logic
   RENAME_USER,
+  UPDATE_USER_MAX_SESSION,
+  UPDATE_USER_MIN_SESSION,
   ;
-
-  /**
-   * deserialize short number.
-   *
-   * @param i short number
-   * @return NamespaceType
-   */
-  public static AuthorType deserialize(short i) {
-    switch (i) {
-      case 0:
-        return CREATE_USER;
-      case 1:
-        return CREATE_ROLE;
-      case 2:
-        return DROP_USER;
-      case 3:
-        return DROP_ROLE;
-      case 4:
-        return GRANT_ROLE;
-      case 5:
-        return GRANT_USER;
-      case 6:
-        return GRANT_USER_ROLE;
-      case 7:
-        return REVOKE_USER;
-      case 8:
-        return REVOKE_ROLE;
-      case 9:
-        return REVOKE_USER_ROLE;
-      case 10:
-        return UPDATE_USER;
-      case 11:
-        return LIST_USER;
-      case 12:
-        return LIST_ROLE;
-      case 13:
-        return LIST_USER_PRIVILEGE;
-      case 14:
-        return LIST_ROLE_PRIVILEGE;
-      case 15:
-        return RENAME_USER;
-      case 16:
-        return ACCOUNT_UNLOCK;
-      default:
-        return null;
-    }
-  }
-
-  /**
-   * serialize.
-   *
-   * @return short number
-   */
-  public short serialize() {
-    switch (this) {
-      case CREATE_USER:
-        return 0;
-      case CREATE_ROLE:
-        return 1;
-      case DROP_USER:
-        return 2;
-      case DROP_ROLE:
-        return 3;
-      case GRANT_ROLE:
-        return 4;
-      case GRANT_USER:
-        return 5;
-      case GRANT_USER_ROLE:
-        return 6;
-      case REVOKE_USER:
-        return 7;
-      case REVOKE_ROLE:
-        return 8;
-      case REVOKE_USER_ROLE:
-        return 9;
-      case UPDATE_USER:
-        return 10;
-      case LIST_USER:
-        return 11;
-      case LIST_ROLE:
-        return 12;
-      case LIST_USER_PRIVILEGE:
-        return 13;
-      case LIST_ROLE_PRIVILEGE:
-        return 14;
-      case RENAME_USER:
-        return 15;
-      case ACCOUNT_UNLOCK:
-        return 16;
-      default:
-        return -1;
-    }
-  }
 }

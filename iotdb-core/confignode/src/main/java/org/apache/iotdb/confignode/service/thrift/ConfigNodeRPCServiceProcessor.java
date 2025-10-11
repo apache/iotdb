@@ -633,9 +633,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus operatePermission(final TAuthorizerReq req) {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
-    }
     ConfigPhysicalPlanType configPhysicalPlanType =
         AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType());
     return configManager.operatePermission(
@@ -654,9 +651,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TAuthorizerResp queryPermission(final TAuthorizerReq req) {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
-    }
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
             configManager.queryPermission(
