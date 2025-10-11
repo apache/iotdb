@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.audit;
 
+import com.google.common.collect.HashMultiset;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,12 +37,12 @@ public class AuditLogSet {
   private static final Logger LOGGER = LoggerFactory.getLogger(AuditLogSet.class);
 
   private final int logCnt;
-  private final Set<List<String>> auditLogSet;
+  private final HashMultiset<List<String>> auditLogSet;
 
   @SafeVarargs
   public AuditLogSet(List<String>... auditLogs) {
     logCnt = auditLogs.length;
-    auditLogSet = Stream.of(auditLogs).collect(Collectors.toSet());
+    auditLogSet = Stream.of(auditLogs).collect(Collectors.toCollection(HashMultiset::create));
   }
 
   public void containAuditLog(ResultSet resultSet, Set<Integer> indexForContain, int columnCnt)

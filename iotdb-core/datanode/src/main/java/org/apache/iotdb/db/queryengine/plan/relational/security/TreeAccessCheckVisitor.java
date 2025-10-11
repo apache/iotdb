@@ -593,7 +593,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
               context::getUsername);
           return AuthorityChecker.getTSStatus(false, PrivilegeType.MANAGE_ROLE);
         }
-        recordObjectAuthenticationAuditLog(context.setResult(true), context::getUsername);
+        recordObjectAuthenticationAuditLog(
+            context.setPrivilegeType(null).setResult(true), context::getUsername);
         statement.setUserName(context.getUsername());
         return RpcUtils.SUCCESS_STATUS;
 
@@ -1151,8 +1152,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             checkedPaths,
             permission);
     if (!AuthorityChecker.INTERNAL_AUDIT_USER.equals(context.getUsername())) {
-      // Skip internal auditor
-      recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+      // Internal auditor no needs audit log
+      recordObjectAuthenticationAuditLog(
+          context.setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          checkedPaths::toString);
     }
     return result;
   }
