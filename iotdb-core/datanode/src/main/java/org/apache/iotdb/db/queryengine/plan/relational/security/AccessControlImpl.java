@@ -336,18 +336,21 @@ public class AccessControlImpl implements AccessControl {
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
         return;
       case LIST_ROLE:
-        auditEntity
-            .setAuditLogOperation(AuditLogOperation.QUERY)
-            .setPrivilegeType(PrivilegeType.SECURITY);
+        auditEntity.setAuditLogOperation(AuditLogOperation.QUERY);
         if (statement.getUserName() != null && !statement.getUserName().equals(userName)) {
+          // Require SECURITY privilege to list other users' roles
           authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
           return;
         }
         if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_ROLE)) {
+          // No need to check privilege to list his/hers own role
           statement.setUserName(userName);
-        } else {
           ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
+        } else {
+          // Require SECURITY privilege to list all roles
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+              statement::getRoleName);
         }
         return;
       case LIST_ROLE_PRIV:
