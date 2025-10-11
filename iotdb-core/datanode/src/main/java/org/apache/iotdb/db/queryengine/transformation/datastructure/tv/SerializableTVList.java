@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
@@ -103,10 +102,7 @@ public class SerializableTVList implements SerializableList {
     }
     rowLength += ReadWriteIOUtils.BIT_LEN;
 
-    int capacity =
-        TSFileConfig.ARRAY_CAPACITY_THRESHOLD
-            * (int)
-                (memoryLimitInMB * MB / 2 / (rowLength * TSFileConfig.ARRAY_CAPACITY_THRESHOLD));
+    int capacity = (int) (memoryLimitInMB * MB / 2 / (rowLength));
     if (capacity <= 0) {
       throw new RuntimeException("Memory is not enough for current query.");
     }
