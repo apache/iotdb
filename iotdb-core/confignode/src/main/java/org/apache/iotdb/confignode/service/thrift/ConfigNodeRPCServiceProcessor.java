@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -635,22 +636,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
-    ConfigPhysicalPlanType configPhysicalPlanType;
-    if (req.getAuthorType() == AuthorType.RENAME_USER.ordinal()) {
-      configPhysicalPlanType = ConfigPhysicalPlanType.RenameUser;
-    } else {
-      configPhysicalPlanType =
-          ConfigPhysicalPlanType.values()[
-              req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()];
-      switch (configPhysicalPlanType) {
-        case UpdateUser:
-          configPhysicalPlanType = ConfigPhysicalPlanType.UpdateUserV2;
-          break;
-        case DropUser:
-          configPhysicalPlanType = ConfigPhysicalPlanType.DropUserV2;
-          break;
-      }
-    }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType());
     return configManager.operatePermission(
         new AuthorTreePlan(
             configPhysicalPlanType,
@@ -674,8 +661,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorTreePlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getPassword(),
@@ -698,22 +684,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
-    ConfigPhysicalPlanType configPhysicalPlanType;
-    if (req.getAuthorType() == AuthorRType.RENAME_USER.ordinal()) {
-      configPhysicalPlanType = ConfigPhysicalPlanType.RRenameUser;
-    } else {
-      configPhysicalPlanType =
-          ConfigPhysicalPlanType.values()[
-              req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()];
-      switch (configPhysicalPlanType) {
-        case RUpdateUser:
-          configPhysicalPlanType = ConfigPhysicalPlanType.RUpdateUserV2;
-          break;
-        case RDropUser:
-          configPhysicalPlanType = ConfigPhysicalPlanType.RDropUserV2;
-          break;
-      }
-    }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType());
     return configManager.operatePermission(
         new AuthorRelationalPlan(
             configPhysicalPlanType,
@@ -737,8 +709,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorRelationalPlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getDatabase(),
