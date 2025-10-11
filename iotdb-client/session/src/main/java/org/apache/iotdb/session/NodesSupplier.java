@@ -40,16 +40,11 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(NodesSupplier.class);
 
   private static final long UPDATE_PERIOD_IN_S = 60;
-  private static final String SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
   private static final String SHOW_AVAILABLE_URLS_COMMAND = "SHOW AVAILABLE URLS";
-
-  private static final String STATUS_COLUMN_NAME = "Status";
 
   private static final String IP_COLUMN_NAME = "RpcAddress";
 
   private static final String PORT_COLUMN_NAME = "RpcPort";
-
-  private static final String REMOVING_STATUS = "Removing";
 
   // it's ok that TIMEOUT_IN_MS is larger than UPDATE_PERIOD_IN_S, because the next update request
   // won't be scheduled until last time is done.
