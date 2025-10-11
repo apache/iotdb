@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
@@ -43,10 +46,20 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   private CompactChunkPlan compactChunkPlan;
   private ChunkWriterFlushCallback afterChunkWriterFlushCallback;
 
+  @TestOnly
   public FollowingBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema,
       List<IMeasurementSchema> valueSchemaList,
       CompactChunkPlan compactChunkPlan) {
+    this(timeSchema, valueSchemaList, compactChunkPlan, EncryptUtils.getEncryptParameter());
+  }
+
+  public FollowingBatchCompactionAlignedChunkWriter(
+      IMeasurementSchema timeSchema,
+      List<IMeasurementSchema> valueSchemaList,
+      CompactChunkPlan compactChunkPlan,
+      EncryptParameter encryptParameter) {
+    this.encryptParam = encryptParameter;
     timeChunkWriter = new FollowingBatchCompactionTimeChunkWriter();
 
     valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
@@ -57,7 +70,8 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
               valueSchemaList.get(i).getCompressor(),
               valueSchemaList.get(i).getType(),
               valueSchemaList.get(i).getEncodingType(),
-              valueSchemaList.get(i).getValueEncoder()));
+              valueSchemaList.get(i).getValueEncoder(),
+              encryptParameter));
     }
     this.valueIndex = 0;
     this.compactChunkPlan = compactChunkPlan;

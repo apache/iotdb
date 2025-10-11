@@ -73,6 +73,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushL
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -224,7 +225,11 @@ public class TsFileProcessor {
     this.sequence = sequence;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.dataRegionInfo = dataRegionInfo;
-    this.writer = new RestorableTsFileIOWriter(tsfile);
+    this.writer =
+        new RestorableTsFileIOWriter(
+            tsfile,
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(
+                dataRegionInfo.getDataRegion().getDatabaseName()));
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.walNode =
         WALManager.getInstance()
