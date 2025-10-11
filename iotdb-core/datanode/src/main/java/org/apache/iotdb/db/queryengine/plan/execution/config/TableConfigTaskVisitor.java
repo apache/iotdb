@@ -1406,7 +1406,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       throw new SemanticException("User " + node.getUserName() + " not found");
     }
     node.setOldPassword(user.getPassword());
-    DataNodeAuthUtils.verifyPasswordReuse(node.getUserName(), node.getPassword());
+    DataNodeAuthUtils.verifyPasswordReuse(node.getAssociatedUserId(), node.getPassword());
   }
 
   @Override

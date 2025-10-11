@@ -3246,7 +3246,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     IClientSession session = SESSION_MANAGER.getCurrSession();
     if (session != null) {
       TSCloseSessionReq req = new TSCloseSessionReq();
-      if (!session.getUsername().contains("null")) {
+      if (session.getUsername() != null && !session.getUsername().contains("null")) {
         AUDIT_LOGGER.log(
             new AuditLogFields(
                 session.getUserId(),

@@ -308,7 +308,10 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteTimeSeries(
-      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
+      String queryId,
+      PathPatternTree patternTree,
+      boolean isGeneratedByPipe,
+      boolean mayDeleteAudit) {
     DeleteTimeSeriesProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -336,7 +339,8 @@ public class ProcedureManager {
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target timeseries.");
         }
-        procedure = new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe);
+        procedure =
+            new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe, mayDeleteAudit);
         this.executor.submitProcedure(procedure);
       }
     }

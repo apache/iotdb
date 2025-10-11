@@ -133,7 +133,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           PageException {
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
       schema =
-          CompactionTableSchemaCollector.collectSchema(seqFiles, deviceIterator.getReaderMap());
+          CompactionTableSchemaCollector.collectSchema(
+              seqFiles,
+              deviceIterator.getReaderMap(),
+              deviceIterator.getDeprecatedTableSchemaMap());
       while (deviceIterator.hasNextDevice()) {
         currentWriter = getAvailableCompactionWriter();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();

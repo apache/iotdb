@@ -162,7 +162,8 @@ public class FastCompactionPerformer
                     targetFiles, seqFiles, readerCacheMap, encryptParameter)
                 : new FastInnerCompactionWriter(targetFiles, encryptParameter)) {
       List<Schema> schemas =
-          CompactionTableSchemaCollector.collectSchema(seqFiles, unseqFiles, readerCacheMap);
+          CompactionTableSchemaCollector.collectSchema(
+              seqFiles, unseqFiles, readerCacheMap, deviceIterator.getDeprecatedTableSchemaMap());
       compactionWriter.setSchemaForAllTargetFile(schemas);
       readModification(seqFiles);
       readModification(unseqFiles);
@@ -246,6 +247,10 @@ public class FastCompactionPerformer
         deviceIterator.getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice().entrySet()) {
       measurementSchemas.add(entry.getValue().left);
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
+    }
+    // current device may be ignored by some conditions
+    if (measurementSchemas.isEmpty()) {
+      return;
     }
 
     FastCompactionTaskSummary taskSummary = new FastCompactionTaskSummary();

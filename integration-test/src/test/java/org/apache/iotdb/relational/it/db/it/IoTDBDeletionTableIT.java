@@ -1625,8 +1625,8 @@ public class IoTDBDeletionTableIT {
               allDeviceUndeletedRanges.set(i, mergeRanges(deviceUndeletedRanges));
               List<TimeRange> remainingRanges =
                   collectDataRanges(statement, currentWrittenTime, testNum);
-              LOGGER.debug("Expected ranges: {}", deviceUndeletedRanges);
-              LOGGER.debug("Remaining ranges: {}", remainingRanges);
+              LOGGER.info("Expected ranges: {}", deviceUndeletedRanges);
+              LOGGER.info("Remaining ranges: {}", remainingRanges);
               fail(
                   String.format(
                       "Inconsistent number of points %d - %d", expectedCnt, set.getLong(1)));

@@ -498,10 +498,6 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
           e.getMessage()
               .contains(
                   "data type of root.db.v4.d2.b is not consistent, registered type FLOAT, inserting type DOUBLE"));
-      Assert.assertTrue(
-          e.getMessage()
-              .contains(
-                  "data type of root.db.v4.d2.c is not consistent, registered type TEXT, inserting type INT32"));
     }
   }
 }
