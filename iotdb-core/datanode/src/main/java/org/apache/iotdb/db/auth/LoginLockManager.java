@@ -112,9 +112,7 @@ public class LoginLockManager {
 
     void removeOldFailures(long cutoffTime) {
       // Remove timestamps older than cutoffTime
-      while (!failureTimestamps.isEmpty() && failureTimestamps.peekFirst() < cutoffTime) {
-        failureTimestamps.pollFirst();
-      }
+      failureTimestamps.removeIf(timestamp -> timestamp < cutoffTime);
     }
 
     int getFailureCount() {
