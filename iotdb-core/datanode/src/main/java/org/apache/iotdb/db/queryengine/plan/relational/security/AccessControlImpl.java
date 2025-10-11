@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -31,20 +33,23 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
+import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl.checkCanSelectAuditTable;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor.checkTimeSeriesPermission;
 
@@ -52,12 +57,11 @@ public class AccessControlImpl implements AccessControl {
 
   public static final String READ_ONLY_DB_ERROR_MSG = "The database '%s' is read-only.";
 
-  private final ITableAuthChecker authChecker;
+  protected final ITableAuthChecker authChecker;
 
-  private final StatementVisitor<TSStatus, TreeAccessCheckContext> treeAccessCheckVisitor;
+  protected final TreeAccessCheckVisitor treeAccessCheckVisitor;
 
-  public AccessControlImpl(
-      ITableAuthChecker authChecker, StatementVisitor<TSStatus, TreeAccessCheckContext> visitor) {
+  public AccessControlImpl(ITableAuthChecker authChecker, TreeAccessCheckVisitor visitor) {
     this.authChecker = authChecker;
     this.treeAccessCheckVisitor = visitor;
   }
@@ -70,121 +74,162 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkCanCreateDatabase(String userName, String databaseName) {
+  public void checkCanCreateDatabase(
+      String userName, String databaseName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
-    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.CREATE);
+    authChecker.checkDatabasePrivilege(
+        userName, databaseName, TableModelPrivilege.CREATE, auditEntity.setDatabase(databaseName));
   }
 
   @Override
-  public void checkCanDropDatabase(String userName, String databaseName) {
+  public void checkCanDropDatabase(String userName, String databaseName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
-    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.DROP);
+    authChecker.checkDatabasePrivilege(
+        userName, databaseName, TableModelPrivilege.DROP, auditEntity.setDatabase(databaseName));
   }
 
   @Override
-  public void checkCanAlterDatabase(String userName, String databaseName) {
+  public void checkCanAlterDatabase(
+      String userName, String databaseName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
-    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.ALTER);
+    authChecker.checkDatabasePrivilege(
+        userName, databaseName, TableModelPrivilege.ALTER, auditEntity.setDatabase(databaseName));
   }
 
   @Override
-  public void checkCanShowOrUseDatabase(String userName, String databaseName) {
-    authChecker.checkDatabaseVisibility(userName, databaseName);
+  public void checkCanShowOrUseDatabase(
+      String userName, String databaseName, IAuditEntity auditEntity) {
+    authChecker.checkDatabaseVisibility(
+        userName, databaseName, auditEntity.setDatabase(databaseName));
   }
 
   @Override
-  public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
+  public void checkCanCreateTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    auditEntity
+        .setAuditLogOperation(AuditLogOperation.DDL)
+        .setDatabase(tableName.getDatabaseName());
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
-    checkAuditDatabase(tableName.getDatabaseName());
-    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+    if (userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)
+        && tableName.getDatabaseName().equals(TABLE_MODEL_AUDIT_DATABASE)) {
+      // The internal audit user can create new tables in the audit database
       return;
     }
-    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE);
-  }
-
-  @Override
-  public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
-    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+    if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
+      ITableAuthCheckerImpl.recordAuditLog(
+          auditEntity.setPrivilegeType(PrivilegeType.CREATE).setResult(true),
+          tableName::getObjectName);
       return;
     }
-    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP);
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE, auditEntity);
   }
 
   @Override
-  public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
+  public void checkCanDropTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    auditEntity
+        .setAuditLogOperation(AuditLogOperation.DDL)
+        .setDatabase(tableName.getDatabaseName());
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    if (hasGlobalPrivilege(userName, PrivilegeType.SYSTEM)) {
+    if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
+      ITableAuthCheckerImpl.recordAuditLog(
+          auditEntity.setPrivilegeType(PrivilegeType.DROP).setResult(true),
+          tableName::getObjectName);
       return;
     }
-    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER);
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP, auditEntity);
   }
 
   @Override
-  public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
+  public void checkCanAlterTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT);
+    if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
+      ITableAuthCheckerImpl.recordAuditLog(auditEntity, tableName::getObjectName);
+      return;
+    }
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER, auditEntity);
   }
 
   @Override
-  public void checkCanSelectFromTable(String userName, QualifiedObjectName tableName) {
+  public void checkCanInsertIntoTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    if (userName.equals(AuthorityChecker.INTERNAL_AUDIT_USER)
+        && tableName.getDatabaseName().equals(TABLE_MODEL_AUDIT_DATABASE)) {
+      // Only the internal audit user can insert into the audit table
+      return;
+    }
+    checkAuditDatabase(tableName.getDatabaseName());
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT, auditEntity);
+  }
+
+  @Override
+  public void checkCanSelectFromTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    auditEntity.setDatabase(tableName.getDatabaseName());
     if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
     }
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(tableName.getDatabaseName())) {
-      checkCanSelectAuditTable(userName);
+      checkCanSelectAuditTable(auditEntity);
     } else {
-      authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
+      authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT, auditEntity);
     }
   }
 
   @Override
-  public void checkCanSelectFromDatabase4Pipe(final String userName, final String databaseName) {
+  public void checkCanSelectFromDatabase4Pipe(
+      final String userName, final String databaseName, IAuditEntity auditEntity) {
     if (Objects.isNull(userName)) {
       throw new AccessDeniedException("User not exists");
     }
-    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.SELECT);
+    authChecker.checkDatabasePrivilege(
+        userName, databaseName, TableModelPrivilege.SELECT, auditEntity);
   }
 
   @Override
   public boolean checkCanSelectFromTable4Pipe(
-      final String userName, final QualifiedObjectName tableName) {
-    return Objects.nonNull(userName) && authChecker.checkTablePrivilege4Pipe(userName, tableName);
+      final String userName, final QualifiedObjectName tableName, IAuditEntity auditEntity) {
+    return Objects.nonNull(userName)
+        && authChecker.checkTablePrivilege4Pipe(userName, tableName, auditEntity);
   }
 
   @Override
-  public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
+  public void checkCanDeleteFromTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
-    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE, auditEntity);
   }
 
   @Override
-  public void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName) {
+  public void checkCanShowOrDescTable(
+      String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     // Information_schema is visible to any user
     if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
     }
-    authChecker.checkTableVisibility(userName, tableName);
+    authChecker.checkTableVisibility(userName, tableName, auditEntity);
   }
 
   @Override
-  public void checkCanCreateViewFromTreePath(final String userName, final PartialPath path) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+  public void checkCanCreateViewFromTreePath(final PartialPath path, IAuditEntity auditEntity) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       return;
     }
 
     if (includeByAuditTreeDB(path)) {
-      checkCanSelectAuditTable(userName);
+      checkCanSelectAuditTable(auditEntity);
     }
 
     TSStatus status =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathOrPatternPermission(
-                userName, path, PrivilegeType.READ_SCHEMA),
+                auditEntity.getUsername(), path, PrivilegeType.READ_SCHEMA),
             PrivilegeType.READ_SCHEMA);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(status.getMessage());
@@ -193,7 +238,7 @@ public class AccessControlImpl implements AccessControl {
     status =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathOrPatternPermission(
-                userName, path, PrivilegeType.READ_DATA),
+                auditEntity.getUsername(), path, PrivilegeType.READ_DATA),
             PrivilegeType.READ_DATA);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AccessDeniedException(status.getMessage());
@@ -202,105 +247,150 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkUserCanRunRelationalAuthorStatement(
-      String userName, RelationalAuthorStatement statement) {
+      String userName, RelationalAuthorStatement statement, IAuditEntity auditEntity) {
     AuthorRType type = statement.getAuthorType();
     switch (type) {
       case CREATE_USER:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return;
-        }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
-        return;
       case DROP_USER:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY);
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
           return;
         }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
+        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
         return;
+      case RENAME_USER:
       case UPDATE_USER:
-      case LIST_USER_PRIV:
-        if (AuthorityChecker.SUPER_USER.equals(userName)
-            || statement.getUserName().equals(userName)) {
+        auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
+        if (statement.getUserName().equals(userName)) {
+          // users can change the username and password of themselves
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
           return;
         }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER);
+        if (AuthorityChecker.SUPER_USER_ID
+            == AuthorityChecker.getUserId(statement.getUserName()).orElse(-1L)) {
+          // Only the superuser can alter him/herself
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setResult(false), statement::getUserName);
+          throw new AccessDeniedException("Only the superuser can alter him/herself.");
+        }
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          // the superuser can alter anyone
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          return;
+        }
+        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
+        return;
+      case LIST_USER_PRIV:
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.QUERY)
+            .setPrivilegeType(PrivilegeType.SECURITY);
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
+            || statement.getUserName().equals(userName)) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          return;
+        }
+        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
         return;
       case LIST_USER:
-        if (!hasGlobalPrivilege(userName, PrivilegeType.MANAGE_USER)) {
+        auditEntity.setAuditLogOperation(AuditLogOperation.QUERY);
+        if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_USER)) {
           statement.setUserName(userName);
+        } else {
+          auditEntity.setPrivilegeType(PrivilegeType.SECURITY);
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
         }
         return;
       case CREATE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return;
-        }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
-        return;
-
       case DROP_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY);
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
           return;
         }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
+        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
         return;
-
       case GRANT_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return;
-        }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
-        return;
-
       case REVOKE_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY);
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setResult(true),
+              () -> "user: " + statement.getUserName() + ", role: " + statement.getRoleName());
           return;
         }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
+        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
         return;
       case LIST_ROLE:
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.QUERY)
+            .setPrivilegeType(PrivilegeType.SECURITY);
         if (statement.getUserName() != null && !statement.getUserName().equals(userName)) {
-          authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
+          authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
           return;
         }
-        if (!hasGlobalPrivilege(userName, PrivilegeType.MANAGE_ROLE)) {
+        if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_ROLE)) {
           statement.setUserName(userName);
+        } else {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
         }
         return;
       case LIST_ROLE_PRIV:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.QUERY)
+            .setPrivilegeType(PrivilegeType.SECURITY);
+        if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()
+            || AuthorityChecker.checkRole(userName, statement.getRoleName())) {
+          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
           return;
         }
-        if (AuthorityChecker.checkRole(userName, statement.getRoleName())) {
-          return;
-        }
-        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
+        authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
         return;
       case GRANT_ROLE_ANY:
       case GRANT_USER_ANY:
       case REVOKE_ROLE_ANY:
       case REVOKE_USER_ANY:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY)
+            .setDatabase(statement.getDatabase());
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           authChecker.checkAnyScopePrivilegeGrantOption(
-              userName, TableModelPrivilege.getTableModelType(privilegeType));
+              userName, TableModelPrivilege.getTableModelType(privilegeType), auditEntity);
         }
         return;
       case GRANT_ROLE_ALL:
       case REVOKE_ROLE_ALL:
       case GRANT_USER_ALL:
       case REVOKE_USER_ALL:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY)
+            .setDatabase(statement.getDatabase());
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (TableModelPrivilege privilege : TableModelPrivilege.values()) {
           PrivilegeType privilegeType = privilege.getPrivilegeType();
           if (privilegeType.isRelationalPrivilege()) {
-            authChecker.checkAnyScopePrivilegeGrantOption(userName, privilege);
+            authChecker.checkAnyScopePrivilegeGrantOption(userName, privilege, auditEntity);
           }
           if (privilegeType.forRelationalSys()) {
-            authChecker.checkGlobalPrivilegeGrantOption(userName, privilege);
+            authChecker.checkGlobalPrivilegeGrantOption(userName, privilege, auditEntity);
           }
         }
         return;
@@ -308,28 +398,42 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_DB:
       case REVOKE_USER_DB:
       case REVOKE_ROLE_DB:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY)
+            .setDatabase(statement.getDatabase());
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           authChecker.checkDatabasePrivilegeGrantOption(
               userName,
               statement.getDatabase(),
-              TableModelPrivilege.getTableModelType(privilegeType));
+              TableModelPrivilege.getTableModelType(privilegeType),
+              auditEntity);
         }
         return;
       case GRANT_USER_TB:
       case GRANT_ROLE_TB:
       case REVOKE_USER_TB:
       case REVOKE_ROLE_TB:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY)
+            .setDatabase(statement.getDatabase());
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           authChecker.checkTablePrivilegeGrantOption(
               userName,
               new QualifiedObjectName(statement.getDatabase(), statement.getTableName()),
-              TableModelPrivilege.getTableModelType(privilegeType));
+              TableModelPrivilege.getTableModelType(privilegeType),
+              auditEntity);
         }
         return;
 
@@ -337,12 +441,18 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_ROLE_SYS:
-        if (hasGlobalPrivilege(userName, PrivilegeType.SECURITY)) {
+      case ACCOUNT_UNLOCK:
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.DDL)
+            .setPrivilegeType(PrivilegeType.SECURITY);
+        if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
+          ITableAuthCheckerImpl.recordAuditLog(
+              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           authChecker.checkGlobalPrivilegeGrantOption(
-              userName, TableModelPrivilege.getTableModelType(privilegeType));
+              userName, TableModelPrivilege.getTableModelType(privilegeType), auditEntity);
         }
         break;
       default:
@@ -351,53 +461,94 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkUserIsAdmin(String userName) {
-    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+  public void checkUserIsAdmin(IAuditEntity entity) {
+    if (AuthorityChecker.SUPER_USER_ID != entity.getUserId()) {
       throw new AccessDeniedException(ONLY_ADMIN_ALLOWED);
     }
   }
 
   @Override
-  public void checkUserGlobalSysPrivilege(String userName) {
-    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-      authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.SYSTEM);
+  public void checkUserGlobalSysPrivilege(IAuditEntity auditEntity) {
+    if (AuthorityChecker.SUPER_USER_ID != auditEntity.getUserId()) {
+      authChecker.checkGlobalPrivilege(
+          auditEntity.getUsername(), TableModelPrivilege.SYSTEM, auditEntity);
     }
   }
 
   @Override
-  public boolean hasGlobalPrivilege(String userName, PrivilegeType privilegeType) {
-    return AuthorityChecker.SUPER_USER.equals(userName)
-        || AuthorityChecker.checkSystemPermission(userName, privilegeType);
+  public boolean hasGlobalPrivilege(IAuditEntity entity, PrivilegeType privilegeType) {
+    return AuthorityChecker.SUPER_USER_ID == entity.getUserId()
+        || AuthorityChecker.checkSystemPermission(entity.getUsername(), privilegeType);
   }
 
   @Override
-  public void checkMissingPrivileges(String username, Collection<PrivilegeType> privilegeTypes) {
-    if (AuthorityChecker.SUPER_USER.equals(username)) {
+  public void checkMissingPrivileges(
+      String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       return;
     }
-    authChecker.checkGlobalPrivileges(username, privilegeTypes);
+    authChecker.checkGlobalPrivileges(username, privilegeTypes, auditEntity);
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(Statement statement, String userName) {
-    return treeAccessCheckVisitor.process(statement, new TreeAccessCheckContext(userName));
+  public TSStatus checkPermissionBeforeProcess(
+      Statement statement, TreeAccessCheckContext context) {
+    return treeAccessCheckVisitor.process(statement, context);
   }
 
   @Override
   public TSStatus checkFullPathWriteDataPermission(
-      String userName, IDeviceID device, String measurementId) {
+      IAuditEntity auditEntity, IDeviceID device, String measurementId) {
     try {
       PartialPath path = new MeasurementPath(device, measurementId);
       // audit db is read-only
-      if (includeByAuditTreeDB(path)) {
+      if (includeByAuditTreeDB(path)
+          && !auditEntity.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
         return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
       return checkTimeSeriesPermission(
-          userName, Collections.singletonList(path), PrivilegeType.WRITE_DATA);
+          auditEntity, () -> Collections.singletonList(path), PrivilegeType.WRITE_DATA);
     } catch (IllegalPathException e) {
       // should never be here
       throw new IllegalStateException(e);
     }
+  }
+
+  @Override
+  public TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName) {
+    return treeAccessCheckVisitor.checkCreateOrAlterDatabasePermission(entity, databaseName);
+  }
+
+  @Override
+  public TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject) {
+    return treeAccessCheckVisitor.checkCanAlterTemplate(entity, auditObject);
+  }
+
+  @Override
+  public TSStatus checkCanAlterView(
+      IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
+    if (AuthorityChecker.SUPER_USER_ID == entity.getUserId()) {
+      ITableAuthCheckerImpl.recordAuditLog(
+          entity
+              .setPrivilegeTypes(
+                  Arrays.asList(PrivilegeType.READ_SCHEMA, PrivilegeType.WRITE_SCHEMA))
+              .setResult(true),
+          () -> "source: " + sourcePaths + ", target: " + targetPaths);
+      return SUCCEED;
+    }
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (sourcePaths != null) {
+      status = checkTimeSeriesPermission(entity, () -> sourcePaths, PrivilegeType.READ_SCHEMA);
+    }
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return checkTimeSeriesPermission(entity, () -> targetPaths, PrivilegeType.WRITE_SCHEMA);
+    }
+    return status;
+  }
+
+  @Override
+  public TSStatus allowUserToLogin(String userName) {
+    return SUCCEED;
   }
 }

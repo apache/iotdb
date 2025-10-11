@@ -101,6 +101,7 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
       SESSION_MANAGER.registerSession(restClientSession);
       SESSION_MANAGER.supplySession(
           SESSION_MANAGER.getCurrSession(),
+          user.getUserId(),
           user.getUsername(),
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0);
@@ -135,6 +136,7 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
     User user = new User();
     user.setUsername(split[0]);
     user.setPassword(split[1]);
+    user.setUserId(AuthorityChecker.getUserId(split[0]).orElse(-1L));
     TSStatus tsStatus = AuthorityChecker.checkUser(split[0], split[1]);
     if (tsStatus.code != 200) {
       Response resp =

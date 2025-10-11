@@ -65,10 +65,13 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
   public Optional<TSStatus> visitLoadTsFile(
       final LoadTsFile loadTsFileStatement, final String databaseName) {
     if (Objects.isNull(databaseName)) {
-      LOGGER.warn(
-          "Database name is unexpectedly null for LoadTsFileStatement: {}. Skip data type conversion.",
-          loadTsFileStatement);
-      return Optional.empty();
+      final String errorMsg =
+          String.format(
+              "Database name is unexpectedly null for LoadTsFileStatement: %s. Skip data type conversion.",
+              loadTsFileStatement);
+      LOGGER.warn(errorMsg);
+      return Optional.of(
+          new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode()).setMessage(errorMsg));
     }
 
     LOGGER.info("Start data type conversion for LoadTsFileStatement: {}.", loadTsFileStatement);
@@ -100,15 +103,17 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
                       .constructStatement(),
                   loadTsFileStatement.isConvertOnTypeMismatch());
 
-          if (!handleTSStatus(
-              executeInsertTabletWithRetry(statement, databaseName), loadTsFileStatement)) {
-            return Optional.empty();
+          final TSStatus status = executeInsertTabletWithRetry(statement, databaseName);
+          if (!handleTSStatus(status, loadTsFileStatement)) {
+            return Optional.of(status);
           }
         }
       } catch (final Exception e) {
         LOGGER.warn(
             "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-        return Optional.empty();
+        return Optional.of(
+            LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
+                loadTsFileStatement, e));
       }
     }
 
@@ -156,7 +161,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      result = statement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
+      result = statement.accept(LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
     }
     return result;
   }

@@ -149,13 +149,13 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
@@ -459,6 +459,7 @@ public class ConfigPlanExecutor {
       case CreateUser:
       case CreateRole:
       case DropUser:
+      case DropUserV2:
       case DropRole:
       case GrantRole:
       case GrantUser:
@@ -467,6 +468,9 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case UpdateUserV2:
+      case UpdateUserMaxSession:
+      case UpdateUserMinSession:
       case CreateUserWithRawPassword:
       case CreateUserDep:
       case CreateRoleDep:
@@ -479,11 +483,16 @@ public class ConfigPlanExecutor {
       case RevokeRoleDep:
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
+      case RenameUser:
       case RCreateRole:
       case RCreateUser:
       case RDropUser:
+      case RDropUserV2:
       case RDropRole:
       case RUpdateUser:
+      case RUpdateUserV2:
+      case RUpdateUserMaxSession:
+      case RUpdateUserMinSession:
       case RGrantUserRole:
       case RGrantRoleAny:
       case RGrantUserAny:
@@ -506,6 +515,7 @@ public class ConfigPlanExecutor {
       case RRevokeRoleSysPri:
       case RRevokeRoleTBPriv:
       case RRevokeUserRole:
+      case RRenameUser:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);

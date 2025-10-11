@@ -68,6 +68,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -86,6 +87,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
@@ -124,6 +126,8 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLHandshakeException;
 
 import java.io.File;
 import java.io.IOException;
@@ -270,12 +274,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
-      // Start the Audit Service
+      // Start the Audit Service when necessary
       if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
+        DNAuditLogger.getInstance().setCoordinator(Coordinator.getInstance());
         AuditLogFields fields =
             new AuditLogFields(
-                null,
                 -1,
+                null,
                 null,
                 AuditEventType.CHANGE_AUDIT_OPTION,
                 AuditLogOperation.CONTROL,
@@ -290,7 +295,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
                 thisNode);
-        DNAuditLogger.getInstance().log(fields, logMessage);
+        DNAuditLogger.getInstance().log(fields, () -> logMessage);
       }
 
       if (isUsingPipeConsensus()) {
@@ -371,6 +376,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         break;
       } catch (TException | ClientManagerException e) {
         logger.warn("Cannot pull system configurations from ConfigNode-leader", e);
+        if (e.getCause() != null && e.getCause().getCause() != null) {
+          Throwable cause = e.getCause().getCause();
+          if (cause instanceof SSLHandshakeException) {
+            throw new StartupException("Cannot SSL Handshake with ConfigNode-leader.");
+          } else if (cause.getMessage() != null && cause.getMessage().contains("IOException")) {
+            throw new StartupException("Cannot connect to ConfigNode-leader.");
+          }
+        }
         retry--;
       }
 
@@ -449,7 +462,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    *
    * <p>6. All TTL information
    */
-  private void storeRuntimeConfigurations(
+  protected void storeRuntimeConfigurations(
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
       throws StartupException {
     /* Store ConfigNodeList */
@@ -479,8 +492,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     String clusterId = runtimeConfiguration.getClusterId();
     storeClusterID(clusterId);
 
-    /* Store table info*/
+    /* Store table info */
     DataNodeTableCache.getInstance().init(runtimeConfiguration.getTableInfo());
+
+    /* Store audit log configuration */
+    CommonDescriptor.getInstance().loadAuditConfig(runtimeConfiguration.auditConfig);
+
+    /* Store superuser name */
+    AuthorityChecker.setSuperUser(runtimeConfiguration.getSuperUserName());
   }
 
   /**

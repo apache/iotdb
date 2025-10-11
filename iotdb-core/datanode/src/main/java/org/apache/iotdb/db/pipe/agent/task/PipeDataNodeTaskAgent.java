@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
@@ -373,8 +374,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return true;
   }
 
-  public void stopAllPipesWithCriticalException() {
-    super.stopAllPipesWithCriticalException(CONFIG.getDataNodeId());
+  public void stopAllPipesWithCriticalExceptionAndTrackException(
+      final PipeTaskMeta pipeTaskMeta, final PipeRuntimeException pipeRuntimeException) {
+    super.stopAllPipesWithCriticalException(
+        CONFIG.getDataNodeId(), pipeTaskMeta, pipeRuntimeException);
   }
 
   ///////////////////////// Heartbeat /////////////////////////

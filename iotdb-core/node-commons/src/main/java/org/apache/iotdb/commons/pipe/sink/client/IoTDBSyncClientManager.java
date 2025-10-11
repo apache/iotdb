@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -73,7 +74,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       boolean useLeaderCache,
       String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      String username,
+      UserEntity userEntity,
       String password,
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy,
@@ -82,7 +83,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     super(
         endPoints,
         useLeaderCache,
-        username,
+        userEntity,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
@@ -231,7 +232,12 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
           Boolean.toString(shouldReceiverConvertOnTypeMismatch));
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
-      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID,
+          String.valueOf(userEntity.getUserId()));
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, userEntity.getUsername());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, userEntity.getCliHostname());
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,

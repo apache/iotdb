@@ -53,6 +53,12 @@ public class RelationalAuthorStatement extends Statement {
   private Set<PrivilegeType> privilegeType;
 
   private boolean grantOption;
+  private long executedByUserId;
+  private String newUsername = "";
+  private String loginAddr;
+
+  // the id of userName
+  private long associatedUserId = -1;
 
   public RelationalAuthorStatement(
       AuthorRType authorType,
@@ -149,12 +155,19 @@ public class RelationalAuthorStatement extends Statement {
     return privilegeIds;
   }
 
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
   public void setDatabase(String database) {
     this.database = database;
   }
 
   public void setUserName(String userName) {
     this.userName = userName;
+    if (authorType != AuthorRType.CREATE_USER) {
+      this.associatedUserId = AuthorityChecker.getUserId(userName).orElse(-1L);
+    }
   }
 
   public void setRoleName(String roleName) {
@@ -165,6 +178,26 @@ public class RelationalAuthorStatement extends Statement {
     this.password = password;
   }
 
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
+  }
+
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
+  public String getLoginAddr() {
+    return loginAddr;
+  }
+
+  public void setLoginAddr(String loginAddr) {
+    this.loginAddr = loginAddr;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -172,6 +205,7 @@ public class RelationalAuthorStatement extends Statement {
     RelationalAuthorStatement that = (RelationalAuthorStatement) o;
     return grantOption == that.grantOption
         && authorType == that.authorType
+        && Objects.equals(loginAddr, that.loginAddr)
         && Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(userName, that.userName)
@@ -225,6 +259,8 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_USER_ROLE:
+      case RENAME_USER:
+      case ACCOUNT_UNLOCK:
         return QueryType.WRITE;
       case LIST_ROLE:
       case LIST_USER:
@@ -271,11 +307,12 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   private TSStatus onCreateUserSuccess() {
+    associatedUserId = AuthorityChecker.getUserId(userName).orElse(-1L);
     // the old password is expected to be encrypted during updates, so we also encrypt it here to
     // keep consistency
     TSStatus tsStatus =
         DataNodeAuthUtils.recordPasswordHistory(
-            userName,
+            associatedUserId,
             password,
             AuthUtils.encryptPassword(password),
             CommonDateTimeUtils.currentTime());
@@ -290,7 +327,7 @@ public class RelationalAuthorStatement extends Statement {
   private TSStatus onUpdateUserSuccess() {
     TSStatus tsStatus =
         DataNodeAuthUtils.recordPasswordHistory(
-            userName, password, oldPassword, CommonDateTimeUtils.currentTime());
+            associatedUserId, password, oldPassword, CommonDateTimeUtils.currentTime());
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -300,7 +337,7 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   private TSStatus onDropUserSuccess() {
-    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(userName);
+    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(associatedUserId);
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -319,6 +356,8 @@ public class RelationalAuthorStatement extends Statement {
 
   public TSStatus checkStatementIsValid(String currentUser) {
     switch (authorType) {
+      case ACCOUNT_UNLOCK:
+        break;
       case CREATE_USER:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
@@ -402,5 +441,9 @@ public class RelationalAuthorStatement extends Statement {
         break;
     }
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public long getAssociatedUserId() {
+    return associatedUserId;
   }
 }

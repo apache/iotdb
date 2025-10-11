@@ -49,5 +49,8 @@ public enum AuthorRType {
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIV,
-  LIST_ROLE_PRIV
+  LIST_ROLE_PRIV,
+  // Remind to renew the convert codes in ConfigNodeRPCServiceProcessor
+  RENAME_USER,
+  ACCOUNT_UNLOCK
 }

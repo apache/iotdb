@@ -43,6 +43,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -1561,7 +1562,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     SESSION_MANAGER.registerSession(session);
 
     SESSION_MANAGER.supplySession(
-        session, req.getUsername(), ZoneId.of(req.getZoneId()), ClientVersion.V_1_0);
+        session,
+        // TODO: User the real userId
+        -1,
+        req.getUsername(),
+        ZoneId.of(req.getZoneId()),
+        ClientVersion.V_1_0);
 
     String executedSQL = req.queryBody;
 
@@ -2286,6 +2292,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus enableSeparationOfAdminPower() throws TException {
+    return null;
+  }
+
+  @Override
   public TSStatus merge() throws TException {
     try {
       storageEngine.mergeAll();
@@ -2966,7 +2977,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       InsertRowStatement statement = StatementGenerator.createStatement(req);
       SessionInfo sessionInfo =
-          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+          new SessionInfo(
+              0,
+              new UserEntity(
+                  AuthorityChecker.SUPER_USER_ID,
+                  AuthorityChecker.SUPER_USER,
+                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+              ZoneId.systemDefault());
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
@@ -2982,8 +2999,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus writeAuditLog(TAuditLogReq req) {
     AuditLogFields fields =
         new AuditLogFields(
-            req.getUsername(),
             req.getUserId(),
+            req.getUsername(),
             req.getCliHostname(),
             AuditEventType.valueOf(req.getAuditEventType()),
             AuditLogOperation.valueOf(req.getOperationType()),

@@ -217,7 +217,7 @@ class InferenceManager:
             status=get_status(TSStatusCode.SUCCESS_STATUS),
             deviceLoadedModelsMap=self._pool_controller.show_loaded_models(
                 req.deviceIdList
-                if req.deviceIdList is not None
+                if len(req.deviceIdList) > 0
                 else get_available_devices()
             ),
         )

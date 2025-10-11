@@ -256,7 +256,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                     try {
                       listPath.add(new PartialPath(item));
                     } catch (IllegalPathException e) {
-                      e.printStackTrace();
+                      LOGGER.error("illegal path {}", item);
                     }
                   });
         }

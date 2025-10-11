@@ -118,7 +118,10 @@ public class ReadPointCompactionPerformer
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
-              seqFiles, unseqFiles, deviceIterator.getReaderMap());
+              seqFiles,
+              unseqFiles,
+              deviceIterator.getReaderMap(),
+              deviceIterator.getDeprecatedTableSchemaMap());
       compactionWriter.setSchemaForAllTargetFile(schemas);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
@@ -271,6 +274,7 @@ public class ReadPointCompactionPerformer
     } else {
       seriesPath = new NonAlignedFullPath(deviceId, measurementSchemas.get(0));
     }
+
     return new SeriesDataBlockReader(
         seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true);
   }

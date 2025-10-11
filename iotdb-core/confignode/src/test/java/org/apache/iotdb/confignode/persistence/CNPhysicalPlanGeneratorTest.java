@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -76,7 +77,7 @@ public class CNPhysicalPlanGeneratorTest {
   private static final String TEMPLATE_INFO_FILE_NAME = "template_info.bin";
 
   private static void setupAuthorInfo() {
-    authorInfo = new AuthorInfo(null);
+    authorInfo = new AuthorInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdir();
     }
@@ -206,6 +207,29 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setNodeNameList(new ArrayList<>());
     answerSet.add(plan.hashCode());
 
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMaxSession);
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    plan.setMaxSessionPerUser(-1);
+    authorInfo.authorNonQuery(plan);
+    answerSet.add(plan.hashCode());
+
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMinSession);
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    plan.setMinSessionPerUser(-1);
+    authorInfo.authorNonQuery(plan);
+    answerSet.add(plan.hashCode());
+
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
+    plan.setPassword(AuthUtils.encryptPassword("password123456"));
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    answerSet.add(plan.hashCode());
+
     plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
     plan.setRoleName("role1");
     plan.setPermissions(new HashSet<>());
@@ -271,7 +295,7 @@ public class CNPhysicalPlanGeneratorTest {
       Assert.assertTrue(answerSet.contains(authPlan.hashCode()));
       count++;
     }
-    Assert.assertEquals(4, count);
+    Assert.assertEquals(6, count);
     final File roleListProfile =
         SystemFileFactory.INSTANCE.getFile(
             snapshotDir

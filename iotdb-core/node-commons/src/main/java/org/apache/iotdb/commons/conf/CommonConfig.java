@@ -209,6 +209,7 @@ public class CommonConfig {
   // Sequentially poll the tsFile by default
   private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 1;
   private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
+  private boolean skipFailedTableSchemaCheck = false;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -536,7 +537,7 @@ public class CommonConfig {
     this.authorizerProvider = authorizerProvider;
   }
 
-  public String getAdminName() {
+  public String getDefaultAdminName() {
     return adminName;
   }
 
@@ -1520,6 +1521,18 @@ public class CommonConfig {
     logger.info(
         "pipeRealTimeQueueMaxWaitingTsFileSize is set to {}.",
         pipeRealTimeQueueMaxWaitingTsFileSize);
+  }
+
+  public boolean isSkipFailedTableSchemaCheck() {
+    return skipFailedTableSchemaCheck;
+  }
+
+  public void setSkipFailedTableSchemaCheck(boolean skipFailedTableSchemaCheck) {
+    if (this.skipFailedTableSchemaCheck == skipFailedTableSchemaCheck) {
+      return;
+    }
+    this.skipFailedTableSchemaCheck = skipFailedTableSchemaCheck;
+    logger.info("skipFailedTableSchemaCheck is set to {}.", skipFailedTableSchemaCheck);
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {
@@ -2649,6 +2662,15 @@ public class CommonConfig {
     this.enableAuditLog = enableAuditLog;
   }
 
+  public String getAuditableOperationTypeInStr() {
+    StringBuilder result = new StringBuilder();
+    for (AuditLogOperation operation : auditableOperationType) {
+      result.append(operation.name()).append(",");
+    }
+    result.deleteCharAt(result.length() - 1);
+    return result.toString();
+  }
+
   public List<AuditLogOperation> getAuditableOperationType() {
     return auditableOperationType;
   }
@@ -2670,6 +2692,10 @@ public class CommonConfig {
       }
     }
     this.auditableOperationType = auditableOperationType;
+  }
+
+  public String getAuditableOperationLevelInStr() {
+    return auditableOperationLevel.name();
   }
 
   public PrivilegeLevel getAuditableOperationLevel() {

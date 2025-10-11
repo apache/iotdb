@@ -519,7 +519,7 @@ public class ConfigPhysicalPlanSerDeTest {
     // alter user
     req0 =
         new AuthorTreePlan(
-            ConfigPhysicalPlanType.UpdateUser,
+            ConfigPhysicalPlanType.UpdateUserV2,
             "tempuser",
             "",
             "",
@@ -620,7 +620,7 @@ public class ConfigPhysicalPlanSerDeTest {
     // drop user
     req0 =
         new AuthorTreePlan(
-            ConfigPhysicalPlanType.DropUser,
+            ConfigPhysicalPlanType.DropUserV2,
             "xiaoming",
             "",
             "",

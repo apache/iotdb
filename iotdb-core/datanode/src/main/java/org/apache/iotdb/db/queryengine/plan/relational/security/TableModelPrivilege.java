@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
 public enum TableModelPrivilege {
@@ -95,6 +96,28 @@ public enum TableModelPrivilege {
         return TableModelPrivilege.AUDIT;
       default:
         throw new IllegalStateException("Unexpected value:" + privilegeType);
+    }
+  }
+
+  public AuditLogOperation getAuditLogOperation() {
+    switch (this) {
+      case CREATE:
+      case DROP:
+      case ALTER:
+        return AuditLogOperation.DDL;
+      case SELECT:
+        return AuditLogOperation.QUERY;
+      case INSERT:
+      case DELETE:
+        return AuditLogOperation.DML;
+      case MANAGE_ROLE:
+      case MANAGE_USER:
+      case SYSTEM:
+      case SECURITY:
+      case AUDIT:
+        return AuditLogOperation.CONTROL;
+      default:
+        throw new IllegalStateException("Unexpected value:" + this);
     }
   }
 }

@@ -417,7 +417,8 @@ public class AuthUtils {
                 new HashSet<>()),
             "",
             new HashSet<>(),
-            false));
+            false,
+            -1));
     Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put(
         "",

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -279,7 +280,11 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       }
       statement.setAligned(false);
 
-      tsStatus = AuthorityChecker.checkAuthority(statement, session);
+      tsStatus =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  session.getUserId(), session.getUsername(), session.getClientAddress()));
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOG.warn(tsStatus.message);
       } else {

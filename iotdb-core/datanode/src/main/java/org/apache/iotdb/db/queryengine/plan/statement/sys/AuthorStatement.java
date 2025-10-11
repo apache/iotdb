@@ -47,6 +47,12 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
+  private long executedByUserId;
+  private String newUsername = "";
+  private String loginAddr;
+
+  // the id of userName
+  private long associatedUsedId = -1;
 
   /**
    * Constructor with AuthorType.
@@ -102,6 +108,12 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case LIST_ROLE:
         this.setType(StatementType.LIST_ROLE);
         break;
+      case RENAME_USER:
+        this.setType(StatementType.RENAME_USER);
+        break;
+      case ACCOUNT_UNLOCK:
+        this.setType(StatementType.ACCOUNT_UNLOCK);
+        break;
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
@@ -128,6 +140,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setUserName(String userName) {
     this.userName = userName;
+    if (authorType != AuthorType.CREATE_USER) {
+      this.associatedUsedId = AuthorityChecker.getUserId(userName).orElse(-1L);
+    }
   }
 
   public String getRoleName() {
@@ -144,6 +159,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setPassWord(String password) {
     this.password = password;
+  }
+
+  public String getLoginAddr() {
+    return loginAddr;
+  }
+
+  public void setLoginAddr(String loginAddr) {
+    this.loginAddr = loginAddr;
   }
 
   public String getNewPassword() {
@@ -178,6 +201,22 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.grantOpt = grantOpt;
   }
 
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
+  }
+
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAuthor(this, context);
@@ -198,6 +237,8 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
       case REVOKE_USER_ROLE:
       case UPDATE_USER:
+      case RENAME_USER:
+      case ACCOUNT_UNLOCK:
         queryType = QueryType.WRITE;
         break;
       case LIST_USER:
@@ -234,11 +275,12 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   }
 
   private TSStatus onCreateUserSuccess() {
+    associatedUsedId = AuthorityChecker.getUserId(userName).orElse(-1L);
     // the old password is expected to be encrypted during updates, so we also encrypt it here to
     // keep consistency
     TSStatus tsStatus =
         DataNodeAuthUtils.recordPasswordHistory(
-            userName,
+            associatedUsedId,
             password,
             AuthUtils.encryptPassword(password),
             CommonDateTimeUtils.currentTime());
@@ -253,7 +295,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private TSStatus onUpdateUserSuccess() {
     TSStatus tsStatus =
         DataNodeAuthUtils.recordPasswordHistory(
-            userName, newPassword, password, CommonDateTimeUtils.currentTime());
+            associatedUsedId, newPassword, password, CommonDateTimeUtils.currentTime());
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -263,7 +305,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   }
 
   private TSStatus onDropUserSuccess() {
-    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(userName);
+    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(associatedUsedId);
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (StatementExecutionException e) {
@@ -301,5 +343,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         break;
     }
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public long getAssociatedUsedId() {
+    return associatedUsedId;
   }
 }

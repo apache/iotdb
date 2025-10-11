@@ -19,11 +19,122 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-public class TreeAccessCheckContext {
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
-  final String userName;
+import java.util.Collections;
+import java.util.List;
 
-  public TreeAccessCheckContext(String userName) {
-    this.userName = userName;
+public class TreeAccessCheckContext implements IAuditEntity {
+
+  private final long userId;
+  private final String username;
+  private final String cliHostname;
+
+  public TreeAccessCheckContext(long userId, String username, String cliHostname) {
+    this.userId = userId;
+    this.username = username;
+    this.cliHostname = cliHostname;
+  }
+
+  @Override
+  public long getUserId() {
+    return userId;
+  }
+
+  @Override
+  public String getUsername() {
+    return username;
+  }
+
+  @Override
+  public String getCliHostname() {
+    return cliHostname;
+  }
+
+  private AuditEventType auditEventType;
+  private AuditLogOperation auditLogOperation;
+  private List<PrivilegeType> privilegeTypeList;
+  private boolean result;
+  private String database;
+  private String sqlString;
+
+  @Override
+  public AuditEventType getAuditEventType() {
+    return auditEventType;
+  }
+
+  @Override
+  public IAuditEntity setAuditEventType(AuditEventType auditEventType) {
+    this.auditEventType = auditEventType;
+    return this;
+  }
+
+  @Override
+  public AuditLogOperation getAuditLogOperation() {
+    return auditLogOperation;
+  }
+
+  @Override
+  public IAuditEntity setAuditLogOperation(AuditLogOperation auditLogOperation) {
+    this.auditLogOperation = auditLogOperation;
+    return this;
+  }
+
+  @Override
+  public List<PrivilegeType> getPrivilegeTypes() {
+    return privilegeTypeList;
+  }
+
+  @Override
+  public String getPrivilegeTypeString() {
+    return privilegeTypeList.toString();
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeType(PrivilegeType privilegeType) {
+    this.privilegeTypeList = Collections.singletonList(privilegeType);
+    return this;
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeTypes(List<PrivilegeType> privilegeTypes) {
+    this.privilegeTypeList = privilegeTypes;
+    return this;
+  }
+
+  @Override
+  public boolean getResult() {
+    return result;
+  }
+
+  @Override
+  public IAuditEntity setResult(boolean result) {
+    this.result = result;
+    return this;
+  }
+
+  @Override
+  public String getDatabase() {
+    return database;
+  }
+
+  @Override
+  public IAuditEntity setDatabase(String database) {
+    this.database = database;
+    return this;
+  }
+
+  @Override
+  public String getSqlString() {
+    return sqlString;
+  }
+
+  @Override
+  public IAuditEntity setSqlString(String sqlString) {
+    this.sqlString = sqlString;
+    return this;
   }
 }

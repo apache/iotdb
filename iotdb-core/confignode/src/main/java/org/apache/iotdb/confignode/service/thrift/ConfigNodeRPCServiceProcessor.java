@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -635,17 +636,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType());
     return configManager.operatePermission(
         new AuthorTreePlan(
-            ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+            configPhysicalPlanType,
             req.getUserName(),
             req.getRoleName(),
             req.getPassword(),
             req.getNewPassword(),
             req.getPermissions(),
             req.isGrantOpt(),
-            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
+            req.getExecutedByUserID(),
+            req.getNewUsername()));
   }
 
   @Override
@@ -657,15 +661,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorTreePlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getPassword(),
                     req.getNewPassword(),
                     req.getPermissions(),
                     req.isGrantOpt(),
-                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
+                    req.getExecutedByUserID(),
+                    req.getNewUsername()));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
@@ -679,17 +684,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType());
     return configManager.operatePermission(
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+            configPhysicalPlanType,
             req.getUserName(),
             req.getRoleName(),
             req.getDatabase(),
             req.getTable(),
             req.getPermissions(),
             req.isGrantOpt(),
-            req.getPassword()));
+            req.getPassword(),
+            req.getExecutedByUserID(),
+            req.getNewUsername()));
   }
 
   @Override
@@ -701,15 +709,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorRelationalPlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getDatabase(),
                     req.getTable(),
                     req.getPermissions(),
                     req.isGrantOpt(),
-                    req.getPassword()));
+                    req.getPassword(),
+                    req.getExecutedByUserID(),
+                    ""));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());

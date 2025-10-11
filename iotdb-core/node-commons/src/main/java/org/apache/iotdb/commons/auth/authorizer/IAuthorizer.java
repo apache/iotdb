@@ -35,8 +35,6 @@ import java.util.Set;
 /** This interface provides all authorization-relative operations. */
 public interface IAuthorizer extends SnapshotProcessor {
 
-  boolean isAdmin(String userName);
-
   /**
    * Login for a user.
    *
@@ -166,6 +164,15 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the user does not exist or the new password is illegal.
    */
   void updateUserPassword(String userName, String newPassword) throws AuthException;
+
+  /**
+   * Rename the specified user.
+   *
+   * @param username The original name of the specified user.
+   * @param newUsername The new name to be specified.
+   * @throws AuthException If the original name does not exist or the new name is already existed.
+   */
+  void renameUser(String username, String newUsername) throws AuthException;
 
   /**
    * Check if the user have the privilege or grant option on the target.

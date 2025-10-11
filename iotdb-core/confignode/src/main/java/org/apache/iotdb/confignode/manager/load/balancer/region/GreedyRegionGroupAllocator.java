@@ -24,17 +24,17 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 /** Allocate Region Greedily */
 public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
 
-  public static final Random RANDOM = new Random();
+  public static final SecureRandom RANDOM = new SecureRandom();
 
   public GreedyRegionGroupAllocator() {
     // Empty constructor

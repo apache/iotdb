@@ -68,7 +68,7 @@ public class AuthTest {
     String sql = String.format("SELECT * FROM %s.%s", DB1, TABLE1);
     ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkTablePrivilege(eq(userRoot), any(), any());
+    Mockito.doNothing().when(authChecker).checkTablePrivilege(eq(userRoot), any(), any(), any());
     // user `user1` don't hava testdb.table1's SELECT privilege
     String errorMsg =
         String.format(
@@ -76,11 +76,11 @@ public class AuthTest {
             user1, TableModelPrivilege.SELECT, DB1, TABLE1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
+        .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT), any());
     // user `user2` has testdb.table1's SELECT privilege
     Mockito.doNothing()
         .when(authChecker)
-        .checkTablePrivilege(eq(user2), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
+        .checkTablePrivilege(eq(user2), eq(testdbTable1), eq(TableModelPrivilege.SELECT), any());
 
     String userName = userRoot;
     try {
@@ -115,7 +115,7 @@ public class AuthTest {
     String sql = String.format("CREATE DATABASE %s", databaseTest1);
     ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkDatabasePrivilege(eq(userRoot), any(), any());
+    Mockito.doNothing().when(authChecker).checkDatabasePrivilege(eq(userRoot), any(), any(), any());
     // user `user1` don't hava test1's CREATE privilege
     String errorMsg =
         String.format(
@@ -123,11 +123,13 @@ public class AuthTest {
             user1, TableModelPrivilege.CREATE, databaseTest1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkDatabasePrivilege(eq(user1), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
+        .checkDatabasePrivilege(
+            eq(user1), eq(databaseTest1), eq(TableModelPrivilege.CREATE), any());
     // user `user2` has test1's CREATE privilege
     Mockito.doNothing()
         .when(authChecker)
-        .checkDatabasePrivilege(eq(user2), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
+        .checkDatabasePrivilege(
+            eq(user2), eq(databaseTest1), eq(TableModelPrivilege.CREATE), any());
 
     String userName = userRoot;
     try {
@@ -156,14 +158,16 @@ public class AuthTest {
     // use database
     String databaseTest2 = "test2";
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(userRoot), any());
+    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(userRoot), any(), any());
     // user `user1` can't see DATABASE test1
     errorMsg = String.format("%s has no privileges on DATABASE %s", user1, databaseTest1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkDatabaseVisibility(eq(user1), eq(databaseTest1));
+        .checkDatabaseVisibility(eq(user1), eq(databaseTest1), any());
     // user `user1` can see DATABASE test2
-    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(user1), eq(databaseTest2));
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkDatabaseVisibility(eq(user1), eq(databaseTest2), any());
 
     sql = String.format("USE %s", databaseTest1);
     userName = userRoot;

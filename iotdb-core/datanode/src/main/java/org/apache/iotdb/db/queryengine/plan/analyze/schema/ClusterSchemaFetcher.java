@@ -125,7 +125,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       Set<String> storageGroupSet = new HashSet<>();
       if (!explicitDevicePatternList.isEmpty()) {
         for (PartialPath explicitDevicePattern : explicitDevicePatternList) {
-          cachedSchema = schemaCache.getMatchedSchemaWithTemplate(explicitDevicePattern);
+          cachedSchema = schemaCache.getMatchedTemplateSchema(explicitDevicePattern);
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;
@@ -144,7 +144,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             continue;
           }
           cachedSchema =
-              schemaCache.getMatchedSchemaWithoutTemplate(new MeasurementPath(fullPath.getNodes()));
+              schemaCache.getMatchedNormalSchema(new MeasurementPath(fullPath.getNodes()));
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;

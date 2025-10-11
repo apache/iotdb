@@ -267,6 +267,7 @@ struct TDropPipePluginInstanceReq {
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
+  3: optional bool needDisconnect
 }
 
 struct TDataNodeHeartbeatReq {
@@ -285,6 +286,9 @@ struct TDataNodeHeartbeatReq {
   13: optional map<i32, set<i32>> topology
   14: required i64 logicalClock
   15: optional list<common.TConsensusGroupId> currentRegionOperations
+  // Using 8 bit to represent 8 bool
+  // lowest bit: enable separation of admin powers
+  16: optional byte booleanVariables1
 }
 
 struct TDataNodeActivation {
@@ -645,7 +649,7 @@ struct TFetchTimeseriesResp {
 
 struct TAuditLogReq {
   1: required string username
-  2: required i32 userId
+  2: required i64 userId
   3: required string cliHostname
   4: required string auditEventType
   5: required string operationType
@@ -978,6 +982,11 @@ service IDataNodeRPCService {
    * @param string:username, list<string>:roleList
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
+
+  /**
+   * Enable separation of admin powers in datanode
+   **/
+  common.TSStatus enableSeparationOfAdminPower()
 
   /**
    * Config node will create a pipe plugin on a list of data nodes.

@@ -60,12 +60,16 @@ public class IoTDBDatabaseIT {
         .getConfig()
         .getCommonConfig()
         .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     // enable subscription
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setSubscriptionEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
@@ -600,7 +604,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery(
               "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
-          Collections.singleton("AINODE,1,"));
+          Collections.singleton("ACCOUNT,1,"));
     }
 
     try (final Connection connection =
@@ -718,7 +722,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery(
               "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
-          Collections.singleton("AINODE,1,"));
+          Collections.singleton("ACCOUNT,1,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select distinct(status) from information_schema.nodes"),
@@ -800,6 +804,7 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
+      // One for AUDIT database
       TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 2);
     }
   }

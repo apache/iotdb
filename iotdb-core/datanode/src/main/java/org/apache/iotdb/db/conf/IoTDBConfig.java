@@ -21,14 +21,12 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -522,6 +520,18 @@ public class IoTDBConfig {
    * expired data will be cleaned by compaction. The unit is ms. Default is 1 month.
    */
   private long maxExpiredTime = 2_592_000_000L;
+
+  /** The maximum number of consecutive failed login attempts for a specific user@address */
+  private int failedLoginAttempts = -1;
+
+  /**
+   * The maximum number of consecutive failed login attempts for a specific user (global) Note: Must
+   * be enabled if failed_login_attempts is enabled
+   */
+  private int failedLoginAttemptsPerUser = -1;
+
+  /** The lock time duration (in minutes) after reaching failed login attempts threshold */
+  private int passwordLockTimeMinutes = 10;
 
   /**
    * The expired device ratio. If the number of expired device in one tsfile exceeds this value,
@@ -1043,24 +1053,6 @@ public class IoTDBConfig {
   private long schemaRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
 
   private int ratisTransferLeaderTimeoutMs = 30 * 1000; // 30s
-
-  /** whether to enable the audit log * */
-  private boolean enableAuditLog = false;
-
-  /** Output location of audit logs * */
-  private List<AuditLogStorage> auditLogStorage =
-      Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
-
-  /** Indicates the category collection of audit logs * */
-  private List<AuditLogOperation> auditableOperationType =
-      Arrays.asList(
-          AuditLogOperation.DML,
-          AuditLogOperation.DDL,
-          AuditLogOperation.QUERY,
-          AuditLogOperation.CONTROL);
-
-  /** whether the local write api records audit logs * */
-  private boolean enableAuditLogForNativeInsertApi = true;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -3424,14 +3416,14 @@ public class IoTDBConfig {
           continue;
         }
         String configType = configField.getGenericType().getTypeName();
-        if (configType.contains("java.lang.String[][]")) {
+        if (configType.contains(IoTDBConstant.STRING_2D_ARRAY_CLASS_NAME)) {
           String[][] configList = (String[][]) configField.get(this);
           StringBuilder builder = new StringBuilder();
           for (String[] strings : configList) {
             builder.append(Arrays.asList(strings)).append(";");
           }
           configContent = builder.toString();
-        } else if (configType.contains("java.lang.String[]")) {
+        } else if (configType.contains(IoTDBConstant.STRING_ARRAY_CLASS_NAME)) {
           String[] configList = (String[]) configField.get(this);
           configContent = Arrays.asList(configList).toString();
         } else {
@@ -3444,7 +3436,7 @@ public class IoTDBConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        e.printStackTrace();
+        logger.warn("Failed to get field {}", configField, e);
       }
     }
     return configMessage.toString();
@@ -3754,34 +3746,6 @@ public class IoTDBConfig {
 
   public void setCandidateCompactionTaskQueueSize(int candidateCompactionTaskQueueSize) {
     this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
-  }
-
-  public boolean isEnableAuditLog() {
-    return enableAuditLog;
-  }
-
-  public void setEnableAuditLog(boolean enableAuditLog) {
-    this.enableAuditLog = enableAuditLog;
-  }
-
-  public List<AuditLogOperation> getAuditableOperationType() {
-    return auditableOperationType;
-  }
-
-  public List<AuditLogStorage> getAuditLogStorage() {
-    return auditLogStorage;
-  }
-
-  public void setAuditLogStorage(List<AuditLogStorage> auditLogStorage) {
-    this.auditLogStorage = auditLogStorage;
-  }
-
-  public boolean isEnableAuditLogForNativeInsertApi() {
-    return enableAuditLogForNativeInsertApi;
-  }
-
-  public void setEnableAuditLogForNativeInsertApi(boolean enableAuditLogForNativeInsertApi) {
-    this.enableAuditLogForNativeInsertApi = enableAuditLogForNativeInsertApi;
   }
 
   public void setModeMapSizeThreshold(int modeMapSizeThreshold) {
@@ -4236,5 +4200,29 @@ public class IoTDBConfig {
   public void setIncludeNullValueInWriteThroughputMetric(
       boolean includeNullValueInWriteThroughputMetric) {
     this.includeNullValueInWriteThroughputMetric = includeNullValueInWriteThroughputMetric;
+  }
+
+  public int getFailedLoginAttempts() {
+    return failedLoginAttempts;
+  }
+
+  public void setFailedLoginAttempts(int failedLoginAttempts) {
+    this.failedLoginAttempts = failedLoginAttempts;
+  }
+
+  public int getFailedLoginAttemptsPerUser() {
+    return failedLoginAttemptsPerUser;
+  }
+
+  public void setFailedLoginAttemptsPerUser(int failedLoginAttemptsPerUser) {
+    this.failedLoginAttemptsPerUser = failedLoginAttemptsPerUser;
+  }
+
+  public int getPasswordLockTimeMinutes() {
+    return passwordLockTimeMinutes;
+  }
+
+  public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
+    this.passwordLockTimeMinutes = passwordLockTimeMinutes;
   }
 }
