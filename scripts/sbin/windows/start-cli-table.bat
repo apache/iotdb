@@ -34,15 +34,5 @@ if not exist "%CLI_SCRIPT%" (
 REM Execute main script with:
 REM Pass all arguments through and add -sql_dialect table if not already specified
 setlocal
-set ARGS=%*
-if "%ARGS%"=="" (
-    "%CLI_SCRIPT%" -sql_dialect table
-) else (
-    echo %ARGS% | find /i "-sql_dialect " >nul
-    if errorlevel 1 (
-        "%CLI_SCRIPT%" -sql_dialect table %*
-    ) else (
-        "%CLI_SCRIPT%" %*
-    )
-)
+"%CLI_SCRIPT%" -sql_dialect table %*
 endlocal
