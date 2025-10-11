@@ -354,7 +354,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
   }
 
   @Override
-  public synchronized void log(IAuditEntity auditLogFields, Supplier<String> log) {
+  public void log(IAuditEntity auditLogFields, Supplier<String> log) {
     if (!IS_AUDIT_LOG_ENABLED) {
       return;
     }
