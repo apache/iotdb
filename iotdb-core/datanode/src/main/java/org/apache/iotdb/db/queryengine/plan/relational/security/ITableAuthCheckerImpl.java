@@ -75,7 +75,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setPrivilegeType(PrivilegeType.AUDIT)
               .setResult(hasAuditPrivilege),
           () -> databaseName);
-      if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT)) {
+      if (hasAuditPrivilege) {
         return;
       }
       throw new AccessDeniedException("DATABASE " + databaseName);
@@ -339,7 +339,8 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     String databaseName = tableName.getDatabaseName();
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
       // The audit table only requires audit privilege
-      boolean hasAuditPrivilege = AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT);
+      boolean hasAuditPrivilege =
+          AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT);
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
