@@ -540,47 +540,45 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             PrivilegeType.MANAGE_USER,
             statement::getUserName);
       case LIST_USER:
-        context
-            .setAuditLogOperation(AuditLogOperation.QUERY)
-            .setPrivilegeType(PrivilegeType.SECURITY);
+        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true);
         if (checkHasGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.QUERY),
             PrivilegeType.MANAGE_USER,
             statement::getUserName)) {
+          // MANAGE_USER privilege can list all users
           return RpcUtils.SUCCESS_STATUS;
         }
+        // Can only list him/herself without MANAGE_USER privilege
         statement.setUserName(context.getUsername());
+        recordObjectAuthenticationAuditLog(
+            context.setPrivilegeType(null).setResult(true), context::getUsername);
         return RpcUtils.SUCCESS_STATUS;
-
       case LIST_USER_PRIVILEGE:
-        context
-            .setAuditLogOperation(AuditLogOperation.QUERY)
-            .setPrivilegeType(PrivilegeType.SECURITY);
+        context.setAuditLogOperation(AuditLogOperation.QUERY);
         if (context.getUsername().equals(statement.getUserName())) {
+          // No need any privilege to list his/her own privileges
+          recordObjectAuthenticationAuditLog(context.setResult(true), context::getUsername);
           return RpcUtils.SUCCESS_STATUS;
         }
+        // Require MANAGE_USER privilege to list other users' privileges
         return checkGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.QUERY),
             PrivilegeType.MANAGE_USER,
             statement::getUserName);
-
       case LIST_ROLE_PRIVILEGE:
-        context
-            .setAuditLogOperation(AuditLogOperation.QUERY)
-            .setPrivilegeType(PrivilegeType.SECURITY);
+        context.setAuditLogOperation(AuditLogOperation.QUERY);
         if (!AuthorityChecker.checkRole(context.getUsername(), statement.getRoleName())) {
           return checkGlobalAuth(
               context.setAuditLogOperation(AuditLogOperation.QUERY),
               PrivilegeType.MANAGE_ROLE,
               statement::getRoleName);
         } else {
+          // No need any privilege to list his/her own role's privileges
+          recordObjectAuthenticationAuditLog(context.setResult(true), context::getUsername);
           return SUCCEED;
         }
-
       case LIST_ROLE:
-        context
-            .setAuditLogOperation(AuditLogOperation.QUERY)
-            .setPrivilegeType(PrivilegeType.SECURITY);
+        context.setAuditLogOperation(AuditLogOperation.QUERY);
         if (checkHasGlobalAuth(
             context.setAuditLogOperation(AuditLogOperation.QUERY),
             PrivilegeType.MANAGE_ROLE,
@@ -590,8 +588,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         // list roles of other user is not allowed
         if (statement.getUserName() != null
             && !statement.getUserName().equals(context.getUsername())) {
+          recordObjectAuthenticationAuditLog(
+              context.setPrivilegeType(PrivilegeType.MANAGE_ROLE).setResult(false),
+              context::getUsername);
           return AuthorityChecker.getTSStatus(false, PrivilegeType.MANAGE_ROLE);
         }
+        recordObjectAuthenticationAuditLog(
+            context.setPrivilegeType(null).setResult(true), context::getUsername);
         statement.setUserName(context.getUsername());
         return RpcUtils.SUCCESS_STATUS;
 
@@ -1149,8 +1152,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             checkedPaths,
             permission);
     if (!AuthorityChecker.INTERNAL_AUDIT_USER.equals(context.getUsername())) {
-      // Skip internal auditor
-      recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+      // Internal auditor no needs audit log
+      recordObjectAuthenticationAuditLog(
+          context.setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          checkedPaths::toString);
     }
     return result;
   }
