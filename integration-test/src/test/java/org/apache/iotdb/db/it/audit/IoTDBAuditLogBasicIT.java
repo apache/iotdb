@@ -56,9 +56,9 @@ import java.util.stream.Stream;
 @Category({LocalStandaloneIT.class})
 public class IoTDBAuditLogBasicIT {
 
-  private static final long ENSURE_AUDIT_LOG_SLEEP_IN_MS = 250;
+  public static final long ENSURE_AUDIT_LOG_SLEEP_IN_MS = 250;
 
-  private static final List<String> AUDIT_TABLE_COLUMNS =
+  public static final List<String> AUDIT_TABLE_COLUMNS =
       Arrays.asList(
           AbstractAuditLogger.AUDIT_LOG_NODE_ID,
           AbstractAuditLogger.AUDIT_LOG_USER_ID,
@@ -73,18 +73,18 @@ public class IoTDBAuditLogBasicIT {
           AbstractAuditLogger.AUDIT_LOG_SQL_STRING,
           AbstractAuditLogger.AUDIT_LOG_LOG);
 
-  private static final List<String> AUDIT_TABLE_DATA_TYPES =
+  public static final List<String> AUDIT_TABLE_DATA_TYPES =
       Arrays.asList(
           "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "BOOLEAN",
           "STRING", "STRING", "STRING");
 
-  private static final List<String> AUDIT_TABLE_CATEGORIES =
+  public static final List<String> AUDIT_TABLE_CATEGORIES =
       Arrays.asList(
           "TAG", "TAG", "FIELD", "FIELD", "FIELD", "FIELD", "FIELD", "FIELD", "FIELD", "FIELD",
           "FIELD", "FIELD");
 
-  private static final boolean ENABLE_AUDIT_LOG = true;
-  private static final String AUDITABLE_OPERATION_TYPE =
+  public static final boolean ENABLE_AUDIT_LOG = true;
+  public static final String AUDITABLE_OPERATION_TYPE =
       new StringJoiner(",")
           .add(AuditLogOperation.DDL.toString())
           .add(AuditLogOperation.DML.toString())
@@ -92,9 +92,9 @@ public class IoTDBAuditLogBasicIT {
           .add(AuditLogOperation.CONTROL.toString())
           .toString();
 
-  private static final String AUDITABLE_OPERATION_LEVEL = PrivilegeLevel.GLOBAL.toString();
+  public static final String AUDITABLE_OPERATION_LEVEL = PrivilegeLevel.GLOBAL.toString();
 
-  private static final String AUDITABLE_OPERATION_RESULT = "SUCCESS,FAIL";
+  public static final String AUDITABLE_OPERATION_RESULT = "SUCCESS,FAIL";
 
   @Before
   public void setUp() throws SQLException, InterruptedException {
@@ -135,7 +135,7 @@ public class IoTDBAuditLogBasicIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private static void closeConnectionCompletely(Connection connection) throws InterruptedException {
+  public static void closeConnectionCompletely(Connection connection) throws InterruptedException {
     // Ensure the session conns in test env are closed completely,
     // in order to generate logout audit log
     // TODO: Optimize this func after the close func of connection is optimized
@@ -2378,7 +2378,6 @@ public class IoTDBAuditLogBasicIT {
     Statement statement = connection.createStatement();
     for (String sql : TREE_MODEL_AUDIT_SQLS_USER_ROOT) {
       statement.execute(sql);
-      TimeUnit.MILLISECONDS.sleep(ENSURE_AUDIT_LOG_SLEEP_IN_MS);
     }
     closeConnectionCompletely(connection);
     connection =
@@ -2386,7 +2385,6 @@ public class IoTDBAuditLogBasicIT {
     statement = connection.createStatement();
     for (String sql : TREE_MODEL_AUDIT_SQLS_USER_USER1) {
       statement.execute(sql);
-      TimeUnit.MILLISECONDS.sleep(ENSURE_AUDIT_LOG_SLEEP_IN_MS);
     }
     closeConnectionCompletely(connection);
     connection =
@@ -2395,7 +2393,6 @@ public class IoTDBAuditLogBasicIT {
     for (String sql : TREE_MODEL_AUDIT_SQLS_USER_USER2) {
       try {
         statement.execute(sql);
-        TimeUnit.MILLISECONDS.sleep(ENSURE_AUDIT_LOG_SLEEP_IN_MS);
       } catch (SQLException e) {
         // Ignore, only record audit log
       }
@@ -2405,7 +2402,6 @@ public class IoTDBAuditLogBasicIT {
     statement = connection.createStatement();
     for (String sql : TREE_MODEL_AUDIT_SQLS_USER_ROOT_FINAL) {
       statement.execute(sql);
-      TimeUnit.MILLISECONDS.sleep(ENSURE_AUDIT_LOG_SLEEP_IN_MS);
     }
     ResultSet resultSet =
         statement.executeQuery("SELECT * FROM root.__audit.log.** ORDER BY TIME ALIGN BY DEVICE");

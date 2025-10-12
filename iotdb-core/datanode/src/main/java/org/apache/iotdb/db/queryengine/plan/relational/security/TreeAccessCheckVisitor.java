@@ -1900,7 +1900,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return AuthorityChecker.getTSStatus(false, "Only the admin user can perform this operation");
   }
 
-  private static void recordObjectAuthenticationAuditLog(
+  protected static void recordObjectAuthenticationAuditLog(
       IAuditEntity auditEntity, Supplier<String> auditObject) {
     AUDIT_LOGGER.log(
         auditEntity.setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION),
