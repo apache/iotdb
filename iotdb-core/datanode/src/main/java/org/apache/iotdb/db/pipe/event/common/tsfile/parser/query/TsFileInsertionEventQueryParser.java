@@ -67,6 +67,9 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
+  // Tree exclusion patterns. Expected to be set by upstream constructors.
+  private List<TreePattern> exclusionPatterns;
+
   @TestOnly
   public TsFileInsertionEventQueryParser(
       final File tsFile,
@@ -176,13 +179,24 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
       final IDeviceID deviceId = entry.getKey();
 
+      // Skip device entirely if excluded by any exclusion pattern that covers the device
+      if (isDeviceExcluded(deviceId)) {
+        continue;
+      }
+
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
       if (Objects.isNull(treePattern)
           || treePattern.isRoot()
           || treePattern.coversDevice(deviceId)) {
-        if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
+        final List<String> filteredMeasurements = new ArrayList<>();
+        for (final String measurement : entry.getValue()) {
+          if (!isMeasurementExcluded(deviceId, measurement)) {
+            filteredMeasurements.add(measurement);
+          }
+        }
+        if (!filteredMeasurements.isEmpty()) {
+          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
         }
       }
 
@@ -192,7 +206,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         final List<String> filteredMeasurements = new ArrayList<>();
 
         for (final String measurement : entry.getValue()) {
-          if (treePattern.matchesMeasurement(deviceId, measurement)) {
+          if (treePattern.matchesMeasurement(deviceId, measurement)
+              && !isMeasurementExcluded(deviceId, measurement)) {
             filteredMeasurements.add(measurement);
           }
         }
@@ -219,12 +234,20 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
   private Set<IDeviceID> filterDevicesByPattern(final Set<IDeviceID> devices) {
     if (Objects.isNull(treePattern) || treePattern.isRoot()) {
-      return devices;
+      // If only exclusion exists, filter devices that are fully excluded
+      final Set<IDeviceID> filtered = new HashSet<>();
+      for (final IDeviceID device : devices) {
+        if (!isDeviceExcluded(device)) {
+          filtered.add(device);
+        }
+      }
+      return filtered;
     }
 
     final Set<IDeviceID> filteredDevices = new HashSet<>();
     for (final IDeviceID device : devices) {
-      if (treePattern.coversDevice(device) || treePattern.mayOverlapWithDevice(device)) {
+      if ((treePattern.coversDevice(device) || treePattern.mayOverlapWithDevice(device))
+          && !isDeviceExcluded(device)) {
         filteredDevices.add(device);
       }
     }
@@ -389,6 +412,39 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     }
 
     return tabletInsertionIterable;
+  }
+
+  private boolean isDeviceExcluded(final IDeviceID device) {
+    if (Objects.isNull(exclusionPatterns) || exclusionPatterns.isEmpty()) {
+      return false;
+    }
+    for (final TreePattern ex : exclusionPatterns) {
+      if (Objects.isNull(ex)) {
+        continue;
+      }
+      if (ex.coversDevice(device)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isMeasurementExcluded(final IDeviceID device, final String measurement) {
+    if (Objects.isNull(exclusionPatterns) || exclusionPatterns.isEmpty()) {
+      return false;
+    }
+    for (final TreePattern ex : exclusionPatterns) {
+      if (Objects.isNull(ex)) {
+        continue;
+      }
+      if (ex.coversDevice(device)) {
+        return true;
+      }
+      if (ex.mayOverlapWithDevice(device) && ex.matchesMeasurement(device, measurement)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

@@ -648,4 +648,130 @@ public class TsFileInsertionEventParserTest {
     }
     return count;
   }
+
+  private void setExclusions(Object parser, List<TreePattern> exclusions) throws Exception {
+    final java.lang.reflect.Field f =
+        parser.getClass().getDeclaredField("exclusionPatterns"); // per assumption
+    f.setAccessible(true);
+    f.set(parser, exclusions);
+  }
+
+  private int countPoints(final TsFileInsertionEventParser parser) throws IOException {
+    final AtomicInteger count = new AtomicInteger(0);
+    parser
+        .toTabletInsertionEvents()
+        .forEach(
+            event ->
+                event.processRowByRow(
+                    (row, collector) -> {
+                      try {
+                        collector.collectRow(row);
+                        count.addAndGet(getNonNullSize(row));
+                      } catch (final IOException e) {
+                        throw new RuntimeException(e);
+                      }
+                    }));
+    return count.get();
+  }
+
+  private File generateSimpleTsFile(final String fileName) throws Exception {
+    final File tsFile = new File(fileName);
+    if (tsFile.exists()) {
+      tsFile.delete();
+    }
+
+    final List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+
+    final Tablet t = new Tablet("root.sg.ex", schemaList, 3);
+    t.addTimestamp(0, 1);
+    t.addTimestamp(1, 2);
+    t.addTimestamp(2, 3);
+    t.addValue("s1", 0, 10L);
+    t.addValue("s2", 0, 20L);
+    t.addValue("s1", 1, 11L);
+    t.addValue("s2", 1, 21L);
+    t.addValue("s1", 2, 12L);
+    t.addValue("s2", 2, 22L);
+
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerTimeseries(new PartialPath("root.sg.ex.s1"), schemaList.get(0));
+      writer.registerTimeseries(new PartialPath("root.sg.ex.s2"), schemaList.get(1));
+      writer.writeAligned(t);
+      writer.flush();
+    }
+
+    return tsFile;
+  }
+
+  @Test
+  public void testExclusionPatternsOnTsFileParsers() throws Exception {
+    final File tsFile = generateSimpleTsFile("simple-ex.tsfile");
+
+    final PipeTsFileInsertionEvent tsFileInsertionEvent =
+        new PipeTsFileInsertionEvent(
+            false,
+            "",
+            new TsFileResource(tsFile),
+            null,
+            true,
+            false,
+            false,
+            null,
+            null,
+            0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+
+    final TreePattern includePattern = new IoTDBTreePattern("root.sg.ex.**");
+
+    // Query parser tests
+    try (final TsFileInsertionEventQueryParser queryParser =
+        new TsFileInsertionEventQueryParser(
+            tsFile, includePattern, Long.MIN_VALUE, Long.MAX_VALUE, tsFileInsertionEvent)) {
+      Assert.assertEquals(6, countPoints(queryParser));
+
+      // Exclude one measurement
+      setExclusions(queryParser, Arrays.asList(new IoTDBTreePattern("root.sg.ex.s1")));
+      Assert.assertEquals(3, countPoints(queryParser));
+    }
+
+    try (final TsFileInsertionEventQueryParser queryParser2 =
+        new TsFileInsertionEventQueryParser(
+            tsFile, includePattern, Long.MIN_VALUE, Long.MAX_VALUE, tsFileInsertionEvent)) {
+      // Exclude entire device
+      setExclusions(queryParser2, Arrays.asList(new IoTDBTreePattern("root.sg.ex.**")));
+      Assert.assertEquals(0, countPoints(queryParser2));
+    }
+
+    // Scan parser tests
+    try (final TsFileInsertionEventScanParser scanParser =
+        new TsFileInsertionEventScanParser(
+            tsFile, includePattern, Long.MIN_VALUE, Long.MAX_VALUE, null, tsFileInsertionEvent)) {
+      Assert.assertEquals(6, countPoints(scanParser));
+
+      // Exclude one measurement
+      setExclusions(scanParser, Arrays.asList(new IoTDBTreePattern("root.sg.ex.s1")));
+      Assert.assertEquals(3, countPoints(scanParser));
+    }
+
+    try (final TsFileInsertionEventScanParser scanParser2 =
+        new TsFileInsertionEventScanParser(
+            tsFile, includePattern, Long.MIN_VALUE, Long.MAX_VALUE, null, tsFileInsertionEvent)) {
+      setExclusions(scanParser2, Arrays.asList(new IoTDBTreePattern("root.sg.ex.**")));
+      Assert.assertEquals(0, countPoints(scanParser2));
+    }
+
+    if (tsFile.exists()) {
+      tsFile.delete();
+    }
+  }
 }

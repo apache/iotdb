@@ -73,6 +73,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
 
+  // Tree exclusion patterns. Expected to be set by upstream constructors.
+  private List<TreePattern> exclusionPatterns;
+
   private boolean currentIsMultiPage;
   private IDeviceID currentDevice;
   private boolean currentIsAligned;
@@ -424,7 +427,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             break;
           }
 
-          if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+          // Inclusion check first, then exclusion
+          if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())
+              || isMeasurementExcluded(currentDevice, chunkHeader.getMeasurementID())) {
             tsFileSequenceReader.position(
                 tsFileSequenceReader.position() + chunkHeader.getDataSize());
             break;
@@ -456,7 +461,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
             if (Objects.isNull(currentDevice)
-                || !treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+                || !treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())
+                || isMeasurementExcluded(currentDevice, chunkHeader.getMeasurementID())) {
               tsFileSequenceReader.position(
                   tsFileSequenceReader.position() + chunkHeader.getDataSize());
               break;
@@ -523,7 +529,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           isMultiPageList.clear();
           measurementIndexMap.clear();
           final IDeviceID deviceID = tsFileSequenceReader.readChunkGroupHeader().getDeviceID();
-          currentDevice = treePattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
+          currentDevice =
+              (treePattern.mayOverlapWithDevice(deviceID) && !isDeviceExcluded(deviceID))
+                  ? deviceID
+                  : null;
           break;
         case MetaMarker.OPERATION_INDEX_RANGE:
           tsFileSequenceReader.readPlanIndex();
@@ -552,6 +561,39 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       currentIsAligned = true;
       lastMarker = marker;
       return true;
+    }
+    return false;
+  }
+
+  private boolean isDeviceExcluded(final IDeviceID device) {
+    if (Objects.isNull(exclusionPatterns) || exclusionPatterns.isEmpty()) {
+      return false;
+    }
+    for (final TreePattern ex : exclusionPatterns) {
+      if (Objects.isNull(ex)) {
+        continue;
+      }
+      if (ex.coversDevice(device)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isMeasurementExcluded(final IDeviceID device, final String measurement) {
+    if (Objects.isNull(exclusionPatterns) || exclusionPatterns.isEmpty()) {
+      return false;
+    }
+    for (final TreePattern ex : exclusionPatterns) {
+      if (Objects.isNull(ex)) {
+        continue;
+      }
+      if (ex.coversDevice(device)) {
+        return true;
+      }
+      if (ex.mayOverlapWithDevice(device) && ex.matchesMeasurement(device, measurement)) {
+        return true;
+      }
     }
     return false;
   }
