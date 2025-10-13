@@ -621,7 +621,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     NonAlignedFullPath seriesPath =
         (NonAlignedFullPath) IFullPath.convertToIFullPath(node.getSeriesPath());
     boolean ascending = node.getScanOrder() == ASC;
-    List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
+    List<AggregationDescriptor> aggregationDescriptors =
+        AggregationNode.getDeduplicatedDescriptors(node.getAggregationDescriptorList());
     List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
@@ -642,7 +643,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         initTimeRangeIterator(groupByTimeParameter, ascending, true, context.getZoneId());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
+            aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
     scanOptionsBuilder.withAllSensors(
@@ -704,7 +705,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       return constructAlignedSeriesAggregationScanOperator(
           node.getPlanNodeId(),
           node.getAlignedPath(),
-          node.getAggregationDescriptorList(),
+          AggregationNode.getDeduplicatedDescriptors(node.getAggregationDescriptorList()),
           context.getTemplatedInfo().getPushDownPredicate(),
           scanOrder,
           context.getTemplatedInfo().getGroupByTimeParameter(),
@@ -2039,8 +2040,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     boolean ascending = node.getScanOrder() == ASC;
     List<TreeAggregator> aggregators = new ArrayList<>();
-    List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
-    for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+    List<AggregationDescriptor> aggregationDescriptors =
+        AggregationNode.getDeduplicatedDescriptors(node.getAggregationDescriptorList());
+    for (AggregationDescriptor descriptor : aggregationDescriptors) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
       aggregators.add(
           new TreeAggregator(
