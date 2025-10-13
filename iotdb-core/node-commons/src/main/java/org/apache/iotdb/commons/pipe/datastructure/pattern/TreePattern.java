@@ -155,13 +155,31 @@ public abstract class TreePattern {
     if (pattern.isEmpty()) {
       return Collections.singletonList(patternSupplier.apply(pattern));
     }
+
     final List<TreePattern> patterns = new ArrayList<>();
-    // Support comma-separated multiple patterns
-    for (final String singlePattern : pattern.split(",")) {
-      if (!singlePattern.trim().isEmpty()) {
-        patterns.add(patternSupplier.apply(singlePattern.trim()));
+    final StringBuilder currentPattern = new StringBuilder();
+    boolean inBackticks = false;
+
+    for (final char c : pattern.toCharArray()) {
+      if (c == '`') {
+        inBackticks = !inBackticks;
+        currentPattern.append(c);
+      } else if (c == ',' && !inBackticks) {
+        final String singlePattern = currentPattern.toString().trim();
+        if (!singlePattern.isEmpty()) {
+          patterns.add(patternSupplier.apply(singlePattern));
+        }
+        currentPattern.setLength(0);
+      } else {
+        currentPattern.append(c);
       }
     }
+
+    final String lastPattern = currentPattern.toString().trim();
+    if (!lastPattern.isEmpty()) {
+      patterns.add(patternSupplier.apply(lastPattern));
+    }
+
     return patterns;
   }
 
