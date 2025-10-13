@@ -19,13 +19,21 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.db.auth.LoginLockManager.UserLockInfo;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
@@ -534,5 +542,30 @@ public class LoginLockManagerTest {
 
     // Final verification: no inconsistencies detected during test
     assertTrue("Lock state should remain valid during concurrent access", consistencyFlag.get());
+  }
+
+  @Test
+  public void testConcurrentOperateLockInfo() throws InterruptedException, ExecutionException {
+    UserLockInfo userLockInfo = new UserLockInfo();
+    int numThreads = 100;
+    final int numAttempts = 100000;
+    ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+    List<Future<Void>> threads = new ArrayList<>(numThreads);
+    for (int i = 0; i < numThreads; i++) {
+      threads.add(
+          executor.submit(
+              () -> {
+                for (int i1 = 0; i1 < numAttempts; i1++) {
+                  userLockInfo.addFailureTime(i1);
+                  if (i1 > 30) {
+                    userLockInfo.removeOldFailures(i1 - 30);
+                  }
+                }
+                return null;
+              }));
+    }
+    for (Future<Void> thread : threads) {
+      thread.get();
+    }
   }
 }

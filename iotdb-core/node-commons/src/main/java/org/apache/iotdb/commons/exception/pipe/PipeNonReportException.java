@@ -17,17 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.commons.exception.pipe;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class PipeNonReportException extends PipeRuntimeNonCriticalException {
 
-public class AlignedTimeseriesException extends MetadataException {
-
-  public AlignedTimeseriesException(String message, String path) {
-    super(
-        String.format("%s (Path: %s)", message, path),
-        TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode(),
-        true);
+  public PipeNonReportException(final String message) {
+    super(message);
   }
 }

@@ -112,9 +112,7 @@ public class LoginLockManager {
 
     void removeOldFailures(long cutoffTime) {
       // Remove timestamps older than cutoffTime
-      while (!failureTimestamps.isEmpty() && failureTimestamps.peekFirst() < cutoffTime) {
-        failureTimestamps.pollFirst();
-      }
+      failureTimestamps.removeIf(timestamp -> timestamp < cutoffTime);
     }
 
     int getFailureCount() {
@@ -163,6 +161,15 @@ public class LoginLockManager {
     }
 
     return false;
+  }
+
+  /**
+   * Returns the number of consecutive failed login attempts.
+   *
+   * @return the number of failed login attempts
+   */
+  public int getFailedLoginAttempts() {
+    return failedLoginAttempts;
   }
 
   /**

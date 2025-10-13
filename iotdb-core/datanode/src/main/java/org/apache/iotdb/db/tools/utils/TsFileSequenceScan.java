@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
+import org.apache.iotdb.db.utils.EncryptDBUtils;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
@@ -118,7 +120,10 @@ public abstract class TsFileSequenceScan {
 
   @SuppressWarnings("java:S1181")
   public void scanTsFile(File tsFile) {
-    try (TsFileSequenceReader r = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+    try (TsFileSequenceReader r =
+        new TsFileSequenceReader(
+            tsFile.getAbsolutePath(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()))) {
       this.reader = r;
       boolean shouldScan = onFileOpen(tsFile);
       if (!shouldScan) {
