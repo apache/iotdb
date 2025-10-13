@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -76,7 +77,11 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
       throws Exception {
     super.customize(parameters, configuration);
 
-    final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    // TODO
+    if (pattern instanceof UnionTreePattern) {
+      pattern = ((UnionTreePattern) pattern).getFirstPattern();
+    }
 
     if (!(pattern instanceof IoTDBTreePattern
         && (((IoTDBTreePattern) pattern).isPrefix()

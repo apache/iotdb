@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionTreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
@@ -99,8 +100,9 @@ public class TsFileInsertionEventParserProvider {
 
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
-            / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-        > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD) {
+                / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+            > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD
+        && !(treePattern instanceof UnionTreePattern)) {
       return new TsFileInsertionEventScanParser(
           pipeName,
           creationTime,
@@ -133,7 +135,7 @@ public class TsFileInsertionEventParserProvider {
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
         PipeDataNodeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile, false);
-    if (Objects.isNull(deviceIsAlignedMap)) {
+    if (Objects.isNull(deviceIsAlignedMap) && !(treePattern instanceof UnionTreePattern)) {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.
       return new TsFileInsertionEventScanParser(
@@ -152,7 +154,8 @@ public class TsFileInsertionEventParserProvider {
         filterDeviceIsAlignedMapByPattern(deviceIsAlignedMap);
     // Use scan data container if we need enough amount to data thus it's better to scan than query.
     return (double) filteredDeviceIsAlignedMap.size() / originalSize
-            > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
+                > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
+            && !(treePattern instanceof UnionTreePattern)
         ? new TsFileInsertionEventScanParser(
             pipeName,
             creationTime,

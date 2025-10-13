@@ -29,7 +29,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Arrays;
 
-public class PrefixTreePattern extends TreePattern {
+public class PrefixTreePattern extends SingleTreePattern {
 
   public PrefixTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
     super(isTreeModelDataAllowedToBeCaptured, pattern);

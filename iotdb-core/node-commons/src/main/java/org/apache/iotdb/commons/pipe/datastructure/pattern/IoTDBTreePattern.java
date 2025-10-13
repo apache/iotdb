@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class IoTDBTreePattern extends TreePattern {
+public class IoTDBTreePattern extends SingleTreePattern {
 
   private final PartialPath patternPartialPath;
   private static volatile DevicePathGetter devicePathGetter = PartialPath::new;
