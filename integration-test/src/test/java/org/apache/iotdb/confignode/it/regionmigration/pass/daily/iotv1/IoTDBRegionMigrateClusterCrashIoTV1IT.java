@@ -73,7 +73,7 @@ public class IoTDBRegionMigrateClusterCrashIoTV1IT
   }
 
   // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
-  //  @Test
+  @Test
   public void clusterCrash7() throws Exception {
     killClusterTest(buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER), true);
   }
