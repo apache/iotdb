@@ -53,6 +53,8 @@ public enum AuthorRType {
   LIST_ROLE,
   LIST_USER_PRIV,
   LIST_ROLE_PRIV,
+  UPDATE_MAX_USER_SESSION,
+  UPDATE_MIN_USER_SESSION,
   // Remind to renew the convert codes in ConfigNodeRPCServiceProcessor
   RENAME_USER,
   ACCOUNT_UNLOCK
