@@ -20,15 +20,14 @@ import warnings
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import torch
-from transformers import GenerationMixin, LogitsProcessorList, StoppingCriteriaList
-from transformers.generation import EosTokenCriteria, validate_stopping_criteria
-from transformers.generation.utils import (
-    GenerateDecoderOnlyOutput,
-    GenerateEncoderDecoderOutput,
-    GenerateNonBeamOutput,
-    GenerateOutput,
-    GenerationConfig,
-)
+from transformers import (GenerationMixin, LogitsProcessorList,
+                          StoppingCriteriaList)
+from transformers.generation import (EosTokenCriteria,
+                                     validate_stopping_criteria)
+from transformers.generation.utils import (GenerateDecoderOnlyOutput,
+                                           GenerateEncoderDecoderOutput,
+                                           GenerateNonBeamOutput,
+                                           GenerateOutput, GenerationConfig)
 from transformers.utils import ModelOutput
 
 
@@ -78,7 +77,7 @@ class TSGenerationMixin(GenerationMixin):
             **kwargs,
         )
 
-    def _greedy_search(
+    def _sample(
         self,
         input_ids: torch.Tensor,
         logits_processor: Optional[LogitsProcessorList] = None,
@@ -315,9 +314,13 @@ class TSGenerationMixin(GenerationMixin):
         standardize_cache_format: bool = False,
     ) -> Dict[str, Any]:
         # update past_key_values
-        model_kwargs["past_key_values"] = self._extract_past_from_model_output(
-            outputs, standardize_cache_format=standardize_cache_format
-        )
+        if "past_key_values" in outputs:
+            model_kwargs["past_key_values"] = outputs.past_key_values
+        elif "mems" in outputs:
+            model_kwargs["past_key_values"] = outputs.mems
+        elif "past_buckets_states" in outputs:
+            model_kwargs["past_key_values"] = outputs.past_buckets_states
+
         if getattr(outputs, "state", None) is not None:
             model_kwargs["state"] = outputs.state
 
