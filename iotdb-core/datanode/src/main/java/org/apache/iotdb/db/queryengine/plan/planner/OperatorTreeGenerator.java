@@ -303,7 +303,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -3183,27 +3182,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private Map<String, List<InputLocation>> makeLayout(List<PlanNode> children) {
     Map<String, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
-    // we should keep only one for columns with same name of Agg related node, like we execute
-    // select count(), avg(); we
-    // may get two count() columns in one child
-    // In such case, we make sure that teh values of different columns with same name should be
-    // totally same
     for (PlanNode childNode : children) {
-      // for other nodes, like full outer time join or HorizontallyConcatNode, we should keep
-      // different columns with same column name
-      // because they represent different partial agg values of same series
-      boolean aggRelatedNode = aggRelatedNode(childNode);
       outputMappings
           .computeIfAbsent(TIMESTAMP_EXPRESSION_STRING, key -> new ArrayList<>())
           .add(new InputLocation(tsBlockIndex, -1));
       int valueColumnIndex = 0;
-      Set<String> hasSeen = new HashSet<>();
       for (String columnName : childNode.getOutputColumnNames()) {
         if (columnName.equals(TIMESTAMP_EXPRESSION_STRING)) {
-          valueColumnIndex++;
-          continue;
-        }
-        if (aggRelatedNode && !hasSeen.add(columnName)) {
           valueColumnIndex++;
           continue;
         }
