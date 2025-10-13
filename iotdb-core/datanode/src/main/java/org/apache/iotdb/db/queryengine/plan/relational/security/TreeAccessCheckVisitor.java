@@ -943,11 +943,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             showDatabaseStatement.getPaths().stream()
                 .distinct()
                 .collect(Collectors.toList())
-                .toString())
-        .setPrivilegeType(PrivilegeType.MANAGE_DATABASE);
+                .toString());
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       recordObjectAuthenticationAuditLog(
-          context.setResult(true), () -> showDatabaseStatement.getPathPattern().toString());
+          context.setPrivilegeType(PrivilegeType.SYSTEM).setResult(true), context::getDatabase);
       return SUCCEED;
     }
     setCanSeeAuditDB(showDatabaseStatement, context);
@@ -957,7 +956,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCountStorageGroup(
       CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
+    context
+        .setAuditLogOperation(AuditLogOperation.QUERY)
+        .setDatabase(
+            countDatabaseStatement.getPaths().stream()
+                .distinct()
+                .collect(Collectors.toList())
+                .toString());
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
+      recordObjectAuthenticationAuditLog(
+          context.setPrivilegeType(PrivilegeType.SYSTEM).setResult(true), context::getDatabase);
       return SUCCEED;
     }
     setCanSeeAuditDB(countDatabaseStatement, context);
