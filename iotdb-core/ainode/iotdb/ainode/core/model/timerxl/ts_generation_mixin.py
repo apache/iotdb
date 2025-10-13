@@ -20,14 +20,15 @@ import warnings
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import torch
-from transformers import (GenerationMixin, LogitsProcessorList,
-                          StoppingCriteriaList)
-from transformers.generation import (EosTokenCriteria,
-                                     validate_stopping_criteria)
-from transformers.generation.utils import (GenerateDecoderOnlyOutput,
-                                           GenerateEncoderDecoderOutput,
-                                           GenerateNonBeamOutput,
-                                           GenerateOutput, GenerationConfig)
+from transformers import GenerationMixin, LogitsProcessorList, StoppingCriteriaList
+from transformers.generation import EosTokenCriteria, validate_stopping_criteria
+from transformers.generation.utils import (
+    GenerateDecoderOnlyOutput,
+    GenerateEncoderDecoderOutput,
+    GenerateNonBeamOutput,
+    GenerateOutput,
+    GenerationConfig,
+)
 from transformers.utils import ModelOutput
 
 

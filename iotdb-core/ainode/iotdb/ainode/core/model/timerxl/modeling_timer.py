@@ -20,17 +20,18 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
-from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
-from iotdb.ainode.core.model.timerxl.ts_generation_mixin import \
-    TSGenerationMixin
 from torch import nn
 from transformers import Cache, DynamicCache, PreTrainedModel
 from transformers.activations import ACT2FN
-from transformers.modeling_attn_mask_utils import \
-    _prepare_4d_causal_attention_mask
-from transformers.modeling_outputs import (MoeCausalLMOutputWithPast,
-                                           MoeModelOutputWithPast)
+from transformers.modeling_attn_mask_utils import _prepare_4d_causal_attention_mask
+from transformers.modeling_outputs import (
+    MoeCausalLMOutputWithPast,
+    MoeModelOutputWithPast,
+)
+
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
+from iotdb.ainode.core.model.timerxl.ts_generation_mixin import TSGenerationMixin
 
 logger = Logger()
 
