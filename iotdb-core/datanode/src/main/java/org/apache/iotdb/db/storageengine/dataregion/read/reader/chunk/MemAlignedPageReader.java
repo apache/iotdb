@@ -213,7 +213,6 @@ public class MemAlignedPageReader implements IPageReader {
   @Override
   public void setModified(boolean modified) {}
 
-
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
     builder = new TsBlockBuilder(dataTypes);
