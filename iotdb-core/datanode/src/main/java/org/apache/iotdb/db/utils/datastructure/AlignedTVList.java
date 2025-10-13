@@ -1881,7 +1881,7 @@ public abstract class AlignedTVList extends TVList {
 
       int validRowCount = 0;
       // duplicated time or deleted time are all invalid, true if we don't need this row
-      BitMap timeInvalidInfo = null;
+      LazyBitMap timeInvalidInfo = null;
 
       int[] deleteCursor = {0};
       int startIndex = index;
@@ -1913,7 +1913,7 @@ public abstract class AlignedTVList extends TVList {
           validRowCount++;
         } else {
           if (Objects.isNull(timeInvalidInfo)) {
-            timeInvalidInfo = new BitMap(rows);
+            timeInvalidInfo = new LazyBitMap(index, maxNumberOfPointsInPage, rows - 1);
           }
           // For this timeInvalidInfo, we mark all positions that are not the last one in the
           // ASC traversal. It has the same behaviour for the DESC traversal, because our ultimate
