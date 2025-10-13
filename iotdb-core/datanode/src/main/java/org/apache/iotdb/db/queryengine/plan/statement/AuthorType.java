@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 
 // If you need to add a new type, you need to add it to the end because the ordinal will be used as
 // offset to calculate ConfigPhysicalPlanType
+// When adding new types that need to be converted to ConfigPhysicalPlanType, you can refer to this
+// document:
+// https://docs.google.com/document/d/1WvAyuLn1y988svLl8rGUEcesMkAyH6UTT597KQAVm1A/edit?usp=sharing
 public enum AuthorType {
   // The ConfigPhysicalPlanType in this part can be automatically converted according to the offset
   // in this class
