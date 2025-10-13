@@ -473,6 +473,7 @@ public class CommonDescriptor {
     config.setSchemaEngineMode(globalConfig.schemaEngineMode);
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
+    config.setEnableGrantOption(globalConfig.isEnableGrantOption());
   }
 
   public void loadAuditConfig(TAuditConfig auditConfig) {
