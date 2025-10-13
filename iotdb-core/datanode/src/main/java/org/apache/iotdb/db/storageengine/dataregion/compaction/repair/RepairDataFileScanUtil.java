@@ -112,7 +112,7 @@ public class RepairDataFileScanUtil {
             resource.isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION,
-            EncryptDBUtils.getFirstEncryptParamFromDatabase(resource.getDatabaseName()))) {
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsfile.getAbsolutePath()))) {
       TsFileDeviceIterator deviceInFileIterator = reader.getAllDevicesIteratorWithIsAligned();
       Set<IDeviceID> deviceIdsInTimeIndex =
           checkTsFileResource ? new HashSet<>(timeIndex.getDevices()) : Collections.emptySet();

@@ -173,7 +173,7 @@ public class CompactionEstimateUtils {
             new CompactionTsFileReader(
                 resource.getTsFilePath(),
                 taskType,
-                EncryptDBUtils.getFirstEncryptParamFromDatabase(resource.getDatabaseName()))) {
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(resource.getTsFilePath()))) {
           for (Map.Entry<IDeviceID, Long> entry :
               getDeviceMetadataSizeMapAndCollectMetadataInfo(reader, metadataInfo).entrySet()) {
             deviceMetadataSizeMap.merge(entry.getKey(), entry.getValue(), Long::sum);

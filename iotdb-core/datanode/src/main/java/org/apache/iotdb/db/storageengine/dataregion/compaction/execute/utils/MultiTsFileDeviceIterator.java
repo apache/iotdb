@@ -101,7 +101,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
             new CompactionTsFileReader(
                 tsFileResource.getTsFilePath(),
                 CompactionType.INNER_SEQ_COMPACTION,
-                EncryptDBUtils.getFirstEncryptParamFromDatabase(tsFileResource.getDatabaseName()));
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
         readerMap.put(tsFileResource, reader);
         deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
       }
@@ -169,7 +169,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           new CompactionTsFileReader(
               tsFileResource.getTsFilePath(),
               type,
-              EncryptDBUtils.getFirstEncryptParamFromDatabase(tsFileResource.getDatabaseName()));
+              EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
