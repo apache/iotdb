@@ -146,7 +146,18 @@ public class LoadTsFileTableSchemaCache {
           e);
     }
 
-    createTableAndDatabaseIfNecessary(device.getTableName());
+    try {
+      createTableAndDatabaseIfNecessary(device.getTableName());
+    } catch (final Exception e) {
+      if (IoTDBDescriptor.getInstance().getConfig().isSkipFailedTableSchemaCheck()) {
+        LOGGER.info(
+            "Failed to check table schema, will skip because skipFailedTableSchemaCheck is set to true, message: {}",
+            e.getMessage());
+      } else {
+        throw e;
+      }
+    }
+
     // TODO: add permission check and record auth cost
     addDevice(device);
     if (shouldFlushDevices()) {

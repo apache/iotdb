@@ -1452,12 +1452,22 @@ public class IoTDBSessionRelationalIT {
         rec = dataSet.next();
         assertEquals(1, rec.getFields().get(0).getLongV());
         assertEquals("d1", rec.getFields().get(1).toString());
-        if (to == TSDataType.BLOB) {
-          assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
-        } else if (to == TSDataType.DATE) {
-          assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
-        } else {
-          assertEquals(genValue(to, 1).toString(), rec.getFields().get(2).toString());
+
+        switch (to) {
+          case BLOB:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
+            break;
+          case DATE:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+            break;
+          case FLOAT:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getFloatV());
+            break;
+          case DOUBLE:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getDoubleV());
+            break;
+          default:
+            assertEquals(String.valueOf(genValue(from, 1)), rec.getFields().get(2).toString());
         }
         assertFalse(dataSet.hasNext());
       } else {
@@ -1621,17 +1631,19 @@ public class IoTDBSessionRelationalIT {
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
 
-    for (TSDataType from : dataTypes) {
-      for (TSDataType to : dataTypes) {
-        System.out.println("from: " + from + ", to: " + to);
-        testOneCastWithTablet(from, to, testNum, false);
-        System.out.println("partial insert");
-        testOneCastWithTablet(from, to, testNum, true);
+    try {
+      for (TSDataType from : dataTypes) {
+        for (TSDataType to : dataTypes) {
+          System.out.println("from: " + from + ", to: " + to);
+          testOneCastWithTablet(from, to, testNum, false);
+          System.out.println("partial insert");
+          testOneCastWithTablet(from, to, testNum, true);
+        }
       }
-    }
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+      }
     }
   }
 

@@ -21,9 +21,6 @@
 @echo off
 
 REM -------------------------------
-REM Default SQL dialect
-if "%DEFAULT_SQL_DIALECT%"=="" set DEFAULT_SQL_DIALECT=table
-
 REM Path to start-cli.bat script (adjust if needed)
 set CLI_SCRIPT=%~dp0start-cli.bat
 
@@ -35,5 +32,7 @@ if not exist "%CLI_SCRIPT%" (
 )
 
 REM Execute main script with:
-REM Pass all arguments through
-"%CLI_SCRIPT%" %*
+REM Pass all arguments through and add -sql_dialect table if not already specified
+setlocal
+"%CLI_SCRIPT%" -sql_dialect table %*
+endlocal

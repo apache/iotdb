@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SUPER_USER_ID;
 
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
@@ -76,16 +77,16 @@ public abstract class BasicUserManager extends BasicRoleManager {
    * @throws AuthException if an exception is raised when interacting with the lower storage.
    */
   private void initAdmin() throws AuthException {
-    User admin = this.getEntity(CommonDescriptor.getInstance().getConfig().getAdminName());
+    User admin = this.getEntity(SUPER_USER_ID);
 
     if (admin == null) {
       createUser(
-          CommonDescriptor.getInstance().getConfig().getAdminName(),
+          CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
           CommonDescriptor.getInstance().getConfig().getAdminPassword(),
           true,
           true);
+      admin = this.getEntity(SUPER_USER_ID);
     }
-    admin = this.getEntity(CommonDescriptor.getInstance().getConfig().getAdminName());
     try {
       PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
       PathPrivilege pathPri = new PathPrivilege(rootPath);
@@ -106,11 +107,12 @@ public abstract class BasicUserManager extends BasicRoleManager {
     } catch (IllegalPathException e) {
       LOGGER.warn(
           "Got a wrong path for {} to init",
-          CommonDescriptor.getInstance().getConfig().getAdminName(),
+          CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
           e);
     }
     LOGGER.info(
-        "Internal user {} initialized", CommonDescriptor.getInstance().getConfig().getAdminName());
+        "Internal user {} initialized",
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName());
   }
 
   private void initUserId() {
@@ -138,6 +140,15 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return null;
   }
 
+  public long getUserId(String username) throws AuthException {
+    User user = this.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+    }
+    return user.getUserId();
+  }
+
   public boolean createUser(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
@@ -152,8 +163,9 @@ public abstract class BasicUserManager extends BasicRoleManager {
     lock.writeLock(username);
     try {
       long userid;
-      if (username.equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
-        userid = 0;
+      if (username.equals(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
+          && this.getEntity(SUPER_USER_ID) == null) {
+        userid = SUPER_USER_ID;
       } else {
         userid = ++nextUserId;
       }
@@ -191,7 +203,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
 
   private void validCheck(String username, String password, boolean enableEncrypt)
       throws AuthException {
-    if (!CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)) {
+    if (!CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)) {
       if (username.equals(password)
           && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
         throw new AuthException(
@@ -230,6 +242,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   }
 
   public void renameUser(String username, String newUsername) throws AuthException {
+    AuthUtils.validateName(newUsername);
     User user = this.getEntity(username);
     if (user == null) {
       throw new AuthException(
@@ -295,8 +308,9 @@ public abstract class BasicUserManager extends BasicRoleManager {
       try {
         User user = (User) accessor.loadEntity(userId);
         if (user.getUserId() == -1) {
-          if (user.getName().equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
-            user.setUserId(0);
+          if (user.getName()
+              .equals(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())) {
+            user.setUserId(SUPER_USER_ID);
           } else {
             user.setUserId(++nextUserId);
           }

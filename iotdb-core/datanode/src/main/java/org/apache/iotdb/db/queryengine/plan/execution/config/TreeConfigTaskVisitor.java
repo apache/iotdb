@@ -312,6 +312,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitAuthor(AuthorStatement statement, MPPQueryContext context) {
+    statement.setExecutedByUserId(context.getUserId());
     if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
       visitUpdateUser(statement);
     }
@@ -331,7 +332,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       throw new SemanticException("User " + statement.getUserName() + " not found");
     }
     statement.setPassWord(user.getPassword());
-    DataNodeAuthUtils.verifyPasswordReuse(statement.getUserName(), statement.getNewPassword());
+    DataNodeAuthUtils.verifyPasswordReuse(
+        statement.getAssociatedUsedId(), statement.getNewPassword());
   }
 
   private void visitRenameUser(AuthorStatement statement) {

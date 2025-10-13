@@ -86,9 +86,10 @@ public class DNAuditLogger extends AbstractAuditLogger {
   public static final String PREFIX_PASSWORD_HISTORY = "root.__audit.password_history";
   private static final Logger logger = LoggerFactory.getLogger(DNAuditLogger.class);
 
-  // TODO: @zhujt20 Optimize the following stupid retry
+  // TODO: @zhujt20 Optimize the following stupid intervals
   private static final int INSERT_RETRY_COUNT = 5;
   private static final int INSERT_RETRY_INTERVAL_MS = 2000;
+  private static final int INSERT_INTERVAL_MS = 50;
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -141,6 +142,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
           break;
         }
       }
+    } else {
+      privilegeLevel = PrivilegeLevel.GLOBAL;
     }
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(logDevice);
@@ -352,49 +355,46 @@ public class DNAuditLogger extends AbstractAuditLogger {
   }
 
   @Override
-  public void log(IAuditEntity auditLogFields, Supplier<String> log) {
+  public synchronized void log(IAuditEntity auditLogFields, Supplier<String> log) {
     if (!IS_AUDIT_LOG_ENABLED) {
       return;
     }
-    createViewIfNecessary();
-    if (noNeedInsertAuditLog(auditLogFields)) {
-      return;
-    }
-    long userId = auditLogFields.getUserId();
-    String user = String.valueOf(userId);
-    if (userId == -1) {
-      user = "none";
-    }
-    String dataNodeId = String.valueOf(config.getDataNodeId());
-    InsertRowStatement statement;
     try {
-      statement =
+      createViewIfNecessary();
+      if (noNeedInsertAuditLog(auditLogFields)) {
+        return;
+      }
+      long userId = auditLogFields.getUserId();
+      String user = String.valueOf(userId);
+      if (userId == -1) {
+        user = "none";
+      }
+      String dataNodeId = String.valueOf(config.getDataNodeId());
+      InsertRowStatement statement =
           generateInsertStatement(
               auditLogFields,
               log.get(),
               DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, user)));
-    } catch (IllegalPathException e) {
-      logger.error("Failed to log audit events because ", e);
-      return;
-    }
-    for (int retry = 0; retry < INSERT_RETRY_COUNT; retry++) {
-      ExecutionResult insertResult =
-          coordinator.executeForTreeModel(
-              statement,
-              SESSION_MANAGER.requestQueryId(),
-              sessionInfo,
-              "",
-              ClusterPartitionFetcher.getInstance(),
-              SCHEMA_FETCHER);
-      if (insertResult.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
-      }
-      try {
+      for (int retry = 0; retry < INSERT_RETRY_COUNT; retry++) {
+        ExecutionResult insertResult =
+            coordinator.executeForTreeModel(
+                statement,
+                SESSION_MANAGER.requestQueryId(),
+                sessionInfo,
+                "",
+                ClusterPartitionFetcher.getInstance(),
+                SCHEMA_FETCHER);
+        if (insertResult.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          TimeUnit.MILLISECONDS.sleep(INSERT_INTERVAL_MS);
+          return;
+        }
         TimeUnit.MILLISECONDS.sleep(INSERT_RETRY_INTERVAL_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("Audit log insertion retry sleep was interrupted", e);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("[AUDIT] Audit log insertion retry sleep was interrupted because", e);
+    } catch (Exception e) {
+      logger.warn("[AUDIT] Failed to log audit events because", e);
     }
     AuditEventType type = auditLogFields.getAuditEventType();
     if (isLoginEvent(type)) {

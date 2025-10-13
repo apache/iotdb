@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Comp
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -86,7 +87,9 @@ public class SingleSeriesCompactionExecutor {
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = measurementSchema;
-    this.chunkWriter = new ChunkWriterImpl(this.schema);
+    this.chunkWriter =
+        new ChunkWriterImpl(
+            this.schema, EncryptUtils.getEncryptParameter(fileWriter.getEncryptParameter()));
     this.cachedChunk = null;
     this.cachedChunkMetadata = null;
     this.targetResource = targetResource;
@@ -175,7 +178,9 @@ public class SingleSeriesCompactionExecutor {
             chunkHeader.getDataType(),
             chunkHeader.getEncodingType(),
             chunkHeader.getCompressionType());
-    this.chunkWriter = new ChunkWriterImpl(this.schema);
+    this.chunkWriter =
+        new ChunkWriterImpl(
+            this.schema, EncryptUtils.getEncryptParameter(fileWriter.getEncryptParameter()));
   }
 
   private long getChunkSize(Chunk chunk) {

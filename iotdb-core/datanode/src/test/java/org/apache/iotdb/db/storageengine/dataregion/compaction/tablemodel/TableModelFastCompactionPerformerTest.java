@@ -32,6 +32,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -41,6 +42,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class TableModelFastCompactionPerformerTest extends AbstractCompactionTest {
 
@@ -63,8 +66,8 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new CompactionTableModelTestFileWriter(resource1)) {
       writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
       writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Collections.singletonList("s1"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
@@ -76,13 +79,8 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new CompactionTableModelTestFileWriter(resource2)) {
       writer.registerTableSchema("t2", Arrays.asList("id1", "id2", "id3"));
       writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s2",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
@@ -95,13 +93,8 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new CompactionTableModelTestFileWriter(resource3)) {
       writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
       writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s2",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
@@ -113,13 +106,8 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new CompactionTableModelTestFileWriter(resource4)) {
       writer.registerTableSchema("t2", Arrays.asList("id1", "id2", "id3"));
       writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s2",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
@@ -172,24 +160,24 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new CompactionTableModelTestFileWriter(resource2)) {
       writer.registerTableSchema("db1.t1", Arrays.asList("id1", "id2"));
       writer.startChunkGroup("db1.t1", Arrays.asList("id_field1", "id_field2"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Collections.singletonList("s1"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
 
       writer.startChunkGroup("d1");
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Collections.singletonList("s1"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
 
       writer.startChunkGroup("node1.node2.device");
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Collections.singletonList("s1"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
@@ -218,16 +206,16 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new CompactionTableModelTestFileWriter(resource1)) {
       writer.registerTableSchema("db1.t1", Arrays.asList("id1", "id2"));
       writer.startChunkGroup("db1.t1", Arrays.asList("id_field1", "id_field2"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Collections.singletonList("s1"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
 
       writer.startChunkGroup("d1");
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Collections.singletonList("s1"),
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
           TSEncoding.PLAIN,
           CompressionType.LZ4);
@@ -246,6 +234,77 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new TsFileSequenceReader(
             tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
+    }
+  }
+
+  @Test
+  public void testCrossSpaceCompactionOfTableModelCanNotMatchTableSchema() throws IOException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource1)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Collections.singletonList("s1"),
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource resource2 = createEmptyFileAndResource(false);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource2)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id3"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field3"));
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(1, 2)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource resource3 = createEmptyFileAndResource(true);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource3)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id4"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field3"));
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(100, 200)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(resource1);
+    unseqResources.add(resource2);
+    seqResources.add(resource3);
+    tsFileManager.addAll(seqResources, true);
+
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(true),
+            0,
+            0);
+    Assert.assertTrue(task.start());
+    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
+    Assert.assertEquals(1, targetResource.getDevices().size());
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
+      Assert.assertEquals(1, reader.getTableSchemaMap().size());
+      Assert.assertTrue(reader.getTableSchemaMap().containsKey("t1"));
+      List<IMeasurementSchema> tableSchema =
+          reader.getTableSchemaMap().get("t1").getColumnSchemas();
+      Assert.assertEquals("id1", tableSchema.get(0).getMeasurementName());
+      Assert.assertEquals("id4", tableSchema.get(1).getMeasurementName());
+      Assert.assertEquals("s1", tableSchema.get(2).getMeasurementName());
+      Assert.assertEquals("s2", tableSchema.get(3).getMeasurementName());
     }
   }
 }

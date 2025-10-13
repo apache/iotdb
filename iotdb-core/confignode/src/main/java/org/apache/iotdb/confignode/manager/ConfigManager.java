@@ -369,7 +369,7 @@ public class ConfigManager implements IManager {
     NodeInfo nodeInfo = new NodeInfo();
     ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
     PartitionInfo partitionInfo = new PartitionInfo();
-    AuthorInfo authorInfo = new AuthorInfo();
+    AuthorInfo authorInfo = createAuthorInfo();
     ProcedureInfo procedureInfo = new ProcedureInfo(this);
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
@@ -409,8 +409,8 @@ public class ConfigManager implements IManager {
             new ClusterSchemaQuotaStatistics(
                 COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
     this.partitionManager = new PartitionManager(this, partitionInfo);
-    this.permissionManager = new PermissionManager(this, authorInfo);
-    this.procedureManager = new ProcedureManager(this, procedureInfo);
+    this.permissionManager = createPermissionManager(authorInfo);
+    this.procedureManager = createProcedureManager(procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
@@ -433,6 +433,18 @@ public class ConfigManager implements IManager {
   public void initConsensusManager() throws IOException {
     this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
     this.consensusManager.get().start();
+  }
+
+  protected PermissionManager createPermissionManager(AuthorInfo authorInfo) {
+    return new PermissionManager(this, authorInfo);
+  }
+
+  protected ProcedureManager createProcedureManager(ProcedureInfo procedureInfo) {
+    return new ProcedureManager(this, procedureInfo);
+  }
+
+  protected AuthorInfo createAuthorInfo() {
+    return new AuthorInfo();
   }
 
   protected void setNodeManager(NodeInfo nodeInfo) {
@@ -2257,7 +2269,11 @@ public class ConfigManager implements IManager {
         deleteTimeSeriesPatternPaths.add(path);
       }
       if (!canOptimize) {
-        return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
+        return procedureManager.deleteTimeSeries(
+            queryId,
+            rawPatternTree,
+            isGeneratedByPipe,
+            req.isSetMayDeleteAudit() && req.isMayDeleteAudit());
       }
       // check if the database is using template
       try {
@@ -2274,7 +2290,10 @@ public class ConfigManager implements IManager {
         deleteTimeSeriesPatternTree.constructTree();
         status =
             procedureManager.deleteTimeSeries(
-                queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe);
+                queryId,
+                deleteTimeSeriesPatternTree,
+                isGeneratedByPipe,
+                req.isSetMayDeleteAudit() && req.isMayDeleteAudit());
       }
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // 2. delete database
@@ -2626,12 +2645,21 @@ public class ConfigManager implements IManager {
 
   /**
    * Get all related dataRegion which may contains the data of specific timeseries matched by given
-   * patternTree
+   * patternTree. The audit db is excluded
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       final PathPatternTree patternTree) {
+    return getRelatedDataRegionGroup(patternTree, false);
+  }
+
+  /**
+   * Get all related dataRegion which may contains the data of specific timeseries matched by given
+   * patternTree
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
+      final PathPatternTree patternTree, boolean needAuditDB) {
     return getRelatedDataRegionGroup(
-        getSchemaPartition(patternTree, false).getSchemaPartitionTable());
+        getSchemaPartition(patternTree, needAuditDB).getSchemaPartitionTable());
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup4TableModel(

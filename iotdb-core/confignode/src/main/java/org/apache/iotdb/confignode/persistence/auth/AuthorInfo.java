@@ -30,12 +30,15 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -51,8 +54,8 @@ public class AuthorInfo implements SnapshotProcessor {
   public static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final String NO_USER_MSG = "No such user : ";
 
-  private IAuthorizer authorizer;
-  private volatile IAuthorPlanExecutor authorPlanExecutor;
+  protected IAuthorizer authorizer;
+  protected volatile IAuthorPlanExecutor authorPlanExecutor;
 
   public AuthorInfo() {
     try {
@@ -61,6 +64,45 @@ public class AuthorInfo implements SnapshotProcessor {
     } catch (AuthException e) {
       LOGGER.error("get user or role permissionInfo failed because ", e);
     }
+  }
+
+  public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorType(int authorType) {
+    ConfigPhysicalPlanType configPhysicalPlanType;
+    if (authorType == AuthorType.RENAME_USER.ordinal()) {
+      configPhysicalPlanType = ConfigPhysicalPlanType.RenameUser;
+    } else {
+      configPhysicalPlanType =
+          ConfigPhysicalPlanType.values()[authorType + ConfigPhysicalPlanType.CreateUser.ordinal()];
+      switch (configPhysicalPlanType) {
+        case UpdateUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.UpdateUserV2;
+          break;
+        case DropUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.DropUserV2;
+          break;
+      }
+    }
+    return configPhysicalPlanType;
+  }
+
+  public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorRType(int authorRType) {
+    ConfigPhysicalPlanType configPhysicalPlanType;
+    if (authorRType == AuthorRType.RENAME_USER.ordinal()) {
+      configPhysicalPlanType = ConfigPhysicalPlanType.RRenameUser;
+    } else {
+      configPhysicalPlanType =
+          ConfigPhysicalPlanType.values()[
+              authorRType + ConfigPhysicalPlanType.RCreateUser.ordinal()];
+      switch (configPhysicalPlanType) {
+        case RUpdateUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.RUpdateUserV2;
+          break;
+        case RDropUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.RDropUserV2;
+          break;
+      }
+    }
+    return configPhysicalPlanType;
   }
 
   public void setAuthorQueryPlanExecutor(IAuthorPlanExecutor authorPlanExecutor) {
@@ -147,6 +189,11 @@ public class AuthorInfo implements SnapshotProcessor {
   public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
       throws AuthException {
     return authorPlanExecutor.getUserPermissionInfo(username, type);
+  }
+
+  public TSStatus enableSeparationOfAdminPowers(
+      String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
+    throw new UnsupportedOperationException("EnableSeparationOfAdminPowers is not supported");
   }
 
   @TestOnly

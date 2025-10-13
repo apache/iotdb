@@ -35,6 +35,7 @@ public enum AuthorType {
   LIST_ROLE,
   LIST_USER_PRIVILEGE,
   LIST_ROLE_PRIVILEGE,
+  ACCOUNT_UNLOCK,
   // Remind to renew the convert codes in ConfigNodeRPCServiceProcessor
   RENAME_USER,
   ;
@@ -79,6 +80,8 @@ public enum AuthorType {
         return LIST_ROLE_PRIVILEGE;
       case 15:
         return RENAME_USER;
+      case 16:
+        return ACCOUNT_UNLOCK;
       default:
         return null;
     }
@@ -123,6 +126,8 @@ public enum AuthorType {
         return 14;
       case RENAME_USER:
         return 15;
+      case ACCOUNT_UNLOCK:
+        return 16;
       default:
         return -1;
     }

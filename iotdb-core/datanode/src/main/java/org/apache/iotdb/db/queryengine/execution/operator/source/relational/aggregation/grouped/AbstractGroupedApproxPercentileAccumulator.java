@@ -110,19 +110,24 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
     TDigest tDigest = array.get(groupId);
+    double result = tDigest.quantile(percentage);
+    if (Double.isNaN(result)) {
+      columnBuilder.appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
-        columnBuilder.writeInt((int) tDigest.quantile(percentage));
+        columnBuilder.writeInt((int) result);
         break;
       case INT64:
       case TIMESTAMP:
-        columnBuilder.writeLong((long) tDigest.quantile(percentage));
+        columnBuilder.writeLong((long) result);
         break;
       case FLOAT:
-        columnBuilder.writeFloat((float) tDigest.quantile(percentage));
+        columnBuilder.writeFloat((float) result);
         break;
       case DOUBLE:
-        columnBuilder.writeDouble(tDigest.quantile(percentage));
+        columnBuilder.writeDouble(result);
         break;
       default:
         throw new UnSupportedDataTypeException(

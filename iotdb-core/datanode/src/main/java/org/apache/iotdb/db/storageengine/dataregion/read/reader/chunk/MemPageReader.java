@@ -226,7 +226,7 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public void setModified(boolean b) {}
+  public void setModified(boolean modified) {}
 
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
