@@ -2229,7 +2229,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadLoadTsFileProps(TrimProperties properties) throws IOException {
+  private void loadLoadTsFileProps(TrimProperties properties) {
     conf.setMaxAllocateMemoryRatioForLoad(
         Double.parseDouble(
             properties.getProperty(
@@ -2380,6 +2380,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "cache_last_values_memory_budget_in_byte",
                 String.valueOf(conf.getCacheLastValuesMemoryBudgetInByte()))));
+
+    conf.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2427,6 +2433,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_split_partition_max_size",
                 Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
+
+    conf.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {

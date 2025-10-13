@@ -398,7 +398,7 @@ public class CommonDescriptor {
         Float.parseFloat(
             properties.getProperty(
                 "subscription_prefetch_missing_rate_threshold",
-                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+                String.valueOf(config.getSubscriptionPrefetchMissingRateThreshold()))));
     config.setSubscriptionPrefetchEventLocalCountThreshold(
         Integer.parseInt(
             properties.getProperty(
