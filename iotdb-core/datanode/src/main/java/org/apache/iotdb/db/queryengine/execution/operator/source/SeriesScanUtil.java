@@ -1532,9 +1532,16 @@ public class SeriesScanUtil implements Accountable {
       }
       if (statistics.getStartTime() > statistics.getEndTime()) {
         // empty
+        hasData = false;
         return;
       }
       Filter globalTimeFilter = ((FragmentInstanceContext) context).getGlobalTimeFilter();
+      if (globalTimeFilter == null) {
+        this.memPointIterator.setCurrentPageTimeRange(
+            new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
+        return;
+      }
+
       long startTime = statistics.getStartTime();
       long endTime = statistics.getEndTime();
       long minStart = Long.MAX_VALUE;
