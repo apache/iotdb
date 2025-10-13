@@ -234,7 +234,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
