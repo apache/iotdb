@@ -43,6 +43,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -53,7 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @TableModel
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
-  protected IoTDBTreePattern treePattern;
+  protected List<TreePattern> treePatterns;
   protected TablePattern tablePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
@@ -76,8 +77,16 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
       throws Exception {
     super.customize(parameters, configuration);
 
-    final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    final List<TreePattern> patterns = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    // TODO: support multiple path pattern
+    if (patterns.size() != 1) {
+      throw new IllegalArgumentException(
+          String.format(
+              "The path pattern parameters %s is not valid for the source. Only single path pattern is allowed.",
+              parameters));
+    }
 
+    final TreePattern pattern = patterns.get(0);
     if (!(pattern instanceof IoTDBTreePattern
         && (((IoTDBTreePattern) pattern).isPrefix()
             || ((IoTDBTreePattern) pattern).isFullPath()))) {
@@ -86,7 +95,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    treePattern = (IoTDBTreePattern) pattern;
+    treePatterns = Collections.singletonList((IoTDBTreePattern) pattern);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
   }
 
@@ -179,7 +188,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                       pipeName,
                       creationTime,
                       pipeTaskMeta,
-                      treePattern,
+                      treePatterns,
                       tablePattern,
                       userId,
                       userName,
@@ -242,7 +251,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                 pipeName,
                 creationTime,
                 pipeTaskMeta,
-                treePattern,
+                treePatterns,
                 tablePattern,
                 userId,
                 userName,

@@ -30,6 +30,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
 
@@ -50,7 +51,7 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -61,7 +62,7 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -80,7 +81,7 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -93,7 +94,7 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,

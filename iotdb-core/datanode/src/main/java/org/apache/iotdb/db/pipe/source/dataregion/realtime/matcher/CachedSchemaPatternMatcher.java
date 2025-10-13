@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -230,22 +231,23 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
               return;
             }
 
-            final TreePattern pattern = source.getTreePattern();
-            if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(device)) {
-              // The pattern can match all measurements of the device.
-              matchedSources.add(source);
-            } else {
-              for (final String measurement : measurements) {
-                // Ignore null measurement for partial insert
-                if (measurement == null) {
-                  continue;
-                }
+            for (final TreePattern pattern : source.getTreePatterns()) {
+              if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(device)) {
+                // The pattern can match all measurements of the device.
+                matchedSources.add(source);
+              } else {
+                for (final String measurement : measurements) {
+                  // Ignore null measurement for partial insert
+                  if (measurement == null) {
+                    continue;
+                  }
 
-                if (pattern.matchesMeasurement(device, measurement)) {
-                  matchedSources.add(source);
-                  // There would be no more matched sources because the measurements are
-                  // unique
-                  break;
+                  if (pattern.matchesMeasurement(device, measurement)) {
+                    matchedSources.add(source);
+                    // There would be no more matched sources because the measurements are
+                    // unique
+                    break;
+                  }
                 }
               }
             }
@@ -262,10 +264,13 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         continue;
       }
 
-      final TreePattern treePattern = source.getTreePattern();
-      if (Objects.isNull(treePattern)
-          || (treePattern.isTreeModelDataAllowedToBeCaptured()
-              && treePattern.mayOverlapWithDevice(device))) {
+      final List<TreePattern> treePatterns = source.getTreePatterns();
+      if (Objects.isNull(treePatterns)
+          || treePatterns.stream()
+              .anyMatch(
+                  treePattern ->
+                      (treePattern.isTreeModelDataAllowedToBeCaptured()
+                          && treePattern.mayOverlapWithDevice(device)))) {
         filteredSources.add(source);
       }
     }

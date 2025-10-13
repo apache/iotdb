@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
 
@@ -49,7 +50,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -60,7 +61,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -79,7 +80,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -92,7 +93,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,

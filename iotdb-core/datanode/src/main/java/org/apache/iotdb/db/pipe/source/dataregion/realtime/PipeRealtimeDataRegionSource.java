@@ -98,7 +98,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   protected boolean shouldExtractInsertion;
   protected boolean shouldExtractDeletion;
 
-  protected TreePattern treePattern;
+  protected List<TreePattern> treePatterns;
   protected TablePattern tablePattern;
   private boolean isDbNameCoveredByPattern = false;
 
@@ -226,7 +226,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     pipeID = pipeName + "_" + creationTime;
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
-    treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    treePatterns = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
@@ -237,7 +237,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
         if (PathUtils.isTableModelDatabase(databaseName)) {
           isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
         } else {
-          isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
+          isDbNameCoveredByPattern =
+              treePatterns.stream().allMatch(treePattern -> treePattern.coversDb(databaseName));
         }
       }
     }
@@ -532,8 +533,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return shouldExtractDeletion;
   }
 
-  public final TreePattern getTreePattern() {
-    return treePattern;
+  public final List<TreePattern> getTreePatterns() {
+    return treePatterns;
   }
 
   public final TablePattern getTablePattern() {
@@ -629,7 +630,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
         .add("pipeTaskMeta", pipeTaskMeta)
         .add("shouldExtractInsertion", shouldExtractInsertion)
         .add("shouldExtractDeletion", shouldExtractDeletion)
-        .add("treePattern", treePattern)
+        .add("treePatterns", treePatterns)
         .add("tablePattern", tablePattern)
         .add("isDbNameCoveredByPattern", isDbNameCoveredByPattern)
         .add("realtimeDataExtractionStartTime", realtimeDataExtractionStartTime)

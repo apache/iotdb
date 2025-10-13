@@ -44,10 +44,14 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.record.Tablet;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     implements TabletInsertionEvent, ReferenceTrackableEvent, AutoCloseable {
@@ -64,7 +68,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
-  private TabletInsertionEventParser eventParser;
+  private List<TabletInsertionEventParser> eventParsers;
 
   private volatile ProgressIndex overridingProgressIndex;
 
@@ -80,7 +84,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -92,7 +96,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -218,7 +222,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
-      final Tablet tablet, final boolean isAligned, final TreePattern treePattern) {
+      final Tablet tablet, final boolean isAligned, final List<TreePattern> treePatterns) {
     this(
         null,
         null,
@@ -231,7 +235,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         null,
         0,
         null,
-        treePattern,
+        treePatterns,
         null,
         null,
         null,
@@ -276,7 +280,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
     // Actually release the occupied memory.
     tablet = null;
-    eventParser = null;
+    if (Objects.nonNull(eventParsers)) {
+      eventParsers.clear();
+      eventParsers = null;
+    }
 
     // Update metrics of the source event
     if (needToReport && shouldReportOnCommit && Objects.nonNull(pipeName)) {
@@ -333,7 +340,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern treePattern,
+      final List<TreePattern> treePatterns,
       final TablePattern tablePattern,
       final String userId,
       final String userName,
@@ -353,7 +360,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        treePattern,
+        treePatterns,
         tablePattern,
         userId,
         userName,
@@ -406,13 +413,19 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    return initEventParser().processRowByRow(consumer);
+    return initEventParsers().stream()
+        .map(tabletInsertionEventParser -> tabletInsertionEventParser.processRowByRow(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    return initEventParser().processTablet(consumer);
+    return initEventParsers().stream()
+        .map(tabletInsertionEventParser -> tabletInsertionEventParser.processTablet(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -425,21 +438,31 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     if (!shouldParseTimeOrPattern()) {
       return tablet;
     }
-    return initEventParser().convertToTablet();
+    // TODO: handle multiple patterns
+    return initEventParsers().get(0).convertToTablet();
   }
 
   /////////////////////////// event parser ///////////////////////////
 
-  private TabletInsertionEventParser initEventParser() {
-    if (eventParser == null) {
-      eventParser =
+  private List<TabletInsertionEventParser> initEventParsers() {
+    if (Objects.isNull(eventParsers)) {
+      eventParsers =
           tablet.getDeviceId().startsWith("root.")
-              ? new TabletInsertionEventTreePatternParser(
-                  pipeTaskMeta, this, tablet, isAligned, treePattern)
-              : new TabletInsertionEventTablePatternParser(
-                  pipeTaskMeta, this, tablet, isAligned, tablePattern);
+              ? (treePatterns.isEmpty()
+                  ? Collections.singletonList(
+                      new TabletInsertionEventTreePatternParser(
+                          pipeTaskMeta, this, tablet, isAligned, null))
+                  : treePatterns.stream()
+                      .map(
+                          treePattern ->
+                              new TabletInsertionEventTreePatternParser(
+                                  pipeTaskMeta, this, tablet, isAligned, treePattern))
+                      .collect(Collectors.toList()))
+              : Collections.singletonList(
+                  new TabletInsertionEventTablePatternParser(
+                      pipeTaskMeta, this, tablet, isAligned, tablePattern));
     }
-    return eventParser;
+    return eventParsers;
   }
 
   public long count() {
@@ -480,8 +503,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, eventParser=%s}",
-            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, eventParser)
+            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, eventParsers=%s}",
+            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, eventParsers)
         + " - "
         + super.toString();
   }

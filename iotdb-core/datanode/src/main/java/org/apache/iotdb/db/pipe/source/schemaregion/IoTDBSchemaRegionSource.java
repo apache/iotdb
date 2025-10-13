@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
@@ -216,7 +217,10 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
     return TREE_PATTERN_PARSE_VISITOR
-        .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), treePattern)
+        .process(
+            ((PipeSchemaRegionWritePlanEvent) event).getPlanNode(),
+            // TODO: handle multiple patterns
+            (IoTDBTreePattern) treePatterns.get(0))
         .flatMap(
             planNode ->
                 TABLE_PATTERN_PARSE_VISITOR
