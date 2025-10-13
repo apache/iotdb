@@ -1875,7 +1875,8 @@ public abstract class AlignedTVList extends TVList {
 
     @Override
     public TsBlock nextBatch() {
-      TsBlockBuilder builder = new TsBlockBuilder(maxNumberOfPointsInPage, dataTypeList);
+      int maxRowCountOfCurrentBatch = Math.min(rows - index, maxNumberOfPointsInPage);
+      TsBlockBuilder builder = new TsBlockBuilder(maxRowCountOfCurrentBatch, dataTypeList);
       // Time column
       TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
 
@@ -2022,9 +2023,9 @@ public abstract class AlignedTVList extends TVList {
       TsBlock tsBlock = builder.build();
       if (ignoreAllNullRows && needRebuildTsBlock(hasAnyNonNullValue)) {
         // if exist all null rows, at most have validRowCount - 1 valid rows
+        // When rebuilding TsBlock, pushDownFilter and paginationController are also processed.
         tsBlock = reBuildTsBlock(hasAnyNonNullValue, validRowCount, dataTypeList, tsBlock);
-      }
-      if (pushDownFilter != null) {
+      } else if (pushDownFilter != null) {
         tsBlock =
             TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
                 tsBlock,
@@ -2086,21 +2087,35 @@ public abstract class AlignedTVList extends TVList {
         int previousValidRowCount,
         List<TSDataType> tsDataTypeList,
         TsBlock previousTsBlock) {
+      boolean[] selection = hasAnyNonNullValue;
+      if (pushDownFilter != null) {
+        selection = pushDownFilter.satisfyTsBlock(hasAnyNonNullValue, previousTsBlock);
+      }
       TsBlockBuilder builder = new TsBlockBuilder(previousValidRowCount - 1, tsDataTypeList);
       TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
       Column timeColumn = previousTsBlock.getTimeColumn();
+      int stopIndex = 0;
       for (int i = 0; i < previousValidRowCount; i++) {
-        if (hasAnyNonNullValue[i]) {
-          timeColumnBuilder.writeLong(timeColumn.getLong(i));
-          builder.declarePosition();
+        if (selection[i]) {
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            selection[i] = false;
+          } else if (paginationController.hasCurLimit()) {
+            timeColumnBuilder.writeLong(timeColumn.getLong(i));
+            builder.declarePosition();
+            paginationController.consumeLimit();
+          } else {
+            stopIndex = i;
+            break;
+          }
         }
       }
 
       for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
         ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
         Column column = previousTsBlock.getColumn(columnIndex);
-        for (int i = 0; i < previousValidRowCount; i++) {
-          if (hasAnyNonNullValue[i]) {
+        for (int i = 0; i < stopIndex; i++) {
+          if (selection[i]) {
             if (column.isNull(i)) {
               columnBuilder.appendNull();
             } else {
