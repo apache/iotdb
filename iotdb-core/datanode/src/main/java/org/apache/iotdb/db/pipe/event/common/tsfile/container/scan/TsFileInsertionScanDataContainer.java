@@ -113,8 +113,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                 PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
     this.allocatedMemoryBlockForChunk =
         PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
+            .forceAllocateForTabletWithRetry(PipeConfig.getInstance().getPipeMaxReaderChunkSize());
 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
