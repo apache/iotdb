@@ -42,7 +42,6 @@ public abstract class AbstractPipeTableModelDualManualIT {
   }
 
   protected void setupConfig() {
-
     senderEnv
         .getConfig()
         .getCommonConfig()
