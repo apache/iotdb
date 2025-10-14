@@ -45,7 +45,6 @@ abstract class AbstractPipeTripleManualIT {
   }
 
   protected void setupConfig() {
-    // TODO: delete ratis configurations
     env1.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
