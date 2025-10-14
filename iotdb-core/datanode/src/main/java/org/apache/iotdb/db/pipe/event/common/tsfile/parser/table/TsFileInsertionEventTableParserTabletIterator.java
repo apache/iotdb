@@ -218,31 +218,17 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 while (iChunkMetadataIterator.hasNext()) {
                   IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
                   if (iChunkMetadata == null) {
-                    throw new PipeException(
-                        "Table model tsfile parsing does not support this type of ChunkMeta");
+                    continue;
                   }
 
-                  boolean isDelete = false;
-                  if (isDelete =
-                      ModsOperationUtil.isAllDeletedByMods(
-                          pair.getLeft(),
-                          iChunkMetadata.getMeasurementUid(),
-                          alignedChunkMetadata.getStartTime(),
-                          alignedChunkMetadata.getEndTime(),
-                          modifications)) {
+                  if (ModsOperationUtil.isAllDeletedByMods(
+                      pair.getLeft(),
+                      iChunkMetadata.getMeasurementUid(),
+                      alignedChunkMetadata.getStartTime(),
+                      alignedChunkMetadata.getEndTime(),
+                      modifications)) {
                     iChunkMetadataIterator.remove();
                   }
-                  System.out.println(
-                      "deviceID: "
-                          + pair.getLeft()
-                          + ", measurement: "
-                          + iChunkMetadata.getMeasurementUid()
-                          + ", startTime: "
-                          + alignedChunkMetadata.getStartTime()
-                          + ", endTime: "
-                          + alignedChunkMetadata.getEndTime()
-                          + ", isDelete: "
-                          + isDelete);
                 }
 
                 if (alignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
@@ -356,8 +342,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         }
 
         if (fillMeasurementValueColumns(batchData, tablet, rowIndex)) {
-          tablet.addTimestamp(rowIndex, batchData.currentTime());
           fillDeviceIdColumns(deviceID, tablet, rowIndex);
+          tablet.addTimestamp(rowIndex, batchData.currentTime());
         }
       }
 
