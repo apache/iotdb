@@ -92,7 +92,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private final Map<String, Integer> measurementIndexMap = new HashMap<>();
   private int lastIndex = -1;
   private ChunkHeader firstChunkHeader4NextSequentialValueChunks;
-  private long firstChunkHeaderOffset4NextSequentialValueChunks = -1;
 
   private byte lastMarker = Byte.MIN_VALUE;
 
@@ -460,14 +459,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               break;
             }
 
-            if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-              PipeDataNodeResourceManager.memory()
-                  .forceResize(allocatedMemoryBlockForChunk, chunkHeader.getDataSize());
-            }
-
-            Chunk chunk =
-                new Chunk(
-                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
             // Skip the chunk if it is fully deleted by mods
             final Statistics statistics =
                 findNonAlignedChunkStatistics(
@@ -481,8 +472,18 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     statistics.getStartTime(),
                     statistics.getEndTime(),
                     currentModifications)) {
+              tsFileSequenceReader.position(nextMarkerOffset);
               break;
             }
+
+            if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+              PipeDataNodeResourceManager.memory()
+                  .forceResize(allocatedMemoryBlockForChunk, chunkHeader.getDataSize());
+            }
+
+            Chunk chunk =
+                new Chunk(
+                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
 
             chunkReader =
                 currentIsMultiPage
@@ -501,9 +502,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case MetaMarker.VALUE_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
           {
-            long currentChunkHeaderOffset = -1;
             if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
-              currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
+              long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
               final long nextMarkerOffset =
@@ -511,6 +511,23 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               if (Objects.isNull(currentDevice)
                   || !treePattern.matchesMeasurement(
                       currentDevice, chunkHeader.getMeasurementID())) {
+                tsFileSequenceReader.position(nextMarkerOffset);
+                break;
+              }
+
+              // Skip the chunk if it is fully deleted by mods
+              final Statistics statistics =
+                  findAlignedChunkStatistics(
+                      tsFileSequenceReader.getIChunkMetadataList(
+                          currentDevice, chunkHeader.getMeasurementID()),
+                      currentChunkHeaderOffset);
+              if (statistics != null
+                  && ModsOperationUtil.isAllDeletedByMods(
+                      currentDevice,
+                      chunkHeader.getMeasurementID(),
+                      statistics.getStartTime(),
+                      statistics.getEndTime(),
+                      currentModifications)) {
                 tsFileSequenceReader.position(nextMarkerOffset);
                 break;
               }
@@ -552,34 +569,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               lastIndex = valueIndex;
               if (needReturn) {
                 firstChunkHeader4NextSequentialValueChunks = chunkHeader;
-                firstChunkHeaderOffset4NextSequentialValueChunks = currentChunkHeaderOffset;
                 return;
               }
             } else {
               chunkHeader = firstChunkHeader4NextSequentialValueChunks;
-              currentChunkHeaderOffset = firstChunkHeaderOffset4NextSequentialValueChunks;
               firstChunkHeader4NextSequentialValueChunks = null;
-              firstChunkHeaderOffset4NextSequentialValueChunks = -1;
             }
 
             Chunk chunk =
                 new Chunk(
                     chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
-            // Skip the chunk if it is fully deleted by mods
-            final Statistics statistics =
-                findAlignedChunkStatistics(
-                    tsFileSequenceReader.getIChunkMetadataList(
-                        currentDevice, chunkHeader.getMeasurementID()),
-                    currentChunkHeaderOffset);
-            if (statistics != null
-                && ModsOperationUtil.isAllDeletedByMods(
-                    currentDevice,
-                    chunkHeader.getMeasurementID(),
-                    statistics.getStartTime(),
-                    statistics.getEndTime(),
-                    currentModifications)) {
-              break;
-            }
 
             valueChunkSize += chunkHeader.getDataSize();
             valueChunkList.add(chunk);
