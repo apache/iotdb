@@ -222,14 +222,32 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                         "Table model tsfile parsing does not support this type of ChunkMeta");
                   }
 
-                  if (ModsOperationUtil.isAllDeletedByMods(
-                      pair.getLeft(),
-                      iChunkMetadata.getMeasurementUid(),
-                      alignedChunkMetadata.getStartTime(),
-                      alignedChunkMetadata.getEndTime(),
-                      modifications)) {
+                  boolean isDelete = false;
+                  if (isDelete =
+                      ModsOperationUtil.isAllDeletedByMods(
+                          pair.getLeft(),
+                          iChunkMetadata.getMeasurementUid(),
+                          alignedChunkMetadata.getStartTime(),
+                          alignedChunkMetadata.getEndTime(),
+                          modifications)) {
                     iChunkMetadataIterator.remove();
                   }
+                  System.out.println(
+                      "deviceID: "
+                          + pair.getLeft()
+                          + ", measurement: "
+                          + iChunkMetadata.getMeasurementUid()
+                          + ", startTime: "
+                          + alignedChunkMetadata.getStartTime()
+                          + ", endTime: "
+                          + alignedChunkMetadata.getEndTime()
+                          + ", isDelete: "
+                          + isDelete);
+                }
+
+                if (alignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
+                  chunkMetadataIterator.remove();
+                  continue;
                 }
 
                 size +=
@@ -337,9 +355,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           break;
         }
 
-        tablet.addTimestamp(rowIndex, batchData.currentTime());
-        fillMeasurementValueColumns(batchData, tablet, rowIndex);
-        fillDeviceIdColumns(deviceID, tablet, rowIndex);
+        if (fillMeasurementValueColumns(batchData, tablet, rowIndex)) {
+          tablet.addTimestamp(rowIndex, batchData.currentTime());
+          fillDeviceIdColumns(deviceID, tablet, rowIndex);
+        }
       }
 
       if (batchData != null) {
@@ -420,14 +439,16 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications);
   }
 
-  private void fillMeasurementValueColumns(
+  private boolean fillMeasurementValueColumns(
       final BatchData data, final Tablet tablet, final int rowIndex) {
     final TsPrimitiveType[] primitiveTypes = data.getVector();
+    boolean needFillTime = false;
 
     for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
       final TsPrimitiveType primitiveType = primitiveTypes[i - deviceIdSize];
+      boolean isDelete = false;
       if (primitiveType == null
-          || ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i))) {
+          || (isDelete = ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i)))) {
         switch (dataTypeList.get(i)) {
           case TEXT:
           case BLOB:
@@ -435,8 +456,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
             tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
         }
         tablet.getBitMaps()[i].mark(rowIndex);
+        needFillTime = needFillTime || !isDelete;
         continue;
       }
+      needFillTime = true;
 
       switch (dataTypeList.get(i)) {
         case BOOLEAN:
@@ -471,6 +494,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
       }
     }
+    return needFillTime;
   }
 
   private void fillDeviceIdColumns(
