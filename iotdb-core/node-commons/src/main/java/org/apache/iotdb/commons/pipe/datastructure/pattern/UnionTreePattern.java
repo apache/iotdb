@@ -32,95 +32,55 @@ public class UnionTreePattern extends TreePattern {
 
   private final List<TreePattern> patterns;
 
-  /**
-   * Constructs a {@link UnionTreePattern} with a list of {@link TreePattern}s.
-   *
-   * @param patterns A list of {@link TreePattern}s. Assumes all patterns share the same value for
-   *     isTreeModelDataAllowedToBeCaptured.
-   */
-  public UnionTreePattern(final List<TreePattern> patterns) {
-    super(patterns.stream().anyMatch(pattern -> pattern.isTreeModelDataAllowedToBeCaptured));
+  public UnionTreePattern(
+      final boolean isTreeModelDataAllowedToBeCaptured, final List<TreePattern> patterns) {
+    super(isTreeModelDataAllowedToBeCaptured);
     this.patterns = patterns;
   }
 
-  public TreePattern getFirstPattern() {
-    return patterns.get(0);
+  @Override
+  public boolean isSingle() {
+    return patterns.size() == 1;
   }
 
   @Override
   public String getPattern() {
-    // TODO
     return patterns.stream().map(TreePattern::getPattern).collect(Collectors.joining(","));
   }
 
   @Override
   public boolean isRoot() {
-    for (final TreePattern pattern : patterns) {
-      if (pattern.isRoot()) {
-        return true;
-      }
-    }
-    return false;
+    return patterns.stream().anyMatch(TreePattern::isRoot);
   }
 
   @Override
   public boolean isLegal() {
-    for (final TreePattern pattern : patterns) {
-      if (!pattern.isLegal()) {
-        return false;
-      }
-    }
-    return true;
+    return patterns.stream().allMatch(TreePattern::isLegal);
   }
 
   @Override
   public boolean coversDb(final String db) {
-    for (final TreePattern pattern : patterns) {
-      if (pattern.coversDb(db)) {
-        return true;
-      }
-    }
-    return false;
+    return patterns.stream().anyMatch(p -> p.coversDb(db));
   }
 
   @Override
   public boolean coversDevice(final IDeviceID device) {
-    for (final TreePattern pattern : patterns) {
-      if (pattern.coversDevice(device)) {
-        return true;
-      }
-    }
-    return false;
+    return patterns.stream().anyMatch(p -> p.coversDevice(device));
   }
 
   @Override
   public boolean mayOverlapWithDb(final String db) {
-    for (final TreePattern pattern : patterns) {
-      if (pattern.mayOverlapWithDb(db)) {
-        return true;
-      }
-    }
-    return false;
+    return patterns.stream().anyMatch(p -> p.mayOverlapWithDb(db));
   }
 
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
-    for (final TreePattern pattern : patterns) {
-      if (pattern.mayOverlapWithDevice(device)) {
-        return true;
-      }
-    }
-    return false;
+    return patterns.stream().anyMatch(p -> p.mayOverlapWithDevice(device));
   }
 
   @Override
   public boolean matchesMeasurement(final IDeviceID device, final String measurement) {
-    for (final TreePattern pattern : patterns) {
-      if (pattern.matchesMeasurement(device, measurement)) {
-        return true;
-      }
-    }
-    return false;
+    return patterns.stream().anyMatch(p -> p.matchesMeasurement(device, measurement));
   }
 
   @Override

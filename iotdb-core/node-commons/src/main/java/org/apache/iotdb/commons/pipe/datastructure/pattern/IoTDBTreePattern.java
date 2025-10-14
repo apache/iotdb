@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class IoTDBTreePattern extends SingleTreePattern {
 
@@ -55,13 +54,6 @@ public class IoTDBTreePattern extends SingleTreePattern {
 
   public IoTDBTreePattern(final String pattern) {
     this(true, pattern);
-  }
-
-  public static <T> List<T> applyIndexesOnList(
-      final int[] filteredIndexes, final List<T> originalList) {
-    return Objects.nonNull(originalList)
-        ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
-        : null;
   }
 
   @Override

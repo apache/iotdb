@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -604,10 +606,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBTreePattern treePattern =
-        new IoTDBTreePattern(
-            parameters.containsKey(PipeTransferFileSealReqV2.TREE),
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        parameters.containsKey(PipeTransferFileSealReqV2.TREE);
+    final List<TreePattern> treePatterns =
+        TreePattern.parseMultiplePatterns(
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN),
+            p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
+    final TreePattern treePattern =
+        TreePattern.buildUnionPattern(isTreeModelDataAllowedToBeCaptured, treePatterns);
     final TablePattern tablePattern =
         new TablePattern(
             parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
@@ -629,7 +635,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Here we apply the statements as many as possible
         // Even if there are failed statements
         STATEMENT_TREE_PATTERN_PARSE_VISITOR
-            .process(originalStatement, treePattern)
+            .process(originalStatement, (UnionIoTDBTreePattern) treePattern)
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
       } else if (treeOrTableStatement

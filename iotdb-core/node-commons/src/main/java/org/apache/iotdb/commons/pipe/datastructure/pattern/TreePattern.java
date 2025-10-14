@@ -31,7 +31,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
@@ -56,6 +58,13 @@ public abstract class TreePattern {
     return isTreeModelDataAllowedToBeCaptured;
   }
 
+  public static <T> List<T> applyIndexesOnList(
+      final int[] filteredIndexes, final List<T> originalList) {
+    return Objects.nonNull(originalList)
+        ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
+        : null;
+  }
+
   /**
    * Interpret from source parameters and get a {@link TreePattern}.
    *
@@ -63,9 +72,6 @@ public abstract class TreePattern {
    */
   public static TreePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
-    final Function<List<TreePattern>, TreePattern> listToTreePattern =
-        list -> list.size() == 1 ? list.get(0) : new UnionTreePattern(list);
-
     final boolean isTreeModelDataAllowedToBeCaptured =
         isTreeModelDataAllowToBeCaptured(sourceParameters);
 
@@ -84,26 +90,29 @@ public abstract class TreePattern {
       result.addAll(
           parsePatternsFromPatternParameter(
               pattern, sourceParameters, isTreeModelDataAllowedToBeCaptured));
-      return listToTreePattern.apply(result);
+      return buildUnionPattern(isTreeModelDataAllowedToBeCaptured, result);
     }
 
     // 2. If only "source.path" is specified, it will be interpreted as an IoTDB-style path.
     if (path != null) {
-      return listToTreePattern.apply(
+      return buildUnionPattern(
+          isTreeModelDataAllowedToBeCaptured,
           parseMultiplePatterns(
               path, p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p)));
     }
 
     // 3. If only "source.pattern" is specified, parse it using the helper method.
     if (pattern != null) {
-      return listToTreePattern.apply(
+      return buildUnionPattern(
+          isTreeModelDataAllowedToBeCaptured,
           parsePatternsFromPatternParameter(
               pattern, sourceParameters, isTreeModelDataAllowedToBeCaptured));
     }
 
     // 4. If neither "source.path" nor "source.pattern" is specified,
     // this pipe source will match all data.
-    return listToTreePattern.apply(
+    return buildUnionPattern(
+        isTreeModelDataAllowedToBeCaptured,
         Collections.singletonList(new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null)));
   }
 
@@ -144,7 +153,7 @@ public abstract class TreePattern {
     }
   }
 
-  private static List<TreePattern> parseMultiplePatterns(
+  public static List<TreePattern> parseMultiplePatterns(
       final String pattern, final Function<String, TreePattern> patternSupplier) {
     if (pattern.isEmpty()) {
       return Collections.singletonList(patternSupplier.apply(pattern));
@@ -177,6 +186,34 @@ public abstract class TreePattern {
     return patterns;
   }
 
+  /**
+   * A private helper method to build the most specific UnionTreePattern possible. If all patterns
+   * are IoTDBTreePattern, it returns an IoTDBUnionTreePattern. Otherwise, it returns a general
+   * UnionTreePattern.
+   */
+  public static TreePattern buildUnionPattern(
+      final boolean isTreeModelDataAllowedToBeCaptured, final List<TreePattern> patterns) {
+    // Check if all instances in the list are of type IoTDBTreePattern
+    boolean allIoTDB = true;
+    for (final TreePattern p : patterns) {
+      if (!(p instanceof IoTDBTreePattern)) {
+        allIoTDB = false;
+        break;
+      }
+    }
+
+    if (allIoTDB) {
+      final List<IoTDBTreePattern> iotdbPatterns = new ArrayList<>(patterns.size());
+      for (final TreePattern p : patterns) {
+        iotdbPatterns.add((IoTDBTreePattern) p);
+      }
+      return new UnionIoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, iotdbPatterns);
+    } else {
+      // If there's a mix of pattern types, use the general UnionTreePattern
+      return new UnionTreePattern(isTreeModelDataAllowedToBeCaptured, patterns);
+    }
+  }
+
   public static boolean isTreeModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
     return sourceParameters.getBooleanOrDefault(
             Arrays.asList(
@@ -192,6 +229,8 @@ public abstract class TreePattern {
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
                 .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
+
+  public abstract boolean isSingle();
 
   public abstract String getPattern();
 

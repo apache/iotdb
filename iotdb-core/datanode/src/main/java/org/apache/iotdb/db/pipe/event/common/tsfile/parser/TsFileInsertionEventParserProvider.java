@@ -21,10 +21,9 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
@@ -102,7 +101,7 @@ public class TsFileInsertionEventParserProvider {
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
                 / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
             > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD
-        && !(treePattern instanceof UnionTreePattern)) {
+        && treePattern.isSingle()) {
       return new TsFileInsertionEventScanParser(
           pipeName,
           creationTime,
@@ -114,8 +113,8 @@ public class TsFileInsertionEventParserProvider {
           sourceEvent);
     }
 
-    if (treePattern instanceof IoTDBTreePattern
-        && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+    if (treePattern instanceof UnionIoTDBTreePattern
+        && !((UnionIoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // If the pattern matches only one time series in one device, use query container here
       // because there is no timestamps merge overhead.
       //
@@ -135,7 +134,7 @@ public class TsFileInsertionEventParserProvider {
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
         PipeDataNodeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile, false);
-    if (Objects.isNull(deviceIsAlignedMap) && !(treePattern instanceof UnionTreePattern)) {
+    if (Objects.isNull(deviceIsAlignedMap) && treePattern.isSingle()) {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.
       return new TsFileInsertionEventScanParser(
@@ -155,7 +154,7 @@ public class TsFileInsertionEventParserProvider {
     // Use scan data container if we need enough amount to data thus it's better to scan than query.
     return (double) filteredDeviceIsAlignedMap.size() / originalSize
                 > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
-            && !(treePattern instanceof UnionTreePattern)
+            && treePattern.isSingle()
         ? new TsFileInsertionEventScanParser(
             pipeName,
             creationTime,
