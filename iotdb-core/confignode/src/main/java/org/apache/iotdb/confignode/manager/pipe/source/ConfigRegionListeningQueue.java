@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.pipe.source;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.user.LocalFileUserAccessor;
-import org.apache.iotdb.commons.auth.user.UserId;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
@@ -158,21 +157,21 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                   : null,
               snapshotPathInfo.getRight());
       if (type == CNSnapshotFileType.USER_ROLE) {
-        UserId userId = UserId.parse(snapshotPath.toFile().getName().split("_")[0]);
-        try {
-          if (userId.isLong()) {
+        String userName = snapshotPath.toFile().getName().split("_")[0];
+        long userId;
+        if (userName.matches("\\d+")) {
+          userId = Long.parseLong(userName);
+          try {
             curEvent.setAuthUserName(
                 ConfigNode.getInstance()
                     .getConfigManager()
                     .getPermissionManager()
-                    .getUserName(userId.longValue));
-          } else if (userId.isString()) {
-            curEvent.setAuthUserName(userId.strValue);
+                    .getUserName(userId));
+          } catch (AuthException e) {
+            LOGGER.warn("Failed to collect user name for user id {}", userId, e);
           }
-        } catch (AuthException e) {
-          if (userId.isLong()) {
-            LOGGER.warn("Failed to collect user name for user id {}", userId.longValue, e);
-          }
+        } else {
+          curEvent.setAuthUserName(userName);
         }
       }
       events.add(curEvent);
