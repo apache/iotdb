@@ -20,7 +20,6 @@
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
@@ -49,10 +48,20 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
     executeNonQueryWithRetry(senderEnv, "FLUSH");
 
     executeNonQueryWithRetry(
-        senderEnv, "DELETE FROM table1 WHERE time >= 2 AND time <= 4",SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD,"sg1", "table");
+        senderEnv,
+        "DELETE FROM table1 WHERE time >= 2 AND time <= 4",
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        "sg1",
+        "table");
 
     executeNonQueryWithRetry(
-        senderEnv, "DELETE FROM table1 WHERE time >= 3 AND time <= 5",SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD,"sg1", "table");
+        senderEnv,
+        "DELETE FROM table1 WHERE time >= 3 AND time <= 5",
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        "sg1",
+        "table");
 
     executeNonQueryWithRetry(senderEnv, "FLUSH");
 
@@ -64,7 +73,8 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
             receiverEnv.getDataNodeWrapperList().get(0).getPort()));
 
     HashSet<String> expectedResults = new HashSet<>();
-    expectedResults.add("t1,t1,t1,t1,1,1.0,1,1970-01-01T00:00:00.001Z,1,1.0,1970-01-01,1,1970-01-01T00:00:00.001Z,");
+    expectedResults.add(
+        "t1,t1,t1,t1,1,1.0,1,1970-01-01T00:00:00.001Z,1,1.0,1970-01-01,1,1970-01-01T00:00:00.001Z,");
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
@@ -36,6 +37,15 @@ import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
 @Category({MultiClusterIT2DualTreeManual.class})
 public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTreeModelManualIT {
 
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    receiverEnv
+            .getConfig()
+            .getCommonConfig()
+            .setAutoCreateSchemaEnabled(true);
+  }
+
   @Test
   public void testTsFileDecompositionWithMods() throws Exception {
     TestUtils.executeNonQueryWithRetry(senderEnv, "CREATE DATABASE root.sg1");
@@ -49,15 +59,6 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
         senderEnv, "CREATE TIMESERIES root.sg1.d2.s2 WITH DATATYPE=FLOAT");
     TestUtils.executeNonQueryWithRetry(
         senderEnv, "CREATE ALIGNED TIMESERIES root.sg1.d3(s1 FLOAT, s2 FLOAT, s3 FLOAT)");
-
-    TestUtils.executeNonQueryWithRetry(
-        receiverEnv, "CREATE ALIGNED TIMESERIES root.sg1.d1(s1 FLOAT, s2 FLOAT, s3 FLOAT)");
-    TestUtils.executeNonQueryWithRetry(
-        receiverEnv, "CREATE TIMESERIES root.sg1.d2.s1 WITH DATATYPE=FLOAT");
-    TestUtils.executeNonQueryWithRetry(
-        receiverEnv, "CREATE TIMESERIES root.sg1.d2.s2 WITH DATATYPE=FLOAT");
-    TestUtils.executeNonQueryWithRetry(
-        receiverEnv, "CREATE ALIGNED TIMESERIES root.sg1.d3(s1 FLOAT, s2 FLOAT, s3 FLOAT)");
 
     TestUtils.executeNonQueryWithRetry(
         senderEnv,
@@ -76,6 +77,39 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     TestUtils.executeNonQueryWithRetry(
         senderEnv, "DELETE FROM root.sg1.d1.s1 WHERE time >= 2 AND time <= 4");
 
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv,
+        "INSERT INTO root.sg1.d3(time, s1, s2, s3) ALIGNED VALUES (1, 100.0, 200.0, 300.0), (2, 100.1, 200.1, 300.1), (3, 100.2, 200.2, 300.2)");
+
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv, "CREATE ALIGNED TIMESERIES root.sg1.d4(s1 FLOAT, s2 FLOAT, s3 FLOAT)");
+    String s = "INSERT INTO root.sg1.d4(time, s1, s2, s3) ALIGNED VALUES ";
+    StringBuilder insertBuilder = new StringBuilder(s);
+    for (int i = 1; i <= 11000; i++) {
+      insertBuilder
+          .append("(")
+          .append(i)
+          .append(",")
+          .append(1.0f)
+          .append(",")
+          .append(2.0f)
+          .append(",")
+          .append(3.0f)
+          .append(")");
+      if (i % 100 != 0) {
+        insertBuilder.append(",");
+      } else {
+        TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder.toString());
+        insertBuilder = new StringBuilder(s);
+      }
+    }
+
+    TestUtils.executeNonQueryWithRetry(senderEnv, "FLUSH");
+
+    TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d4.s1 WHERE time <= 10000");
+    TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d4.s2 WHERE time > 1000");
+    TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d4.s3 WHERE time <= 8000");
+
     TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d2.*");
 
     TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d3.*");
@@ -83,11 +117,11 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     TestUtils.executeNonQueryWithRetry(senderEnv, "FLUSH");
 
     executeNonQueryWithRetry(
-            senderEnv,
-            String.format(
-                    "CREATE PIPE test_pipe WITH SOURCE ('mods.enable'='true') WITH CONNECTOR('ip'='%s', 'port'='%s', 'username'='root', 'format'='tablet')",
-                    receiverEnv.getDataNodeWrapperList().get(0).getIp(),
-                    receiverEnv.getDataNodeWrapperList().get(0).getPort()));
+        senderEnv,
+        String.format(
+            "CREATE PIPE test_pipe WITH SOURCE ('mods.enable'='true') WITH CONNECTOR('ip'='%s', 'port'='%s', 'format'='tablet')",
+            receiverEnv.getDataNodeWrapperList().get(0).getIp(),
+            receiverEnv.getDataNodeWrapperList().get(0).getPort()));
 
     HashSet<String> results = new HashSet<>();
     results.add("1,3.0,1.0,2.0,");
@@ -103,12 +137,27 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
         results);
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "SELECT * FROM root.sg1.d2 ORDER BY time", "Time,root.sg1.d2.s1,root.sg1.d2.s2,", Collections.emptySet());
+        receiverEnv,
+        "SELECT * FROM root.sg1.d2 ORDER BY time",
+        "Time,",
+        Collections.emptySet());
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "SELECT * FROM root.sg1.d3 ORDER BY time", "Time,root.sg1.d3.s3,root.sg1.d3.s1,root.sg1.d3.s2,", Collections.emptySet());
+        receiverEnv,
+        "SELECT * FROM root.sg1.d3 ORDER BY time",
+        "Time,",
+        Collections.emptySet());
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "SELECT s1 FROM root.sg1.d1 WHERE time >= 2 AND time <= 4", "Time,root.sg1.d1.s1,", Collections.emptySet());
+        receiverEnv,
+        "SELECT s1 FROM root.sg1.d1 WHERE time >= 2 AND time <= 4",
+        "Time,root.sg1.d1.s1,",
+        Collections.emptySet());
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "SELECT COUNT(**) FROM root.sg1.d4",
+        "COUNT(root.sg1.d4.s3),COUNT(root.sg1.d4.s1),COUNT(root.sg1.d4.s2),",
+        Collections.singleton("3000,1000,1000,"));
   }
 }

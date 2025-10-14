@@ -38,6 +38,8 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -90,6 +92,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private final Map<String, Integer> measurementIndexMap = new HashMap<>();
   private int lastIndex = -1;
   private ChunkHeader firstChunkHeader4NextSequentialValueChunks;
+  private long firstChunkHeaderOffset4NextSequentialValueChunks = -1;
 
   private byte lastMarker = Byte.MIN_VALUE;
 
@@ -128,7 +131,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
 
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
       prepareData();
@@ -335,7 +338,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < tablet.getSchemas().size(); ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
-        if (Objects.isNull(primitiveType) || ModsOperationUtil.isDelete(i, modsInfos.get(i))) {
+        if (Objects.isNull(primitiveType)
+            || ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i))) {
           switch (tablet.getSchemas().get(i).getType()) {
             case TEXT:
             case BLOB:
@@ -431,7 +435,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             // Notice that the data in one chunk group is either aligned or non-aligned
             // There is no need to consider non-aligned chunks when there are value chunks
             currentIsMultiPage = marker == MetaMarker.CHUNK_HEADER;
-
+            long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
             final long nextMarkerOffset =
@@ -465,7 +469,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 new Chunk(
                     chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
             // Skip the chunk if it is fully deleted by mods
-            final Statistics statistics = chunk.getChunkStatistic();
+            final Statistics statistics =
+                findNonAlignedChunkStatistics(
+                    tsFileSequenceReader.getIChunkMetadataList(
+                        currentDevice, chunkHeader.getMeasurementID()),
+                    currentChunkHeaderOffset);
             if (statistics != null
                 && ModsOperationUtil.isAllDeletedByMods(
                     currentDevice,
@@ -493,7 +501,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case MetaMarker.VALUE_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
           {
+            long currentChunkHeaderOffset = -1;
             if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
+              currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
               final long nextMarkerOffset =
@@ -542,18 +552,25 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               lastIndex = valueIndex;
               if (needReturn) {
                 firstChunkHeader4NextSequentialValueChunks = chunkHeader;
+                firstChunkHeaderOffset4NextSequentialValueChunks = currentChunkHeaderOffset;
                 return;
               }
             } else {
               chunkHeader = firstChunkHeader4NextSequentialValueChunks;
+              currentChunkHeaderOffset = firstChunkHeaderOffset4NextSequentialValueChunks;
               firstChunkHeader4NextSequentialValueChunks = null;
+              firstChunkHeaderOffset4NextSequentialValueChunks = -1;
             }
 
             Chunk chunk =
                 new Chunk(
                     chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
             // Skip the chunk if it is fully deleted by mods
-            final Statistics statistics = chunk.getChunkStatistic();
+            final Statistics statistics =
+                findAlignedChunkStatistics(
+                    tsFileSequenceReader.getIChunkMetadataList(
+                        currentDevice, chunkHeader.getMeasurementID()),
+                    currentChunkHeaderOffset);
             if (statistics != null
                 && ModsOperationUtil.isAllDeletedByMods(
                     currentDevice,
@@ -634,5 +651,33 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (allocatedMemoryBlockForChunk != null) {
       allocatedMemoryBlockForChunk.close();
     }
+  }
+
+  private Statistics findAlignedChunkStatistics(
+      List<IChunkMetadata> metadataList, long currentChunkHeaderOffset) {
+    for (IChunkMetadata metadata : metadataList) {
+      if (!(metadata instanceof AlignedChunkMetadata)) {
+        continue;
+      }
+      List<IChunkMetadata> list = ((AlignedChunkMetadata) metadata).getValueChunkMetadataList();
+      for (IChunkMetadata m : list) {
+        if (m.getOffsetOfChunkHeader() == currentChunkHeaderOffset) {
+          return m.getStatistics();
+        }
+      }
+      break;
+    }
+    return null;
+  }
+
+  private Statistics findNonAlignedChunkStatistics(
+      List<IChunkMetadata> metadataList, long currentChunkHeaderOffset) {
+    for (IChunkMetadata metadata : metadataList) {
+      if (metadata.getOffsetOfChunkHeader() == currentChunkHeaderOffset) {
+        // found the corresponding chunk metadata
+        return metadata.getStatistics();
+      }
+    }
+    return null;
   }
 }
