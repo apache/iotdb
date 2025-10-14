@@ -150,4 +150,134 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
         "COUNT(root.sg1.d4.s3),COUNT(root.sg1.d4.s1),COUNT(root.sg1.d4.s2),",
         Collections.singleton("3000,1000,1000,"));
   }
+
+  @Test
+  public void testTsFileDecompositionWithMods2() throws Exception {
+    TestUtils.executeNonQueryWithRetry(senderEnv, "CREATE DATABASE root.sg1");
+    TestUtils.executeNonQueryWithRetry(receiverEnv, "CREATE DATABASE root.sg1");
+
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv, "CREATE ALIGNED TIMESERIES root.sg1.d1(s1 FLOAT, s2 FLOAT, s3 FLOAT)");
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv, "CREATE TIMESERIES root.sg1.d2.s1 WITH DATATYPE=FLOAT");
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv, "CREATE TIMESERIES root.sg1.d2.s2 WITH DATATYPE=FLOAT");
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv, "CREATE ALIGNED TIMESERIES root.sg1.d3(s1 FLOAT, s2 FLOAT, s3 FLOAT)");
+
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv,
+        "INSERT INTO root.sg1.d1(time, s1, s2, s3) ALIGNED VALUES (1, 1.0, 2.0, 3.0), (2, 1.1, 2.1, 3.1), (3, 1.2, 2.2, 3.2), (4, 1.3, 2.3, 3.3), (5, 1.4, 2.4, 3.4)");
+
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv,
+        "INSERT INTO root.sg1.d2(time, s1, s2) VALUES (1, 10.0, 20.0), (2, 10.1, 20.1), (3, 10.2, 20.2), (4, 10.3, 20.3), (5, 10.4, 20.4)");
+
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv,
+        "INSERT INTO root.sg1.d3(time, s1, s2, s3) ALIGNED VALUES (1, 100.0, 200.0, 300.0), (2, 100.1, 200.1, 300.1), (3, 100.2, 200.2, 300.2)");
+
+    TestUtils.executeNonQueryWithRetry(senderEnv, "FLUSH");
+
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv, "DELETE FROM root.sg1.d1.s1 WHERE time >= 2 AND time <= 4");
+
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv,
+        "INSERT INTO root.sg1.d3(time, s1, s2, s3) ALIGNED VALUES (1, 100.0, 200.0, 300.0), (2, 100.1, 200.1, 300.1), (3, 100.2, 200.2, 300.2)");
+
+    TestUtils.executeNonQueryWithRetry(
+        senderEnv, "CREATE ALIGNED TIMESERIES root.sg1.d4(s1 FLOAT, s2 FLOAT, s3 FLOAT)");
+    String s = "INSERT INTO root.sg1.d4(time, s1, s2, s3) ALIGNED VALUES ";
+    StringBuilder insertBuilder = new StringBuilder(s);
+    for (int i = 1; i <= 11000; i++) {
+      insertBuilder
+          .append("(")
+          .append(i)
+          .append(",")
+          .append(1.0f)
+          .append(",")
+          .append(2.0f)
+          .append(",")
+          .append(3.0f)
+          .append(")");
+      if (i % 100 != 0) {
+        insertBuilder.append(",");
+      } else {
+        TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder.toString());
+        insertBuilder = new StringBuilder(s);
+      }
+    }
+
+    TestUtils.executeNonQueryWithRetry(senderEnv, "FLUSH");
+
+    TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d4.s1 WHERE time <= 10000");
+    TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d4.s2 WHERE time > 1000");
+    TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d4.s3 WHERE time <= 8000");
+
+    TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d2.*");
+
+    TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d3.*");
+
+    TestUtils.executeNonQueryWithRetry(senderEnv, "FLUSH");
+
+    executeNonQueryWithRetry(
+        senderEnv,
+        String.format(
+            "CREATE PIPE test_pipe1 WITH SOURCE ('mods.enable'='true','path'='root.sg1.d1.**') WITH CONNECTOR('ip'='%s', 'port'='%s', 'format'='tablet')",
+            receiverEnv.getDataNodeWrapperList().get(0).getIp(),
+            receiverEnv.getDataNodeWrapperList().get(0).getPort()));
+
+    executeNonQueryWithRetry(
+        senderEnv,
+        String.format(
+            "CREATE PIPE test_pipe2 WITH SOURCE ('mods.enable'='true','path'='root.sg1.d2.**') WITH CONNECTOR('ip'='%s', 'port'='%s', 'format'='tablet')",
+            receiverEnv.getDataNodeWrapperList().get(0).getIp(),
+            receiverEnv.getDataNodeWrapperList().get(0).getPort()));
+
+    executeNonQueryWithRetry(
+        senderEnv,
+        String.format(
+            "CREATE PIPE test_pipe3 WITH SOURCE ('mods.enable'='true','path'='root.sg1.d3.**') WITH CONNECTOR('ip'='%s', 'port'='%s', 'format'='tablet')",
+            receiverEnv.getDataNodeWrapperList().get(0).getIp(),
+            receiverEnv.getDataNodeWrapperList().get(0).getPort()));
+
+    executeNonQueryWithRetry(
+        senderEnv,
+        String.format(
+            "CREATE PIPE test_pipe4 WITH SOURCE ('mods.enable'='true','path'='root.sg1.d4.**') WITH CONNECTOR('ip'='%s', 'port'='%s', 'format'='tablet')",
+            receiverEnv.getDataNodeWrapperList().get(0).getIp(),
+            receiverEnv.getDataNodeWrapperList().get(0).getPort()));
+
+    HashSet<String> results = new HashSet<>();
+    results.add("1,3.0,1.0,2.0,");
+    results.add("2,3.1,null,2.1,");
+    results.add("3,3.2,null,2.2,");
+    results.add("4,3.3,null,2.3,");
+    results.add("5,3.4,1.4,2.4,");
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "SELECT * FROM root.sg1.d1 ORDER BY time",
+        "Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2,",
+        results);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "SELECT * FROM root.sg1.d2 ORDER BY time", "Time,", Collections.emptySet());
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "SELECT * FROM root.sg1.d3 ORDER BY time", "Time,", Collections.emptySet());
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "SELECT s1 FROM root.sg1.d1 WHERE time >= 2 AND time <= 4",
+        "Time,root.sg1.d1.s1,",
+        Collections.emptySet());
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "SELECT COUNT(**) FROM root.sg1.d4",
+        "COUNT(root.sg1.d4.s3),COUNT(root.sg1.d4.s1),COUNT(root.sg1.d4.s2),",
+        Collections.singleton("3000,1000,1000,"));
+  }
 }
