@@ -282,8 +282,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
           final int rowIndex = tablet.getRowSize();
 
-          tablet.addTimestamp(rowIndex, data.currentTime());
-          putValueToColumns(data, tablet, rowIndex);
+          if (putValueToColumns(data, tablet, rowIndex)) {
+            tablet.addTimestamp(rowIndex, data.currentTime());
+          }
         }
 
         data.next();
@@ -333,12 +334,14 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     } while (!data.hasCurrent());
   }
 
-  private void putValueToColumns(final BatchData data, final Tablet tablet, final int rowIndex) {
+  private boolean putValueToColumns(final BatchData data, final Tablet tablet, final int rowIndex) {
+    boolean isNeedFillTime = false;
     if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < tablet.getSchemas().size(); ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
+        boolean isDeleted = false;
         if (Objects.isNull(primitiveType)
-            || ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i))) {
+            || (isDeleted = ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i)))) {
           switch (tablet.getSchemas().get(i).getType()) {
             case TEXT:
             case BLOB:
@@ -346,8 +349,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
           }
           tablet.getBitMaps()[i].mark(rowIndex);
+          isNeedFillTime = isNeedFillTime || !isDeleted;
           continue;
         }
+
+        isNeedFillTime = true;
         switch (tablet.getSchemas().get(i).getType()) {
           case BOOLEAN:
             tablet.addValue(rowIndex, i, primitiveType.getBoolean());
@@ -378,6 +384,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         }
       }
     } else {
+      isNeedFillTime = true;
       switch (tablet.getSchemas().get(0).getType()) {
         case BOOLEAN:
           tablet.addValue(rowIndex, 0, data.getBoolean());
@@ -407,6 +414,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           throw new UnSupportedDataTypeException("UnSupported" + data.getDataType());
       }
     }
+    return isNeedFillTime;
   }
 
   private void moveToNextChunkReader() throws IOException, IllegalStateException {
