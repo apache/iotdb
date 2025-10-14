@@ -1902,7 +1902,7 @@ public abstract class AlignedTVList extends TVList {
             || isPointDeleted(time, timeColumnDeletion, deleteCursor, scanOrder)) {
           timeInvalidInfo =
               timeInvalidInfo == null
-                  ? new LazyBitMap(index, maxNumberOfPointsInPage, rows - 1)
+                  ? new LazyBitMap(index, maxRowCountOfCurrentBatch, rows - 1)
                   : timeInvalidInfo;
           timeInvalidInfo.mark(index);
           continue;
@@ -1919,7 +1919,7 @@ public abstract class AlignedTVList extends TVList {
                     timeOfNextRowIndex, timeColumnDeletion, deleteCursor, scanOrder))) {
           timeInvalidInfo =
               timeInvalidInfo == null
-                  ? new LazyBitMap(nextRowIndex, maxNumberOfPointsInPage, rows - 1)
+                  ? new LazyBitMap(nextRowIndex, maxRowCountOfCurrentBatch, rows - 1)
                   : timeInvalidInfo;
           timeInvalidInfo.mark(nextRowIndex);
           nextRowIndex++;
@@ -1929,7 +1929,7 @@ public abstract class AlignedTVList extends TVList {
           validRowCount++;
         } else {
           if (Objects.isNull(timeDuplicatedInfo)) {
-            timeDuplicatedInfo = new LazyBitMap(index, maxNumberOfPointsInPage, rows - 1);
+            timeDuplicatedInfo = new LazyBitMap(index, maxRowCountOfCurrentBatch, rows - 1);
           }
           // For this timeDuplicatedInfo, we mark all positions that are not the last one in the
           // ASC traversal. It has the same behaviour for the DESC traversal, because our ultimate

@@ -205,7 +205,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public int binarySearchTimestampStartPosition(long time, int low, int high, boolean exactSearch) {
-    if (!sorted) {
+    if (!sorted && high >= seqRowCount) {
       throw new UnsupportedOperationException("Current TVList is not sorted");
     }
 
