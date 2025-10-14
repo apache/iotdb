@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
@@ -40,10 +39,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
   @Override
   protected void setupConfig() {
     super.setupConfig();
-    receiverEnv
-            .getConfig()
-            .getCommonConfig()
-            .setAutoCreateSchemaEnabled(true);
+    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
   }
 
   @Test
@@ -137,16 +133,10 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
         results);
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "SELECT * FROM root.sg1.d2 ORDER BY time",
-        "Time,",
-        Collections.emptySet());
+        receiverEnv, "SELECT * FROM root.sg1.d2 ORDER BY time", "Time,", Collections.emptySet());
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "SELECT * FROM root.sg1.d3 ORDER BY time",
-        "Time,",
-        Collections.emptySet());
+        receiverEnv, "SELECT * FROM root.sg1.d3 ORDER BY time", "Time,", Collections.emptySet());
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
