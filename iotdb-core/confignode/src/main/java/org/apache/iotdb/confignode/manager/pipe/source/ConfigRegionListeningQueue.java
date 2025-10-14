@@ -157,15 +157,21 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                   : null,
               snapshotPathInfo.getRight());
       if (type == CNSnapshotFileType.USER_ROLE) {
-        long userId = Long.parseLong(snapshotPath.toFile().getName().split("_")[0]);
-        try {
-          curEvent.setAuthUserName(
-              ConfigNode.getInstance()
-                  .getConfigManager()
-                  .getPermissionManager()
-                  .getUserName(userId));
-        } catch (AuthException e) {
-          LOGGER.warn("Failed to collect user name for user id {}", userId, e);
+        String userName = snapshotPath.toFile().getName().split("_")[0];
+        long userId;
+        if (userName.matches("\\d+")) {
+          userId = Long.parseLong(userName);
+          try {
+            curEvent.setAuthUserName(
+                ConfigNode.getInstance()
+                    .getConfigManager()
+                    .getPermissionManager()
+                    .getUserName(userId));
+          } catch (AuthException e) {
+            LOGGER.warn("Failed to collect user name for user id {}", userId, e);
+          }
+        } else {
+          curEvent.setAuthUserName(userName);
         }
       }
       events.add(curEvent);
