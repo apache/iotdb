@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -169,7 +170,10 @@ public class CompactionEstimateUtils {
       for (TsFileResource resource : resources) {
         cost += resource.getTotalModSizeInByte();
         try (CompactionTsFileReader reader =
-            new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
+            new CompactionTsFileReader(
+                resource.getTsFilePath(),
+                taskType,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(resource.getTsFilePath()))) {
           for (Map.Entry<IDeviceID, Long> entry :
               getDeviceMetadataSizeMapAndCollectMetadataInfo(reader, metadataInfo).entrySet()) {
             deviceMetadataSizeMap.merge(entry.getKey(), entry.getValue(), Long::sum);
