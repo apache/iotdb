@@ -42,6 +42,24 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
   }
 
+  /**
+   * Test IoTDB pipe handling TsFile decomposition with Mods (modification operations) in tree model
+   *
+   * <p>Test scenario: 1. Create database root.sg1 with 4 devices: d1 (aligned timeseries), d2
+   * (non-aligned timeseries), d3 (aligned timeseries), d4 (aligned timeseries) 2. Insert initial
+   * data into d1, d2, d3 3. Execute FLUSH operation to persist data to TsFile 4. Execute DELETE
+   * operation on d1.s1, deleting data in time range 2-4 5. Insert large amount of data into d4
+   * (11000 records, inserted in batches) 6. Execute multiple DELETE operations on d4: - Delete s1
+   * field data where time<=10000 - Delete s2 field data where time>1000 - Delete s3 field data
+   * where time<=8000 7. Delete all data from d2 and d3 8. Execute FLUSH operation again 9. Create
+   * pipe with mods enabled, synchronize data to receiver 10. Verify correctness of receiver data: -
+   * d1 s1 field is null in time range 2-4, other data is normal - d2 and d3 data is completely
+   * deleted - d4 DELETE operation results meet expectations for each field
+   *
+   * <p>Test purpose: Verify that IoTDB pipe can correctly handle Mods (modification operations) in
+   * TsFile under tree model, ensuring various DELETE operations can be correctly synchronized to
+   * the receiver and data consistency is guaranteed.
+   */
   @Test
   public void testTsFileDecompositionWithMods() throws Exception {
     TestUtils.executeNonQueryWithRetry(senderEnv, "CREATE DATABASE root.sg1");
@@ -151,6 +169,30 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
         Collections.singleton("3000,1000,1000,"));
   }
 
+  /**
+   * Test IoTDB pipe handling TsFile decomposition with Mods (modification operations) in tree model
+   * - Multi-pipe scenario
+   *
+   * <p>Test scenario: 1. Create database root.sg1 with 4 devices: d1 (aligned timeseries), d2
+   * (non-aligned timeseries), d3 (aligned timeseries), d4 (aligned timeseries) 2. Insert initial
+   * data into d1, d2, d3 3. Execute FLUSH operation to persist data to TsFile 4. Execute DELETE
+   * operation on d1.s1, deleting data in time range 2-4 5. Insert large amount of data into d4
+   * (11000 records, inserted in batches) 6. Execute multiple DELETE operations on d4: - Delete s1
+   * field data where time<=10000 - Delete s2 field data where time>1000 - Delete s3 field data
+   * where time<=8000 7. Delete all data from d2 and d3 8. Execute FLUSH operation again 9. Create 4
+   * independent pipes, each targeting different device paths: - test_pipe1: handles data for
+   * root.sg1.d1.** path - test_pipe2: handles data for root.sg1.d2.** path - test_pipe3: handles
+   * data for root.sg1.d3.** path - test_pipe4: handles data for root.sg1.d4.** path 10. Verify
+   * correctness of receiver data: - d1 s1 field is null in time range 2-4, other data is normal -
+   * d2 and d3 data is completely deleted - d4 DELETE operation results meet expectations for each
+   * field
+   *
+   * <p>Test purpose: Verify that IoTDB pipe can correctly handle Mods (modification operations) in
+   * TsFile under tree model through multiple independent pipes, ensuring DELETE operations for
+   * different paths can be correctly synchronized to the receiver and data consistency is
+   * guaranteed. The main difference from the first test method is using multiple pipes to handle
+   * data for different devices separately.
+   */
   @Test
   public void testTsFileDecompositionWithMods2() throws Exception {
     TestUtils.executeNonQueryWithRetry(senderEnv, "CREATE DATABASE root.sg1");
