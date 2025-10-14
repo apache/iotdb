@@ -65,6 +65,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -643,6 +644,36 @@ public class ConfigPhysicalPlanSerDeTest {
             false,
             new ArrayList<>());
     req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+
+    // rename user
+    req0 =
+        new AuthorTreePlan(
+            ConfigPhysicalPlanType.RenameUser,
+            "oldUserName",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            new ArrayList<>(),
+            233,
+            "newUserName");
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+    req0 =
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RRenameUser,
+            "oldUserName",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            "",
+            666,
+            "newUserName");
+    req1 = (AuthorRelationalPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
