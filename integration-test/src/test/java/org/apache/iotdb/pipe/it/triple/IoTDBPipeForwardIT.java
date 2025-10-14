@@ -106,12 +106,12 @@ public class IoTDBPipeForwardIT extends AbstractPipeTripleManualIT {
         Arrays.asList(
             "create database root.sg",
             "create timeseries root.sg.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN",
-            "insert into root.sg.wf01.GPS (status0) values (1)"),
+            "insert into root.sg.wf01.GPS (time, status0) values (0, 1)"),
         null);
     TestUtils.assertDataEventuallyOnEnv(
         env3,
         "select status0 from root.sg.**",
-        "root.sg.sf01.GPS.status0,",
-        Collections.singleton("1,"));
+        "Time,root.sg.wf01.GPS.status0,",
+        Collections.singleton("0,true,"));
   }
 }
