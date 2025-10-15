@@ -1176,6 +1176,8 @@ public class IoTDBConfig {
 
   private boolean includeNullValueInWriteThroughputMetric = false;
 
+  private boolean keepSameDiskWhenLoadingSnapshot = false;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4224,5 +4226,13 @@ public class IoTDBConfig {
 
   public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
     this.passwordLockTimeMinutes = passwordLockTimeMinutes;
+  }
+
+  public boolean isKeepSameDiskWhenLoadingSnapshot() {
+    return keepSameDiskWhenLoadingSnapshot;
+  }
+
+  public void setKeepSameDiskWhenLoadingSnapshot(boolean keepSameDiskWhenLoadingSnapshot) {
+    this.keepSameDiskWhenLoadingSnapshot = keepSameDiskWhenLoadingSnapshot;
   }
 }

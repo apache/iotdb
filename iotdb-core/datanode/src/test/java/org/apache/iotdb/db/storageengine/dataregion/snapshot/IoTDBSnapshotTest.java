@@ -38,15 +38,21 @@ import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.consensus.iot.IoTConsensusServerImpl.SNAPSHOT_DIR_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.junit.Assert.assertEquals;
 
 public class IoTDBSnapshotTest {
   private String[][] testDataDirs =
@@ -65,11 +71,12 @@ public class IoTDBSnapshotTest {
     FileUtils.recursivelyDeleteFolder("target" + File.separator + "tmp");
   }
 
-  private List<TsFileResource> writeTsFiles() throws IOException, WriteProcessException {
+  private List<TsFileResource> writeTsFiles(String[] dataDirs)
+      throws IOException, WriteProcessException {
     List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
       String filePath =
-          testDataDirs[0][i % 3]
+          dataDirs[i % dataDirs.length]
               + File.separator
               + "sequence"
               + File.separator
@@ -108,7 +115,7 @@ public class IoTDBSnapshotTest {
     IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
     TierManager.getInstance().resetFolders();
     try {
-      List<TsFileResource> resources = writeTsFiles();
+      List<TsFileResource> resources = writeTsFiles(testDataDirs[0]);
       DataRegion region = new DataRegion(testSgName, "0");
       region.getTsFileManager().addAll(resources, true);
       File snapshotDir = new File("target" + File.separator + "snapshot");
@@ -117,12 +124,12 @@ public class IoTDBSnapshotTest {
         new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
         File[] files =
             snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
-        Assert.assertEquals(1, files.length);
+        assertEquals(1, files.length);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
         Assert.assertTrue(analyzer.isSnapshotComplete());
         int cnt = analyzer.getTotalFileCountInSnapshot();
         analyzer.close();
-        Assert.assertEquals(200, cnt);
+        assertEquals(200, cnt);
         for (TsFileResource resource : resources) {
           Assert.assertTrue(resource.tryWriteLock());
         }
@@ -142,7 +149,7 @@ public class IoTDBSnapshotTest {
     IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
     TierManager.getInstance().resetFolders();
     try {
-      List<TsFileResource> resources = writeTsFiles();
+      List<TsFileResource> resources = writeTsFiles(testDataDirs[0]);
       resources.subList(50, 100).forEach(x -> x.setStatusForTest(TsFileResourceStatus.UNCLOSED));
       DataRegion region = new DataRegion(testSgName, "0");
       region.setAllowCompaction(false);
@@ -153,13 +160,13 @@ public class IoTDBSnapshotTest {
         new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
         File[] files =
             snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
-        Assert.assertEquals(1, files.length);
+        assertEquals(1, files.length);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
         int cnt = 0;
         Assert.assertTrue(analyzer.isSnapshotComplete());
         cnt = analyzer.getTotalFileCountInSnapshot();
         analyzer.close();
-        Assert.assertEquals(100, cnt);
+        assertEquals(100, cnt);
         for (TsFileResource resource : resources) {
           Assert.assertTrue(resource.tryWriteLock());
         }
@@ -179,7 +186,7 @@ public class IoTDBSnapshotTest {
     IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
     TierManager.getInstance().resetFolders();
     try {
-      List<TsFileResource> resources = writeTsFiles();
+      List<TsFileResource> resources = writeTsFiles(testDataDirs[0]);
       DataRegion region = new DataRegion(testSgName, "0");
       CompressionRatio.getInstance().updateRatio(100, 100, "0");
       region.getTsFileManager().addAll(resources, true);
@@ -195,8 +202,8 @@ public class IoTDBSnapshotTest {
                 .loadSnapshotForStateMachine();
         Assert.assertNotNull(dataRegion);
         List<TsFileResource> resource = dataRegion.getTsFileManager().getTsFileList(true);
-        Assert.assertEquals(100, resource.size());
-        Assert.assertEquals(
+        assertEquals(100, resource.size());
+        assertEquals(
             new Pair<>(100L, 100L),
             CompressionRatio.getInstance().getDataRegionRatioMap().get("0"));
       } finally {
@@ -205,6 +212,86 @@ public class IoTDBSnapshotTest {
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
       TierManager.getInstance().resetFolders();
+    }
+  }
+
+  @Ignore("Need manual execution to specify different disks")
+  @Test
+  public void testLoadSnapshotNoHardLink()
+      throws IOException, WriteProcessException, DirectoryNotLegalException {
+    IoTDBDescriptor.getInstance().getConfig().setKeepSameDiskWhenLoadingSnapshot(true);
+    // initialize dirs
+    String[][] dataDirsForDB = new String[][] {{"C://snapshot_test", "D://snapshot_test"}};
+    File snapshotDir = new File("D://snapshot_store//");
+    if (snapshotDir.exists()) {
+      FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+    }
+    for (String[] dirs : dataDirsForDB) {
+      for (String dir : dirs) {
+        if (new File(dir).exists()) {
+          FileUtils.recursivelyDeleteFolder(dir);
+        }
+      }
+    }
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(dataDirsForDB);
+    TierManager.getInstance().resetFolders();
+
+    // prepare files, files should be written into two folders
+    List<TsFileResource> resources = writeTsFiles(dataDirsForDB[0]);
+    DataRegion region = new DataRegion(testSgName, "0");
+    region.getTsFileManager().addAll(resources, true);
+
+    // take a snapshot into one disk
+    Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
+    try {
+      Assert.assertTrue(
+          new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
+      File[] files =
+          snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
+      // use loadWithoutLog
+      if (files != null && files.length > 0) {
+        files[0].delete();
+      }
+      // move files to snapshot store (simulate snapshot transfer)
+      for (String dir : dataDirsForDB[0]) {
+        File internalSnapshotDir = new File(dir, SNAPSHOT_DIR_NAME);
+        if (internalSnapshotDir.exists()) {
+          for (File file : FileUtils.listFilesRecursively(internalSnapshotDir, f -> true)) {
+            if (file.isFile()) {
+              String absolutePath = file.getAbsolutePath();
+              int snapshotIdIndex = absolutePath.indexOf("snapshot_store");
+              int suffixIndex = snapshotIdIndex + "snapshot_store".length();
+              String suffix = absolutePath.substring(suffixIndex);
+              File snapshotFile = new File(snapshotDir, suffix);
+              FileUtils.copyFile(file, snapshotFile);
+            }
+          }
+        }
+      }
+
+      // load the snapshot
+      DataRegion dataRegion =
+          new SnapshotLoader(snapshotDir.getAbsolutePath(), testSgName, "0")
+              .loadSnapshotForStateMachine();
+      Assert.assertNotNull(dataRegion);
+      resources = dataRegion.getTsFileManager().getTsFileList(true);
+      assertEquals(100, resources.size());
+
+      // files should not be moved to another disk
+      Path snapshotDirPath = snapshotDir.toPath();
+      FileStore snapshotFileStore = Files.getFileStore(snapshotDirPath);
+      for (TsFileResource tsFileResource : resources) {
+        Path tsfilePath = tsFileResource.getTsFile().toPath();
+        FileStore tsFileFileStore = Files.getFileStore(tsfilePath);
+        assertEquals(snapshotFileStore, tsFileFileStore);
+      }
+    } finally {
+      FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+      for (String[] dirs : dataDirsForDB) {
+        for (String dir : dirs) {
+          FileUtils.recursivelyDeleteFolder(dir);
+        }
+      }
     }
   }
 
@@ -228,7 +315,7 @@ public class IoTDBSnapshotTest {
     Mockito.when(region.getDataRegionId()).thenReturn("0");
     File snapshotFile =
         new SnapshotTaker(region).getSnapshotFilePathForTsFile(tsFile, "test-snapshotId");
-    Assert.assertEquals(
+    assertEquals(
         new File(
                 IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()[0]
                     + File.separator

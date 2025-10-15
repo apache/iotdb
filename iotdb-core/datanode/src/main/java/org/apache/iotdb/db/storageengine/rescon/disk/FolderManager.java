@@ -32,6 +32,11 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.SequenceStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,5 +150,22 @@ public class FolderManager {
 
   public List<String> getFolders() {
     return folders;
+  }
+
+  public String getFirstFolderOfSameDisk(String pathStr) {
+    Path path = Paths.get(pathStr);
+    try {
+      FileStore fileStore = Files.getFileStore(path);
+      for (String folder : folders) {
+        Path folderPath = Paths.get(folder);
+        FileStore folderFileStore = Files.getFileStore(folderPath);
+        if (folderFileStore.equals(fileStore)) {
+          return folder;
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to read file store path '" + pathStr + "'", e);
+    }
+    return null;
   }
 }
