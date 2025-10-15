@@ -50,7 +50,6 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
   }
 
   protected void setupConfig() {
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()

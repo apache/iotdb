@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.dual.tablemodel.manual;
+package org.apache.iotdb.pipe.it.triple;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;
@@ -26,53 +26,63 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.After;
 import org.junit.Before;
 
-public abstract class AbstractPipeTableModelDualManualIT {
+abstract class AbstractPipeTripleManualIT {
 
-  protected BaseEnv senderEnv;
-  protected BaseEnv receiverEnv;
+  protected BaseEnv env1;
+  protected BaseEnv env2;
+  protected BaseEnv env3;
 
   @Before
   public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+    MultiEnvFactory.createEnv(3);
+    env1 = MultiEnvFactory.getEnv(0);
+    env2 = MultiEnvFactory.getEnv(1);
+    env3 = MultiEnvFactory.getEnv(2);
     setupConfig();
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    env1.initClusterEnvironment(1, 1);
+    env2.initClusterEnvironment(1, 1);
+    env3.initClusterEnvironment(1, 1);
   }
 
   protected void setupConfig() {
-    senderEnv
-        .getConfig()
+    env1.getConfig()
         .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
+        .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setEnforceStrongPassword(false)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    receiverEnv
-        .getConfig()
+    env1.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
+
+    env2.getConfig()
         .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
+        .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+
+    env3.getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(false)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-
-    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+    env1.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    env2.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    env3.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
   }
 
   @After
   public final void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+    env1.cleanClusterEnvironment();
+    env2.cleanClusterEnvironment();
+    env3.cleanClusterEnvironment();
   }
 }
