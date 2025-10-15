@@ -304,8 +304,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
     if (shouldExtractDeletion
         && !(treePattern instanceof UnionIoTDBTreePattern
-            && (((UnionIoTDBTreePattern) treePattern).isPrefix()
-                || ((UnionIoTDBTreePattern) treePattern).isFullPath()))) {
+            && (((UnionIoTDBTreePattern) treePattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",

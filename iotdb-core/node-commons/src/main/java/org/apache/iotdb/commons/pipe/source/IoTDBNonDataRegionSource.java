@@ -79,8 +79,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
 
     if (!(pattern instanceof UnionIoTDBTreePattern
-        && (((UnionIoTDBTreePattern) pattern).isPrefix()
-            || ((UnionIoTDBTreePattern) pattern).isFullPath()))) {
+        && (((UnionIoTDBTreePattern) pattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",

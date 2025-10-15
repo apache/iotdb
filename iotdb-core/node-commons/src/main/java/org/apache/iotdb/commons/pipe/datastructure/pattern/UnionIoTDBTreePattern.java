@@ -87,12 +87,8 @@ public class UnionIoTDBTreePattern extends TreePattern {
     return resultTree;
   }
 
-  public boolean isPrefix() {
-    return patterns.stream().allMatch(IoTDBTreePattern::isPrefix);
-  }
-
-  public boolean isFullPath() {
-    return patterns.stream().allMatch(IoTDBTreePattern::isFullPath);
+  public boolean isPrefixOrFullPath() {
+    return patterns.stream().allMatch(p -> p.isPrefix() || p.isFullPath());
   }
 
   public boolean mayMatchMultipleTimeSeriesInOneDevice() {
