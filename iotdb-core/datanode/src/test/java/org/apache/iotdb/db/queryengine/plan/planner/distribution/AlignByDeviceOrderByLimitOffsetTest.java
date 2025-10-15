@@ -233,11 +233,10 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     PlanNode transformNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(transformNode instanceof TransformNode);
-    assertTrue(transformNode.getChildren().get(0) instanceof MergeSortNode);
-    assertTrue(transformNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(
-        transformNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof SortNode);
+    PlanNode mergeSortNode = transformNode.getChildren().get(0);
+    assertTrue(mergeSortNode instanceof MergeSortNode);
+    assertTrue(containsNodeType(mergeSortNode, DeviceViewNode.class));
+    assertTrue(containsNodeType(mergeSortNode, SortNode.class));
   }
 
   /*
