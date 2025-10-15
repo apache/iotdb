@@ -183,8 +183,8 @@ public class ModsOperationUtil {
       final long currentModEndTime = currentMod.getTimeRange().getMax();
 
       if (time < currentModStartTime) {
-        // Time is before current mod, need to search backwards
-        return searchAndCheckMod(mods, time, 0, modsInfo);
+        // Time is before current mod, return false
+        return false;
       } else if (time <= currentModEndTime) {
         // Time is within current mod range, return true
         return true;
@@ -219,18 +219,14 @@ public class ModsOperationUtil {
 
     final ModEntry foundMod = mods.get(searchIndex);
     final long foundModStartTime = foundMod.getTimeRange().getMin();
-    final long foundModEndTime = foundMod.getTimeRange().getMax();
 
     if (time < foundModStartTime) {
       modsInfo.setCurrentIndex(searchIndex);
       return false;
-    } else if (time <= foundModEndTime) {
-      modsInfo.setCurrentIndex(searchIndex);
-      return true;
-    } else {
-      modsInfo.setCurrentIndex(searchIndex + 1);
-      return false;
     }
+
+    modsInfo.setCurrentIndex(searchIndex);
+    return true;
   }
 
   /**
