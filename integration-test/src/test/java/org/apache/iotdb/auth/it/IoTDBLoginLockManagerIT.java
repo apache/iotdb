@@ -101,7 +101,9 @@ public class IoTDBLoginLockManagerIT extends AbstractScriptIT {
       login("test", "wrong", new String[] {authFailedMsg}, 1);
     }
     // account was locked
-    login("test", "test", new String[] {authFailedMsg}, 1);
+    String lockedMsg =
+        "ErrorCan't execute sql because822: Account is blocked due to consecutive failed logins.";
+    login("test", "test", new String[] {lockedMsg}, 1);
     // unlock user-lock manual
     session.executeNonQueryStatement("ALTER USER test ACCOUNT UNLOCK");
     login("test", "test", new String[] {loginSuccessMsg}, 1);
@@ -111,7 +113,7 @@ public class IoTDBLoginLockManagerIT extends AbstractScriptIT {
       login("test", "wrong", new String[] {authFailedMsg}, 1);
     }
     // account was locked
-    login("test", "test", new String[] {authFailedMsg}, 1);
+    login("test", "test", new String[] {lockedMsg}, 1);
     // unlock user-lock manual
     session.executeNonQueryStatement("ALTER USER test @ '127.0.0.1' ACCOUNT UNLOCK");
     login("test", "test", new String[] {loginSuccessMsg}, 1);
