@@ -281,16 +281,17 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     PlanNode filterNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(filterNode instanceof FilterNode);
-    assertTrue(filterNode.getChildren().get(0) instanceof AggregationMergeSortNode);
-    assertTrue(filterNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
+    PlanNode aggMergeNode = filterNode.getChildren().get(0);
+    assertTrue(aggMergeNode instanceof AggregationMergeSortNode);
     assertTrue(
-        filterNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof RawDataAggregationNode);
+        containsNodeType(aggMergeNode, DeviceViewNode.class)
+            || containsNodeType(aggMergeNode, SingleDeviceViewNode.class));
+    assertTrue(containsNodeType(aggMergeNode, RawDataAggregationNode.class));
     PlanNode thirdFiRoot = plan.getInstances().get(2).getFragment().getPlanNodeTree();
     assertTrue(thirdFiRoot instanceof IdentitySinkNode);
-    assertTrue(thirdFiRoot.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(
-        thirdFiRoot.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
+    PlanNode deviceRoot = thirdFiRoot.getChildren().get(0);
+    assertTrue(deviceRoot instanceof DeviceViewNode || deviceRoot instanceof SingleDeviceViewNode);
+    assertTrue(containsNodeType(deviceRoot, RawDataAggregationNode.class));
   }
 
   /*
