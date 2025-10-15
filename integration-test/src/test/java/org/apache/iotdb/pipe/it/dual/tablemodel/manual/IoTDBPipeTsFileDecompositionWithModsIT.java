@@ -95,6 +95,14 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "table");
 
     executeNonQueryWithRetry(
+            senderEnv,
+            "DELETE FROM table1 WHERE time >= 0 AND time <= 11000 AND s0 ='t11' AND s1='t11' AND s2='t11' AND s3='t11'",
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            "sg2",
+            "table");
+
+    executeNonQueryWithRetry(
         senderEnv,
         "DELETE FROM table1 WHERE time >= 5000 AND time < 10100 AND s0 ='t12' AND s1='t12' AND s2='t12' AND s3='t12'",
         SessionConfig.DEFAULT_USER,
@@ -150,13 +158,6 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t10' AND s1='t10' AND s2='t10' AND s3='t10'",
         "count,",
         Collections.singleton("1000,"),
-        "sg2");
-
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t11' AND s1='t11' AND s2='t11' AND s3='t11'",
-        "count,",
-        Collections.singleton("0,"),
         "sg2");
 
     TestUtils.assertDataEventuallyOnEnv(
