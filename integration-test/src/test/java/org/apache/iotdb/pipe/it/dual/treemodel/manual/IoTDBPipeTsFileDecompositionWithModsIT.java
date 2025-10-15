@@ -142,10 +142,10 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     results.add("5,3.4,1.4,2.4,");
 
     TestUtils.assertDataEventuallyOnEnv(
-            senderEnv,
-            "SELECT * FROM root.sg1.d1 ORDER BY time",
-            "Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2,",
-            results);
+        senderEnv,
+        "SELECT * FROM root.sg1.d1 ORDER BY time",
+        "Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2,",
+        results);
 
     executeNonQueryWithRetry(
         senderEnv,
@@ -153,7 +153,6 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
             "CREATE PIPE test_pipe WITH SOURCE ('mods.enable'='true') WITH CONNECTOR('ip'='%s', 'port'='%s', 'format'='tablet')",
             receiverEnv.getDataNodeWrapperList().get(0).getIp(),
             receiverEnv.getDataNodeWrapperList().get(0).getPort()));
-
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
@@ -285,11 +284,10 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     results.add("5,3.4,1.4,2.4,");
 
     TestUtils.assertDataEventuallyOnEnv(
-            senderEnv,
-            "SELECT * FROM root.sg1.d1 ORDER BY time",
-            "Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2,",
-            results);
-
+        senderEnv,
+        "SELECT * FROM root.sg1.d1 ORDER BY time",
+        "Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2,",
+        results);
 
     executeNonQueryWithRetry(
         senderEnv,
@@ -482,10 +480,10 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     // This ensures all data is properly persisted and consistent on sender side
     // before starting the pipe synchronization process
     TestUtils.assertDataEventuallyOnEnv(
-            senderEnv,
-            "SELECT COUNT(**) FROM root.sg1.d1",
-            "COUNT(root.sg1.d1.s3),COUNT(root.sg1.d1.s4),COUNT(root.sg1.d1.s5),COUNT(root.sg1.d1.s1),COUNT(root.sg1.d1.s2),",
-            Collections.singleton("19600,19600,19600,19600,19600,"));
+        senderEnv,
+        "SELECT COUNT(**) FROM root.sg1.d1",
+        "COUNT(root.sg1.d1.s3),COUNT(root.sg1.d1.s4),COUNT(root.sg1.d1.s5),COUNT(root.sg1.d1.s1),COUNT(root.sg1.d1.s2),",
+        Collections.singleton("19600,19600,19600,19600,19600,"));
 
     executeNonQueryWithRetry(
         senderEnv,
