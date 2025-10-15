@@ -115,9 +115,9 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
         == 1) {
       SchemaRegionConsensusImpl.getInstance()
           .write(schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
-      database = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId).getDatabaseFullPath();
     }
 
+    database = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId).getDatabaseFullPath();
     super.start();
   }
 
