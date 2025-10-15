@@ -377,53 +377,57 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase());
         schema.setMaxSchemaRegionGroupNum(schema.getMinSchemaRegionGroupNum());
         schema.setMaxDataRegionGroupNum(schema.getMinDataRegionGroupNum());
-        return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
+        return configManager
+            .getClusterSchemaManager()
+            .setDatabase((DatabaseSchemaPlan) plan, shouldMarkAsPipeRequest.get());
       case AlterDatabase:
         return configManager
             .getClusterSchemaManager()
-            .alterDatabase((DatabaseSchemaPlan) plan, true);
+            .alterDatabase((DatabaseSchemaPlan) plan, shouldMarkAsPipeRequest.get());
       case DeleteDatabase:
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
                     Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(shouldMarkAsPipeRequest.get()));
       case ExtendSchemaTemplate:
         return configManager
             .getClusterSchemaManager()
-            .extendSchemaTemplate(((ExtendSchemaTemplatePlan) plan).getTemplateExtendInfo(), true);
+            .extendSchemaTemplate(
+                ((ExtendSchemaTemplatePlan) plan).getTemplateExtendInfo(),
+                shouldMarkAsPipeRequest.get());
       case CommitSetSchemaTemplate:
         return configManager.setSchemaTemplate(
             new TSetSchemaTemplateReq(
                     generatePseudoQueryId(),
                     ((CommitSetSchemaTemplatePlan) plan).getName(),
                     ((CommitSetSchemaTemplatePlan) plan).getPath())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(shouldMarkAsPipeRequest.get()));
       case PipeUnsetTemplate:
         return configManager.unsetSchemaTemplate(
             new TUnsetSchemaTemplateReq(
                     generatePseudoQueryId(),
                     ((PipeUnsetSchemaTemplatePlan) plan).getName(),
                     ((PipeUnsetSchemaTemplatePlan) plan).getPath())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(shouldMarkAsPipeRequest.get()));
       case PipeDeleteTimeSeries:
         return configManager.deleteTimeSeries(
             new TDeleteTimeSeriesReq(
                     generatePseudoQueryId(),
                     ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(shouldMarkAsPipeRequest.get()));
       case PipeDeleteLogicalView:
         return configManager.deleteLogicalView(
             new TDeleteLogicalViewReq(
                     generatePseudoQueryId(),
                     ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(shouldMarkAsPipeRequest.get()));
       case PipeDeactivateTemplate:
         return configManager
             .getProcedureManager()
             .deactivateTemplate(
                 generatePseudoQueryId(),
                 ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo(),
-                true);
+                shouldMarkAsPipeRequest.get());
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -433,8 +437,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .setIsGeneratedByPipe(true));
       case SetTTL:
         return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
-            ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
-            : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
+            ? configManager
+                .getTTLManager()
+                .unsetTTL((SetTTLPlan) plan, shouldMarkAsPipeRequest.get())
+            : configManager
+                .getTTLManager()
+                .setTTL((SetTTLPlan) plan, shouldMarkAsPipeRequest.get());
       case DropUser:
       case DropRole:
       case GrantRole:
@@ -444,13 +452,17 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
-        return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
+        return configManager
+            .getPermissionManager()
+            .operatePermission((AuthorPlan) plan, shouldMarkAsPipeRequest.get());
       case CreateSchemaTemplate:
       case CreateUser:
       case CreateRole:
       case CreateUserWithRawPassword:
       default:
-        return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
+        return configManager
+            .getConsensusManager()
+            .write(shouldMarkAsPipeRequest.get() ? new PipeEnrichedPlan(plan) : plan);
     }
   }
 
