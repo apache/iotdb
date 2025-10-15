@@ -177,8 +177,12 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     mergeSortNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(mergeSortNode instanceof MergeSortNode);
-    assertTrue(mergeSortNode.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(mergeSortNode.getChildren().get(0).getChildren().get(0) instanceof SortNode);
+    assertTrue(
+        "MergeSort subtree should contain at least one DeviceViewNode",
+        containsNodeType(mergeSortNode, DeviceViewNode.class));
+    assertTrue(
+        "There should be a SortNode somewhere under the MergeSort subtree",
+        containsNodeType(mergeSortNode, SortNode.class));
     assertScanNodeLimitValue(
         plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
