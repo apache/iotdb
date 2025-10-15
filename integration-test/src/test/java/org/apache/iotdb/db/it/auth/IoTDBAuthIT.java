@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -1508,12 +1509,25 @@ public class IoTDBAuthIT {
   public void testPasswordHistory() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      testPasswordHistoryEncrypted(statement);
       testPasswordHistoryCreateAndDrop(statement);
       testPasswordHistoryAlter(statement);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  public void testPasswordHistoryEncrypted(Statement statement) throws SQLException {
+    ResultSet resultSet =
+        statement.executeQuery("SELECT password,oldPassword from root.__audit.password_history._0");
+    assertTrue(resultSet.next());
+    assertEquals(
+        AuthUtils.encryptPassword(CommonDescriptor.getInstance().getConfig().getAdminPassword()),
+        resultSet.getString("root.__audit.password_history._0.password"));
+    assertEquals(
+        AuthUtils.encryptPassword(CommonDescriptor.getInstance().getConfig().getAdminPassword()),
+        resultSet.getString("root.__audit.password_history._0.oldPassword"));
   }
 
   public void testPasswordHistoryCreateAndDrop(Statement statement) throws SQLException {

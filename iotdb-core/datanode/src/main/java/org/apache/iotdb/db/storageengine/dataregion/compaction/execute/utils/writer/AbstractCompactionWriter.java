@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -101,6 +102,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected String[] measurementId = new String[subTaskNum];
 
   protected ModEntry ttlDeletionForCurrentDevice;
+
+  private EncryptParameter encryptParameter;
 
   public abstract void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException;
 
@@ -184,6 +187,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
     chunkPointNumArray[subTaskId] = 0;
   }
+
+  public abstract EncryptParameter getEncryptParameter();
 
   public abstract boolean flushNonAlignedChunk(
       Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) throws IOException;

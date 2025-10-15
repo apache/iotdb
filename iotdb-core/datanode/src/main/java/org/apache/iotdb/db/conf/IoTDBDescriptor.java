@@ -2235,7 +2235,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadLoadTsFileProps(TrimProperties properties) throws IOException {
+  private void loadLoadTsFileProps(TrimProperties properties) {
     conf.setMaxAllocateMemoryRatioForLoad(
         Double.parseDouble(
             properties.getProperty(
@@ -2386,6 +2386,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "cache_last_values_memory_budget_in_byte",
                 String.valueOf(conf.getCacheLastValuesMemoryBudgetInByte()))));
+
+    conf.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2433,6 +2439,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_split_partition_max_size",
                 Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
+
+    conf.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2462,27 +2474,31 @@ public class IoTDBDescriptor {
 
     String readerTransformerCollectorMemoryProportion =
         properties.getProperty("udf_reader_transformer_collector_memory_proportion");
+    String[] proportions;
     if (readerTransformerCollectorMemoryProportion != null) {
-      String[] proportions = readerTransformerCollectorMemoryProportion.split(":");
-      int proportionSum = 0;
-      for (String proportion : proportions) {
-        proportionSum += Integer.parseInt(proportion.trim());
-      }
-      float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
-      try {
-        conf.setUdfReaderMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setUdfTransformerMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-        conf.setUdfCollectorMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
-                + " should be an integer, which is "
-                + readerTransformerCollectorMemoryProportion,
-            e);
-      }
+      proportions = readerTransformerCollectorMemoryProportion.split(":");
+    } else {
+      // Make the default proportion is 1:1:1
+      proportions = new String[] {"1", "1", "1"};
+    }
+    int proportionSum = 0;
+    for (String proportion : proportions) {
+      proportionSum += Integer.parseInt(proportion.trim());
+    }
+    float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
+    try {
+      conf.setUdfReaderMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+      conf.setUdfTransformerMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      conf.setUdfCollectorMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
+              + " should be an integer, which is "
+              + readerTransformerCollectorMemoryProportion,
+          e);
     }
   }
 

@@ -67,9 +67,22 @@ public class AuthorInfo implements SnapshotProcessor {
   }
 
   public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorType(int authorType) {
+    if (authorType < 0) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+    }
     ConfigPhysicalPlanType configPhysicalPlanType;
-    if (authorType == AuthorType.RENAME_USER.ordinal()) {
-      configPhysicalPlanType = ConfigPhysicalPlanType.RenameUser;
+    if (authorType >= AuthorType.RENAME_USER.ordinal()) {
+      AuthorType type = AuthorType.values()[authorType];
+      switch (type) {
+        case RENAME_USER:
+          return ConfigPhysicalPlanType.RenameUser;
+        case UPDATE_USER_MAX_SESSION:
+          return ConfigPhysicalPlanType.UpdateUserMaxSession;
+        case UPDATE_USER_MIN_SESSION:
+          return ConfigPhysicalPlanType.UpdateUserMinSession;
+        default:
+          throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+      }
     } else {
       configPhysicalPlanType =
           ConfigPhysicalPlanType.values()[authorType + ConfigPhysicalPlanType.CreateUser.ordinal()];

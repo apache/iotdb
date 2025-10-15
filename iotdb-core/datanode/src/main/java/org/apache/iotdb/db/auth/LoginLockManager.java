@@ -68,30 +68,27 @@ public class LoginLockManager {
   public LoginLockManager(
       int failedLoginAttempts, int failedLoginAttemptsPerUser, int passwordLockTimeMinutes) {
     // Set and validate failedLoginAttempts (IP level)
-    if (failedLoginAttempts == -1) {
+    if (failedLoginAttempts <= 0) {
       this.failedLoginAttempts = -1; // Completely disable IP-level restrictions
+      LOGGER.info("IP-level login attempts disabled (set to {})", failedLoginAttempts);
     } else {
-      this.failedLoginAttempts = failedLoginAttempts >= 1 ? failedLoginAttempts : 5;
+      this.failedLoginAttempts = failedLoginAttempts;
     }
 
     // Set and validate failedLoginAttemptsPerUser (user level)
-    if (failedLoginAttemptsPerUser == -1) {
-      // If IP-level is enabled, user-level cannot be disabled
-      if (this.failedLoginAttempts != -1) {
-        this.failedLoginAttemptsPerUser = 1000; // Default user-level value
-        LOGGER.error(
-            "User-level login attempts cannot be disabled when IP-level is enabled. "
-                + "Setting user-level attempts to default (1000)");
-      } else {
-        this.failedLoginAttemptsPerUser = -1; // Both are disabled
-      }
+    if (failedLoginAttemptsPerUser <= 0) {
+      this.failedLoginAttemptsPerUser = -1; // Disable user-level restrictions
+      LOGGER.info("User-level login attempts disabled (set to {})", failedLoginAttemptsPerUser);
     } else {
-      this.failedLoginAttemptsPerUser =
-          failedLoginAttemptsPerUser >= 1 ? failedLoginAttemptsPerUser : 1000;
+      this.failedLoginAttemptsPerUser = failedLoginAttemptsPerUser;
     }
 
     // Set and validate passwordLockTimeMinutes (default 10, minimum 1)
     this.passwordLockTimeMinutes = passwordLockTimeMinutes >= 1 ? passwordLockTimeMinutes : 10;
+    if (passwordLockTimeMinutes < 1) {
+      LOGGER.warn(
+          "Invalid lock time value ({}), reset to default (10 minutes)", passwordLockTimeMinutes);
+    }
 
     // Log final effective configuration
     LOGGER.info(
@@ -112,9 +109,7 @@ public class LoginLockManager {
 
     void removeOldFailures(long cutoffTime) {
       // Remove timestamps older than cutoffTime
-      while (!failureTimestamps.isEmpty() && failureTimestamps.peekFirst() < cutoffTime) {
-        failureTimestamps.pollFirst();
-      }
+      failureTimestamps.removeIf(timestamp -> timestamp < cutoffTime);
     }
 
     int getFailureCount() {

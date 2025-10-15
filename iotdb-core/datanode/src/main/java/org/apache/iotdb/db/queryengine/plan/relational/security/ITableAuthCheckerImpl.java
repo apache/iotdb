@@ -66,23 +66,19 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
 
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
-      if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT)) {
-        recordAuditLog(
-            auditEntity
-                .setAuditLogOperation(AuditLogOperation.QUERY)
-                .setPrivilegeType(PrivilegeType.READ_SCHEMA)
-                .setResult(true),
-            () -> databaseName);
+      // The audit database only requires audit privilege
+      boolean hasAuditPrivilege =
+          AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT);
+      recordAuditLog(
+          auditEntity
+              .setAuditLogOperation(AuditLogOperation.QUERY)
+              .setPrivilegeType(PrivilegeType.AUDIT)
+              .setResult(hasAuditPrivilege),
+          () -> databaseName);
+      if (hasAuditPrivilege) {
         return;
-      } else {
-        recordAuditLog(
-            auditEntity
-                .setAuditLogOperation(AuditLogOperation.QUERY)
-                .setPrivilegeType(PrivilegeType.READ_SCHEMA)
-                .setResult(false),
-            () -> databaseName);
-        throw new AccessDeniedException("DATABASE " + databaseName);
       }
+      throw new AccessDeniedException("DATABASE " + databaseName);
     }
 
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
@@ -341,14 +337,19 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
 
     String databaseName = tableName.getDatabaseName();
-    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)
-        && !AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT)) {
+    if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
+      // The audit table only requires audit privilege
+      boolean hasAuditPrivilege =
+          AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT);
       recordAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
-              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
-              .setResult(false),
+              .setPrivilegeType(PrivilegeType.AUDIT)
+              .setResult(hasAuditPrivilege),
           tableName::getObjectName);
+      if (hasAuditPrivilege) {
+        return;
+      }
       throw new AccessDeniedException("TABLE " + tableName);
     }
 

@@ -47,6 +47,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -54,6 +55,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.file.AccessDeniedException;
 import java.security.KeyStore;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -166,12 +168,15 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
                                   "SSL handshake completed successfully for {}:{}", host, port);
                             }
                           } else {
-                            if (logger.isDebugEnabled()) {
+                            if (!future
+                                .cause()
+                                .getMessage()
+                                .contains("SslHandler removed before handshake completed")) {
+                              logger.warn(
+                                  "SSL handshake failed for {}:{}", host, port, future.cause());
+                            } else if (logger.isDebugEnabled()) {
                               logger.debug(
-                                  "SSL handshake failed for {}:{}: {}",
-                                  host,
-                                  port,
-                                  future.cause().getMessage());
+                                  "SSL handshake failed for {}:{}", host, port, future.cause());
                             }
                           }
                         });
@@ -187,6 +192,10 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       KeyStore keyStore = KeyStore.getInstance("JKS");
       try (FileInputStream fis = new FileInputStream(keystorePath)) {
         keyStore.load(fis, keystorePassword.toCharArray());
+      } catch (AccessDeniedException e) {
+        throw new AccessDeniedException("Failed to load keystore file");
+      } catch (FileNotFoundException e) {
+        throw new FileNotFoundException("keystore file not found");
       }
       KeyManagerFactory kmf =
           KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
@@ -198,6 +207,10 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
       KeyStore trustStore = KeyStore.getInstance("JKS");
       try (FileInputStream fis = new FileInputStream(truststorePath)) {
         trustStore.load(fis, truststorePassword.toCharArray());
+      } catch (AccessDeniedException e) {
+        throw new AccessDeniedException("Failed to load truststore file");
+      } catch (FileNotFoundException e) {
+        throw new FileNotFoundException("truststore file not found");
       }
       TrustManagerFactory tmf =
           TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());

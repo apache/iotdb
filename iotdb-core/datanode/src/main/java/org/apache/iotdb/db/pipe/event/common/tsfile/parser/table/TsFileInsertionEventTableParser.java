@@ -77,7 +77,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.allocatedMemoryBlockForChunk =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(
-                  PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
+                  PipeConfig.getInstance().getPipeMaxReaderChunkSize());
       this.allocatedMemoryBlockForBatchData =
           PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
       this.allocatedMemoryBlockForChunkMeta =
