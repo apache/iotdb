@@ -2105,10 +2105,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
     // and history are true), the pipe is split into history-only and realtime–only modes.
-    final PipeParameters extractorPipeParameters =
+    final PipeParameters sourcePipeParameters =
         new PipeParameters(createPipeStatement.getExtractorAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
-        && PipeDataNodeAgent.task().isFullSync(extractorPipeParameters)) {
+        && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
       try (final ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // 1. Send request to create the real-time data synchronization pipeline
@@ -2120,7 +2120,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 .setIfNotExistsCondition(true)
                 // Use extractor parameters for real-time data
                 .setExtractorAttributes(
-                    extractorPipeParameters
+                    sourcePipeParameters
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
                                 ImmutableMap.of(
@@ -2145,16 +2145,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 // Append suffix to the pipeline name for historical data
                 .setPipeName(createPipeStatement.getPipeName() + "_history")
                 .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
-                // Use extractor parameters for historical data
+                // Use source parameters for historical data
                 .setExtractorAttributes(
-                    extractorPipeParameters
+                    sourcePipeParameters
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
                                 ImmutableMap.of(
                                     PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
                                     Boolean.toString(false),
                                     PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
-                                    Boolean.toString(true))))
+                                    Boolean.toString(true),
+                                    // We force the historical pipe to transfer data only
+                                    // Thus we can transfer schema only once
+                                    // And may drop the historical pipe on successfully transferred
+                                    PipeSourceConstant.SOURCE_INCLUSION_KEY,
+                                    PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE,
+                                    PipeSourceConstant.SOURCE_EXCLUSION_KEY,
+                                    PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE)))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
                 .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
