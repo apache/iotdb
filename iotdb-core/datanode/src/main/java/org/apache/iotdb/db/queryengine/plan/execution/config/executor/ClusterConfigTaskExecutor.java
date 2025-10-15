@@ -66,6 +66,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -300,7 +301,6 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
@@ -2094,9 +2094,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       PipeDataNodeAgent.plugin()
           .validate(
               createPipeStatement.getPipeName(),
-              createPipeStatement.getExtractorAttributes(),
+              createPipeStatement.getSourceAttributes(),
               createPipeStatement.getProcessorAttributes(),
-              createPipeStatement.getConnectorAttributes());
+              createPipeStatement.getSinkAttributes());
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
@@ -2106,7 +2106,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
     // and history are true), the pipe is split into history-only and realtime–only modes.
     final PipeParameters extractorPipeParameters =
-        new PipeParameters(createPipeStatement.getExtractorAttributes());
+        new PipeParameters(createPipeStatement.getSourceAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
         && PipeDataNodeAgent.task().isFullSync(extractorPipeParameters)) {
       try (final ConfigNodeClient configNodeClient =
@@ -2130,7 +2130,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     Boolean.toString(false))))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
 
         final TSStatus realtimeTsStatus = configNodeClient.createPipe(realtimeReq);
         // If creation fails, immediately return with exception
@@ -2157,7 +2157,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     Boolean.toString(true))))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
 
         final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
         // If creation fails, immediately return with exception
@@ -2181,9 +2181,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
               .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
-              .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
+              .setExtractorAttributes(createPipeStatement.getSourceAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-              .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+              .setConnectorAttributes(createPipeStatement.getSinkAttributes());
       final TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus));
@@ -2262,29 +2262,25 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> processorAttributes;
     final Map<String, String> connectorAttributes;
     try {
-      if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+      if (!alterPipeStatement.getSourceAttributes().isEmpty()) {
         // We don't allow changing the extractor plugin type
-        if (alterPipeStatement
-                .getExtractorAttributes()
-                .containsKey(PipeSourceConstant.EXTRACTOR_KEY)
-            || alterPipeStatement
-                .getExtractorAttributes()
-                .containsKey(PipeSourceConstant.SOURCE_KEY)
-            || alterPipeStatement.isReplaceAllExtractorAttributes()) {
+        if (alterPipeStatement.getSourceAttributes().containsKey(PipeSourceConstant.EXTRACTOR_KEY)
+            || alterPipeStatement.getSourceAttributes().containsKey(PipeSourceConstant.SOURCE_KEY)
+            || alterPipeStatement.isReplaceAllSourceAttributes()) {
           checkIfSourcePluginChanged(
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
-              new PipeParameters(alterPipeStatement.getExtractorAttributes()));
+              new PipeParameters(alterPipeStatement.getSourceAttributes()));
         }
-        if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-          extractorAttributes = alterPipeStatement.getExtractorAttributes();
+        if (alterPipeStatement.isReplaceAllSourceAttributes()) {
+          extractorAttributes = alterPipeStatement.getSourceAttributes();
         } else {
           final boolean onlyContainsUser =
-              onlyContainsUser(alterPipeStatement.getExtractorAttributes());
+              onlyContainsUser(alterPipeStatement.getSourceAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getSourceParameters()
               .addOrReplaceEquivalentAttributes(
-                  new PipeParameters(alterPipeStatement.getExtractorAttributes()));
+                  new PipeParameters(alterPipeStatement.getSourceAttributes()));
           extractorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
           if (onlyContainsUser) {
@@ -2313,17 +2309,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
       }
 
-      if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
-        if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-          connectorAttributes = alterPipeStatement.getConnectorAttributes();
+      if (!alterPipeStatement.getSinkAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllSinkAttributes()) {
+          connectorAttributes = alterPipeStatement.getSinkAttributes();
         } else {
-          final boolean onlyContainsUser =
-              onlyContainsUser(alterPipeStatement.getConnectorAttributes());
+          final boolean onlyContainsUser = onlyContainsUser(alterPipeStatement.getSinkAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getSinkParameters()
               .addOrReplaceEquivalentAttributes(
-                  new PipeParameters(alterPipeStatement.getConnectorAttributes()));
+                  new PipeParameters(alterPipeStatement.getSinkAttributes()));
           connectorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
           if (onlyContainsUser) {
@@ -2349,11 +2344,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TAlterPipeReq(
               pipeName,
               alterPipeStatement.getProcessorAttributes(),
-              alterPipeStatement.getConnectorAttributes(),
+              alterPipeStatement.getSinkAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
-              alterPipeStatement.isReplaceAllConnectorAttributes());
-      req.setExtractorAttributes(alterPipeStatement.getExtractorAttributes());
-      req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllExtractorAttributes());
+              alterPipeStatement.isReplaceAllSinkAttributes());
+      req.setExtractorAttributes(alterPipeStatement.getSourceAttributes());
+      req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllSourceAttributes());
       req.setIfExistsCondition(alterPipeStatement.hasIfExistsCondition());
       req.setIsTableModel(alterPipeStatement.isTableModel());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);

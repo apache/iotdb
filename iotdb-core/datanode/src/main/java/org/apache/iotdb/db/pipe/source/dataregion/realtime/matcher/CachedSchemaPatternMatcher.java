@@ -175,7 +175,13 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       }
 
       if (event.getEvent() instanceof PipeTsFileInsertionEvent) {
-        ((PipeTsFileInsertionEvent) event.getEvent()).setTableNames(tableNames);
+        final PipeTsFileInsertionEvent tsFileInsertionEvent =
+            (PipeTsFileInsertionEvent) event.getEvent();
+        if (tsFileInsertionEvent.isTableModelEvent()) {
+          tsFileInsertionEvent.setTableNames(tableNames);
+        } else {
+          tsFileInsertionEvent.setTreeSchemaMap(event.getSchemaInfo());
+        }
       }
 
       return new Pair<>(matchedSources, findUnmatchedSources(matchedSources));

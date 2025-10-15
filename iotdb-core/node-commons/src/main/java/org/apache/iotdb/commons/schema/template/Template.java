@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.template;
+package org.apache.iotdb.commons.schema.template;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 

@@ -47,10 +47,11 @@ import java.util.stream.Collectors;
 public class ShowPipeTask implements IConfigTask {
 
   private final ShowPipesStatement showPipesStatement;
-  private String userName;
+  private final String userName;
 
-  public ShowPipeTask(final ShowPipesStatement showPipesStatement) {
+  public ShowPipeTask(final ShowPipesStatement showPipesStatement, final String userName) {
     this.showPipesStatement = showPipesStatement;
+    this.userName = userName;
   }
 
   public ShowPipeTask(final ShowPipes node, final String userName) {
