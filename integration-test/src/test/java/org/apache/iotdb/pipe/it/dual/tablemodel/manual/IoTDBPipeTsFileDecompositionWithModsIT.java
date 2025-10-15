@@ -38,6 +38,12 @@ import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
 @Category({MultiClusterIT2DualTableManualBasic.class})
 public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableModelDualManualIT {
 
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    senderEnv.getConfig().getCommonConfig().setEnableAutoLeaderBalanceForIoTConsensus(false);
+  }
+
   /**
    * Test IoTDB pipe handling TsFile decomposition with Mods (modification operations) in table
    * model

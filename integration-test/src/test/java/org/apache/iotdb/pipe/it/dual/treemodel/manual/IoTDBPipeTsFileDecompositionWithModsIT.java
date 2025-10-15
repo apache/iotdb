@@ -39,6 +39,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
   @Override
   protected void setupConfig() {
     super.setupConfig();
+    senderEnv.getConfig().getCommonConfig().setEnableAutoLeaderBalanceForIoTConsensus(false);
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
   }
