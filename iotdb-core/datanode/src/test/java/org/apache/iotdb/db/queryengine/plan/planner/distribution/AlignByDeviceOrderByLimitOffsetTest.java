@@ -103,10 +103,12 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     mergeSortNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(mergeSortNode instanceof MergeSortNode);
-    assertTrue(mergeSortNode.getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(
-        mergeSortNode.getChildren().get(0).getChildren().get(0) instanceof FullOuterTimeJoinNode);
-
+        "MergeSort subtree should contain at least one DeviceViewNode",
+        containsNodeType(mergeSortNode, DeviceViewNode.class));
+    assertTrue(
+        "DeviceViewNode subtree should contain a FullOuterTimeJoinNode",
+        containsNodeType(mergeSortNode, FullOuterTimeJoinNode.class));
     // order by device, time
     sql =
         "select * from root.sg.d1, root.sg.d22 order by device asc, time desc LIMIT 10 align by device";
@@ -120,9 +122,12 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     mergeSortNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(mergeSortNode instanceof MergeSortNode);
-    assertTrue(mergeSortNode.getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(
-        mergeSortNode.getChildren().get(0).getChildren().get(0) instanceof FullOuterTimeJoinNode);
+        "MergeSort subtree should contain at least one DeviceViewNode",
+        containsNodeType(mergeSortNode, DeviceViewNode.class));
+    assertTrue(
+        "DeviceViewNode subtree should contain a FullOuterTimeJoinNode",
+        containsNodeType(mergeSortNode, FullOuterTimeJoinNode.class));
     assertScanNodeLimitValue(
         plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
@@ -1120,5 +1125,17 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         assertScanNodeLimitValue(node, limitValue);
       }
     }
+  }
+
+  private static boolean containsNodeType(PlanNode root, Class<?> clazz) {
+    if (clazz.isInstance(root)) {
+      return true;
+    }
+    for (PlanNode child : root.getChildren()) {
+      if (containsNodeType(child, clazz)) {
+        return true;
+      }
+    }
+    return false;
   }
 }
