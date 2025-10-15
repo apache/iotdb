@@ -48,6 +48,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -401,6 +402,27 @@ public abstract class AbstractOperatePipeProcedureV2
   }
 
   /**
+   * Pushing all the pipeMeta's to all the dataNodes with new region IDs, forcing an update to the
+   * pipe's runtime state.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @param newRegionIds Set of new region IDs
+   * @return The responseMap after pushing pipe meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodesWithNewRegion(
+      final ConfigNodeProcedureEnv env, final Set<Integer> newRegionIds) throws IOException {
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      PipeMeta copyPipeMeta = copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta);
+      // Transform new region IDs to -1-ID format
+      copyPipeMeta.transformNewRegionIdsToNegative(newRegionIds);
+      pipeMetaBinaryList.add(copyPipeMeta.serialize());
+    }
+    return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
+  }
+
+  /**
    * Pushing all the pipeMeta's to all the dataNodes, forcing an update to the pipe's runtime state.
    *
    * @param env ConfigNodeProcedureEnv
@@ -513,6 +535,17 @@ public abstract class AbstractOperatePipeProcedureV2
       pushPipeMetaToDataNodes(env);
     } catch (Exception e) {
       LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", e);
+    }
+  }
+
+  protected void pushPipeMetaToDataNodesIgnoreExceptionWithNewRegion(
+      ConfigNodeProcedureEnv env, Set<Integer> newRegionIds) {
+    try {
+      // Ignore the exceptions reported
+      pushPipeMetaToDataNodesWithNewRegion(env, newRegionIds);
+    } catch (Exception e) {
+      LOGGER.info(
+          "Failed to push pipe meta list to data nodes with new region, will retry later.", e);
     }
   }
 

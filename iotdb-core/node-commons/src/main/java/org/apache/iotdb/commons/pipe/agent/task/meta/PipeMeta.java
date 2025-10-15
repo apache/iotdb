@@ -26,7 +26,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class PipeMeta {
 
@@ -144,6 +149,69 @@ public class PipeMeta {
   @Override
   public int hashCode() {
     return Objects.hash(staticMeta, runtimeMeta, temporaryMeta);
+  }
+
+  /**
+   * Transform new region IDs to -1-ID format to identify newly created regions
+   *
+   * @param newRegionIds Set of new region IDs
+   */
+  public void transformNewRegionIdsToNegative(Set<Integer> newRegionIds) {
+    if (newRegionIds == null || newRegionIds.isEmpty()) {
+      return;
+    }
+
+    final ConcurrentMap<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap =
+        runtimeMeta.getConsensusGroupId2TaskMetaMap();
+
+    // Create new map to store transformed IDs
+    final ConcurrentMap<Integer, PipeTaskMeta> transformedMap = new ConcurrentHashMap<>();
+
+    for (Map.Entry<Integer, PipeTaskMeta> entry : consensusGroupId2TaskMetaMap.entrySet()) {
+      Integer originalId = entry.getKey();
+      PipeTaskMeta taskMeta = entry.getValue();
+
+      // If this is a new region ID, transform it to -1-ID format
+      if (newRegionIds.contains(originalId)) {
+        Integer transformedId = -1 - originalId;
+        transformedMap.put(transformedId, taskMeta);
+      } else {
+        transformedMap.put(originalId, taskMeta);
+      }
+    }
+
+    // Clear original map and add transformed mappings
+    consensusGroupId2TaskMetaMap.clear();
+    consensusGroupId2TaskMetaMap.putAll(transformedMap);
+  }
+
+  /** Restore negative region IDs back to original IDs */
+  public Set<Integer> restoreNegativeRegionIdsToOriginal() {
+    final ConcurrentMap<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap =
+        runtimeMeta.getConsensusGroupId2TaskMetaMap();
+
+    // Create new map to store restored IDs
+    final ConcurrentMap<Integer, PipeTaskMeta> restoredMap = new ConcurrentHashMap<>();
+    final Set<Integer> newRegionIds = new HashSet<>();
+
+    for (Map.Entry<Integer, PipeTaskMeta> entry : consensusGroupId2TaskMetaMap.entrySet()) {
+      Integer currentId = entry.getKey();
+      PipeTaskMeta taskMeta = entry.getValue();
+
+      // If this is a negative region ID, restore it to original ID
+      if (currentId < 0) {
+        Integer originalId = -1 - currentId;
+        restoredMap.put(originalId, taskMeta);
+        newRegionIds.add(originalId);
+      } else {
+        restoredMap.put(currentId, taskMeta);
+      }
+    }
+
+    // Clear original map and add restored mappings
+    consensusGroupId2TaskMetaMap.clear();
+    consensusGroupId2TaskMetaMap.putAll(restoredMap);
+    return newRegionIds;
   }
 
   @Override

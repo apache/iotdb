@@ -157,11 +157,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
+  protected Map<Integer, PipeTask> buildPipeTasks(
+      final PipeMeta pipeMetaFromConfigNode, final Set<Integer> newRegions)
       throws IllegalPathException {
     return pipeMetaFromConfigNode.getStaticMeta().isSourceExternal()
         ? new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithExternalSource()
-        : new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithInternalSource();
+        : new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithInternalSource(newRegions);
   }
 
   ///////////////////////// Manage by regionGroupId /////////////////////////
