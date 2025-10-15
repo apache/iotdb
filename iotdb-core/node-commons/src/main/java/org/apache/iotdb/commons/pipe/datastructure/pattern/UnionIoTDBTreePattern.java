@@ -26,7 +26,9 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -70,17 +72,20 @@ public class UnionIoTDBTreePattern extends TreePattern {
   }
 
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
-    final List<PartialPath> allIntersections = new ArrayList<>();
+    final Set<PartialPath> uniqueIntersections = new LinkedHashSet<>();
     for (final IoTDBTreePattern pattern : patterns) {
-      allIntersections.addAll(pattern.getIntersection(partialPath));
+      uniqueIntersections.addAll(pattern.getIntersection(partialPath));
     }
-    return allIntersections;
+    return new ArrayList<>(uniqueIntersections);
   }
 
   public PathPatternTree getIntersection(final PathPatternTree patternTree) {
     final PathPatternTree resultTree = new PathPatternTree();
     for (final IoTDBTreePattern pattern : patterns) {
       final PathPatternTree intersection = pattern.getIntersection(patternTree);
+      if (intersection.isEmpty()) {
+        continue;
+      }
       intersection.getAllPathPatterns().forEach(resultTree::appendPathPattern);
     }
     resultTree.constructTree();
