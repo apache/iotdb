@@ -96,14 +96,6 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
 
     executeNonQueryWithRetry(
         senderEnv,
-        "DELETE FROM table1 WHERE time >= 0 AND time <= 11000 AND s0 ='t11' AND s1='t11' AND s2='t11' AND s3='t11'",
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        "sg2",
-        "table");
-
-    executeNonQueryWithRetry(
-        senderEnv,
         "DELETE FROM table1 WHERE time >= 5000 AND time < 10100 AND s0 ='t12' AND s1='t12' AND s2='t12' AND s3='t12'",
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,

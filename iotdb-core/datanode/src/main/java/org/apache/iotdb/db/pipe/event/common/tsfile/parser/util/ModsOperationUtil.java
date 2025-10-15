@@ -176,28 +176,98 @@ public class ModsOperationUtil {
       return false;
     }
 
-    // Search from current index
-    for (int i = currentIndex; i < mods.size(); i++) {
-      final ModEntry mod = mods.get(i);
-      final long modStartTime = mod.getTimeRange().getMin();
-      final long modEndTime = mod.getTimeRange().getMax();
+    // First, try to use the current index if it's valid
+    if (currentIndex < mods.size()) {
+      final ModEntry currentMod = mods.get(currentIndex);
+      final long currentModStartTime = currentMod.getTimeRange().getMin();
+      final long currentModEndTime = currentMod.getTimeRange().getMax();
 
-      if (time < modStartTime) {
-        // Current time is before mod start time, update index and return false
-        modsInfo.setCurrentIndex(i);
-        return false;
-      } else if (time <= modEndTime) {
-        // Current time is within mod time range, update index and return true
-        modsInfo.setCurrentIndex(i);
+      if (time < currentModStartTime) {
+        // Time is before current mod, need to search backwards
+        return searchAndCheckMod(mods, time, 0, modsInfo);
+      } else if (time <= currentModEndTime) {
+        // Time is within current mod range, return true
         return true;
+      } else {
+        // Time is after current mod, need to search forwards
+        return searchAndCheckMod(mods, time, currentIndex + 1, modsInfo);
       }
-      // If time > modEndTime, continue to next mod
+    } else {
+      // Current index is beyond array bounds, all mods have been processed
+      clearModsAndReset(modsInfo);
+      return false;
+    }
+  }
+
+  /**
+   * Search for a mod using binary search and check if the time point is deleted
+   *
+   * @param mods sorted list of mods
+   * @param time time point to search for
+   * @param startIndex starting index for search
+   * @param modsInfo mods information to update
+   * @return true if data is deleted, false otherwise
+   */
+  private static boolean searchAndCheckMod(
+      List<ModEntry> mods, long time, int startIndex, ModsInfo modsInfo) {
+    int searchIndex = binarySearchMods(mods, time, startIndex);
+    if (searchIndex >= mods.size()) {
+      // All mods checked, clear mods list and reset index to 0
+      clearModsAndReset(modsInfo);
+      return false;
     }
 
-    // All mods checked, clear mods list and reset index to 0
+    final ModEntry foundMod = mods.get(searchIndex);
+    final long foundModStartTime = foundMod.getTimeRange().getMin();
+    final long foundModEndTime = foundMod.getTimeRange().getMax();
+
+    if (time < foundModStartTime) {
+      modsInfo.setCurrentIndex(searchIndex);
+      return false;
+    } else if (time <= foundModEndTime) {
+      modsInfo.setCurrentIndex(searchIndex);
+      return true;
+    } else {
+      modsInfo.setCurrentIndex(searchIndex + 1);
+      return false;
+    }
+  }
+
+  /**
+   * Clear mods list and reset index to 0
+   *
+   * @param modsInfo mods information to update
+   */
+  private static void clearModsAndReset(ModsInfo modsInfo) {
     modsInfo.setMods(Collections.emptyList());
     modsInfo.setCurrentIndex(0);
-    return false;
+  }
+
+  /**
+   * Binary search to find the first mod that might contain the given time point. Returns the index
+   * of the first mod where modStartTime <= time, or mods.size() if no such mod exists.
+   *
+   * @param mods sorted list of mods
+   * @param time time point to search for
+   * @param startIndex starting index for search (current index)
+   * @return index of the first potential mod, or mods.size() if none found
+   */
+  private static int binarySearchMods(List<ModEntry> mods, long time, int startIndex) {
+    int left = startIndex;
+    int right = mods.size();
+
+    while (left < right) {
+      int mid = left + (right - left) / 2;
+      final long max = mods.get(mid).getTimeRange().getMax();
+
+      if (max < time) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+
+    return left;
   }
 
   /** Mods information wrapper class, containing mods list and current index */
