@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -48,6 +48,11 @@ public class PipeStatementTreePatternParseVisitorTest {
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.**"));
   private final UnionIoTDBTreePattern fullPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.s1"));
+  private final UnionIoTDBTreePattern multiplePathPattern =
+      new UnionIoTDBTreePattern(
+          Arrays.asList(
+              new IoTDBTreePattern("root.db.device.s1"),
+              new IoTDBTreePattern("root.db.device.s2")));
 
   @Test
   public void testCreateTimeSeries() throws IllegalPathException {
@@ -80,6 +85,15 @@ public class PipeStatementTreePatternParseVisitorTest {
     Assert.assertFalse(
         new PipeStatementTreePatternParseVisitor()
             .visitCreateTimeseries(createTimeSeriesStatementToFilter, prefixPathPattern)
+            .isPresent());
+    Assert.assertEquals(
+        createTimeSeriesStatement,
+        new PipeStatementTreePatternParseVisitor()
+            .visitCreateTimeseries(createTimeSeriesStatement, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementTreePatternParseVisitor()
+            .visitCreateTimeseries(createTimeSeriesStatementToFilter, multiplePathPattern)
             .isPresent());
   }
 
@@ -122,6 +136,13 @@ public class PipeStatementTreePatternParseVisitorTest {
         new PipeStatementTreePatternParseVisitor()
             .visitCreateAlignedTimeseries(originalCreateAlignedTimeSeriesStatement, fullPathPattern)
             .orElseThrow(AssertionError::new));
+
+    Assert.assertEquals(
+        originalCreateAlignedTimeSeriesStatement,
+        new PipeStatementTreePatternParseVisitor()
+            .visitCreateAlignedTimeseries(
+                originalCreateAlignedTimeSeriesStatement, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
   }
 
   @Test
@@ -153,6 +174,15 @@ public class PipeStatementTreePatternParseVisitorTest {
         new PipeStatementTreePatternParseVisitor()
             .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, prefixPathPattern)
             .isPresent());
+    Assert.assertEquals(
+        alterTimeSeriesStatement,
+        new PipeStatementTreePatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatement, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementTreePatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, multiplePathPattern)
+            .isPresent());
   }
 
   @Test
@@ -170,6 +200,15 @@ public class PipeStatementTreePatternParseVisitorTest {
     Assert.assertFalse(
         new PipeStatementTreePatternParseVisitor()
             .visitActivateTemplate(activateTemplateStatementToFilter, prefixPathPattern)
+            .isPresent());
+    Assert.assertEquals(
+        activateTemplateStatement,
+        new PipeStatementTreePatternParseVisitor()
+            .visitActivateTemplate(activateTemplateStatement, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementTreePatternParseVisitor()
+            .visitActivateTemplate(activateTemplateStatementToFilter, multiplePathPattern)
             .isPresent());
   }
 
