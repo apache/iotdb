@@ -53,7 +53,7 @@ abstract class AbstractPipeTripleManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    env1.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
+    env1.getConfig().getDataNodeConfig();
 
     env2.getConfig()
         .getCommonConfig()
