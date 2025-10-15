@@ -116,8 +116,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "schema");
-      extractorAttributes.put("pattern", "root.ln.wf01.wt01.status");
-      extractorAttributes.put("path", "root.ln.wf02.**");
+      extractorAttributes.put("path", "root.ln.wf01.wt01.status,root.ln.wf02.**");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
