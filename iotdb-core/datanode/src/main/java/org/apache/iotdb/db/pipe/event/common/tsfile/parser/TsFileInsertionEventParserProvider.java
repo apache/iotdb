@@ -99,9 +99,8 @@ public class TsFileInsertionEventParserProvider {
 
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
-                / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-            > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD
-        && treePattern.isSingle()) {
+            / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+        > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionEventScanParser(
           pipeName,
           creationTime,
@@ -134,7 +133,7 @@ public class TsFileInsertionEventParserProvider {
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
         PipeDataNodeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile, false);
-    if (Objects.isNull(deviceIsAlignedMap) && treePattern.isSingle()) {
+    if (Objects.isNull(deviceIsAlignedMap)) {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.
       return new TsFileInsertionEventScanParser(
@@ -153,8 +152,7 @@ public class TsFileInsertionEventParserProvider {
         filterDeviceIsAlignedMapByPattern(deviceIsAlignedMap);
     // Use scan data container if we need enough amount to data thus it's better to scan than query.
     return (double) filteredDeviceIsAlignedMap.size() / originalSize
-                > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
-            && treePattern.isSingle()
+            > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
         ? new TsFileInsertionEventScanParser(
             pipeName,
             creationTime,
