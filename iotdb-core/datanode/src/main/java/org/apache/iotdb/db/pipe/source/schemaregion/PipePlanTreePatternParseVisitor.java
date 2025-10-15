@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.source.schemaregion;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -98,14 +99,13 @@ public class PipePlanTreePatternParseVisitor
             new CreateAlignedTimeSeriesNode(
                 node.getPlanNodeId(),
                 node.getDevicePath(),
-                UnionIoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getMeasurements()),
-                UnionIoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getDataTypes()),
-                UnionIoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getEncodings()),
-                UnionIoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getCompressors()),
-                UnionIoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getAliasList()),
-                UnionIoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getTagsList()),
-                UnionIoTDBTreePattern.applyIndexesOnList(
-                    filteredIndexes, node.getAttributesList())))
+                TreePattern.applyIndexesOnList(filteredIndexes, node.getMeasurements()),
+                TreePattern.applyIndexesOnList(filteredIndexes, node.getDataTypes()),
+                TreePattern.applyIndexesOnList(filteredIndexes, node.getEncodings()),
+                TreePattern.applyIndexesOnList(filteredIndexes, node.getCompressors()),
+                TreePattern.applyIndexesOnList(filteredIndexes, node.getAliasList()),
+                TreePattern.applyIndexesOnList(filteredIndexes, node.getTagsList()),
+                TreePattern.applyIndexesOnList(filteredIndexes, node.getAttributesList())))
         : Optional.empty();
   }
 
