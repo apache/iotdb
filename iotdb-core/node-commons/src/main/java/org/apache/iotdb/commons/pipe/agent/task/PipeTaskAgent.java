@@ -187,7 +187,7 @@ public abstract class PipeTaskAgent {
 
     // If pipe meta does not exist on local agent, create a new pipe
     if (metaInAgent == null) {
-      if (createPipe(metaFromCoordinator)) {
+      if (createPipe(metaFromCoordinator, newRegions)) {
         // If the status recorded in coordinator is RUNNING, start the pipe
         startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
       }
@@ -202,7 +202,7 @@ public abstract class PipeTaskAgent {
     // First check if pipe static meta has changed, if so, drop the pipe and create a new one
     if (!staticMetaInAgent.equals(staticMetaFromCoordinator)) {
       dropPipe(pipeName);
-      if (createPipe(metaFromCoordinator)) {
+      if (createPipe(metaFromCoordinator, newRegions)) {
         startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
       }
       // If the status is STOPPED or DROPPED, do nothing
