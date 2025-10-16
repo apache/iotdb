@@ -37,10 +37,13 @@ public class MappingCollectOperator extends CollectOperator {
   // record mapping for each child
   private final List<List<Integer>> mappings;
 
+  private final int outputColumnsCount;
+
   public MappingCollectOperator(
       OperatorContext operatorContext, List<Operator> children, List<List<Integer>> mappings) {
     super(operatorContext, children);
     this.mappings = mappings;
+    outputColumnsCount = mappings.get(0).size();
   }
 
   @Override
@@ -50,7 +53,7 @@ public class MappingCollectOperator extends CollectOperator {
       if (tsBlock == null) {
         return null;
       } else {
-        Column[] columns = new Column[tsBlock.getValueColumnCount()];
+        Column[] columns = new Column[outputColumnsCount];
         List<Integer> mapping = mappings.get(currentIndex);
         for (int i = 0; i < columns.length; i++) {
           columns[i] = tsBlock.getColumn(mapping.get(i));

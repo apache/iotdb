@@ -99,6 +99,7 @@ public class CompatibleResolver {
     addCondition(UNKNOWN, TEXT, TEXT);
     addCondition(UNKNOWN, STRING, STRING);
     addCondition(UNKNOWN, BLOB, BLOB);
+    addCondition(UNKNOWN, UNKNOWN, UNKNOWN);
   }
 
   private static void addCondition(Type condition1, Type condition2, Type result) {
