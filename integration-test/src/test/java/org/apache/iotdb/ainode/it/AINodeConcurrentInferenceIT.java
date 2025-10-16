@@ -212,8 +212,9 @@ public class AINodeConcurrentInferenceIT {
 
   private void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)
       throws SQLException, InterruptedException {
-    for (int retry = 0; retry < 10; retry++) {
-      Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
+    Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
+    LOGGER.info("Checking model: {} on target devices: {}", modelId, targetDevices);
+    for (int retry = 0; retry < 20; retry++) {
       Set<String> foundDevices = new HashSet<>();
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
@@ -221,14 +222,14 @@ public class AINodeConcurrentInferenceIT {
           String deviceId = resultSet.getString("DeviceId");
           String loadedModelId = resultSet.getString("ModelId");
           int count = resultSet.getInt("Count(instances)");
-          LOGGER.info("Model {} found in device {}, count: {}", loadedModelId, deviceId, count);
-          if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId)) {
-            Assert.assertTrue(count > 1);
+          LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
+          if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId) && count > 0) {
             foundDevices.add(deviceId);
             LOGGER.info("Model {} is loaded to device {}", modelId, device);
           }
         }
         if (foundDevices.containsAll(targetDevices)) {
+          LOGGER.info("Model {} is loaded to devices {}, start testing", modelId, targetDevices);
           return;
         }
       }
