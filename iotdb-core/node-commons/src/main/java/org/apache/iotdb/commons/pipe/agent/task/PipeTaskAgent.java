@@ -213,13 +213,14 @@ public abstract class PipeTaskAgent {
     final PipeRuntimeMeta runtimeMetaInAgent = metaInAgent.getRuntimeMeta();
     final PipeRuntimeMeta runtimeMetaFromCoordinator = metaFromCoordinator.getRuntimeMeta();
     executeSinglePipeRuntimeMetaChanges(
-        staticMetaFromCoordinator, runtimeMetaFromCoordinator, runtimeMetaInAgent);
+        staticMetaFromCoordinator, runtimeMetaFromCoordinator, runtimeMetaInAgent, newRegions);
   }
 
   private void executeSinglePipeRuntimeMetaChanges(
       /* @NotNull */ final PipeStaticMeta pipeStaticMeta,
       /* @NotNull */ final PipeRuntimeMeta runtimeMetaFromCoordinator,
-      /* @NotNull */ final PipeRuntimeMeta runtimeMetaInAgent)
+      /* @NotNull */ final PipeRuntimeMeta runtimeMetaInAgent,
+      /* @NotNull */ final Set<Integer> newRegions)
       throws IllegalPathException {
     // 1. Handle region group leader changed first
     final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
@@ -239,7 +240,8 @@ public abstract class PipeTaskAgent {
 
       // If task meta does not exist on local agent, create a new task
       if (taskMetaInAgent == null) {
-        createPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator);
+        createPipeTask(
+            consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator, newRegions);
         // We keep the new created task's status consistent with the status recorded in local
         // agent's pipe runtime meta. please note that the status recorded in local agent's pipe
         // runtime meta is not reliable, but we will have a check later to make sure the status is
@@ -256,7 +258,8 @@ public abstract class PipeTaskAgent {
 
       if (nodeIdFromCoordinator != nodeIdInAgent) {
         dropPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
-        createPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator);
+        createPipeTask(
+            consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator, newRegions);
         // We keep the new created task's status consistent with the status recorded in local
         // agent's pipe runtime meta. please note that the status recorded in local agent's pipe
         // runtime meta is not reliable, but we will have a check later to make sure the status is
@@ -501,7 +504,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Create pipe tasks
-    final Map<Integer, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator, newRegions);
+    final Map<Integer, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator);
 
     // Trigger create() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
@@ -535,8 +538,7 @@ public abstract class PipeTaskAgent {
     // do nothing
   }
 
-  protected abstract Map<Integer, PipeTask> buildPipeTasks(
-      final PipeMeta pipeMetaFromCoordinator, final Set<Integer> newRegions)
+  protected abstract Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromCoordinator)
       throws IllegalPathException;
 
   /**
@@ -927,7 +929,8 @@ public abstract class PipeTaskAgent {
   protected abstract void createPipeTask(
       final int consensusGroupId,
       final PipeStaticMeta pipeStaticMeta,
-      final PipeTaskMeta pipeTaskMeta)
+      final PipeTaskMeta pipeTaskMeta,
+      final Set<Integer> newRegions)
       throws IllegalPathException;
 
   private void dropPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {

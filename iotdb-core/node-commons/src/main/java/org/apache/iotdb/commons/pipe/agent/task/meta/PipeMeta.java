@@ -199,7 +199,7 @@ public class PipeMeta {
       PipeTaskMeta taskMeta = entry.getValue();
 
       // If this is a negative region ID, restore it to original ID
-      if (currentId < 0) {
+      if (currentId < 0 && currentId != Integer.MIN_VALUE) {
         Integer originalId = -1 - currentId;
         restoredMap.put(originalId, taskMeta);
         newRegionIds.add(originalId);

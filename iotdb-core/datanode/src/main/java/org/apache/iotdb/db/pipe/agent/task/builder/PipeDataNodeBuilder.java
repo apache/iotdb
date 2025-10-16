@@ -38,10 +38,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
 
 public class PipeDataNodeBuilder {
 
@@ -53,8 +49,7 @@ public class PipeDataNodeBuilder {
     this.pipeMeta = pipeMeta;
   }
 
-  public Map<Integer, PipeTask> buildTasksWithInternalSource(final Set<Integer> newRegions)
-      throws IllegalPathException {
+  public Map<Integer, PipeTask> buildTasksWithInternalSource() throws IllegalPathException {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
@@ -66,22 +61,9 @@ public class PipeDataNodeBuilder {
         pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
       final int consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
       final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
-      final boolean isNewRegion = newRegions.contains(consensusGroupId);
-      PipeParameters extractorParameters = pipeStaticMeta.getSourceParameters();
-
-      if (isNewRegion && pipeMeta.getStaticMeta().getPipeName().endsWith("_history")) {
-        extractorParameters = new PipeParameters(new HashMap<>(extractorParameters.getAttribute()));
-        extractorParameters.getAttribute().put(EXTRACTOR_HISTORY_ENABLE_KEY, "false");
-        extractorParameters.getAttribute().put(SOURCE_HISTORY_ENABLE_KEY, "false");
-      }
-
-      if (isNewRegion && pipeMeta.getStaticMeta().getPipeName().endsWith("_realtime")) {
-        extractorParameters = new PipeParameters(new HashMap<>(extractorParameters.getAttribute()));
-        extractorParameters.getAttribute().put(EXTRACTOR_HISTORY_ENABLE_KEY, "true");
-        extractorParameters.getAttribute().put(SOURCE_HISTORY_ENABLE_KEY, "true");
-      }
 
       if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
+        PipeParameters extractorParameters = pipeStaticMeta.getSourceParameters();
         final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
         final boolean needConstructDataRegionTask =
             dataRegionIds.contains(dataRegionId)

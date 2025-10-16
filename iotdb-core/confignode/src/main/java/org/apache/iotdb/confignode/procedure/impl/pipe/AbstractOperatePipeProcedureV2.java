@@ -416,6 +416,13 @@ public abstract class AbstractOperatePipeProcedureV2
     for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
       PipeMeta copyPipeMeta = copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta);
       // Transform new region IDs to -1-ID format
+      if (copyPipeMeta.getStaticMeta().getPipeName().endsWith("_history")) {
+        copyPipeMeta
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .entrySet()
+            .removeIf(entry -> newRegionIds.contains(entry.getKey()));
+      }
       copyPipeMeta.transformNewRegionIdsToNegative(newRegionIds);
       pipeMetaBinaryList.add(copyPipeMeta.serialize());
     }

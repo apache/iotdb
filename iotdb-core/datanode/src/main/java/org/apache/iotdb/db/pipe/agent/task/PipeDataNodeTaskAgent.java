@@ -157,12 +157,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<Integer, PipeTask> buildPipeTasks(
-      final PipeMeta pipeMetaFromConfigNode, final Set<Integer> newRegions)
+  protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
     return pipeMetaFromConfigNode.getStaticMeta().isSourceExternal()
         ? new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithExternalSource()
-        : new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithInternalSource(newRegions);
+        : new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithInternalSource();
   }
 
   ///////////////////////// Manage by regionGroupId /////////////////////////
@@ -171,7 +170,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected void createPipeTask(
       final int consensusGroupId,
       final PipeStaticMeta pipeStaticMeta,
-      final PipeTaskMeta pipeTaskMeta)
+      final PipeTaskMeta pipeTaskMeta,
+      final Set<Integer> newRegions)
       throws IllegalPathException {
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
       final PipeParameters sourceParameters = pipeStaticMeta.getSourceParameters();
@@ -194,8 +194,25 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           // For internal source
           || needConstructDataRegionTask
           || needConstructSchemaRegionTask) {
+        PipeStaticMeta copyPipeStaticMeta =
+            new PipeStaticMeta(
+                pipeStaticMeta.getPipeName(),
+                pipeStaticMeta.getCreationTime(),
+                new HashMap<>(pipeStaticMeta.getSourceParameters().getAttribute()),
+                pipeStaticMeta.getProcessorParameters().getAttribute(),
+                pipeStaticMeta.getSinkParameters().getAttribute());
+        final boolean needUpdateSourceParameters =
+            !PipeRuntimeMeta.isSourceExternal(consensusGroupId)
+                && needConstructDataRegionTask
+                && newRegions.contains(consensusGroupId);
+        final PipeParameters extractorParameters = copyPipeStaticMeta.getSourceParameters();
+        if (needUpdateSourceParameters && pipeStaticMeta.getPipeName().endsWith("_realtime")) {
+          extractorParameters.getAttribute().put(EXTRACTOR_HISTORY_ENABLE_KEY, "true");
+          extractorParameters.getAttribute().put(SOURCE_HISTORY_ENABLE_KEY, "true");
+        }
+
         final PipeDataNodeTask pipeTask =
-            new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
+            new PipeDataNodeTaskBuilder(copyPipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
         pipeTask.create();
         pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
       }

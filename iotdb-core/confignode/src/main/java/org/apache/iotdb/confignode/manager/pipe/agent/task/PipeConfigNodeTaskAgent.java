@@ -76,8 +76,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<Integer, PipeTask> buildPipeTasks(
-      final PipeMeta pipeMetaFromConfigNode, Set<Integer> newRegions) throws IllegalPathException {
+  protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
+      throws IllegalPathException {
     return new PipeConfigNodeTaskBuilder(pipeMetaFromConfigNode).build();
   }
 
@@ -85,7 +85,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   protected void createPipeTask(
       final int consensusGroupId,
       final PipeStaticMeta pipeStaticMeta,
-      final PipeTaskMeta pipeTaskMeta)
+      final PipeTaskMeta pipeTaskMeta,
+      final Set<Integer> newRegions)
       throws IllegalPathException {
     // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
     if (consensusGroupId == Integer.MIN_VALUE

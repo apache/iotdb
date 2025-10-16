@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
-import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -45,7 +44,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -103,7 +101,8 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
         new PipeHandleLeaderChangePlan(newConsensusGroupIdToLeaderConsensusIdMap);
 
     // Extract newly created DataRegion IDs
-    newlyCreatedDataRegionIds = extractNewlyCreatedDataRegionIds(pipeHandleLeaderChangePlan, env);
+    newlyCreatedDataRegionIds =
+        extractNewlyCreatedDataRegionIds(regionGroupToOldAndNewLeaderPairMap);
     TSStatus response;
     try {
       response = env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
@@ -206,55 +205,18 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
    * in PipeInfo and save to Map, then scan Region IDs in Plan to get DataRegion IDs that PipeInfo
    * doesn't have
    *
-   * @param plan PipeHandleLeaderChangePlan containing consensus group ID to new leader mapping
-   * @param env ConfigNodeProcedureEnv environment for accessing PipeTaskInfo
+   * @param regionGroupToOldAndNewLeaderPairMap containing consensus group ID to new leader mapping
    * @return Set of newly created DataRegion IDs
    */
   private Set<Integer> extractNewlyCreatedDataRegionIds(
-      final PipeHandleLeaderChangePlan plan, final ConfigNodeProcedureEnv env) {
+      final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap) {
     final Set<Integer> newDataRegionIds = new HashSet<>();
-
-    try {
-      final Map<Integer, Boolean> existingDataRegionIds = new HashMap<>();
-      final AtomicReference<PipeTaskInfo> pipeTaskInfoHolder =
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().tryLock();
-
-      if (pipeTaskInfoHolder != null) {
-        try {
-          pipeTaskInfoHolder
-              .get()
-              .getPipeMetaList()
-              .forEach(
-                  pipeMeta -> {
-                    pipeMeta
-                        .getRuntimeMeta()
-                        .getConsensusGroupId2TaskMetaMap()
-                        .keySet()
-                        .forEach(
-                            regionId -> {
-                              existingDataRegionIds.put(regionId, true);
-                            });
-                  });
-        } finally {
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-        }
+    for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> entry :
+        regionGroupToOldAndNewLeaderPairMap.entrySet()) {
+      if (TConsensusGroupType.DataRegion.equals(entry.getKey().getType())
+          && entry.getValue().getLeft() == -1) {
+        newDataRegionIds.add(entry.getKey().getId());
       }
-
-      plan.getConsensusGroupId2NewLeaderIdMap()
-          .forEach(
-              (consensusGroupId, newLeader) -> {
-                // Only process DataRegion type and newLeader is not -1 (not deletion)
-                if (consensusGroupId.getType() == TConsensusGroupType.DataRegion
-                    && newLeader != -1) {
-                  // If PipeInfo doesn't have this DataRegion, it means it's newly created
-                  if (!existingDataRegionIds.containsKey(consensusGroupId.getId())) {
-                    newDataRegionIds.add(consensusGroupId.getId());
-                  }
-                }
-              });
-
-    } catch (Exception e) {
-      LOGGER.warn("Failed to extract newly created DataRegion IDs", e);
     }
 
     return newDataRegionIds;
