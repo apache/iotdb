@@ -225,9 +225,9 @@ public class AINodeConcurrentInferenceIT {
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
         while (resultSet.next()) {
-          String deviceId = resultSet.getString(1);
-          String loadedModelType = resultSet.getString(2);
-          int count = resultSet.getInt(3);
+          String deviceId = resultSet.getString("DeviceId");
+          String loadedModelType = resultSet.getString("ModelId");
+          int count = resultSet.getInt("Count(instances)");
           if (loadedModelType.equals(modelType) && targetDevices.contains(deviceId)) {
             Assert.assertTrue(count > 1);
             foundDevices.add(deviceId);
