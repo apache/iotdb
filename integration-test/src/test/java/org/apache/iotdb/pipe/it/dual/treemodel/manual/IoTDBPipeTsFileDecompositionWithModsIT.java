@@ -39,6 +39,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
   @Override
   protected void setupConfig() {
     super.setupConfig();
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
   }
@@ -130,9 +131,6 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d3.*");
 
     TestUtils.executeNonQueryWithRetry(senderEnv, "FLUSH");
-
-    Thread.sleep(
-        30000); // wait for followers to catch up, avoiding leader election during pipe creation
 
     // Verify sender data integrity before creating pipe to avoid leader election issues
     // This ensures all data is properly persisted and consistent on sender side
@@ -275,9 +273,6 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     TestUtils.executeNonQueryWithRetry(senderEnv, "DELETE FROM root.sg1.d3.*");
 
     TestUtils.executeNonQueryWithRetry(senderEnv, "FLUSH");
-
-    Thread.sleep(
-        30000); // wait for followers to catch up, avoiding leader election during pipe creation
 
     // Verify sender data integrity before creating pipes to avoid leader election issues
     // This ensures all data is properly persisted and consistent on sender side
@@ -481,9 +476,6 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     }
 
     TestUtils.executeNonQueryWithRetry(senderEnv, "FLUSH");
-
-    Thread.sleep(
-        30000); // wait for followers to catch up, avoiding leader election during pipe creation
 
     // Verify sender data integrity before creating pipe to avoid leader election issues
     // This ensures all data is properly persisted and consistent on sender side
