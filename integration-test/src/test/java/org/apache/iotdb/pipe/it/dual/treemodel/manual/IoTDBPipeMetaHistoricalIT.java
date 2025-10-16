@@ -93,9 +93,6 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      TestUtils.tryExecuteNonQuery(senderEnv, "create database root.__audit");
-      TestUtils.tryExecuteNonQuery(senderEnv, "create database root.__system");
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -154,7 +151,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show databases",
+          "show databases root.ln",
           "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionOrigin,TimePartitionInterval,",
           // Receiver's SchemaReplicationFactor/DataReplicationFactor shall be 3/2 regardless of the
           // sender

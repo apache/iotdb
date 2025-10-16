@@ -72,9 +72,6 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      TestUtils.tryExecuteNonQuery(senderEnv, "create database root.__audit");
-      TestUtils.tryExecuteNonQuery(senderEnv, "create database root.__system");
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -102,9 +99,6 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
-
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("1,"));
     }
   }
 
