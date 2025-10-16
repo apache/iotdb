@@ -115,6 +115,7 @@ statement
     | showDataNodesStatement
     | showConfigNodesStatement
     | showAINodesStatement
+    | showProceduresStatement
     | showClusterIdStatement
     | showRegionIdStatement
     | showTimeSlotListStatement
@@ -553,6 +554,10 @@ showConfigNodesStatement
 
 showAINodesStatement
     : SHOW AINODES
+    ;
+
+showProceduresStatement
+    : SHOW PROCEDURES
     ;
 
 showClusterIdStatement
@@ -1685,6 +1690,7 @@ PRIVILEGES: 'PRIVILEGES';
 PREVIOUS: 'PREVIOUS';
 PROCESSLIST: 'PROCESSLIST';
 PROCESSOR: 'PROCESSOR';
+PROCEDURES: 'PROCEDURES';
 PROPERTIES: 'PROPERTIES';
 PRUNE: 'PRUNE';
 QUERIES: 'QUERIES';

@@ -659,6 +659,17 @@ struct TAINodeInfo {
   4: required i32 internalPort
 }
 
+struct TProcedureInfo {
+  1: required i64 procId
+  2: required string phase
+  3: required i64 submittedTime
+  4: required i64 lastUpdateTime
+  5: required i64 parentProcId
+  6: required string className
+  7: required string status
+  8: required string progress
+}
+
 struct TShowDataNodes4InformationSchemaResp {
   1: required common.TSStatus status
   2: optional list<TDataNodeInfo4InformationSchema> dataNodesInfoList
@@ -672,6 +683,11 @@ struct TShowDataNodesResp {
 struct TShowAINodesResp {
   1: required common.TSStatus status
   2: optional list<TAINodeInfo> aiNodesInfoList
+}
+
+struct TShowProceduresResp {
+  1: required common.TSStatus status
+  2: optional list<TProcedureInfo> proceduresInfoList
 }
 
 // Show confignodes
@@ -1358,6 +1374,8 @@ service IConfigNodeRPCService {
   common.TSStatus removeAINode(TAINodeRemoveReq req)
 
   TShowAINodesResp showAINodes()
+
+  TShowProceduresResp showProcedures()
 
   TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
 

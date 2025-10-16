@@ -61,7 +61,7 @@ ddlStatement
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
+    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId | showProcedures
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
@@ -495,6 +495,11 @@ showConfigNodes
 // ---- Show AI Nodes
 showAINodes
     : SHOW AINODES
+    ;
+
+// ---- Show Procedures
+showProcedures
+    : SHOW PROCEDURES
     ;
 
 // ---- Show Cluster Id

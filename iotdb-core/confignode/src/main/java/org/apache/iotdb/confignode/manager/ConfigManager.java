@@ -241,6 +241,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -1959,6 +1960,18 @@ public class ConfigManager implements IManager {
     TShowAINodesResp resp = new TShowAINodesResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return resp.setAiNodesInfoList(nodeManager.getRegisteredAINodeInfoList())
+          .setStatus(StatusUtils.OK);
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @Override
+  public TShowProceduresResp showProcedures() {
+    TSStatus status = confirmLeader();
+    TShowProceduresResp resp = new TShowProceduresResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setProceduresInfoList(procedureManager.getProcedureInfoList())
           .setStatus(StatusUtils.OK);
     } else {
       return resp.setStatus(status);
