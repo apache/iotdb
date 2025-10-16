@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -76,7 +77,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.allocatedMemoryBlockForChunk =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(
-                  PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
+                  PipeConfig.getInstance().getPipeMaxReaderChunkSize());
       this.allocatedMemoryBlockForBatchData =
           PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
       this.allocatedMemoryBlockForChunkMeta =
@@ -153,12 +154,12 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                   return Objects.isNull(userName)
                       || Objects.isNull(sourceEvent)
                       || Objects.isNull(sourceEvent.getTableModelDatabaseName())
-                      || Coordinator.getInstance()
-                          .getAccessControl()
+                      || AuthorityChecker.getAccessControl()
                           .checkCanSelectFromTable4Pipe(
                               userName,
                               new QualifiedObjectName(
-                                  sourceEvent.getTableModelDatabaseName(), tableName));
+                                  sourceEvent.getTableModelDatabaseName(), tableName),
+                              new UserEntity(-1, userName, ""));
                 }
 
                 @Override

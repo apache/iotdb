@@ -39,6 +39,7 @@ public class LocalFileUserManager extends BasicUserManager {
     for (Map.Entry<String, Role> entry : entityMap.entrySet()) {
       accessor.saveEntity(entry.getValue());
     }
+    accessor.saveUserId(nextUserId);
     return accessor.processTakeSnapshot(snapshotDir);
   }
 

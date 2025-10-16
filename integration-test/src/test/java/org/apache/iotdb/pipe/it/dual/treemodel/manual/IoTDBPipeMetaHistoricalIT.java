@@ -53,7 +53,6 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -96,7 +95,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.ln",
@@ -114,9 +113,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               // Insert large timestamp to avoid deletion by ttl
               "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"),
-          null)) {
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -165,10 +162,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
           "Time,root.ln.wf01.wt01.temperature,root.ln.wf01.wt01.status,",
           Collections.singleton("1800000000000,23.0,true,"));
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "create timeseries using schema template on root.ln.wf01.wt02", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          senderEnv, "create timeseries using schema template on root.ln.wf01.wt02", null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -190,7 +185,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.ln",
@@ -199,16 +194,14 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               "create role `admin`",
               "grant role `admin` to `thulab`",
               "grant read on root.** to role `admin`",
-              "grant manage_database,manage_user,manage_role,use_trigger,use_udf,use_cq,use_pipe on root.** to role `admin`;",
+              "grant system,security on root.** to role `admin`;",
               "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               // Insert large timestamp to avoid deletion by ttl
               "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -236,8 +229,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "list user of role `admin`",
-          ColumnHeaderConstant.USER + ",",
-          Collections.singleton("thulab,"));
+          ColumnHeaderConstant.USER_ID + "," + ColumnHeaderConstant.USER + ",",
+          Collections.singleton("10000,thulab,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "list privileges of role `admin`",
@@ -251,13 +244,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               + ",",
           new HashSet<>(
               Arrays.asList(
-                  "admin,,MANAGE_USER,false,",
-                  "admin,,MANAGE_ROLE,false,",
-                  "admin,,USE_TRIGGER,false,",
-                  "admin,,USE_UDF,false,",
-                  "admin,,USE_CQ,false,",
-                  "admin,,USE_PIPE,false,",
-                  "admin,,MANAGE_DATABASE,false,",
+                  "admin,,SYSTEM,false,",
+                  "admin,,SECURITY,false,",
                   "admin,root.**,READ_DATA,false,",
                   "admin,root.**,READ_SCHEMA,false,")));
 
@@ -269,9 +257,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.ln.**", "Time", Collections.emptySet());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "CREATE ROLE test", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "CREATE ROLE test", null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -293,15 +279,13 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.sg",
               "create timeseries root.sg.a.b int32",
               "create aligned timeseries root.sg.`apache|timecho-tag-attr`.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();

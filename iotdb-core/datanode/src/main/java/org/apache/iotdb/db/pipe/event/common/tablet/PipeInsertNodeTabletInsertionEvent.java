@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -27,6 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
@@ -38,7 +40,6 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -109,6 +110,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -123,7 +126,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -133,7 +138,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime,
@@ -160,6 +167,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     return Objects.nonNull(insertNode.getTargetPath())
         ? insertNode.getTargetPath().getFullPath()
         : null;
+  }
+
+  public long getExtractTime() {
+    return extractTime;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -227,7 +238,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -240,7 +253,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);
@@ -275,10 +290,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   private void checkTableName(final String tableName) {
-    if (!Coordinator.getInstance()
-        .getAccessControl()
+    if (!AuthorityChecker.getAccessControl()
         .checkCanSelectFromTable4Pipe(
-            userName, new QualifiedObjectName(getTableModelDatabaseName(), tableName))) {
+            userName,
+            new QualifiedObjectName(getTableModelDatabaseName(), tableName),
+            new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
       throw new AccessDeniedException(
           String.format(
               "No privilege for SELECT for user %s at table %s.%s",

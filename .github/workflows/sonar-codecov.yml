@@ -11,17 +11,17 @@ on:
       - "rc/*"
     paths-ignore:
       - "docs/**"
-      - 'site/**'
+      - "site/**"
   pull_request:
     branches:
       - master
       - "rel/*"
       - "new_*"
       - "rc/*"
-      - 'force_ci/**'
+      - "force_ci/**"
     paths-ignore:
       - "docs/**"
-      - 'site/**'
+      - "site/**"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -49,7 +49,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
-        run: | 
+        run: |
           mvn -B -P with-code-coverage clean package -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
           mvn -B -P with-code-coverage post-integration-test -pl code-coverage
       - name: Upload coverage reports to codecov
@@ -68,6 +68,8 @@ jobs:
         with:
           distribution: corretto
           java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:

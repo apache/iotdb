@@ -19,7 +19,7 @@ import time
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
-from thrift.transport import TSocket, TTransport
+from thrift.transport import TSocket, TSSLSocket, TTransport
 
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
@@ -109,9 +109,31 @@ class ConfigNodeClient(object):
         raise TException(self._MSG_RECONNECTION_FAIL)
 
     def _connect(self, target_config_node: TEndPoint) -> None:
-        transport = TTransport.TFramedTransport(
-            TSocket.TSocket(target_config_node.ip, target_config_node.port)
-        )
+        if AINodeDescriptor().get_config().get_ain_internal_ssl_enabled():
+            import ssl
+            import sys
+
+            if sys.version_info >= (3, 10):
+                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            else:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = False
+            context.load_verify_locations(
+                cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file()
+            )
+            context.load_cert_chain(
+                certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
+                keyfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_key_file(),
+            )
+            socket = TSSLSocket.TSSLSocket(
+                host=target_config_node.ip,
+                port=target_config_node.port,
+                ssl_context=context,
+            )
+        else:
+            socket = TSocket.TSocket(target_config_node.ip, target_config_node.port)
+        transport = TTransport.TFramedTransport(socket)
         if not transport.isOpen():
             try:
                 transport.open()

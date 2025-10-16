@@ -40,6 +40,7 @@ import org.apache.tsfile.read.controller.IMetadataQuerier;
 import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.TableChunkReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -394,6 +395,13 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
       final TsPrimitiveType primitiveType = primitiveTypes[i - deviceIdSize];
       if (primitiveType == null) {
+        switch (dataTypeList.get(i)) {
+          case TEXT:
+          case BLOB:
+          case STRING:
+            tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
+        }
+        tablet.getBitMaps()[i].mark(rowIndex);
         continue;
       }
 
@@ -420,7 +428,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         case TEXT:
         case BLOB:
         case STRING:
-          tablet.addValue(rowIndex, i, primitiveType.getBinary().getValues());
+          Binary binary = primitiveType.getBinary();
+          tablet.addValue(
+              rowIndex,
+              i,
+              binary.getValues() == null ? Binary.EMPTY_VALUE.getValues() : binary.getValues());
           break;
         default:
           throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
@@ -431,11 +443,20 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private void fillDeviceIdColumns(
       final IDeviceID deviceID, final Tablet tablet, final int rowIndex) {
     final String[] deviceIdSegments = (String[]) deviceID.getSegments();
-    for (int i = 1, totalColumns = deviceIdSegments.length; i < totalColumns; i++) {
+    int i = 1;
+    for (int totalColumns = deviceIdSegments.length; i < totalColumns; i++) {
       if (deviceIdSegments[i] == null) {
+        tablet.addValue(rowIndex, i - 1, Binary.EMPTY_VALUE.getValues());
+        tablet.getBitMaps()[i - 1].mark(rowIndex);
         continue;
       }
       tablet.addValue(rowIndex, i - 1, deviceIdSegments[i]);
+    }
+
+    while (i <= deviceIdSize) {
+      tablet.addValue(rowIndex, i - 1, Binary.EMPTY_VALUE.getValues());
+      tablet.getBitMaps()[i - 1].mark(rowIndex);
+      i++;
     }
   }
 }

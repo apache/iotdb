@@ -98,7 +98,7 @@
     <build>
         <resources>
             <resource>
-                <targetPath>${project.build.directory}/feature</targetPath>
+                <targetPath>feature</targetPath>
                 <filtering>true</filtering>
                 <directory>src/main/feature</directory>
             </resource>
@@ -133,7 +133,7 @@
                         <configuration>
                             <artifacts>
                                 <artifact>
-                                    <file>target/feature/feature.xml</file>
+                                    <file>src/main/feature/feature.xml</file>
                                     <classifier>features</classifier>
                                     <type>xml</type>
                                 </artifact>

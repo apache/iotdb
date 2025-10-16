@@ -161,13 +161,13 @@ public class Cli extends AbstractCli {
       trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
       trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
       password = commandLine.getOptionValue(PW_ARGS);
+      if (password == null) {
+        password = ctx.getLineReader().readLine("please input your password:", '\0');
+      }
       constructProperties();
       if (hasExecuteSQL && password != null) {
         ctx.getLineReader().getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
         executeSql(ctx);
-      }
-      if (password == null) {
-        password = ctx.getLineReader().readLine("please input your password:", '\0');
       }
       receiveCommands(ctx);
     } catch (Exception e) {

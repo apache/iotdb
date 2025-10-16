@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -65,7 +68,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.LoadModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowAIDevicesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowLoadedModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.UnloadModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -149,8 +156,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.LoadModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.UnloadModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -201,6 +212,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.NotImplementedException;
 
@@ -210,8 +222,8 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUserName;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUser;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUser;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -300,8 +312,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitAuthor(AuthorStatement statement, MPPQueryContext context) {
+    statement.setExecutedByUserId(context.getUserId());
     if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
       visitUpdateUser(statement);
+    }
+    if (statement.getAuthorType() == AuthorType.RENAME_USER) {
+      visitRenameUser(statement);
+    }
+    TSStatus status = statement.checkStatementIsValid(context.getSession().getUserName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new AccessDeniedException(status.getMessage());
     }
     return new AuthorizerTask(statement);
   }
@@ -312,7 +332,15 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       throw new SemanticException("User " + statement.getUserName() + " not found");
     }
     statement.setPassWord(user.getPassword());
-    DataNodeAuthUtils.verifyPasswordReuse(statement.getUserName(), statement.getNewPassword());
+    DataNodeAuthUtils.verifyPasswordReuse(
+        statement.getAssociatedUsedId(), statement.getNewPassword());
+  }
+
+  private void visitRenameUser(AuthorStatement statement) {
+    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
+    if (user == null) {
+      throw new SemanticException("User " + statement.getUserName() + " not found");
+    }
   }
 
   @Override
@@ -334,6 +362,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitSetConfiguration(
       SetConfigurationStatement setConfigurationStatement, MPPQueryContext context) {
+    setConfigurationStatement.checkSomeParametersKeepConsistentInCluster();
     return new SetConfigurationTask(setConfigurationStatement);
   }
 
@@ -554,21 +583,27 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
                 "Failed to create pipe %s, setting %s is not allowed.",
                 createPipeStatement.getPipeName(), ExtractorAttribute));
       }
+      if (ExtractorAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to create pipe %s, setting %s is not allowed.",
+                createPipeStatement.getPipeName(), ExtractorAttribute));
+      }
     }
 
     // Inject tree model into the extractor attributes
     createPipeStatement
         .getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    checkAndEnrichSourceUserName(
+    checkAndEnrichSourceUser(
         createPipeStatement.getPipeName(),
         createPipeStatement.getExtractorAttributes(),
-        context.getSession().getUserName(),
+        new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
-    checkAndEnrichSinkUserName(
+    checkAndEnrichSinkUser(
         createPipeStatement.getPipeName(),
         createPipeStatement.getConnectorAttributes(),
-        context.getSession().getUserName(),
+        context.getSession().getUserEntity(),
         false);
 
     return new CreatePipeTask(createPipeStatement);
@@ -581,6 +616,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     for (final String extractorAttributeKey :
         alterPipeStatement.getExtractorAttributes().keySet()) {
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to alter pipe %s, modifying %s is not allowed.",
+                alterPipeStatement.getPipeName(), extractorAttributeKey));
+      }
+      if (extractorAttributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",
@@ -599,12 +640,19 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
+      checkAndEnrichSourceUser(
+          pipeName,
+          extractorAttributes,
+          new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
+          true);
     }
 
     if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-      checkAndEnrichSinkUserName(
-          pipeName, alterPipeStatement.getConnectorAttributes(), userName, true);
+      checkAndEnrichSinkUser(
+          pipeName,
+          alterPipeStatement.getConnectorAttributes(),
+          context.getSession().getUserEntity(),
+          true);
     }
 
     return new AlterPipeTask(alterPipeStatement);
@@ -817,6 +865,31 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
     return new ShowModelsTask(showModelsStatement.getModelId());
+  }
+
+  @Override
+  public IConfigTask visitShowLoadedModels(
+      ShowLoadedModelsStatement showLoadedModelsStatement, MPPQueryContext context) {
+    return new ShowLoadedModelsTask(showLoadedModelsStatement.getDeviceIdList());
+  }
+
+  @Override
+  public IConfigTask visitShowAIDevices(
+      ShowAIDevicesStatement showAIDevicesStatement, MPPQueryContext context) {
+    return new ShowAIDevicesTask();
+  }
+
+  @Override
+  public IConfigTask visitLoadModel(
+      LoadModelStatement loadModelStatement, MPPQueryContext context) {
+    return new LoadModelTask(loadModelStatement.getModelId(), loadModelStatement.getDeviceIdList());
+  }
+
+  @Override
+  public IConfigTask visitUnloadModel(
+      UnloadModelStatement unloadModelStatement, MPPQueryContext context) {
+    return new UnloadModelTask(
+        unloadModelStatement.getModelId(), unloadModelStatement.getDeviceIdList());
   }
 
   @Override

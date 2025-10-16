@@ -16,9 +16,7 @@
 # under the License.
 #
 
-from iotdb.ainode.core.exception import (
-    InferenceModelInternalError,
-)
+from iotdb.ainode.core.exception import InferenceModelInternalError
 from iotdb.ainode.core.inference.dispatcher.abstract_dispatcher import (
     AbstractDispatcher,
 )

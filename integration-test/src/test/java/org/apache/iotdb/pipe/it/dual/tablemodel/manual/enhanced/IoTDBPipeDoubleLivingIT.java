@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
@@ -110,7 +111,9 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
@@ -121,7 +124,6 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
   // org.apache.iotdb.pipe.it.autocreate.IoTDBPipeLifeCycleIT.testDoubleLiving
   @Test
   public void testBasicDoubleLiving() {
-    boolean insertResult;
 
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -134,23 +136,17 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     // insertion on sender
     try (Connection conn = senderEnv.getConnection()) {
       for (int i = 0; i < 100; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-    insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-    if (!insertResult) {
-      return;
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -174,34 +170,22 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = senderEnv.getConnection()) {
       // insertion on sender
       for (int i = 100; i < 200; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
       for (int i = 200; i < 300; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-    if (!insertResult) {
-      return;
-    }
-    insertResult = TableModelUtils.insertData("test", "test", 200, 300, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+    TableModelUtils.insertData("test", "test", 200, 300, receiverEnv);
+
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -225,24 +209,16 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = receiverEnv.getConnection()) {
       // insertion on receiver
       for (int i = 300; i < 400; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);
+
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
     // check result
     final Set<String> expectedResSet = new HashSet<>();
@@ -268,24 +244,16 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = receiverEnv.getConnection()) {
       // insertion on receiver
       for (int i = 400; i < 500; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 400, 500, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 400, 500, receiverEnv);
+
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
     // check result
     for (int i = 400; i < 500; ++i) {

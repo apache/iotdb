@@ -112,10 +112,10 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   private long getNextIndexAfterSnapshot() {
     long nextIndex;
     if (needTransferSnapshot()) {
-      nextIndex = findSnapshot();
+      nextIndex = findSnapshot(true);
       if (nextIndex == Long.MIN_VALUE) {
         triggerSnapshot();
-        nextIndex = findSnapshot();
+        nextIndex = findSnapshot(false);
         if (nextIndex == Long.MIN_VALUE) {
           throw new PipeException("Cannot get the newest snapshot after triggering one.");
         }
@@ -128,9 +128,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     return nextIndex;
   }
 
-  private long findSnapshot() {
+  private long findSnapshot(final boolean mayClear) {
     final Pair<Long, List<PipeSnapshotEvent>> queueTailIndex2Snapshots =
-        getListeningQueue().findAvailableSnapshots();
+        getListeningQueue().findAvailableSnapshots(mayClear);
     final long nextIndex =
         Objects.nonNull(queueTailIndex2Snapshots.getLeft())
                 && queueTailIndex2Snapshots.getLeft() != Long.MIN_VALUE
@@ -181,7 +181,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                       pipeTaskMeta,
                       treePattern,
                       tablePattern,
+                      userId,
                       userName,
+                      cliHostname,
                       skipIfNoPrivileges,
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
@@ -242,7 +244,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                 pipeTaskMeta,
                 treePattern,
                 tablePattern,
+                userId,
                 userName,
+                cliHostname,
                 skipIfNoPrivileges,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE);

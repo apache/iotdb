@@ -34,41 +34,93 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 include = [
-    {path = "iotdb/thrift/*", format = "wheel"},
-    {path = "iotdb/thrift/common/*", format = "wheel"},
-    {path = "iotdb/thrift/confignode/*", format = "wheel"},
-    {path = "iotdb/thrift/datanode/*", format = "wheel"},
-    {path = "iotdb/thrift/ainode/*", format = "wheel"},
-    {path = "iotdb/ainode/conf/*", format = "wheel"},
+    { path = "iotdb/Session.py", format = "wheel" },
+    { path = "iotdb/SessionPool.py", format = "wheel" },
+    { path = "iotdb/table_session.py", format = "wheel" },
+    { path = "iotdb/table_session_pool.py", format = "wheel" },
+    { path = "iotdb/dbapi/*", format = "wheel" },
+    { path = "iotdb/sqlalchemy/*", format = "wheel" },
+    { path = "iotdb/template/*", format = "wheel" },
+    { path = "iotdb/thrift/*", format = "wheel" },
+    { path = "iotdb/thrift/ainode/*", format = "wheel" },
+    { path = "iotdb/thrift/common/*", format = "wheel" },
+    { path = "iotdb/thrift/confignode/*", format = "wheel" },
+    { path = "iotdb/thrift/datanode/*", format = "wheel" },
+    { path = "iotdb/thrift/rpc/*", format = "wheel" },
+    { path = "iotdb/tsfile/*", format = "wheel" },
+    { path = "iotdb/tsfile/common/*", format = "wheel" },
+    { path = "iotdb/tsfile/common/constant/*", format = "wheel" },
+    { path = "iotdb/tsfile/utils/*", format = "wheel" },
+    { path = "iotdb/utils/*", format = "wheel" },
+    { path = "iotdb/__init__.py", format = "wheel" },
+    { path = "iotdb/ainode/__init__.py", format = "wheel" },
+    { path = "iotdb/ainode/conf/*", format = "wheel" },
 ]
+
 packages = [
-    { include = "iotdb/ainode" }
+    { include = "iotdb/ainode/core" }
+]
+
+exclude = [
+    "**/__pycache__/**",
+    "**/*.pyc", "**/*.pyo",
+    "**/.DS_Store",
+    "**/*.log", "**/*.log.gz",
+    "venv/**", ".venv/**", "*/.venv/**",
+    "iotdb/ainode/core/data/**",
+    "iotdb/ainode/core/logs/**",
+    "iotdb/**/.cache/**",
+    "iotdb/**/download/**",
+    "iotdb/**/logs/**",
+    "iotdb/**/log-*.log*"
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <3.13"
-numpy = "^1.21.4"
-pandas = ">=2.2.0"
-torch = ">=2.7.1"
-thrift = ">=0.14.0"
-dynaconf = "^3.1.11"
-requests = "^2.31.0"
-optuna = "^3.2.0"
-psutil = "^5.9.5"
-sktime = "0.38.4"
-scikit-learn = "^1.4"
-statsmodels = "^0.14"
-hmmlearn = "^0.3.0"
-apache-iotdb = "2.0.4.dev0"
+python = ">=3.11,<=3.13.5"
+
+# Core scientific stack
+numpy = [
+    { version = "^2.3.2", python = ">=3.10" },
+    { version = "^1.26.4", python = ">=3.9,<3.10" }
+]
+scipy = [
+    { version = "^1.12.0", python = ">=3.10" },
+    { version = "^1.11.4", python = ">=3.9,<3.10" }
+]
+pandas = "^2.3.2"
+scikit-learn = [
+    { version = "^1.7.1", python = ">=3.10" },
+    { version = "^1.5.2", python = ">=3.9,<3.10" }
+]
+statsmodels = "^0.14.5"
+sktime = "0.38.5"
+
+# ---- DL / HF stack ----
+torch = ">=2.7.0"
+torchmetrics = "^1.8.0"
+transformers = "==4.56.2"
+tokenizers = ">=0.22.0,<=0.23.0"
+huggingface_hub = "^0.34.4"
+safetensors = "^0.6.2"
 einops = "^0.8.1"
-safetensors = "^0.5.1"
-huggingface_hub = "^0.30.1"
-tokenizers = ">=0.19"
-hf_xet = ">=1.1.7"
+
+# ---- Optimizers / utils ----
+optuna = "^4.4.0"
+psutil = "^7.0.0"
+requests = "^2.32.5"
+dynaconf = "^3.2.11"
+thrift = ">=0.14.0"
+tzlocal = "^5.3.1"
+
+# ---- HF acceleration ----
+hf_xet = ">=1.1.9"
+
+# ---- Tooling ----
 black = "25.1.0"
 isort = "6.0.1"
-transformers = "==4.40.1"
-torchmetrics = ">=1.2.0"
+setuptools = ">=75.3.0"
+joblib = ">=1.4.2"
+urllib3 = ">=2.2.3"
 
 [tool.poetry.scripts]
 ainode = "iotdb.ainode.core.script:main"

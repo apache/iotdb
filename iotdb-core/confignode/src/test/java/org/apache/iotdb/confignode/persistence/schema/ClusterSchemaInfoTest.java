@@ -115,6 +115,7 @@ public class ClusterSchemaInfoTest {
             Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")),
             ALL_MATCH_SCOPE,
             false,
+            false,
             false);
     Map<String, TDatabaseSchema> reloadResult =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();

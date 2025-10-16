@@ -51,6 +51,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 
 public class ImportSchemaTree extends AbstractImportSchema {
@@ -215,7 +216,9 @@ public class ImportSchemaTree extends AbstractImportSchema {
           String compressionTypeRaw =
               recordObj.get(headerNames.indexOf(Constants.HEAD_COLUMNS.get(4)));
           CompressionType compressionType = compressInfer(compressionTypeRaw);
-          if (StringUtils.isBlank(path) || path.trim().startsWith(SYSTEM_DATABASE)) {
+          if (StringUtils.isBlank(path)
+              || path.trim().startsWith(SYSTEM_DATABASE)
+              || path.trim().startsWith(AUDIT_DATABASE)) {
             ioTPrinter.println(
                 String.format(
                     "Line '%s', column '%s': illegal path %s",

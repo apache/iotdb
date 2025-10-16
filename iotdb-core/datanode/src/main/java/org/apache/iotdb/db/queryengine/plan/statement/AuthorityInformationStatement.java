@@ -18,31 +18,31 @@
  */
 package org.apache.iotdb.db.queryengine.plan.statement;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 public abstract class AuthorityInformationStatement extends Statement {
   protected PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
+  private boolean canSeeAuditDB = true;
 
   public PathPatternTree getAuthorityScope() {
     return authorityScope;
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    try {
-      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        this.authorityScope =
-            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA);
-      }
-    } catch (AuthException e) {
-      return new TSStatus(e.getCode().getStatusCode());
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitAuthorityInformation(this, context);
+  }
+
+  public void setAuthorityScope(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
+  }
+
+  public boolean isCanSeeAuditDB() {
+    return canSeeAuditDB;
+  }
+
+  public void setCanSeeAuditDB(boolean canSeeAuditDB) {
+    this.canSeeAuditDB = canSeeAuditDB;
   }
 }

@@ -217,7 +217,7 @@ public class UDTFExecutor {
     // Some UDTF only generate data in terminate method
     if (timeColumn.getPositionCount() != 0) {
       cachedColumns = new Column[] {valueColumn, timeColumn};
-      outputStorage.putColumn((TimeColumn) timeColumn, valueColumn);
+      outputStorage.putColumn(timeColumn, valueColumn);
     } else {
       cachedColumns = null;
     }

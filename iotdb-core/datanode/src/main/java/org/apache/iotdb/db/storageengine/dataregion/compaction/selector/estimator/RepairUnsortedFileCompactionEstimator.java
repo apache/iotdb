@@ -89,4 +89,9 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
       CompactionScheduleContext context, List<TsFileResource> resources) throws IOException {
     throw new RuntimeException("unimplemented");
   }
+
+  @Override
+  public boolean supportsRoughEstimation() {
+    return false;
+  }
 }

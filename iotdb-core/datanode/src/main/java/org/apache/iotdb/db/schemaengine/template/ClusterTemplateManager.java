@@ -256,7 +256,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                     try {
                       listPath.add(new PartialPath(item));
                     } catch (IllegalPathException e) {
-                      e.printStackTrace();
+                      LOGGER.error("illegal path {}", item);
                     }
                   });
         }
@@ -365,6 +365,28 @@ public class ClusterTemplateManager implements ITemplateManager {
         template = templateIdMap.get(templateId);
         if (checkIsRelated(pathPattern, entry.getKey(), template)) {
           result.put(templateId, template);
+        }
+      }
+      return result;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  @Override
+  public List<Template> getAllRelatedTemplates(PathPatternTree scope) {
+    readWriteLock.readLock().lock();
+    try {
+      List<Template> result = new ArrayList<>();
+      for (Map.Entry<Integer, List<PartialPath>> entry : templateSetOnPathsMap.entrySet()) {
+        int templateId = entry.getKey();
+        for (PartialPath path : entry.getValue()) {
+          if (!scope
+              .getOverlappedPathPatterns(path.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+              .isEmpty()) {
+            result.add(templateIdMap.get(templateId));
+            break;
+          }
         }
       }
       return result;

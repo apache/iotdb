@@ -19,7 +19,7 @@ import threading
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.server import TServer
-from thrift.transport import TSocket, TTransport
+from thrift.transport import TSocket, TSSLSocket, TTransport
 
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.log import Logger
@@ -73,10 +73,33 @@ class AINodeRPCService(threading.Thread):
         self._stop_event = threading.Event()
         self._handler = handler
         processor = IAINodeRPCService.Processor(handler=self._handler)
-        transport = TSocket.TServerSocket(
-            host=AINodeDescriptor().get_config().get_ain_rpc_address(),
-            port=AINodeDescriptor().get_config().get_ain_rpc_port(),
-        )
+        if AINodeDescriptor().get_config().get_ain_internal_ssl_enabled():
+            import ssl
+            import sys
+
+            if sys.version_info >= (3, 10):
+                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            else:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = False
+            context.load_verify_locations(
+                cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file()
+            )
+            context.load_cert_chain(
+                certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
+                keyfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_key_file(),
+            )
+            transport = TSSLSocket.TSSLServerSocket(
+                host=AINodeDescriptor().get_config().get_ain_rpc_address(),
+                port=AINodeDescriptor().get_config().get_ain_rpc_port(),
+                ssl_context=context,
+            )
+        else:
+            transport = TSocket.TServerSocket(
+                host=AINodeDescriptor().get_config().get_ain_rpc_address(),
+                port=AINodeDescriptor().get_config().get_ain_rpc_port(),
+            )
         transport_factory = TTransport.TFramedTransportFactory()
         if AINodeDescriptor().get_config().get_ain_thrift_compression_enabled():
             protocol_factory = TCompactProtocol.TCompactProtocolFactory()

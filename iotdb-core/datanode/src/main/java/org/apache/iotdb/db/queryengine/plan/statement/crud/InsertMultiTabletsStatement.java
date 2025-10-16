@@ -60,6 +60,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     this.insertTabletStatementList = insertTabletStatementList;
   }
 
+  @Override
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {

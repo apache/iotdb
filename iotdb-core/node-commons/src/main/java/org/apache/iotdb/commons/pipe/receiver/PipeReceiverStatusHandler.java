@@ -21,9 +21,10 @@ package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -122,8 +123,11 @@ public class PipeReceiverStatusHandler {
 
       case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
         {
-          LOGGER.info("Temporary unavailable exception: will retry forever. status: {}", status);
-          throw new PipeRuntimeSinkCriticalException(exceptionMessage);
+          PipeLogger.log(
+              LOGGER::info,
+              "Temporary unavailable exception: will retry forever. status: %s",
+              status);
+          throw new PipeNonReportException(exceptionMessage);
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
@@ -188,17 +192,19 @@ public class PipeReceiverStatusHandler {
             return;
           }
 
-          LOGGER.warn(
-              "No permission: will retry {}. status: {}",
-              retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE
-                  ? "forever"
-                  : "for at least "
-                      + (retryMaxMillisWhenOtherExceptionsOccur
-                              + exceptionFirstEncounteredTime.get()
-                              - System.currentTimeMillis())
-                          / 1000.0
-                      + " seconds",
-              status);
+          // Reduce the log if retry forever
+          if (retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE) {
+            PipeLogger.log(LOGGER::warn, "No permission: will retry forever. status: %s", status);
+          } else {
+            LOGGER.warn(
+                "No permission: will retry for at least {} seconds. status: {}",
+                (retryMaxMillisWhenOtherExceptionsOccur
+                        + exceptionFirstEncounteredTime.get()
+                        - System.currentTimeMillis())
+                    / 1000.0,
+                status);
+          }
+
           exceptionEventHasBeenRetried.set(true);
           throw new PipeRuntimeSinkRetryTimesConfigurableException(
               exceptionMessage,
@@ -224,17 +230,20 @@ public class PipeReceiverStatusHandler {
             return;
           }
 
-          LOGGER.warn(
-              "Unclassified exception: will retry {}. status: {}",
-              retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE
-                  ? "forever"
-                  : "for at least "
-                      + (retryMaxMillisWhenOtherExceptionsOccur
-                              + exceptionFirstEncounteredTime.get()
-                              - System.currentTimeMillis())
-                          / 1000.0
-                      + " seconds",
-              status);
+          // Reduce the log if retry forever
+          if (retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE) {
+            PipeLogger.log(
+                LOGGER::warn, "Unclassified exception: will retry forever. status: %s", status);
+          } else {
+            LOGGER.warn(
+                "Unclassified exception: will retry for at least {} seconds. status: {}",
+                (retryMaxMillisWhenOtherExceptionsOccur
+                        + exceptionFirstEncounteredTime.get()
+                        - System.currentTimeMillis())
+                    / 1000.0,
+                status);
+          }
+
           exceptionEventHasBeenRetried.set(true);
           throw new PipeRuntimeSinkRetryTimesConfigurableException(
               exceptionMessage,

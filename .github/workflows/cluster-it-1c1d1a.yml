@@ -48,10 +48,10 @@ jobs:
         shell: bash
         run: |
           mvn clean verify \
-          -P with-integration-tests \
+          -P with-integration-tests,with-ainode \
           -DskipUTs \
           -DintegrationTest.forkCount=1 \
-          -pl integration-test \
+          -pl integration-test,iotdb-core/ainode \
           -am \
           -PAIClusterIT
       - name: Upload Artifact

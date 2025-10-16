@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -174,6 +175,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -191,6 +193,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowAIDevicesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -199,6 +202,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
@@ -222,13 +227,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -522,7 +527,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     final CountDatabasePlan plan =
         new CountDatabasePlan(
-            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+            req.getDatabasePathPattern(),
+            scope,
+            req.isSetIsTableModel() && req.isIsTableModel(),
+            !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
     final CountDatabaseResp countDatabaseResp =
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
@@ -542,7 +550,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getDatabasePathPattern(),
             scope,
             req.isSetIsTableModel() && req.isIsTableModel(),
-            false);
+            false,
+            !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
@@ -573,7 +582,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTable(final TSchemaPartitionReq req) {
     return configManager.getSchemaPartition(
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())));
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())), true);
   }
 
   @Override
@@ -603,7 +612,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
-    return configManager.getNodePathsPartition(partialPath, scope, req.getLevel());
+    return configManager.getNodePathsPartition(
+        partialPath, scope, req.getLevel(), !req.isSetNeedAuditDB() || req.isNeedAuditDB());
   }
 
   @Override
@@ -622,44 +632,43 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus operatePermission(final TAuthorizerReq req) {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
-    }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType());
     return configManager.operatePermission(
         new AuthorTreePlan(
-            ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+            configPhysicalPlanType,
             req.getUserName(),
             req.getRoleName(),
             req.getPassword(),
             req.getNewPassword(),
             req.getPermissions(),
             req.isGrantOpt(),
-            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
+            req.getExecutedByUserID(),
+            req.getNewUsername()));
   }
 
   @Override
   public TAuthorizerResp queryPermission(final TAuthorizerReq req) {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
-    }
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorTreePlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getPassword(),
                     req.getNewPassword(),
                     req.getPermissions(),
                     req.isGrantOpt(),
-                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
+                    req.getExecutedByUserID(),
+                    req.getNewUsername()));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
     resp.setTag(dataSet.getTag());
+    resp.setUsersInfo(dataSet.getUsersInfo());
     return resp;
   }
 
@@ -668,17 +677,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType());
     return configManager.operatePermission(
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+            configPhysicalPlanType,
             req.getUserName(),
             req.getRoleName(),
             req.getDatabase(),
             req.getTable(),
             req.getPermissions(),
             req.isGrantOpt(),
-            req.getPassword()));
+            req.getPassword(),
+            req.getExecutedByUserID(),
+            req.getNewUsername()));
   }
 
   @Override
@@ -690,18 +702,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorRelationalPlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getDatabase(),
                     req.getTable(),
                     req.getPermissions(),
                     req.isGrantOpt(),
-                    req.getPassword()));
+                    req.getPassword(),
+                    req.getExecutedByUserID(),
+                    ""));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
+    resp.setUsersInfo(dataSet.getUsersInfo());
     resp.setTag(dataSet.getTag());
     return resp;
   }
@@ -1007,8 +1021,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus killQuery(String queryId, int dataNodeId) {
-    return configManager.killQuery(queryId, dataNodeId);
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername) {
+    return configManager.killQuery(queryId, dataNodeId, allowedUsername);
   }
 
   @Override
@@ -1330,8 +1344,28 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus loadModel(TLoadModelReq req) {
+    return configManager.loadModel(req);
+  }
+
+  @Override
+  public TSStatus unloadModel(TUnloadModelReq req) {
+    return configManager.unloadModel(req);
+  }
+
+  @Override
   public TShowModelResp showModel(TShowModelReq req) {
     return configManager.showModel(req);
+  }
+
+  @Override
+  public TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req) {
+    return configManager.showLoadedModel(req);
+  }
+
+  @Override
+  public TShowAIDevicesResp showAIDevices() {
+    return configManager.showAIDevices();
   }
 
   @Override

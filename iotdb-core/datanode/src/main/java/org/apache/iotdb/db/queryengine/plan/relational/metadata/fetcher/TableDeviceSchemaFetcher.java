@@ -38,7 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.cache.DeviceSchemaRequestCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
@@ -81,6 +81,8 @@ public class TableDeviceSchemaFetcher {
 
   private final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
+  private final DeviceSchemaRequestCache requestCache = DeviceSchemaRequestCache.getInstance();
+
   private final TableDeviceCacheAttributeGuard attributeGuard =
       new TableDeviceCacheAttributeGuard();
 
@@ -102,7 +104,14 @@ public class TableDeviceSchemaFetcher {
 
   Map<IDeviceID, Map<String, Binary>> fetchMissingDeviceSchemaForDataInsertion(
       final FetchDevice statement, final MPPQueryContext context) {
+    DeviceSchemaRequestCache.FetchMissingDeviceSchema schema =
+        requestCache.getOrCreatePendingRequest(statement);
+
     final long queryId = SessionManager.getInstance().requestQueryId();
+    schema.waitForQuery(queryId);
+    if (schema.getResult() != null) {
+      return schema.getResult();
+    }
     Throwable t = null;
 
     final String database = statement.getDatabase();
@@ -166,6 +175,7 @@ public class TableDeviceSchemaFetcher {
         }
       }
 
+      schema.setResult(fetchedDeviceSchema);
       fetchedDeviceSchema.forEach((key, value) -> cache.putAttributes(database, key, value));
 
       return fetchedDeviceSchema;
@@ -173,6 +183,8 @@ public class TableDeviceSchemaFetcher {
       t = throwable;
       throw throwable;
     } finally {
+      schema.notifyFetchDone();
+      requestCache.removeCompletedRequest(statement);
       queryIdSet.remove(queryId);
       attributeGuard.tryUpdateCache();
       coordinator.cleanupQueryExecution(queryId, null, t);
@@ -188,9 +200,6 @@ public class TableDeviceSchemaFetcher {
     final Map<String, List<DeviceEntry>> deviceEntryMap = new HashMap<>();
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     final AtomicBoolean mayContainDuplicateDevice = new AtomicBoolean(false);
-    if (tableInstance == null) {
-      TableMetadataImpl.throwTableNotExistsException(database, table);
-    }
     if (!TreeViewSchema.isTreeViewTable(tableInstance)) {
       deviceEntryMap.put(database, new ArrayList<>());
     }

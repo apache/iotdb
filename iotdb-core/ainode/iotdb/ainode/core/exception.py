@@ -39,8 +39,8 @@ class BadNodeUrlError(_BaseError):
 
 
 class ModelNotExistError(_BaseError):
-    def __init__(self, file_path: str):
-        self.message = "Model path is not exists: {} ".format(file_path)
+    def __init__(self, msg: str):
+        self.message = "Model is not exists: {} ".format(msg)
 
 
 class BadConfigValueError(_BaseError):

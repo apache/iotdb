@@ -75,7 +75,7 @@ public class TableModelUtils {
       statement.execute("use " + database);
       statement.execute(
           String.format(
-              "CREATE TABLE %s(s0 string tag, s1 string tag, s2 string tag, s3 string tag,s4 int64 field, s5 float field, s6 string field, s7 timestamp  field, s8 int32  field, s9 double  field, s10 date  field, s11 text  field )",
+              "CREATE TABLE IF NOT EXISTS %s(s0 string tag, s1 string tag, s2 string tag, s3 string tag,s4 int64 field, s5 float field, s6 string field, s7 timestamp  field, s8 int32  field, s9 double  field, s10 date  field, s11 text  field )",
               table));
     } catch (Exception e) {
       fail(e.getMessage());
@@ -98,7 +98,7 @@ public class TableModelUtils {
     }
   }
 
-  public static boolean insertData(
+  public static void insertData(
       final String dataBaseName,
       final String tableName,
       final int startInclusive,
@@ -112,11 +112,10 @@ public class TableModelUtils {
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
-    return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
-  public static boolean insertData(
+  public static void insertData(
       final String dataBaseName,
       final String tableName,
       final int start,
@@ -163,8 +162,7 @@ public class TableModelUtils {
               values[11],
               i));
     }
-    return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   public static boolean insertDataNotThrowError(
@@ -180,8 +178,12 @@ public class TableModelUtils {
               "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
-    return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    try {
+      TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+      return true;
+    } catch (final Throwable e) {
+      return false;
+    }
   }
 
   public static boolean insertData(
@@ -246,10 +248,7 @@ public class TableModelUtils {
     List<String> list = new ArrayList<>(end - start + 1);
     list.add(
         String.format("delete from %s where time >= %s and time <= %s", tableName, start, end));
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null)) {
-      fail();
-    }
+    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   // s0 string, s1 string, s2 string, s3 string, s4 int64, s5 float, s6 string s7 timestamp, s8

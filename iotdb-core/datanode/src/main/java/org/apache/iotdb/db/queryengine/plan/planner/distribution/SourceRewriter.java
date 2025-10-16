@@ -651,6 +651,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
     List<PartialPath> pathPatternList = seed.getPathPatternList();
     Set<TRegionReplicaSet> regionsOfSystemDatabase = new HashSet<>();
+    Set<TRegionReplicaSet> regionsOfAuditDatabase = new HashSet<>();
     if (pathPatternList.size() == 1) {
       // the path pattern overlaps with all storageGroup or storageGroup.**
       TreeSet<TRegionReplicaSet> schemaRegions =
@@ -664,6 +665,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
+                } else if (storageGroup.equals(SchemaConstant.AUDIT_DATABASE)) {
+                  deviceGroup.forEach(
+                      (deviceGroupId, schemaRegionReplicaSet) ->
+                          regionsOfAuditDatabase.add(schemaRegionReplicaSet));
                 } else {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
@@ -679,6 +684,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   context.queryContext.getQueryId().genPlanNodeId(),
                   seed));
       regionsOfSystemDatabase.forEach(
+          region ->
+              addSchemaSourceNode(
+                  root,
+                  seed.getPath(),
+                  region,
+                  context.queryContext.getQueryId().genPlanNodeId(),
+                  seed));
+      regionsOfAuditDatabase.forEach(
           region ->
               addSchemaSourceNode(
                   root,
@@ -702,6 +715,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
+                } else if (storageGroup.equals(SchemaConstant.AUDIT_DATABASE)) {
+                  deviceGroup.forEach(
+                      (deviceGroupId, schemaRegionReplicaSet) ->
+                          regionsOfAuditDatabase.add(schemaRegionReplicaSet));
                 } else {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
@@ -730,6 +747,20 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         List<PartialPath> filteredPathPatternList =
             filterPathPattern(patternTree, SchemaConstant.SYSTEM_DATABASE);
         regionsOfSystemDatabase.forEach(
+            region ->
+                addSchemaSourceNode(
+                    root,
+                    filteredPathPatternList.size() == 1
+                        ? filteredPathPatternList.get(0)
+                        : seed.getPath(),
+                    region,
+                    context.queryContext.getQueryId().genPlanNodeId(),
+                    seed));
+      }
+      if (!regionsOfAuditDatabase.isEmpty()) {
+        List<PartialPath> filteredPathPatternList =
+            filterPathPattern(patternTree, SchemaConstant.AUDIT_DATABASE);
+        regionsOfAuditDatabase.forEach(
             region ->
                 addSchemaSourceNode(
                     root,

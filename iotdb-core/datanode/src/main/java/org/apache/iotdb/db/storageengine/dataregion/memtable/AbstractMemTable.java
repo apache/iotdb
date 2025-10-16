@@ -42,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemAligne
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemChunkHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
@@ -156,7 +157,11 @@ public abstract class AbstractMemTable implements IMemTable {
   private IWritableMemChunkGroup createMemChunkGroupIfNotExistAndGet(
       IDeviceID deviceId, List<IMeasurementSchema> schemaList) {
     IWritableMemChunkGroup memChunkGroup =
-        memTableMap.computeIfAbsent(deviceId, k -> new WritableMemChunkGroup());
+        memTableMap.computeIfAbsent(
+            deviceId,
+            k ->
+                new WritableMemChunkGroup(
+                    EncryptDBUtils.getSecondEncryptParamFromDatabase(database)));
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {
         seriesNumber++;
@@ -1050,5 +1055,8 @@ public abstract class AbstractMemTable implements IMemTable {
   public void setDatabaseAndDataRegionId(String database, String dataRegionId) {
     this.database = database;
     this.dataRegionId = dataRegionId;
+    for (IWritableMemChunkGroup memChunkGroup : memTableMap.values()) {
+      memChunkGroup.setEncryptParameter(EncryptDBUtils.getSecondEncryptParamFromDatabase(database));
+    }
   }
 }

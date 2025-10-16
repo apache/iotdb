@@ -82,7 +82,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.sg1.d1(time, s1) values (0, 1)",
@@ -90,9 +90,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.sg1.d1(time, s1) values (2, 3)",
               "insert into root.sg1.d1(time, s1) values (3, 4)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       expectedResSet.add("0,1.0,");
       expectedResSet.add("1,2.0,");

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -49,6 +50,7 @@ import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -1228,6 +1230,86 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
+  public void autoCreateChineseCharacterTableTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+
+      long timestamp = 0;
+      Tablet tablet =
+          new Tablet(
+              "\"表一表一\"",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+          session.insert(tablet);
+          tablet.reset();
+        }
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("show tables from db1");
+      DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertEquals("\"表一表一\"", iterator.getString(1));
+      }
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db2\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+
+      long timestamp = 0;
+      Tablet tablet =
+          new Tablet(
+              "\"表一\"",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+          session.insert(tablet);
+          tablet.reset();
+        }
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("show tables from db2");
+      DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertEquals("\"表一\"", iterator.getString(1));
+      }
+    }
+  }
+
+  @Test
   public void insertNonExistTableTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1370,12 +1452,22 @@ public class IoTDBSessionRelationalIT {
         rec = dataSet.next();
         assertEquals(1, rec.getFields().get(0).getLongV());
         assertEquals("d1", rec.getFields().get(1).toString());
-        if (to == TSDataType.BLOB) {
-          assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
-        } else if (to == TSDataType.DATE) {
-          assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
-        } else {
-          assertEquals(genValue(to, 1).toString(), rec.getFields().get(2).toString());
+
+        switch (to) {
+          case BLOB:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
+            break;
+          case DATE:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+            break;
+          case FLOAT:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getFloatV());
+            break;
+          case DOUBLE:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getDoubleV());
+            break;
+          default:
+            assertEquals(String.valueOf(genValue(from, 1)), rec.getFields().get(2).toString());
         }
         assertFalse(dataSet.hasNext());
       } else {
@@ -1539,17 +1631,19 @@ public class IoTDBSessionRelationalIT {
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
 
-    for (TSDataType from : dataTypes) {
-      for (TSDataType to : dataTypes) {
-        System.out.println("from: " + from + ", to: " + to);
-        testOneCastWithTablet(from, to, testNum, false);
-        System.out.println("partial insert");
-        testOneCastWithTablet(from, to, testNum, true);
+    try {
+      for (TSDataType from : dataTypes) {
+        for (TSDataType to : dataTypes) {
+          System.out.println("from: " + from + ", to: " + to);
+          testOneCastWithTablet(from, to, testNum, false);
+          System.out.println("partial insert");
+          testOneCastWithTablet(from, to, testNum, true);
+        }
       }
-    }
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+      }
     }
   }
 

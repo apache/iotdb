@@ -56,6 +56,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
       Filter globalTimeFilter,
       TSDataType tsDataType,
       List<TVList> tvLists,
+      List<Integer> tvListRowCounts,
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
@@ -64,18 +65,33 @@ public abstract class MultiTVListIterator extends MemPointIterator {
     this.tsDataType = tsDataType;
     this.tvListIterators = new ArrayList<>(tvLists.size());
     if (scanOrder.isAscending()) {
-      for (TVList tvList : tvLists) {
+      for (int i = 0; i < tvLists.size(); i++) {
+        TVList tvList = tvLists.get(i);
+        int rowCount = tvListRowCounts == null ? tvList.rowCount : tvListRowCounts.get(i);
         TVList.TVListIterator iterator =
             tvList.iterator(
-                scanOrder, globalTimeFilter, deletionList, null, null, maxNumberOfPointsInPage);
+                scanOrder,
+                rowCount,
+                globalTimeFilter,
+                deletionList,
+                null,
+                null,
+                maxNumberOfPointsInPage);
         tvListIterators.add(iterator);
       }
     } else {
       for (int i = tvLists.size() - 1; i >= 0; i--) {
         TVList tvList = tvLists.get(i);
+        int rowCount = tvListRowCounts == null ? tvList.rowCount : tvListRowCounts.get(i);
         TVList.TVListIterator iterator =
             tvList.iterator(
-                scanOrder, globalTimeFilter, deletionList, null, null, maxNumberOfPointsInPage);
+                scanOrder,
+                rowCount,
+                globalTimeFilter,
+                deletionList,
+                null,
+                null,
+                maxNumberOfPointsInPage);
         tvListIterators.add(iterator);
       }
     }

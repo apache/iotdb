@@ -88,7 +88,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillComponent;
@@ -131,18 +130,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
@@ -286,7 +282,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // fetch model inference information and check
       analyzeModelInference(analysis, queryStatement);
 
-      ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
+      ISchemaTree schemaTree =
+          analyzeSchema(queryStatement, analysis, context, queryStatement.isCanSeeAuditDB());
 
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
@@ -486,7 +483,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private ISchemaTree analyzeSchema(
-      QueryStatement queryStatement, Analysis analysis, MPPQueryContext context) {
+      QueryStatement queryStatement,
+      Analysis analysis,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     // concat path and construct path pattern tree
     ConcatPathRewriter concatPathRewriter = new ConcatPathRewriter();
     queryStatement =
@@ -509,15 +509,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (queryStatement.isGroupByTag()) {
         schemaTree =
             schemaFetcher.fetchSchemaWithTags(
-                concatPathRewriter.getPatternTree(), allWildcardLeaf, context);
+                concatPathRewriter.getPatternTree(), allWildcardLeaf, context, canSeeAuditDB);
       } else {
         schemaTree =
             schemaFetcher.fetchSchema(
-                concatPathRewriter.getPatternTree(), allWildcardLeaf, context);
+                concatPathRewriter.getPatternTree(), allWildcardLeaf, context, canSeeAuditDB);
       }
 
       // make sure paths in logical view is fetched
-      updateSchemaTreeByViews(analysis, schemaTree, context);
+      updateSchemaTreeByViews(analysis, schemaTree, context, canSeeAuditDB);
     } finally {
       logger.debug("[EndFetchSchema]");
       long schemaFetchCost = System.nanoTime() - startTime;
@@ -682,7 +682,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void updateSchemaTreeByViews(
-      Analysis analysis, ISchemaTree originSchemaTree, MPPQueryContext context) {
+      Analysis analysis,
+      ISchemaTree originSchemaTree,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     if (!originSchemaTree.hasLogicalViewMeasurement()) {
       return;
     }
@@ -716,7 +719,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     if (needToReFetch) {
-      ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, true, context);
+      ISchemaTree viewSchemaTree =
+          this.schemaFetcher.fetchSchema(patternTree, true, context, canSeeAuditDB);
       originSchemaTree.mergeSchemaTree(viewSchemaTree);
       Set<String> allDatabases = viewSchemaTree.getDatabases();
       allDatabases.addAll(originSchemaTree.getDatabases());
@@ -2428,7 +2432,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // fetch schema of target paths
     long startTime = System.nanoTime();
-    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context);
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context, false);
     QueryPlanCostMetricSet.getInstance()
         .recordTreePlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     deviceViewIntoPathDescriptor.bindType(targetSchemaTree);
@@ -2505,8 +2509,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // fetch schema of target paths
     long startTime = System.nanoTime();
-    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context);
-    updateSchemaTreeByViews(analysis, targetSchemaTree, context);
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context, false);
+    updateSchemaTreeByViews(analysis, targetSchemaTree, context, false);
     QueryPlanCostMetricSet.getInstance()
         .recordTreePlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     intoPathDescriptor.bindType(targetSchemaTree);
@@ -3050,13 +3054,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PathPatternTree patternTree,
       Analysis analysis,
       MPPQueryContext context,
-      PathPatternTree authorityScope)
+      PathPatternTree authorityScope,
+      boolean canSeeAuditDB)
       throws IllegalPathException {
     analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
     context.generateGlobalTimeFilter(analysis);
     patternTree.constructTree();
     ISchemaTree schemaTree =
-        schemaFetcher.fetchRawSchemaInMeasurementLevel(patternTree, authorityScope, context);
+        schemaFetcher.fetchRawSchemaInMeasurementLevel(
+            patternTree, authorityScope, context, canSeeAuditDB);
 
     if (schemaTree.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -3137,7 +3143,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 patternTree,
                 analysis,
                 context,
-                showTimeSeriesStatement.getAuthorityScope());
+                showTimeSeriesStatement.getAuthorityScope(),
+                showTimeSeriesStatement.isCanSeeAuditDB());
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
           return analysis;
@@ -3147,7 +3154,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
     } else {
-      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              patternTree, showTimeSeriesStatement.isCanSeeAuditDB());
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
 
       Map<Integer, Template> templateMap =
@@ -3159,8 +3168,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.constructTree();
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
-      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context);
-      updateSchemaTreeByViews(analysis, schemaTree, context);
+      ISchemaTree schemaTree =
+          schemaFetcher.fetchSchema(
+              patternTree, true, context, showTimeSeriesStatement.isCanSeeAuditDB());
+      updateSchemaTreeByViews(
+          analysis, schemaTree, context, showTimeSeriesStatement.isCanSeeAuditDB());
       logger.debug("[EndFetchSchema]]");
 
       analyzeLastSourceAndDataPartition(
@@ -3172,16 +3184,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
-    return analysis;
-  }
-
-  @Override
-  public Analysis visitShowStorageGroup(
-      ShowDatabaseStatement showDatabaseStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setRealStatement(showDatabaseStatement);
-    analysis.setRespDatasetHeader(
-        DatasetHeaderFactory.getShowDatabaseHeader(showDatabaseStatement.isDetailed()));
     return analysis;
   }
 
@@ -3223,14 +3225,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PartialPath pattern,
       PathPatternTree authorityScope,
       Analysis analysis,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     // If there is time condition in SHOW DEVICES, we need to scan the raw data
     analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
     context.generateGlobalTimeFilter(analysis);
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(pattern);
     ISchemaTree schemaTree =
-        schemaFetcher.fetchRawSchemaInDeviceLevel(patternTree, authorityScope, context);
+        schemaFetcher.fetchRawSchemaInDeviceLevel(
+            patternTree, authorityScope, context, canSeeAuditDB);
     if (schemaTree.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
       return;
@@ -3264,12 +3268,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           showDevicesStatement.getPathPattern(),
           showDevicesStatement.getAuthorityScope(),
           analysis,
-          context);
+          context,
+          showDevicesStatement.isCanSeeAuditDB());
     } else {
       PathPatternTree patternTree = new PathPatternTree();
       patternTree.appendPathPattern(
           showDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(patternTree, showDevicesStatement.isCanSeeAuditDB());
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     }
     analysis.setRespDatasetHeader(
@@ -3309,7 +3315,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     SchemaPartition schemaPartition =
         partitionFetcher.getSchemaPartition(
-            seriesSchemaFetchStatement.getPatternTree(), context.getSession().getUserName());
+            seriesSchemaFetchStatement.getPatternTree(),
+            context.getSession() != null ? context.getSession().getUserName() : null,
+            seriesSchemaFetchStatement.isCanSeeAuditDB());
     analysis.setSchemaPartitionInfo(schemaPartition);
 
     if (schemaPartition.isEmpty()) {
@@ -3330,7 +3338,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendPathPattern(path.concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     }
     patternTree.constructTree();
-    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+    SchemaPartition schemaPartition =
+        partitionFetcher.getSchemaPartition(
+            patternTree, deviceSchemaFetchStatement.isCanSeeAuditDB());
     analysis.setSchemaPartitionInfo(schemaPartition);
 
     if (schemaPartition.isEmpty()) {
@@ -3352,12 +3362,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           countDevicesStatement.getPathPattern(),
           countDevicesStatement.getAuthorityScope(),
           analysis,
-          context);
+          context,
+          countDevicesStatement.isCanSeeAuditDB());
     } else {
       PathPatternTree patternTree = new PathPatternTree();
       patternTree.appendPathPattern(
           countDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(patternTree, countDevicesStatement.isCanSeeAuditDB());
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     }
 
@@ -3382,7 +3394,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 patternTree,
                 analysis,
                 context,
-                countTimeSeriesStatement.getAuthorityScope());
+                countTimeSeriesStatement.getAuthorityScope(),
+                countTimeSeriesStatement.isCanSeeAuditDB());
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountTimeSeriesHeader());
           return analysis;
@@ -3391,7 +3404,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new StatementAnalyzeException(e.getMessage());
       }
     } else {
-      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              patternTree, countTimeSeriesStatement.isCanSeeAuditDB());
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       Map<Integer, Template> templateMap =
           schemaFetcher.checkAllRelatedTemplate(countTimeSeriesStatement.getPathPattern());
@@ -3409,7 +3424,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(countLevelTimeSeriesStatement.getPathPattern());
-    SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+    SchemaPartition schemaPartitionInfo =
+        partitionFetcher.getSchemaPartition(
+            patternTree, countLevelTimeSeriesStatement.isCanSeeAuditDB());
 
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     Map<Integer, Template> templateMap =
@@ -3428,7 +3445,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     patternTree.appendPathPattern(countStatement.getPathPattern());
     SchemaNodeManagementPartition schemaNodeManagementPartition =
         partitionFetcher.getSchemaNodeManagementPartitionWithLevel(
-            patternTree, countStatement.getAuthorityScope(), countStatement.getLevel());
+            patternTree,
+            countStatement.getAuthorityScope(),
+            countStatement.getLevel(),
+            countStatement.isCanSeeAuditDB());
 
     if (schemaNodeManagementPartition == null) {
       return analysis;
@@ -3474,14 +3494,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Analysis visitSchemaNodeManagementPartition(
-      Statement statement, PartialPath path, PathPatternTree scope, DatasetHeader header) {
+      ShowStatement statement, PartialPath path, PathPatternTree scope, DatasetHeader header) {
     Analysis analysis = new Analysis();
     analysis.setRealStatement(statement);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(path);
     SchemaNodeManagementPartition schemaNodeManagementPartition =
-        partitionFetcher.getSchemaNodeManagementPartition(patternTree, scope);
+        partitionFetcher.getSchemaNodeManagementPartition(
+            patternTree, scope, statement.isCanSeeAuditDB());
 
     if (schemaNodeManagementPartition == null) {
       return analysis;
@@ -3506,11 +3527,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     deleteDataStatement.getPathList().forEach(patternTree::appendPathPattern);
 
-    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context);
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context, false);
     Set<IDeviceID> deduplicatedDeviceIDs = new HashSet<>();
 
     if (schemaTree.hasLogicalViewMeasurement()) {
-      updateSchemaTreeByViews(analysis, schemaTree, context);
+      updateSchemaTreeByViews(analysis, schemaTree, context, false);
 
       Set<MeasurementPath> deletePatternSet = new HashSet<>(deleteDataStatement.getPathList());
       IMeasurementSchema measurementSchema;
@@ -3592,39 +3613,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitShowNodesInSchemaTemplate(
-      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement,
-      MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setRealStatement(showNodesInSchemaTemplateStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowNodesInSchemaTemplateHeader());
-    return analysis;
-  }
-
-  @Override
-  public Analysis visitShowSchemaTemplate(
-      ShowSchemaTemplateStatement showSchemaTemplateStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setRealStatement(showSchemaTemplateStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowSchemaTemplateHeader());
-    return analysis;
-  }
-
-  @Override
   public Analysis visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(setSchemaTemplateStatement);
-    return analysis;
-  }
-
-  @Override
-  public Analysis visitShowPathSetTemplate(
-      ShowPathSetTemplateStatement showPathSetTemplateStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setRealStatement(showPathSetTemplateStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPathSetTemplateHeader());
     return analysis;
   }
 
@@ -3858,7 +3851,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // Make sure there is no view in source
       List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
-      checkViewsInSource(analysis, sourceExpressionList, context);
+      checkViewsInSource(
+          analysis, sourceExpressionList, context, createLogicalViewStatement.isCanSeeAuditDB());
       if (analysis.isFinishQueryAfterAnalyze()) {
         return analysis;
       }
@@ -3944,7 +3938,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void checkViewsInSource(
-      Analysis analysis, List<Expression> sourceExpressionList, MPPQueryContext context) {
+      Analysis analysis,
+      List<Expression> sourceExpressionList,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     List<PartialPath> pathsNeedCheck = new ArrayList<>();
     for (Expression expression : sourceExpressionList) {
       if (expression instanceof TimeSeriesOperand) {
@@ -3952,7 +3949,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     Pair<ISchemaTree, Integer> schemaOfNeedToCheck =
-        fetchSchemaOfPathsAndCount(pathsNeedCheck, analysis, context);
+        fetchSchemaOfPathsAndCount(pathsNeedCheck, analysis, context, canSeeAuditDB);
     if (schemaOfNeedToCheck.right != pathsNeedCheck.size()) {
       // Some source paths is not exist, and could not fetch schema.
       analysis.setFinishQueryAfterAnalyze(true);
@@ -3991,7 +3988,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    * @return a pair of ISchemaTree, and the number of exist paths.
    */
   private Pair<ISchemaTree, Integer> fetchSchemaOfPathsAndCount(
-      List<PartialPath> pathList, Analysis analysis, MPPQueryContext context) {
+      List<PartialPath> pathList,
+      Analysis analysis,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     ISchemaTree schemaTree = analysis.getSchemaTree();
     if (schemaTree == null) {
       // source is not represented by query, thus has not done fetch schema.
@@ -3999,7 +3999,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (PartialPath path : pathList) {
         pathPatternTree.appendPathPattern(path);
       }
-      schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, true, context);
+      schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, true, context, canSeeAuditDB);
     }
 
     // search each path, make sure they all exist.

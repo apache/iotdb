@@ -61,15 +61,13 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
               "insert into root.db2.d1(time, s) values (1, 1)"),
-          null)) {
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -115,15 +113,13 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
               "insert into root.db2.d1(time, s) values (1, 1)"),
-          null)) {
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -171,15 +167,13 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
               "insert into root.db2.d1(time, s) values (1, 1)"),
-          null)) {
-        return;
-      }
+          null);
       awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();

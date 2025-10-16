@@ -3227,7 +3227,7 @@ public class Session implements ISession {
     request.addToSizeList(tablet.getRowSize());
   }
 
-  // sample some records and judge weather need to add too many null values to convert to tablet.
+  // sample some records and judge whether need to add too many null values to convert to tablet.
   private boolean judgeConvertOfOneDevice(List<List<String>> measurementsList) {
     int size = measurementsList.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);
@@ -4419,13 +4419,13 @@ public class Session implements ISession {
       return this;
     }
 
-    public Builder trustStore(String keyStore) {
-      this.trustStore = keyStore;
+    public Builder trustStore(String trustStore) {
+      this.trustStore = trustStore;
       return this;
     }
 
-    public Builder trustStorePwd(String keyStorePwd) {
-      this.trustStorePwd = keyStorePwd;
+    public Builder trustStorePwd(String trustStorePwd) {
+      this.trustStorePwd = trustStorePwd;
       return this;
     }
 
