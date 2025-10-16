@@ -70,6 +70,12 @@ class PoolGroup:
     def get_pool_count(self) -> int:
         return len(self.pool_group)
 
+    def get_running_pool_count(self) -> int:
+        count = 0
+        for _, state in self.pool_states.items():
+            count += 1 if state == PoolState.RUNNING else 0
+        return count
+
     def dispatch_request(
         self, req: InferenceRequest, infer_proxy: InferenceRequestProxy
     ):

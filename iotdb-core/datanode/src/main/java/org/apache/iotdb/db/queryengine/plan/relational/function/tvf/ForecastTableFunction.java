@@ -284,16 +284,7 @@ public class ForecastTableFunction implements TableFunction {
           String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
     }
 
-    // make sure modelId exists
-    ModelInferenceDescriptor descriptor = getModelInfo(modelId);
-    if (descriptor == null || !descriptor.getModelInformation().available()) {
-      throw new IoTDBRuntimeException(
-          String.format("model [%s] is not available", modelId),
-          TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
-    }
-
-    int maxInputLength = descriptor.getModelInformation().getInputShape()[0];
-    TEndPoint targetAINode = descriptor.getTargetAINode();
+    TEndPoint targetAINode = getModelInfo(modelId).getTargetAINode();
 
     int outputLength =
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
@@ -393,7 +384,7 @@ public class ForecastTableFunction implements TableFunction {
     ForecastTableFunctionHandle functionHandle =
         new ForecastTableFunctionHandle(
             keepInput,
-            maxInputLength,
+            Integer.MAX_VALUE,
             modelId,
             parseOptions(options),
             outputLength,

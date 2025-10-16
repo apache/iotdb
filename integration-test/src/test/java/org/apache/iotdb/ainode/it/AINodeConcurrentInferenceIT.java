@@ -20,6 +20,8 @@
 package org.apache.iotdb.ainode.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.AIClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import com.google.common.collect.ImmutableMap;
@@ -28,6 +30,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +46,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({AIClusterIT.class})
 public class AINodeConcurrentInferenceIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AINodeConcurrentInferenceIT.class);
