@@ -400,15 +400,7 @@ public class ModsOperationUtilTest {
   private List<ModEntry> createTestMods(long[][] timeRanges) {
     List<ModEntry> mods = new ArrayList<>();
     for (long[] range : timeRanges) {
-      TreeDeletionEntry mod = new TreeDeletionEntry();
-      // Use reflection to set the timeRange field since it's protected
-      try {
-        java.lang.reflect.Field timeRangeField = ModEntry.class.getDeclaredField("timeRange");
-        timeRangeField.setAccessible(true);
-        timeRangeField.set(mod, new TimeRange(range[0], range[1]));
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to set timeRange", e);
-      }
+      TreeDeletionEntry mod = new TreeDeletionEntry(null, new TimeRange(range[0], range[1]));
       mods.add(mod);
     }
     return mods;
