@@ -130,16 +130,18 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       MqttClientSession session = clientIdToSessionMap.get(msg.getClientID());
       ByteBuf payload = msg.getPayload();
       String topic = msg.getTopicName();
-      String username = msg.getUsername();
-      MqttQoS qos = msg.getQos();
 
-      LOG.debug(
-          "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
-          clientId,
-          username,
-          qos,
-          topic,
-          payload);
+      if (LOG.isDebugEnabled()) {
+        String username = msg.getUsername();
+        MqttQoS qos = msg.getQos();
+        LOG.debug(
+            "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
+            clientId,
+            username,
+            qos,
+            topic,
+            payload);
+      }
 
       List<Message> messages = payloadFormat.format(topic, payload);
       if (messages == null) {
@@ -188,8 +190,11 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
                   config.getQueryTimeoutThreshold());
 
       tsStatus = result.status;
-      LOG.debug("process result: {}", tsStatus);
-      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("process result: {}", tsStatus);
+      }
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         LOG.warn("mqtt line insert error , message = {}", tsStatus.message);
       }
     } catch (Exception e) {
@@ -301,8 +306,11 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
                     config.getQueryTimeoutThreshold(),
                     false);
         tsStatus = result.status;
-        LOG.debug("process result: {}", tsStatus);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("process result: {}", tsStatus);
+        }
+        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           LOG.warn("mqtt json insert error , message = {}", tsStatus.message);
         }
       }
