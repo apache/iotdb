@@ -138,8 +138,6 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              // TODO: add database creation after the database auto creating on receiver can be
-              // banned
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
               "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4",
