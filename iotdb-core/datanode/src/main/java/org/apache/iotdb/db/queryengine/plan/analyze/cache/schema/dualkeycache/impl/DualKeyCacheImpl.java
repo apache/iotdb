@@ -33,15 +33,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
 
 class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements IDualKeyCache<FK, SK, V> {
 
   private final SegmentedConcurrentHashMap<FK, ICacheEntryGroup<FK, SK, V, T>> firstKeyMap =
-      new SegmentedConcurrentHashMap<>();
+      new SegmentedConcurrentHashMap<>(
+          ICacheEntryGroup::getMemory, ICacheEntryGroup::getEntriesCount);
 
   private final ICacheEntryManager<FK, SK, V, T> cacheEntryManager;
 
@@ -323,27 +326,11 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   private long getMemory() {
-    long memory = 0;
-    for (final Map<FK, ICacheEntryGroup<FK, SK, V, T>> map : firstKeyMap.maps) {
-      if (Objects.nonNull(map)) {
-        for (final ICacheEntryGroup<FK, SK, V, T> group : map.values()) {
-          memory += group.getMemory();
-        }
-      }
-    }
-    return memory;
+    return firstKeyMap.getTotalMemory();
   }
 
   private long getEntriesCount() {
-    long count = 0;
-    for (final Map<FK, ICacheEntryGroup<FK, SK, V, T>> map : firstKeyMap.maps) {
-      if (Objects.nonNull(map)) {
-        for (final ICacheEntryGroup<FK, SK, V, T> group : map.values()) {
-          count += group.getEntriesCount();
-        }
-      }
-    }
-    return count;
+    return firstKeyMap.getTotalEntries();
   }
 
   /**
@@ -356,25 +343,62 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
     private final Map<K, V>[] maps = new ConcurrentHashMap[SLOT_NUM];
 
+    private final ToLongFunction<V> computeMemory;
+
+    private final ToLongFunction<V> computeEntries;
+
+    private final AtomicLong totalMemory = new AtomicLong(0);
+
+    private final AtomicLong totalEntries = new AtomicLong(0);
+
+    public SegmentedConcurrentHashMap(
+        final ToLongFunction<V> computeMemory, final ToLongFunction<V> computeEntries) {
+      this.computeMemory = computeMemory;
+      this.computeEntries = computeEntries;
+    }
+
     V get(final K key) {
       return getBelongedMap(key).get(key);
     }
 
     V remove(final K key) {
-      return getBelongedMap(key).remove(key);
+      V v = getBelongedMap(key).remove(key);
+      if (v != null) {
+        totalMemory.addAndGet(-computeMemory.applyAsLong(v));
+        totalEntries.addAndGet(-computeEntries.applyAsLong(v));
+      }
+      return v;
     }
 
     V put(final K key, final V value) {
-      return getBelongedMap(key).put(key, value);
+      V oldValue = getBelongedMap(key).put(key, value);
+
+      if (oldValue != null) {
+        totalMemory.addAndGet(-computeMemory.applyAsLong(oldValue));
+        totalEntries.addAndGet(-computeEntries.applyAsLong(oldValue));
+      }
+      totalMemory.addAndGet(computeMemory.applyAsLong(value));
+      totalEntries.addAndGet(computeEntries.applyAsLong(value));
+      return oldValue;
     }
 
     void clear() {
       synchronized (maps) {
         Arrays.fill(maps, null);
+        totalMemory.set(0);
+        totalEntries.set(0);
       }
     }
 
-    Map<K, V> getBelongedMap(final K key) {
+    long getTotalMemory() {
+      return totalMemory.get();
+    }
+
+    long getTotalEntries() {
+      return totalEntries.get();
+    }
+
+    private Map<K, V> getBelongedMap(final K key) {
       int slotIndex = key.hashCode() % SLOT_NUM;
       slotIndex = slotIndex < 0 ? slotIndex + SLOT_NUM : slotIndex;
       Map<K, V> map = maps[slotIndex];
