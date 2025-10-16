@@ -533,9 +533,9 @@ public class LoginLockManagerTest {
 
   @Test
   public void testConcurrentOperateLockInfo() throws InterruptedException, ExecutionException {
-    UserLockInfo userLockInfo = new UserLockInfo();
     int numThreads = 100;
     final int numAttempts = 100000;
+    UserLockInfo userLockInfo = new UserLockInfo(numThreads * numAttempts);
     ExecutorService executor = Executors.newFixedThreadPool(numThreads);
     List<Future<Void>> threads = new ArrayList<>(numThreads);
     for (int i = 0; i < numThreads; i++) {

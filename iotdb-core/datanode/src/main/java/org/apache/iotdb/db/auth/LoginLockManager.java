@@ -100,14 +100,19 @@ public class LoginLockManager {
 
   /** Inner class to store user lock information */
   static class UserLockInfo {
-    // Deque to store timestamps of failed attempts (milliseconds)
-    private final Deque<Long> failureTimestamps = new ConcurrentLinkedDeque<>();
 
-    void addFailureTime(long timestamp) {
+    // Deque to store timestamps of failed attempts (milliseconds)
+    private final Deque<Long> failureTimestamps;
+
+    UserLockInfo(int capacity) {
+      failureTimestamps = new ConcurrentLinkedDeque<>();
+    }
+
+    synchronized void addFailureTime(long timestamp) {
       failureTimestamps.addLast(timestamp);
     }
 
-    void removeOldFailures(long cutoffTime) {
+    synchronized void removeOldFailures(long cutoffTime) {
       // Remove timestamps older than cutoffTime
       failureTimestamps.removeIf(timestamp -> timestamp < cutoffTime);
     }
@@ -191,7 +196,8 @@ public class LoginLockManager {
           userIpKey,
           (key, existing) -> {
             if (existing == null) {
-              existing = new UserLockInfo();
+              existing =
+                  new UserLockInfo(Math.max(failedLoginAttempts, failedLoginAttemptsPerUser));
             }
             // Remove failures outside of sliding window
             existing.removeOldFailures(cutoffTime);
@@ -199,7 +205,7 @@ public class LoginLockManager {
             existing.addFailureTime(now);
             // Check if threshold reached (log only when it just reaches)
             int failCountIp = existing.getFailureCount();
-            if (failCountIp >= failedLoginAttempts && failCountIp == failedLoginAttempts) {
+            if (failCountIp >= failedLoginAttempts) {
               LOGGER.info("IP '{}' locked for user ID '{}'", ip, userId);
             }
             return existing;
@@ -212,7 +218,8 @@ public class LoginLockManager {
           userId,
           (key, existing) -> {
             if (existing == null) {
-              existing = new UserLockInfo();
+              existing =
+                  new UserLockInfo(Math.max(failedLoginAttempts, failedLoginAttemptsPerUser));
             }
             // Remove failures outside of sliding window
             existing.removeOldFailures(cutoffTime);
@@ -220,8 +227,7 @@ public class LoginLockManager {
             existing.addFailureTime(now);
             // Check if threshold reached (log only when it just reaches)
             int failCountUser = existing.getFailureCount();
-            if (failCountUser >= failedLoginAttemptsPerUser
-                && failCountUser == failedLoginAttemptsPerUser) {
+            if (failCountUser >= failedLoginAttemptsPerUser) {
               LOGGER.info(
                   "User ID '{}' locked due to {} failed attempts",
                   userId,
