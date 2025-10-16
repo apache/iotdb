@@ -741,6 +741,8 @@ public abstract class TVList implements WALEntryValue {
       }
 
       int indexInTVList;
+      // Since there may be duplicate timestamps in TVList, we need to move to the index of the
+      // first timestamp that meets the requirements under current scanOrder.
       if (scanOrder.isAscending()) {
         long searchTimestamp = timeRange.getMin();
         if (searchTimestamp <= outer.getMinTime()) {
@@ -756,6 +758,9 @@ public abstract class TVList implements WALEntryValue {
             binarySearchTimestampStartPosition(
                 searchTimestamp, getScanOrderIndex(index), rows - 1, false);
         boolean foundSearchedTime = indexInTVList >= 0 && searchTimestamp == getTime(indexInTVList);
+        // For asc scan, if it can not be found, the indexInTVList is too small, and we should move
+        // to the next timestamp position.
+        // If it can be found, move to the min index of current timestamp.
         if (!foundSearchedTime) {
           // move to the min index of next timestamp index
           do {
@@ -782,6 +787,9 @@ public abstract class TVList implements WALEntryValue {
             binarySearchTimestampStartPosition(searchTimestamp, 0, getScanOrderIndex(index), false);
         // -1 means there is no matching result in the entire tvList.
         if (indexInTVList != -1) {
+          // For desc scan, regardless of whether it is found, the timestamp corresponding to
+          // indexInTVList has met the conditions. We only need to find the index that first
+          // encounters this timestamp during desc scan.
           while (indexInTVList < rows - 1 && getTime(indexInTVList) == getTime(indexInTVList + 1)) {
             indexInTVList++;
           }
