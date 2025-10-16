@@ -92,8 +92,7 @@ public class AINodeConcurrentInferenceIT {
       for (int i = 0; i < 2880; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.AI(timestamp, s) VALUES(%d, %f)",
-                i, Math.sin(i * Math.PI / 1440)));
+                "INSERT INTO root.AI(time, s) VALUES(%d, %f)", i, Math.sin(i * Math.PI / 1440)));
       }
     }
   }
