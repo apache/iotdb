@@ -227,8 +227,7 @@ public class SeriesScanUtil implements Accountable {
         satisfiedTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
         return;
       }
-      List<TimeRange> timeRanges = scanOptions.getGlobalTimeFilter().getTimeRanges();
-      for (TimeRange timeRange : timeRanges) {
+      for (TimeRange timeRange : context.getGlobalTimeFilterTimeRanges()) {
         startTime = Math.min(startTime, timeRange.getMin());
         endTime = Math.max(endTime, timeRange.getMax());
       }
@@ -1546,7 +1545,8 @@ public class SeriesScanUtil implements Accountable {
       long endTime = statistics.getEndTime();
       long minStart = Long.MAX_VALUE;
       long maxEnd = Long.MIN_VALUE;
-      for (TimeRange timeRange : globalTimeFilter.getTimeRanges()) {
+      for (TimeRange timeRange :
+          ((FragmentInstanceContext) context).getGlobalTimeFilterTimeRanges()) {
         if (timeRange.overlaps(new TimeRange(startTime, endTime))) {
           minStart = Math.min(minStart, Math.max(timeRange.getMin(), startTime));
           maxEnd = Math.max(maxEnd, Math.min(timeRange.getMax(), endTime));
