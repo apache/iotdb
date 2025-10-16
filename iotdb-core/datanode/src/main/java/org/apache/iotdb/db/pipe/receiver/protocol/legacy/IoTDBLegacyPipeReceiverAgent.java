@@ -98,11 +98,16 @@ public class IoTDBLegacyPipeReceiverAgent {
    *     TSStatusCode#SUCCESS_STATUS} if success to connect.
    */
   public TSStatus handshake(
-      TSyncIdentityInfo syncIdentityInfo,
-      String remoteAddress,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
-    SyncIdentityInfo identityInfo = new SyncIdentityInfo(syncIdentityInfo, remoteAddress);
+      final TSyncIdentityInfo syncIdentityInfo,
+      final String remoteAddress,
+      final IPartitionFetcher partitionFetcher,
+      final ISchemaFetcher schemaFetcher) {
+    if (!validatePipeName(syncIdentityInfo)) {
+      return new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
+          .setMessage("Invalid pipeName");
+    }
+
+    final SyncIdentityInfo identityInfo = new SyncIdentityInfo(syncIdentityInfo, remoteAddress);
     LOGGER.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
 
     if (!new File(getFileDataDir(identityInfo)).exists()) {
@@ -118,8 +123,12 @@ public class IoTDBLegacyPipeReceiverAgent {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
-  private void createConnection(SyncIdentityInfo identityInfo) {
-    long connectionId = connectionIdGenerator.incrementAndGet();
+  private boolean validatePipeName(final TSyncIdentityInfo info) {
+    return info.isSetPipeName() && !info.getPipeName().contains(File.separator);
+  }
+
+  private void createConnection(final SyncIdentityInfo identityInfo) {
+    final long connectionId = connectionIdGenerator.incrementAndGet();
     currentConnectionId.set(connectionId);
     connectionIdToIdentityInfoMap.put(connectionId, identityInfo);
   }
