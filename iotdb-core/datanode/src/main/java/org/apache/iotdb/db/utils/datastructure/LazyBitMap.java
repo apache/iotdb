@@ -21,11 +21,13 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.tsfile.utils.BitMap;
 
+import java.util.ArrayList;
+
 public class LazyBitMap {
   private final int startPosition;
   private final int endPosition;
   private final int blockSize;
-  private final BitMap[] blocks;
+  private final ArrayList<BitMap> blocks;
 
   public LazyBitMap(int startIndex, int appendSize, int endIndex) {
     if (endIndex < startIndex) {
@@ -37,8 +39,7 @@ public class LazyBitMap {
     this.startPosition = startIndex;
     this.endPosition = endIndex;
     this.blockSize = appendSize;
-    int blockCount = (endIndex - startIndex + appendSize) / appendSize;
-    this.blocks = new BitMap[blockCount];
+    this.blocks = new ArrayList<>(2);
   }
 
   public void mark(int index) {
@@ -49,12 +50,19 @@ public class LazyBitMap {
       throw new IndexOutOfBoundsException("Index exceeds endPosition: " + index);
     }
     int blockIndex = getBlockIndex(index);
-    BitMap block = blocks[blockIndex];
+    ensureCapacity(blockIndex);
+    BitMap block = blocks.get(blockIndex);
     if (block == null) {
       block = new BitMap(blockSize);
-      blocks[blockIndex] = block;
+      blocks.set(blockIndex, block);
     }
     block.mark(getInnerIndex(index));
+  }
+
+  private void ensureCapacity(int blockIndex) {
+    while (blockIndex >= blocks.size()) {
+      blocks.add(null);
+    }
   }
 
   public boolean isMarked(int index) {
@@ -65,7 +73,10 @@ public class LazyBitMap {
       throw new IndexOutOfBoundsException("Index exceeds endPosition: " + index);
     }
     int blockIndex = getBlockIndex(index);
-    BitMap block = blocks[blockIndex];
+    if (blockIndex >= blocks.size()) {
+      return false;
+    }
+    BitMap block = blocks.get(blockIndex);
     if (block == null) {
       return false;
     }
