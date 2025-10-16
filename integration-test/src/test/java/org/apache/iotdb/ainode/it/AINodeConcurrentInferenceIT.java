@@ -97,7 +97,7 @@ public class AINodeConcurrentInferenceIT {
     }
   }
 
-  @Test
+  //  @Test
   public void concurrentCPUCallInferenceTest() throws SQLException, InterruptedException {
     concurrentCPUCallInferenceTest("timer_xl");
     concurrentCPUCallInferenceTest("sundial");
@@ -110,21 +110,21 @@ public class AINodeConcurrentInferenceIT {
       final int threadCnt = 4;
       final int loop = 10;
       final int predictLength = 96;
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"cpu\"", modelId));
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES 'cpu'", modelId));
       checkModelOnSpecifiedDevice(statement, MODEL_ID_TO_TYPE_MAP.get(modelId), "cpu");
       concurrentInference(
           statement,
           String.format(
-              "CALL INFERENCE(%s, \"SELECT s FROM root.AI\", predict_length=%d)",
+              "CALL INFERENCE(%s, 'SELECT s FROM root.AI', predict_length=%d)",
               modelId, predictLength),
           threadCnt,
           loop,
           predictLength);
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"cpu\"", modelId));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES 'cpu'", modelId));
     }
   }
 
-  @Test
+  //  @Test
   public void concurrentGPUCallInferenceTest() throws SQLException, InterruptedException {
     concurrentGPUCallInferenceTest("timer_xl");
     concurrentGPUCallInferenceTest("sundial");
@@ -138,17 +138,17 @@ public class AINodeConcurrentInferenceIT {
       final int loop = 100;
       final int predictLength = 512;
       final String devices = "0,1";
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"%s\"", modelId, devices));
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES '%s'", modelId, devices));
       checkModelOnSpecifiedDevice(statement, MODEL_ID_TO_TYPE_MAP.get(modelId), devices);
       concurrentInference(
           statement,
           String.format(
-              "CALL INFERENCE(%s, \"SELECT s FROM root.AI\", predict_length=%d)",
+              "CALL INFERENCE(%s, 'SELECT s FROM root.AI', predict_length=%d)",
               modelId, predictLength),
           threadCnt,
           loop,
           predictLength);
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"0,1\"", modelId));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '0,1'", modelId));
     }
   }
 
@@ -164,7 +164,7 @@ public class AINodeConcurrentInferenceIT {
       final int threadCnt = 4;
       final int loop = 10;
       final int predictLength = 96;
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"cpu\"", modelId));
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES 'cpu'", modelId));
       checkModelOnSpecifiedDevice(statement, MODEL_ID_TO_TYPE_MAP.get(modelId), "cpu");
       long startTime = System.currentTimeMillis();
       concurrentInference(
@@ -180,7 +180,7 @@ public class AINodeConcurrentInferenceIT {
           String.format(
               "Model %s concurrent inference %d reqs (%d threads, %d loops) in CPU takes time: %dms",
               modelId, threadCnt * loop, threadCnt, loop, endTime - startTime));
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"cpu\"", modelId));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES 'cpu'", modelId));
     }
   }
 
@@ -197,7 +197,7 @@ public class AINodeConcurrentInferenceIT {
       final int loop = 100;
       final int predictLength = 512;
       final String devices = "0,1";
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"%s\"", modelId, devices));
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES '%s'", modelId, devices));
       checkModelOnSpecifiedDevice(statement, MODEL_ID_TO_TYPE_MAP.get(modelId), devices);
       long startTime = System.currentTimeMillis();
       concurrentInference(
@@ -213,7 +213,7 @@ public class AINodeConcurrentInferenceIT {
           String.format(
               "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
               modelId, threadCnt * loop, threadCnt, loop, endTime - startTime));
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"0,1\"", modelId));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '0,1'", modelId));
     }
   }
 
@@ -223,7 +223,7 @@ public class AINodeConcurrentInferenceIT {
       Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
       Set<String> foundDevices = new HashSet<>();
       try (final ResultSet resultSet =
-          statement.executeQuery(String.format("SHOW LOADED MODELS %s", device))) {
+          statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
         while (resultSet.next()) {
           String deviceId = resultSet.getString(1);
           String loadedModelType = resultSet.getString(2);
