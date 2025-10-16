@@ -139,7 +139,6 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
 
   protected TimeRange satisfiedTimeRange;
-  protected boolean noMoreSatisfiedData = false;
 
   public SeriesScanUtil(
       IFullPath seriesPath,
@@ -233,7 +232,6 @@ public class SeriesScanUtil implements Accountable {
       }
       satisfiedTimeRange = new TimeRange(startTime, endTime);
     }
-    noMoreSatisfiedData = false;
   }
 
   protected PriorityMergeReader getPriorityMergeReader() {
@@ -254,7 +252,7 @@ public class SeriesScanUtil implements Accountable {
   // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
   // execution time slice.
   public Optional<Boolean> hasNextFile() throws IOException {
-    if (!paginationController.hasCurLimit() || noMoreSatisfiedData) {
+    if (!paginationController.hasCurLimit()) {
       return Optional.of(false);
     }
 
@@ -345,7 +343,7 @@ public class SeriesScanUtil implements Accountable {
    * @throws IllegalStateException illegal state
    */
   public Optional<Boolean> hasNextChunk() throws IOException {
-    if (!paginationController.hasCurLimit() || noMoreSatisfiedData) {
+    if (!paginationController.hasCurLimit()) {
       return Optional.of(false);
     }
 
@@ -388,10 +386,6 @@ public class SeriesScanUtil implements Accountable {
 
   private void filterFirstChunkMetadata() {
     if (firstChunkMetadata == null) {
-      return;
-    }
-    if (!checkHasMoreSatisfiedData(firstChunkMetadata)) {
-      skipCurrentChunk();
       return;
     }
 
@@ -517,7 +511,7 @@ public class SeriesScanUtil implements Accountable {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   public boolean hasNextPage() throws IOException {
-    if (!paginationController.hasCurLimit() || noMoreSatisfiedData) {
+    if (!paginationController.hasCurLimit()) {
       return false;
     }
 
@@ -705,6 +699,13 @@ public class SeriesScanUtil implements Accountable {
         readOnlyMemChunk.createMemPointIterator(
             orderUtils.getScanOrder(), scanOptions.getGlobalTimeFilter());
     for (Statistics<? extends Serializable> statistics : statisticsList) {
+      long orderTime = orderUtils.getOrderTime(statistics);
+      boolean canSkip =
+          (orderUtils.getAscending() && orderTime > satisfiedTimeRange.getMax())
+              || (!orderUtils.getAscending() && orderTime < satisfiedTimeRange.getMin());
+      if (canSkip) {
+        break;
+      }
       IVersionPageReader versionPageReader =
           new LazyMemVersionPageReader(
               context,
@@ -848,10 +849,6 @@ public class SeriesScanUtil implements Accountable {
 
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
-      return;
-    }
-    if (!checkHasMoreSatisfiedData(firstPageReader.getPageReader())) {
-      skipCurrentPage();
       return;
     }
 
@@ -1354,15 +1351,6 @@ public class SeriesScanUtil implements Accountable {
 
   private boolean filterAllSatisfy(Filter filter, IMetadata metadata) {
     return filter == null || filter.allSatisfy(metadata);
-  }
-
-  protected boolean checkHasMoreSatisfiedData(IMetadata metadata) {
-    long orderTime = orderUtils.getOrderTime(metadata.getStatistics());
-    noMoreSatisfiedData =
-        orderUtils.getAscending()
-            ? (orderTime > satisfiedTimeRange.getMax())
-            : (orderTime < satisfiedTimeRange.getMin());
-    return !noMoreSatisfiedData;
   }
 
   protected interface IVersionPageReader {
