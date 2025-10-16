@@ -260,7 +260,7 @@ class PoolController:
             model_type = model_info.model_type
             if model_type == BuiltInModelType.SUNDIAL.value:
                 config = SundialConfig()
-            elif model_id == BuiltInModelType.TIMER_XL.value:
+            elif model_type == BuiltInModelType.TIMER_XL.value:
                 config = TimerConfig()
             else:
                 raise InferenceModelInternalError(
