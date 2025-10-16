@@ -19,5 +19,26 @@
 
 package org.apache.iotdb.metrics.metricsets.disk;
 
+import java.util.HashMap;
+import java.util.Map;
+import oshi.SystemInfo;
+
 /** Disk Metrics Manager for Windows system, not implemented yet. */
-public class WindowsDiskMetricsManager implements IDiskMetricsManager {}
+public class WindowsDiskMetricsManager implements IDiskMetricsManager {
+
+  private final SystemInfo systemInfo =  new SystemInfo();
+
+  @Override
+  public Map<String, Double> getReadDataSizeForDisk() {
+    Map<String, Double> result = new HashMap<>();
+    systemInfo.getHardware().getDiskStores().forEach(disk -> {
+      result.put(disk.getName(), (double) disk.getReadBytes());
+    });
+    return result;
+  }
+
+  @Override
+  public Map<String, Double> getWriteDataSizeForDisk() {
+    return IDiskMetricsManager.super.getWriteDataSizeForDisk();
+  }
+}
