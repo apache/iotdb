@@ -204,13 +204,45 @@ public abstract class TVList implements WALEntryValue {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
+  /**
+   * Performs a binary search to find the first position whose timestamp is greater than or equal to
+   * the given {@code time}.
+   *
+   * <p>This method assumes timestamps are sorted in ascending order. If the list is not sorted, an
+   * {@link UnsupportedOperationException} will be thrown.
+   *
+   * <p>Typical use case: locate the starting index of a time range query.
+   *
+   * <p>Example:
+   *
+   * <ul>
+   *   <li>timestamps = [10, 20, 20, 25, 30]
+   *   <li>time = 5 → return 0
+   *   <li>time = 20 → return 1
+   *   <li>time = 21 → return 3
+   *   <li>time = 40 → return 5 (all timestamps &lt; 40)
+   * </ul>
+   *
+   * <p><b>Return value range:</b>
+   *
+   * <ul>
+   *   <li>When a matching or greater element exists: {@code 0 <= index <= seqRowCount - 1}
+   *   <li>When all elements are smaller than {@code time}: {@code index == seqRowCount}
+   * </ul>
+   *
+   * @param time the target timestamp
+   * @param low the lower bound index (inclusive)
+   * @param high the upper bound index (inclusive)
+   * @return the index of the first timestamp ≥ {@code time}, or {@code seqRowCount} if all
+   *     timestamps are smaller
+   */
   private int binarySearchTimestampFirstGreaterOrEqualsPosition(long time, int low, int high) {
     if (!sorted && high >= seqRowCount) {
       throw new UnsupportedOperationException("Current TVList is not sorted");
     }
     int mid;
     while (low <= high) {
-      mid = (low + high) >>> 1;
+      mid = low + ((high - low) >>> 1);
       long midTime = getTime(mid);
       if (midTime < time) {
         low = mid + 1;
@@ -221,6 +253,38 @@ public abstract class TVList implements WALEntryValue {
     return low;
   }
 
+  /**
+   * Performs a binary search to find the last position whose timestamp is less than or equal to the
+   * given {@code time}.
+   *
+   * <p>This method assumes timestamps are sorted in ascending order. If the list is not sorted, an
+   * {@link UnsupportedOperationException} will be thrown.
+   *
+   * <p>Typical use case: locate the ending index of a time range query.
+   *
+   * <p>Example:
+   *
+   * <ul>
+   *   <li>timestamps = [10, 20, 20, 25, 30]
+   *   <li>time = 5 → return -1 (no timestamp ≤ 5)
+   *   <li>time = 20 → return 2
+   *   <li>time = 21 → return 2
+   *   <li>time = 50 → return 4
+   * </ul>
+   *
+   * <p><b>Return value range:</b>
+   *
+   * <ul>
+   *   <li>When a matching or smaller element exists: {@code 0 <= index <= seqRowCount - 1}
+   *   <li>When all elements are greater than {@code time}: {@code index == -1}
+   * </ul>
+   *
+   * @param time the target timestamp
+   * @param low the lower bound index (inclusive)
+   * @param high the upper bound index (inclusive)
+   * @return the index of the last timestamp ≤ {@code time}, or {@code -1} if all timestamps are
+   *     greater
+   */
   private int binarySearchTimestampLastLessOrEqualsPosition(long time, int low, int high) {
     if (!sorted && high >= seqRowCount) {
       throw new UnsupportedOperationException("Current TVList is not sorted");
@@ -228,7 +292,7 @@ public abstract class TVList implements WALEntryValue {
 
     int mid;
     while (low <= high) {
-      mid = (low + high) >>> 1;
+      mid = low + ((high - low) >>> 1);
       long midTime = getTime(mid);
       if (midTime <= time) {
         low = mid + 1;
