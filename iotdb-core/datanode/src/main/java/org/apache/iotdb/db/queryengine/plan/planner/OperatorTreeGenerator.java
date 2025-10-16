@@ -716,7 +716,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return constructAlignedSeriesAggregationScanOperator(
         node.getPlanNodeId(),
         node.getAlignedPath(),
-        node.getAggregationDescriptorList(),
+        AggregationNode.getDeduplicatedDescriptors(node.getAggregationDescriptorList()),
         node.getPushDownPredicate(),
         node.getScanOrder(),
         node.getGroupByTimeParameter(),
@@ -2466,7 +2466,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
-            ? getOutputColumnTypesOfTimeJoinNode(node)
+            ? getOutputColumnTypesOfTimeJoinNode(node, context)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
     return new FullOuterTimeJoinOperator(
@@ -2494,7 +2494,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
-            ? getOutputColumnTypesOfTimeJoinNode(node)
+            ? getOutputColumnTypesOfTimeJoinNode(node, context)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
     return new InnerTimeJoinOperator(
@@ -2548,7 +2548,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
-            ? getOutputColumnTypesOfTimeJoinNode(node)
+            ? getOutputColumnTypesOfTimeJoinNode(node, context)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
     return new LeftOuterTimeJoinOperator(
@@ -3248,7 +3248,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         .collect(Collectors.toList());
   }
 
-  private List<TSDataType> getOutputColumnTypesOfTimeJoinNode(PlanNode node) {
+  private List<TSDataType> getOutputColumnTypesOfTimeJoinNode(
+      PlanNode node, LocalExecutionPlanContext context) {
     // Only templated device situation can invoke this method,
     // the children of TimeJoinNode can only be ScanNode or TimeJoinNode
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -3260,11 +3261,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else if (child instanceof FullOuterTimeJoinNode
           || child instanceof InnerTimeJoinNode
           || child instanceof LeftOuterTimeJoinNode) {
-        dataTypes.addAll(getOutputColumnTypesOfTimeJoinNode(child));
+        dataTypes.addAll(getOutputColumnTypesOfTimeJoinNode(child, context));
+      } else if (child instanceof SeriesAggregationSourceNode) {
+        dataTypes.addAll(getOutputColumnTypes(child, context.getTypeProvider()));
       } else {
-        LOGGER.error(
-            "Unexpected PlanNode in getOutputColumnTypesOfTimeJoinNode, type: {}",
-            child.getOutputColumnNames());
+        throw new UnsupportedOperationException(
+            String.format(
+                "Unexpected PlanNode in getOutputColumnTypesOfTimeJoinNode, type: %s",
+                child.getOutputColumnNames()));
       }
     }
     return dataTypes;
