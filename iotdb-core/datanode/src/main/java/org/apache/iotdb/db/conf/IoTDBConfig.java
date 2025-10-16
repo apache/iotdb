@@ -1181,7 +1181,6 @@ public class IoTDBConfig {
 
   private boolean includeNullValueInWriteThroughputMetric = false;
 
-
   private boolean keepSameDiskWhenLoadingSnapshot = false;
 
   private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
@@ -4249,7 +4248,6 @@ public class IoTDBConfig {
   public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
     this.passwordLockTimeMinutes = passwordLockTimeMinutes;
   }
-
 
   public boolean isKeepSameDiskWhenLoadingSnapshot() {
     return keepSameDiskWhenLoadingSnapshot;
