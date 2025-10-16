@@ -553,8 +553,6 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeAggregationQueryV2(1:TSAggregationQueryReq req);
 
-  TSExecuteStatementResp executeGroupByQueryIntervalQuery(1:TSGroupByQueryIntervalReq req);
-
   TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
 
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
