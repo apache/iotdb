@@ -204,30 +204,39 @@ public abstract class TVList implements WALEntryValue {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
-  public int binarySearchTimestampStartPosition(long time, int low, int high, boolean exactSearch) {
+  private int binarySearchTimestampFirstGreaterOrEqualsPosition(long time, int low, int high) {
+    if (!sorted && high >= seqRowCount) {
+      throw new UnsupportedOperationException("Current TVList is not sorted");
+    }
+    int mid;
+    while (low <= high) {
+      mid = (low + high) >>> 1;
+      long midTime = getTime(mid);
+      if (midTime < time) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return low;
+  }
+
+  private int binarySearchTimestampLastLessOrEqualsPosition(long time, int low, int high) {
     if (!sorted && high >= seqRowCount) {
       throw new UnsupportedOperationException("Current TVList is not sorted");
     }
 
     int mid;
     while (low <= high) {
-      mid = low + high >>> 1;
+      mid = (low + high) >>> 1;
       long midTime = getTime(mid);
-      int cmp = Long.compare(midTime, time);
-      if (cmp < 0) {
+      if (midTime <= time) {
         low = mid + 1;
-      } else if (cmp > 0) {
-        high = mid - 1;
       } else {
-        return mid;
+        high = mid - 1;
       }
     }
-
-    if (exactSearch) {
-      return -1;
-    } else {
-      return low - 1;
-    }
+    return high;
   }
 
   protected void set(int src, int dest) {
@@ -754,24 +763,12 @@ public abstract class TVList implements WALEntryValue {
           probeNext = true;
           return;
         }
-        indexInTVList =
-            binarySearchTimestampStartPosition(
-                searchTimestamp, getScanOrderIndex(index), rows - 1, false);
-        boolean foundSearchedTime = indexInTVList >= 0 && searchTimestamp == getTime(indexInTVList);
         // For asc scan, if it can not be found, the indexInTVList is too small, and we should move
         // to the next timestamp position.
         // If it can be found, move to the min index of current timestamp.
-        if (!foundSearchedTime) {
-          // move to the min index of next timestamp index
-          do {
-            indexInTVList++;
-          } while (indexInTVList < rows && getTime(indexInTVList) < searchTimestamp);
-        } else {
-          // move to the min index of current timestamp
-          while (indexInTVList > 0 && getTime(indexInTVList - 1) == searchTimestamp) {
-            indexInTVList--;
-          }
-        }
+        indexInTVList =
+            binarySearchTimestampFirstGreaterOrEqualsPosition(
+                searchTimestamp, getScanOrderIndex(index), rows - 1);
       } else {
         long searchTimestamp = timeRange.getMax();
         if (searchTimestamp >= outer.getMaxTime()) {
@@ -783,17 +780,12 @@ public abstract class TVList implements WALEntryValue {
           probeNext = true;
           return;
         }
+        // For desc scan, regardless of whether it is found, the timestamp corresponding to
+        // indexInTVList has met the conditions. We only need to find the index that first
+        // encounters this timestamp during desc scan.
         indexInTVList =
-            binarySearchTimestampStartPosition(searchTimestamp, 0, getScanOrderIndex(index), false);
-        // -1 means there is no matching result in the entire tvList.
-        if (indexInTVList != -1) {
-          // For desc scan, regardless of whether it is found, the timestamp corresponding to
-          // indexInTVList has met the conditions. We only need to find the index that first
-          // encounters this timestamp during desc scan.
-          while (indexInTVList < rows - 1 && getTime(indexInTVList) == getTime(indexInTVList + 1)) {
-            indexInTVList++;
-          }
-        }
+            binarySearchTimestampLastLessOrEqualsPosition(
+                searchTimestamp, 0, getScanOrderIndex(index));
       }
       int newIndex = getScanOrderIndex(indexInTVList);
       if (newIndex > index) {
