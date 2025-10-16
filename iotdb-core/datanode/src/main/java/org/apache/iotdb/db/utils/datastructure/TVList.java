@@ -226,7 +226,7 @@ public abstract class TVList implements WALEntryValue {
     if (exactSearch) {
       return -1;
     } else {
-      return low == 0 ? low : low - 1;
+      return low - 1;
     }
   }
 
@@ -755,14 +755,12 @@ public abstract class TVList implements WALEntryValue {
         indexInTVList =
             binarySearchTimestampStartPosition(
                 searchTimestamp, getScanOrderIndex(index), rows - 1, false);
-        boolean foundSearchedTime = searchTimestamp == getTime(indexInTVList);
+        boolean foundSearchedTime = indexInTVList >= 0 && searchTimestamp == getTime(indexInTVList);
         if (!foundSearchedTime) {
           // move to the min index of next timestamp index
-          if (indexInTVList != 0) {
-            do {
-              indexInTVList++;
-            } while (indexInTVList < rows && getTime(indexInTVList) == searchTimestamp);
-          }
+          do {
+            indexInTVList++;
+          } while (indexInTVList < rows && getTime(indexInTVList) < searchTimestamp);
         } else {
           // move to the min index of current timestamp
           while (indexInTVList > 0 && getTime(indexInTVList - 1) == searchTimestamp) {
@@ -782,8 +780,11 @@ public abstract class TVList implements WALEntryValue {
         }
         indexInTVList =
             binarySearchTimestampStartPosition(searchTimestamp, 0, getScanOrderIndex(index), false);
-        while (indexInTVList < rows - 1 && getTime(indexInTVList) == getTime(indexInTVList + 1)) {
-          indexInTVList++;
+        // -1 means there is no matching result in the entire tvList.
+        if (indexInTVList != -1) {
+          while (indexInTVList < rows - 1 && getTime(indexInTVList) == getTime(indexInTVList + 1)) {
+            indexInTVList++;
+          }
         }
       }
       int newIndex = getScanOrderIndex(indexInTVList);
