@@ -184,7 +184,7 @@ public class CommonConfig {
   private long timePartitionOrigin = 0;
 
   /** Time partition interval in milliseconds. */
-  private long timePartitionInterval = 1_000;
+  private long timePartitionInterval = 604_800_000;
 
   /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */
   private String timestampPrecision = "ms";
