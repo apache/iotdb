@@ -221,6 +221,7 @@ public class AINodeConcurrentInferenceIT {
           String deviceId = resultSet.getString("DeviceId");
           String loadedModelId = resultSet.getString("ModelId");
           int count = resultSet.getInt("Count(instances)");
+          LOGGER.info("Model {} found in device {}, count: {}", loadedModelId, deviceId, count);
           if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId)) {
             Assert.assertTrue(count > 1);
             foundDevices.add(deviceId);
