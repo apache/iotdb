@@ -236,10 +236,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       pullAndCheckSystemConfigurations();
 
       if (isFirstStart) {
+        // ========Generate system file immediately after registered from ConfigNode========
         sendRegisterRequestToConfigNode(true);
         IoTDBStartCheck.getInstance().generateOrOverwriteSystemPropertiesFile();
-        IoTDBStartCheck.getInstance().serializeEncryptMagicString();
         ConfigNodeInfo.getInstance().storeConfigNodeList();
+        // =================================================================================
+        IoTDBStartCheck.getInstance().serializeEncryptMagicString();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
         saveSecretKey();
