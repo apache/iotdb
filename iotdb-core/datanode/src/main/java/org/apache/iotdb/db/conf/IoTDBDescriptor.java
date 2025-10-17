@@ -1171,6 +1171,12 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    conf.setKeepSameDiskWhenLoadingSnapshot(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "keep_same_disk_when_loading_snapshot",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "keep_same_disk_when_loading_snapshot"))));
   }
 
   private void loadIoTConsensusV2Props(TrimProperties properties) throws IOException {
