@@ -524,11 +524,17 @@ public class FragmentInstanceContext extends QueryContext {
     if (globalTimeFilter == null) {
       return Collections.singletonList(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
     }
-    globalTimeFilterTimeRanges =
-        globalTimeFilterTimeRanges == null
-            ? globalTimeFilter.getTimeRanges()
-            : globalTimeFilterTimeRanges;
-    return globalTimeFilterTimeRanges;
+    List<TimeRange> local = globalTimeFilterTimeRanges;
+    if (local == null) {
+      synchronized (this) {
+        local = globalTimeFilterTimeRanges;
+        if (local == null) {
+          local = globalTimeFilter.getTimeRanges();
+          globalTimeFilterTimeRanges = local;
+        }
+      }
+    }
+    return local;
   }
 
   public void setTimeFilterForTableModel(Filter timeFilter) {

@@ -1881,8 +1881,8 @@ public abstract class AlignedTVList extends TVList {
       TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
 
       int validRowCount = 0;
-      // deleted row or time that do not match the filter are all invalid, true
-      // if we don't need this row
+      // Rows that are deleted or whose timestamps do not match the filter are considered invalid.
+      // The corresponding bit is set to true if the row is not needed.
       LazyBitMap timeInvalidInfo = null;
       LazyBitMap timeDuplicatedInfo = null;
 
