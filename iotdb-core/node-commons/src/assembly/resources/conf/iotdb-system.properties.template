@@ -1035,6 +1035,11 @@ read_consistency_level=strong
 # Datatype: boolean
 meta_data_cache_enable=true
 
+# Whether to cache a placeholder for non-exist series.
+# effectiveMode: restart
+# Datatype: boolean
+may_cache_nonexist_series=true
+
 # Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others.
 # The parameter form is a:b:c:d:e:f:g:h, where a, b, c, d, e, f, g and h are integers. for example: 1:1:1:1:1:1:1:1 , 1:100:200:50:200:200:200:50
 # effectiveMode: restart
