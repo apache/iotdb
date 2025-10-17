@@ -116,7 +116,6 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
       throw new IllegalArgumentException(
           String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
     }
-    boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == this.readConsistencyLevel;
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
@@ -133,13 +132,29 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
       LOGGER.info("available replicas: {}", availableDataNodes);
     }
-    int targetIndex;
-    if (!selectRandomDataNode || queryContext.getSession() == null) {
-      targetIndex = 0;
-    } else {
-      targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
-    }
+    int targetIndex = getTargetIndex(availableDataNodes);
     return availableDataNodes.get(targetIndex);
+  }
+
+  private int getTargetIndex(List<TDataNodeLocation> availableDataNodes) {
+    int targetIndex;
+    if (ReadConsistencyLevel.STRONG == this.readConsistencyLevel
+        || queryContext.getSession() == null) {
+      targetIndex = 0;
+    } else if (ReadConsistencyLevel.WEAK == this.readConsistencyLevel) {
+      targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
+    } else if (ReadConsistencyLevel.FOLLOWER_READ == this.readConsistencyLevel) {
+      // The first available data node is always leader which is guaranteed by ConfigNode and
+      // PartitionFetcher in DataNode
+      // We only need to randomly choose any one from [1, availableDataNodes.size()).
+      // SessionId is a unchanged long value for each connection, so we can use that as random seed
+      targetIndex =
+          (int) (queryContext.getSession().getSessionId() % (availableDataNodes.size() - 1)) + 1;
+    } else {
+      throw new IllegalArgumentException(
+          String.format("Unknown readConsistencyLevel %s", readConsistencyLevel));
+    }
+    return targetIndex;
   }
 
   protected FragmentInstance findDownStreamInstance(
