@@ -970,7 +970,8 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
     String[] retArray = new String[] {};
     // We set timePartitionInterval to 1 in IoTDBAlignByDeviceWithTemplate3IT, the where predicate
-    // is changed to be 'now() - 1ms' to reduce memory use because of the creation of timeslots.
+    // is changed from 'time>=now()-1d' to 'time>=now()-1ms' to reduce memory use because of the
+    // creation of timeslots.
     resultSetEqualTest(
         "SELECT * FROM root.sg1.** where time>=now()-1ms and time<=now() "
             + "ORDER BY TIME DESC ALIGN BY DEVICE;",
