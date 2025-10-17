@@ -137,6 +137,11 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
   }
 
   private int getTargetIndex(List<TDataNodeLocation> availableDataNodes) {
+    // if only one node is available, just return 0
+    if (availableDataNodes.size() == 1) {
+      return 0;
+    }
+
     int targetIndex;
     if (ReadConsistencyLevel.STRONG == this.readConsistencyLevel
         || queryContext.getSession() == null) {
