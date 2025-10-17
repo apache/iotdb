@@ -131,11 +131,30 @@ public class FullOuterTimeJoinNode extends MultiChildProcessNode {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
+    // Don't call super.equals() to avoid order-sensitive children comparison
+    FullOuterTimeJoinNode that = (FullOuterTimeJoinNode) o;
+    // For FullOuterTimeJoinNode, the order of children doesn't matter semantically
+    // since all children are merged based on timestamps. Compare children as sets.
+    if (mergeOrder != that.mergeOrder
+        || !Objects.equals(this.getPlanNodeId(), that.getPlanNodeId())
+        || this.children.size() != that.children.size()) {
       return false;
     }
-    FullOuterTimeJoinNode that = (FullOuterTimeJoinNode) o;
-    return mergeOrder == that.mergeOrder;
+    // Compare children in an order-independent way by checking if each child in this
+    // has a corresponding equal child in that
+    for (PlanNode child : this.children) {
+      boolean found = false;
+      for (PlanNode thatChild : that.children) {
+        if (Objects.equals(child, thatChild)) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
