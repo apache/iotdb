@@ -423,6 +423,13 @@ class ModelStorage(object):
         with self._lock_pool.get_lock(model_info.model_id).write_lock():
             self._model_info_map[model_info.model_id] = model_info
 
+    def get_model_info(self, model_id: str) -> ModelInfo:
+        with self._lock_pool.get_lock(model_id).read_lock():
+            if model_id in self._model_info_map:
+                return self._model_info_map[model_id]
+            else:
+                raise ValueError(f"Model {model_id} does not exist.")
+
     def update_model_state(self, model_id: str, state: ModelStates):
         with self._lock_pool.get_lock(model_id).write_lock():
             if model_id in self._model_info_map:

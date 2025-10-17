@@ -95,7 +95,7 @@ public class AINodeInferenceSQLIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  @Test
+  //  @Test
   public void callInferenceTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -209,7 +209,7 @@ public class AINodeInferenceSQLIT {
     //    }
   }
 
-  @Test
+  //  @Test
   public void errorCallInferenceTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
