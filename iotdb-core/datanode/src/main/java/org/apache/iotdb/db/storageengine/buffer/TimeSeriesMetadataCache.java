@@ -81,13 +81,16 @@ public class TimeSeriesMetadataCache {
           Statistics.getStatsByType(TSDataType.INT32),
           new PublicBAOS());
 
-  private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
+  private Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
   private final Map<String, WeakReference<String>> devices =
       Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
+
+  private final AtomicLong evictedExistingEntryCount = new AtomicLong(0);
+  private final AtomicLong evictedNonExistingEntryCount = new AtomicLong(0);
 
   static {
     CACHE_MEMORY_BLOCK =
@@ -109,8 +112,20 @@ public class TimeSeriesMetadataCache {
             .weigher(
                 (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
                     (key, value) ->
-                        (int) (key.getRetainedSizeInBytes() + value.getRetainedSizeInBytes()))
+                        (int)
+                            (key.getRetainedSizeInBytes()
+                                + (value == NULL_EXISTS_CACHE_PLACE_HOLDER
+                                    ? 0
+                                    : value.getRetainedSizeInBytes())))
             .recordStats()
+            .evictionListener(
+                (k, v, c) -> {
+                  if (v == NULL_EXISTS_CACHE_PLACE_HOLDER) {
+                    evictedNonExistingEntryCount.incrementAndGet();
+                  } else {
+                    evictedExistingEntryCount.incrementAndGet();
+                  }
+                })
             .build();
     // add metrics
     MetricService.getInstance().addMetricSet(new TimeSeriesMetadataCacheMetrics(this));
@@ -199,9 +214,6 @@ public class TimeSeriesMetadataCache {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
               loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
-              if (memoryConfig.isMayCacheNonExistSeries()) {
-                lruCache.put(key, NULL_EXISTS_CACHE_PLACE_HOLDER);
-              }
               return null;
             }
 
@@ -300,8 +312,33 @@ public class TimeSeriesMetadataCache {
 
   /** clear LRUCache. */
   public void clear() {
-    lruCache.invalidateAll();
-    lruCache.cleanUp();
+    logger.info(
+        "Evicted non-existing/existing series count: {}/{}({}), total request: {}",
+        evictedNonExistingEntryCount.get(),
+        evictedExistingEntryCount.get(),
+        ((double) evictedNonExistingEntryCount.get()) / evictedExistingEntryCount.get(), lruCache.stats().requestCount());
+    lruCache = Caffeine.newBuilder()
+        .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
+        .weigher(
+            (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
+                (key, value) ->
+                    (int)
+                        (key.getRetainedSizeInBytes()
+                            + (value == NULL_EXISTS_CACHE_PLACE_HOLDER
+                            ? 0
+                            : value.getRetainedSizeInBytes())))
+        .recordStats()
+        .evictionListener(
+            (k, v, c) -> {
+              if (v == NULL_EXISTS_CACHE_PLACE_HOLDER) {
+                evictedNonExistingEntryCount.incrementAndGet();
+              } else {
+                evictedExistingEntryCount.incrementAndGet();
+              }
+            })
+        .build();
+    evictedNonExistingEntryCount.set(0);
+    evictedExistingEntryCount.set(0);
   }
 
   public void remove(TimeSeriesMetadataCacheKey key) {

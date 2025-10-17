@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.buffer;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
@@ -28,6 +32,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -40,19 +45,27 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 public class TimeSeriesMetadataCacheTest {
 
-  private void testCachePlaceHolderInternal() throws IOException, WriteProcessException {
-    TimeSeriesMetadataCache.getInstance().clear();
+  private void testCachePlaceHolderInternal()
+      throws IOException, WriteProcessException, ExecutionException, InterruptedException {
     File file = new File("target/test.tsfile");
     TsFileID tsFileID = new TsFileID();
 
-    int deviceCnt = 100;
-    int seriesPerDevice = 100;
+    int deviceCnt = 2000;
+    int seriesPerDevice = 2000;
+    double nonExistSeriesRatio = 1.0;
+    int concurrency = 10;
     List<IDeviceID> deviceIDList = new ArrayList<>();
     for (int i = 0; i < deviceCnt; i++) {
       deviceIDList.add(Factory.DEFAULT_FACTORY.create("root.d" + i));
     }
+    ExecutorService executor = Executors.newFixedThreadPool(concurrency);
+    List<Future<Void>> futures = new ArrayList<>();
 
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // 100*100 series in the file
@@ -73,37 +86,89 @@ public class TimeSeriesMetadataCacheTest {
       tsFileWriter.close();
 
       // read 100*200 series each 10 times in the file
-      TimeSeriesMetadataCache.getInstance().clear();
       long start = System.currentTimeMillis();
       QueryContext queryContext = new QueryContext();
       // put k in outer loop
-      for (int k = 0; k < 10; k++) {
-        for (int i = 0; i < deviceCnt; i++) {
-          for (int j = 0; j < seriesPerDevice; j++) {
-            TimeSeriesMetadataCacheKey key =
-                new TimeSeriesMetadataCacheKey(tsFileID, deviceIDList.get(i), "s" + j);
-            TimeSeriesMetadataCache.getInstance()
-                .get(file.getPath(), key, Collections.EMPTY_SET, true, false, queryContext);
+      int devicePerThread = deviceCnt / concurrency;
+      for (int c = 0; c < concurrency; c++) {
+        final int finalC = c;
+        QueryContext finalQueryContext = queryContext;
+        futures.add(executor.submit(() -> {
+          for (int k = 0; k < 10; k++) {
+            for (int i = devicePerThread * finalC; i < devicePerThread * (finalC + 1); i++) {
+              for (int j = 0;
+                  j < seriesPerDevice + (int) (seriesPerDevice * nonExistSeriesRatio);
+                  j++) {
+                TimeSeriesMetadataCacheKey key =
+                    new TimeSeriesMetadataCacheKey(tsFileID, deviceIDList.get(i), "s" + j);
+                TimeseriesMetadata timeseriesMetadata =
+                    TimeSeriesMetadataCache.getInstance()
+                        .get(
+                            file.getPath(),
+                            key,
+                            Collections.singleton("s" + j),
+                            true,
+                            false,
+                            finalQueryContext);
+                if (j < seriesPerDevice) {
+                  assertNotNull(timeseriesMetadata);
+                  assertEquals("s" + j, timeseriesMetadata.getMeasurementId());
+                } else {
+                  assertNull(timeseriesMetadata);
+                }
+              }
+            }
           }
-        }
+          return null;
+        }));
       }
-      System.out.println("time cost with outer k: " + (System.currentTimeMillis() - start));
-
+      for (Future<Void> future : futures) {
+        future.get();
+      }
+      futures.clear();
+      System.out.println("time cost with outer k: " + (System.currentTimeMillis() - start) + "ms");
       TimeSeriesMetadataCache.getInstance().clear();
+
       start = System.currentTimeMillis();
       queryContext = new QueryContext();
       // put k in inner loop
-      for (int i = 0; i < deviceCnt; i++) {
-        for (int j = 0; j < seriesPerDevice; j++) {
-          TimeSeriesMetadataCacheKey key =
-              new TimeSeriesMetadataCacheKey(tsFileID, deviceIDList.get(i), "s" + j);
-          for (int k = 0; k < 10; k++) {
-            TimeSeriesMetadataCache.getInstance()
-                .get(file.getPath(), key, Collections.EMPTY_SET, true, false, queryContext);
+      for (int c = 0; c < concurrency; c++) {
+        final int finalC = c;
+        QueryContext finalQueryContext = queryContext;
+        futures.add(executor.submit(() -> {
+          for (int i = devicePerThread * finalC; i < devicePerThread * (finalC + 1); i++) {
+            for (int j = 0; j < seriesPerDevice + (int) (seriesPerDevice * nonExistSeriesRatio); j++) {
+              TimeSeriesMetadataCacheKey key =
+                  new TimeSeriesMetadataCacheKey(tsFileID, deviceIDList.get(i), "s" + j);
+              for (int k = 0; k < 10; k++) {
+                TimeseriesMetadata timeseriesMetadata =
+                    TimeSeriesMetadataCache.getInstance()
+                        .get(
+                            file.getPath(),
+                            key,
+                            Collections.singleton("s" + j),
+                            true,
+                            false,
+                            finalQueryContext);
+                if (j < seriesPerDevice) {
+                  assertNotNull(timeseriesMetadata);
+                  assertEquals("s" + j, timeseriesMetadata.getMeasurementId());
+                } else {
+                  assertNull(timeseriesMetadata);
+                }
+              }
+            }
           }
-        }
+          return null;
+        }));
       }
-      System.out.println("time cost with inner k: " + (System.currentTimeMillis() - start));
+      for (Future<Void> future : futures) {
+        future.get();
+      }
+      futures.clear();
+
+      System.out.println("time cost with inner k: " + (System.currentTimeMillis() - start) + "ms");
+      TimeSeriesMetadataCache.getInstance().clear();
     } finally {
       file.delete();
     }
@@ -111,7 +176,8 @@ public class TimeSeriesMetadataCacheTest {
 
   @Ignore("Performance")
   @Test
-  public void testCachePlaceHolder() throws IOException, WriteProcessException {
+  public void testCachePlaceHolder()
+      throws IOException, WriteProcessException, ExecutionException, InterruptedException {
     boolean mayCacheNonExistSeries =
         IoTDBDescriptor.getInstance().getMemoryConfig().isMayCacheNonExistSeries();
     try {
