@@ -51,6 +51,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -84,7 +85,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   protected void createPipeTask(
       final int consensusGroupId,
       final PipeStaticMeta pipeStaticMeta,
-      final PipeTaskMeta pipeTaskMeta)
+      final PipeTaskMeta pipeTaskMeta,
+      final Set<Integer> newRegions)
       throws IllegalPathException {
     // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
     if (consensusGroupId == Integer.MIN_VALUE

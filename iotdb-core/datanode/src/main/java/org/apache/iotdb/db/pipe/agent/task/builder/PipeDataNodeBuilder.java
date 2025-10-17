@@ -63,7 +63,7 @@ public class PipeDataNodeBuilder {
       final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
 
       if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
-        final PipeParameters extractorParameters = pipeStaticMeta.getSourceParameters();
+        PipeParameters extractorParameters = pipeStaticMeta.getSourceParameters();
         final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
         final boolean needConstructDataRegionTask =
             dataRegionIds.contains(dataRegionId)

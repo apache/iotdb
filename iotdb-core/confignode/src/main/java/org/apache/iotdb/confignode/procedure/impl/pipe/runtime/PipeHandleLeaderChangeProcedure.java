@@ -40,8 +40,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -50,6 +52,9 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
   private Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap =
       new HashMap<>();
+
+  // Store newly created DataRegion RegionIDs
+  private Set<Integer> newlyCreatedDataRegionIds = new HashSet<>();
 
   public PipeHandleLeaderChangeProcedure() {
     super();
@@ -94,6 +99,10 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
     final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
         new PipeHandleLeaderChangePlan(newConsensusGroupIdToLeaderConsensusIdMap);
+
+    // Extract newly created DataRegion IDs
+    newlyCreatedDataRegionIds =
+        extractNewlyCreatedDataRegionIds(regionGroupToOldAndNewLeaderPairMap);
     TSStatus response;
     try {
       response = env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
@@ -111,7 +120,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnDataNodes");
 
-    pushPipeMetaToDataNodesIgnoreException(env);
+    pushPipeMetaToDataNodesIgnoreExceptionWithNewRegion(env, newlyCreatedDataRegionIds);
   }
 
   @Override
@@ -189,5 +198,27 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   public int hashCode() {
     return Objects.hash(
         getProcId(), getCurrentState(), getCycles(), regionGroupToOldAndNewLeaderPairMap);
+  }
+
+  /**
+   * Extract newly created DataRegion IDs from leader change plan. First scan all dataRegionGroupId
+   * in PipeInfo and save to Map, then scan Region IDs in Plan to get DataRegion IDs that PipeInfo
+   * doesn't have
+   *
+   * @param regionGroupToOldAndNewLeaderPairMap containing consensus group ID to new leader mapping
+   * @return Set of newly created DataRegion IDs
+   */
+  private Set<Integer> extractNewlyCreatedDataRegionIds(
+      final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap) {
+    final Set<Integer> newDataRegionIds = new HashSet<>();
+    for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> entry :
+        regionGroupToOldAndNewLeaderPairMap.entrySet()) {
+      if (TConsensusGroupType.DataRegion.equals(entry.getKey().getType())
+          && entry.getValue().getLeft() == -1) {
+        newDataRegionIds.add(entry.getKey().getId());
+      }
+    }
+
+    return newDataRegionIds;
   }
 }

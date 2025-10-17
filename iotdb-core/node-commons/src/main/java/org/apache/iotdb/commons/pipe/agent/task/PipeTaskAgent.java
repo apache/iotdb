@@ -175,6 +175,7 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
+    Set<Integer> newRegions = metaFromCoordinator.restoreNegativeRegionIdsToOriginal();
 
     // Do nothing with the subscription pipe if disable subscription
     if (PipeStaticMeta.isSubscriptionPipe(pipeName)
@@ -186,7 +187,7 @@ public abstract class PipeTaskAgent {
 
     // If pipe meta does not exist on local agent, create a new pipe
     if (metaInAgent == null) {
-      if (createPipe(metaFromCoordinator)) {
+      if (createPipe(metaFromCoordinator, newRegions)) {
         // If the status recorded in coordinator is RUNNING, start the pipe
         startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
       }
@@ -201,7 +202,7 @@ public abstract class PipeTaskAgent {
     // First check if pipe static meta has changed, if so, drop the pipe and create a new one
     if (!staticMetaInAgent.equals(staticMetaFromCoordinator)) {
       dropPipe(pipeName);
-      if (createPipe(metaFromCoordinator)) {
+      if (createPipe(metaFromCoordinator, newRegions)) {
         startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
       }
       // If the status is STOPPED or DROPPED, do nothing
@@ -212,13 +213,14 @@ public abstract class PipeTaskAgent {
     final PipeRuntimeMeta runtimeMetaInAgent = metaInAgent.getRuntimeMeta();
     final PipeRuntimeMeta runtimeMetaFromCoordinator = metaFromCoordinator.getRuntimeMeta();
     executeSinglePipeRuntimeMetaChanges(
-        staticMetaFromCoordinator, runtimeMetaFromCoordinator, runtimeMetaInAgent);
+        staticMetaFromCoordinator, runtimeMetaFromCoordinator, runtimeMetaInAgent, newRegions);
   }
 
   private void executeSinglePipeRuntimeMetaChanges(
       /* @NotNull */ final PipeStaticMeta pipeStaticMeta,
       /* @NotNull */ final PipeRuntimeMeta runtimeMetaFromCoordinator,
-      /* @NotNull */ final PipeRuntimeMeta runtimeMetaInAgent)
+      /* @NotNull */ final PipeRuntimeMeta runtimeMetaInAgent,
+      /* @NotNull */ final Set<Integer> newRegions)
       throws IllegalPathException {
     // 1. Handle region group leader changed first
     final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
@@ -238,7 +240,8 @@ public abstract class PipeTaskAgent {
 
       // If task meta does not exist on local agent, create a new task
       if (taskMetaInAgent == null) {
-        createPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator);
+        createPipeTask(
+            consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator, newRegions);
         // We keep the new created task's status consistent with the status recorded in local
         // agent's pipe runtime meta. please note that the status recorded in local agent's pipe
         // runtime meta is not reliable, but we will have a check later to make sure the status is
@@ -255,7 +258,8 @@ public abstract class PipeTaskAgent {
 
       if (nodeIdFromCoordinator != nodeIdInAgent) {
         dropPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
-        createPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator);
+        createPipeTask(
+            consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator, newRegions);
         // We keep the new created task's status consistent with the status recorded in local
         // agent's pipe runtime meta. please note that the status recorded in local agent's pipe
         // runtime meta is not reliable, but we will have a check later to make sure the status is
@@ -475,7 +479,8 @@ public abstract class PipeTaskAgent {
    *     if the pipe already exists or is created but should not be started
    * @throws IllegalStateException if the status is illegal
    */
-  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
+  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator, Set<Integer> newRegions)
+      throws IllegalPathException {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
@@ -924,7 +929,8 @@ public abstract class PipeTaskAgent {
   protected abstract void createPipeTask(
       final int consensusGroupId,
       final PipeStaticMeta pipeStaticMeta,
-      final PipeTaskMeta pipeTaskMeta)
+      final PipeTaskMeta pipeTaskMeta,
+      final Set<Integer> newRegions)
       throws IllegalPathException;
 
   private void dropPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {
