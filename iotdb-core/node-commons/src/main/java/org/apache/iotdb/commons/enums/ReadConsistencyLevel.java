@@ -21,5 +21,6 @@ package org.apache.iotdb.commons.enums;
 
 public enum ReadConsistencyLevel {
   STRONG,
-  WEAK
+  WEAK,
+  FOLLOWER_READ
 }
