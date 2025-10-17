@@ -144,6 +144,9 @@ class ModelManager:
     def register_built_in_model(self, model_info: ModelInfo):
         self.model_storage.register_built_in_model(model_info)
 
+    def get_model_info(self, model_id: str) -> ModelInfo:
+        return self.model_storage.get_model_info(model_id)
+
     def update_model_state(self, model_id: str, state: ModelStates):
         self.model_storage.update_model_state(model_id, state)
 

@@ -36,6 +36,8 @@ from iotdb.ainode.core.inference.request_scheduler.basic_request_scheduler impor
 )
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_enums import BuiltInModelType
+from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.util.gpu_mapping import convert_device_id_to_torch_device
 
 
@@ -58,7 +60,7 @@ class InferenceRequestPool(mp.Process):
     def __init__(
         self,
         pool_id: int,
-        model_id: str,
+        model_info: ModelInfo,
         device: str,
         config: PretrainedConfig,
         request_queue: mp.Queue,
@@ -68,7 +70,7 @@ class InferenceRequestPool(mp.Process):
     ):
         super().__init__()
         self.pool_id = pool_id
-        self.model_id = model_id
+        self.model_info = model_info
         self.config = config
         self.pool_kwargs = pool_kwargs
         self.ready_event = ready_event
@@ -121,7 +123,7 @@ class InferenceRequestPool(mp.Process):
 
         for requests in grouped_requests:
             batch_inputs = self._batcher.batch_request(requests).to(self.device)
-            if self.model_id == "sundial":
+            if self.model_info.model_type == BuiltInModelType.SUNDIAL.value:
                 batch_output = self._model.generate(
                     batch_inputs,
                     max_new_tokens=requests[0].max_new_tokens,
@@ -135,8 +137,7 @@ class InferenceRequestPool(mp.Process):
                     cur_batch_size = request.batch_size
                     cur_output = batch_output[offset : offset + cur_batch_size]
                     offset += cur_batch_size
-                    # TODO Here we only considered the case where batchsize=1 in one request. If multi-variable adaptation is required in the future, modifications may be needed here, such as: `cur_output[0]` maybe not true in multi-variable scene
-                    request.write_step_output(cur_output[0].mean(dim=0))
+                    request.write_step_output(cur_output.mean(dim=1))
 
                     request.inference_pipeline.post_decode()
                     if request.is_finished():
@@ -153,7 +154,7 @@ class InferenceRequestPool(mp.Process):
                         )
                         self._waiting_queue.put(request)
 
-            elif self.model_id == "timer_xl":
+            elif self.model_info.model_type == BuiltInModelType.TIMER_XL.value:
                 batch_output = self._model.generate(
                     batch_inputs,
                     max_new_tokens=requests[0].max_new_tokens,
@@ -194,7 +195,9 @@ class InferenceRequestPool(mp.Process):
         )
         self._model_manager = ModelManager()
         self._request_scheduler.device = self.device
-        self._model = self._model_manager.load_model(self.model_id, {}).to(self.device)
+        self._model = self._model_manager.load_model(self.model_info.model_id, {}).to(
+            self.device
+        )
         self.ready_event.set()
 
         activate_daemon = threading.Thread(
@@ -207,10 +210,13 @@ class InferenceRequestPool(mp.Process):
         )
         self._threads.append(execute_daemon)
         execute_daemon.start()
+        self._logger.info(
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} is activated."
+        )
         for thread in self._threads:
             thread.join()
         self._logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_id} exited cleanly."
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} exited cleanly."
         )
 
     def stop(self):

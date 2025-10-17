@@ -47,6 +47,7 @@ from iotdb.ainode.core.inference.strategy.timerxl_inference_pipeline import (
 from iotdb.ainode.core.inference.utils import generate_req_id
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_enums import BuiltInModelType
 from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
 from iotdb.ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
@@ -297,9 +298,10 @@ class InferenceManager:
                     data = np_data.view(np_data.dtype.newbyteorder())
                 # the inputs should be on CPU before passing to the inference request
                 inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
-                if model_id == "sundial":
+                model_type = self._model_manager.get_model_info(model_id).model_type
+                if model_type == BuiltInModelType.SUNDIAL.value:
                     inference_pipeline = TimerSundialInferencePipeline(SundialConfig())
-                elif model_id == "timer_xl":
+                elif model_type == BuiltInModelType.TIMER_XL.value:
                     inference_pipeline = TimerXLInferencePipeline(TimerConfig())
                 else:
                     raise InferenceModelInternalError(
