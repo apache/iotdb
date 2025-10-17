@@ -35,10 +35,13 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +72,14 @@ public class TimeSeriesMetadataCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
+  private static final TimeseriesMetadata NULL_EXISTS_CACHE_PLACE_HOLDER =
+      new TimeseriesMetadata(
+          (byte) 0,
+          0,
+          "",
+          TSDataType.INT32,
+          Statistics.getStatsByType(TSDataType.INT32),
+          new PublicBAOS());
 
   private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
@@ -188,6 +199,9 @@ public class TimeSeriesMetadataCache {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
               loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+              if (memoryConfig.isMayCacheNonExistSeries()) {
+                lruCache.put(key, NULL_EXISTS_CACHE_PLACE_HOLDER);
+              }
               return null;
             }
 
@@ -217,9 +231,12 @@ public class TimeSeriesMetadataCache {
           }
         }
       }
-      if (timeseriesMetadata == null) {
+      if (timeseriesMetadata == null || timeseriesMetadata == NULL_EXISTS_CACHE_PLACE_HOLDER) {
         if (debug) {
           DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
+        }
+        if (timeseriesMetadata == null && memoryConfig.isMayCacheNonExistSeries()) {
+          lruCache.put(key, NULL_EXISTS_CACHE_PLACE_HOLDER);
         }
         return null;
       } else {
