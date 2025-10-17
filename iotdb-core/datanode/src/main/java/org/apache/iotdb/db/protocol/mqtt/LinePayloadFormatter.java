@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * The Line payload formatter. myTable,tag1=value1,tag2=value2 attr1=value1,attr2=value2
@@ -190,7 +191,7 @@ public class LinePayloadFormatter implements PayloadFormatter {
     List<Object> values = new ArrayList<>();
     String fieldsGroup = matcher.group(FIELDS);
     if (fieldsGroup != null && !fieldsGroup.isEmpty()) {
-      String[] fieldPairs = fieldsGroup.split(COMMA);
+      String[] fieldPairs = splitFieldPairs(fieldsGroup);
       for (String fieldPair : fieldPairs) {
         if (!fieldPair.isEmpty()) {
           String[] keyValue = fieldPair.split(EQUAL);
@@ -211,6 +212,16 @@ public class LinePayloadFormatter implements PayloadFormatter {
     } else {
       return false;
     }
+  }
+
+  private String[] splitFieldPairs(String fieldsGroup) {
+
+    if (fieldsGroup == null || fieldsGroup.isEmpty()) return new String[0];
+    Matcher m = Pattern.compile("\\w+=\"[^\"]*\"|\\w+=[^,]*").matcher(fieldsGroup);
+    Stream.Builder<String> builder = Stream.builder();
+
+    while (m.find()) builder.add(m.group());
+    return builder.build().toArray(String[]::new);
   }
 
   private Pair<TSDataType, Object> analyticValue(String value) {
