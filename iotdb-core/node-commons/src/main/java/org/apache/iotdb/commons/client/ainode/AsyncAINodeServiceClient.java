@@ -58,10 +58,10 @@ public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
                 endPoint.getIp(),
                 endPoint.getPort(),
                 property.getConnectionTimeoutMs(),
-                commonConfig.getKeyStorePath(),
-                commonConfig.getKeyStorePwd(),
-                commonConfig.getTrustStorePath(),
-                commonConfig.getTrustStorePwd())
+                commonConfig.getInternalKeyStorePath(),
+                commonConfig.getInternalKeyStorePwd(),
+                commonConfig.getInternalTrustStorePath(),
+                commonConfig.getInternalTrustStorePwd())
             : TNonblockingTransportWrapper.wrap(
                 endPoint.getIp(), endPoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
