@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -27,17 +27,23 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 
-/**
- * Change series_slot_num to 1, to generate more devices which are cross data regions as possible.
- */
+import static org.apache.iotdb.confignode.it.partition.IoTDBPartitionShuffleStrategyIT.SHUFFLE;
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignByDeviceWithTemplate2IT extends IoTDBAlignByDeviceWithTemplateIT {
+public class IoTDBShuffleSink1_2IT extends IoTDBShuffleSink1IT {
 
   @BeforeClass
   public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionGroupExtensionPolicy("CUSTOM");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDataRegionGroupNumPerDatabase(2);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(1024 * 1024);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(1);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDataPartitionAllocationStrategy(SHUFFLE);
     EnvFactory.getEnv().initClusterEnvironment();
-    insertData();
+    prepareData(SINGLE_SERIES);
+    prepareData(MULTI_SERIES);
   }
 
   @AfterClass
