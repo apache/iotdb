@@ -1049,6 +1049,15 @@ public class IoTDBDescriptor {
     // The buffer for sort operator to calculate
     loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
 
+    // The buffer for cte materialization.
+    loadFixedSizeLimitForQuery(properties, "cte_buffer_size_in_bytes", conf::setCteBufferSize);
+
+    // max number of rows for cte materialization
+    conf.setMaxRowsInCteBuffer(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer()))));
+
     loadFixedSizeLimitForQuery(
         properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
 
