@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
+import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -75,6 +79,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
   private final PipeMemoryBlock allocatedMemoryBlockForTableSchema;
 
+  // mods entry
+  private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications;
+
   // Used to read tsfile data
   private IChunkReader chunkReader;
   private BatchData batchData;
@@ -96,6 +103,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private List<TSDataType> dataTypeList;
   private int deviceIdSize;
 
+  private List<ModsOperationUtil.ModsInfo> modsInfoList;
+
   // Used to record whether the same Tablet is generated when parsing starts. Different table
   // information cannot be placed in the same Tablet.
   private boolean isSameTableName;
@@ -109,12 +118,14 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final PipeMemoryBlock allocatedMemoryBlockForChunk,
       final PipeMemoryBlock allocatedMemoryBlockForChunkMeta,
       final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
       final long startTime,
       final long endTime)
       throws IOException {
 
     this.startTime = startTime;
     this.endTime = endTime;
+    this.modifications = modifications;
 
     this.reader = tsFileSequenceReader;
     this.metadataQuerier = new MetadataQuerierByFileImpl(reader);
@@ -198,6 +209,29 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 // Reduce the number of times Chunks are read
                 if (alignedChunkMetadata.getEndTime() < startTime
                     || alignedChunkMetadata.getStartTime() > endTime) {
+                  chunkMetadataIterator.remove();
+                  continue;
+                }
+
+                Iterator<IChunkMetadata> iChunkMetadataIterator =
+                    alignedChunkMetadata.getValueChunkMetadataList().iterator();
+                while (iChunkMetadataIterator.hasNext()) {
+                  IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
+                  if (iChunkMetadata == null) {
+                    continue;
+                  }
+
+                  if (ModsOperationUtil.isAllDeletedByMods(
+                      pair.getLeft(),
+                      iChunkMetadata.getMeasurementUid(),
+                      alignedChunkMetadata.getStartTime(),
+                      alignedChunkMetadata.getEndTime(),
+                      modifications)) {
+                    iChunkMetadataIterator.remove();
+                  }
+                }
+
+                if (alignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
                   chunkMetadataIterator.remove();
                   continue;
                 }
@@ -307,9 +341,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           break;
         }
 
-        tablet.addTimestamp(rowIndex, batchData.currentTime());
-        fillMeasurementValueColumns(batchData, tablet, rowIndex);
-        fillDeviceIdColumns(deviceID, tablet, rowIndex);
+        if (fillMeasurementValueColumns(batchData, tablet, rowIndex)) {
+          fillDeviceIdColumns(deviceID, tablet, rowIndex);
+          tablet.addTimestamp(rowIndex, batchData.currentTime());
+        }
       }
 
       if (batchData != null) {
@@ -386,15 +421,20 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     }
 
     this.chunkReader = new TableChunkReader(timeChunk, valueChunkList, null);
+    this.modsInfoList =
+        ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications);
   }
 
-  private void fillMeasurementValueColumns(
+  private boolean fillMeasurementValueColumns(
       final BatchData data, final Tablet tablet, final int rowIndex) {
     final TsPrimitiveType[] primitiveTypes = data.getVector();
+    boolean needFillTime = false;
 
     for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
       final TsPrimitiveType primitiveType = primitiveTypes[i - deviceIdSize];
-      if (primitiveType == null) {
+      boolean isDelete = false;
+      if (primitiveType == null
+          || (isDelete = ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i)))) {
         switch (dataTypeList.get(i)) {
           case TEXT:
           case BLOB:
@@ -402,8 +442,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
             tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
         }
         tablet.getBitMaps()[i].mark(rowIndex);
+        needFillTime = needFillTime || !isDelete;
         continue;
       }
+      needFillTime = true;
 
       switch (dataTypeList.get(i)) {
         case BOOLEAN:
@@ -438,6 +480,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
       }
     }
+    return needFillTime;
   }
 
   private void fillDeviceIdColumns(

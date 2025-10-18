@@ -700,7 +700,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   // To avoid renaming of the tsFile database
                   shouldParse4Privilege ? userName : null,
                   this)
-              .provide());
+              .provide(isWithMod));
       return eventParser.get();
     } catch (final IOException e) {
       close();
