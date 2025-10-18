@@ -31,6 +31,7 @@ import org.apache.iotdb.metrics.utils.SystemType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import oshi.SystemInfo;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -52,7 +53,9 @@ public class SystemRelatedFileMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    if ((CONFIG.getSystemType() == SystemType.LINUX || CONFIG.getSystemType() == SystemType.MAC)
+    if ((CONFIG.getSystemType() == SystemType.LINUX
+            || CONFIG.getSystemType() == SystemType.MAC
+            || CONFIG.getSystemType() == SystemType.WINDOWS)
         && !CONFIG.getPid().isEmpty()) {
       this.getOpenFileNumberCommand =
           new String[] {"/bin/sh", "-c", String.format("lsof -p %s | wc -l", CONFIG.getPid())};
@@ -88,6 +91,9 @@ public class SystemRelatedFileMetrics implements IMetricSet {
           }
         }
         fdCount = Long.parseLong(result.toString().trim());
+      } else if (CONFIG.getSystemType() == SystemType.WINDOWS) {
+        SystemInfo systemInfo = new SystemInfo();
+        return systemInfo.getOperatingSystem().getCurrentProcess().getOpenFiles();
       }
     } catch (IOException e) {
       LOGGER.warn("Failed to get open file number, because ", e);

@@ -285,6 +285,7 @@ MIT License
 ------------
 org.slf4j:slf4j-api:2.0.9
 com.bugsnag:bugsnag:3.7.2
+com.github.oshi:6.4.0
 
 
 EPL 1.0

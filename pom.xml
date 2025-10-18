@@ -109,6 +109,7 @@
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
         <!-- This is the last version to support the javax namespace -->
         <jersey.version>2.40</jersey.version>
+        <oshi.version>6.4.0</oshi.version>
         <!-- This was the last version to support Java 8 -->
         <jetty.version>9.4.57.v20241219</jetty.version>
         <jjwt.version>0.12.7</jjwt.version>
@@ -726,6 +727,11 @@
                 <groupId>org.glassfish.jersey.inject</groupId>
                 <artifactId>jersey-hk2</artifactId>
                 <version>${jersey.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.oshi</groupId>
+                <artifactId>oshi-core</artifactId>
+                <version>${oshi.version}</version>
             </dependency>
             <!-- Conflict:
         json-smart (pulls in 9.3),
