@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @TableModel
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
-  protected IoTDBTreePattern treePattern;
+  protected UnionIoTDBTreePattern treePattern;
   protected TablePattern tablePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
@@ -78,15 +78,14 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
 
-    if (!(pattern instanceof IoTDBTreePattern
-        && (((IoTDBTreePattern) pattern).isPrefix()
-            || ((IoTDBTreePattern) pattern).isFullPath()))) {
+    if (!(pattern instanceof UnionIoTDBTreePattern
+        && (((UnionIoTDBTreePattern) pattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    treePattern = (IoTDBTreePattern) pattern;
+    treePattern = (UnionIoTDBTreePattern) pattern;
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
   }
 

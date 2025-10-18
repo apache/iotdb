@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -1065,10 +1067,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     final Set<ConfigPhysicalPlanType> executionTypes =
         PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBTreePattern treePattern =
-        new IoTDBTreePattern(
-            parameters.containsKey(PipeTransferFileSealReqV2.TREE),
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        parameters.containsKey(PipeTransferFileSealReqV2.TREE);
+    final List<TreePattern> treePatterns =
+        TreePattern.parseMultiplePatterns(
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN),
+            p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
+    final TreePattern treePattern =
+        TreePattern.buildUnionPattern(isTreeModelDataAllowedToBeCaptured, treePatterns);
     final TablePattern tablePattern =
         new TablePattern(
             parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
@@ -1076,11 +1082,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             parameters.get(ColumnHeaderConstant.TABLE_NAME));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      IoTDBConfigRegionSource.parseConfigPlan(generator.next(), treePattern, tablePattern)
+      IoTDBConfigRegionSource.parseConfigPlan(
+              generator.next(), (UnionIoTDBTreePattern) treePattern, tablePattern)
           .filter(
               configPhysicalPlan ->
                   IoTDBConfigRegionSource.isTypeListened(
-                      configPhysicalPlan, executionTypes, treePattern, tablePattern))
+                      configPhysicalPlan,
+                      executionTypes,
+                      (UnionIoTDBTreePattern) treePattern,
+                      tablePattern))
           .ifPresent(
               configPhysicalPlan ->
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
