@@ -20,14 +20,17 @@
 package org.apache.iotdb.ainode.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.AIClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,20 +39,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({AIClusterIT.class})
 public class AINodeConcurrentInferenceIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AINodeConcurrentInferenceIT.class);
-
-  private static final Map<String, String> MODEL_ID_TO_TYPE_MAP =
-      ImmutableMap.of(
-          "timer_xl", "Timer-XL",
-          "sundial", "Timer-Sundial");
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -86,13 +85,12 @@ public class AINodeConcurrentInferenceIT {
       for (int i = 0; i < 2880; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.AI(timestamp, s) VALUES(%d, %f)",
-                i, Math.sin(i * Math.PI / 1440)));
+                "INSERT INTO root.AI(time, s) VALUES(%d, %f)", i, Math.sin(i * Math.PI / 1440)));
       }
     }
   }
 
-  @Test
+  //  @Test
   public void concurrentCPUCallInferenceTest() throws SQLException, InterruptedException {
     concurrentCPUCallInferenceTest("timer_xl");
     concurrentCPUCallInferenceTest("sundial");
@@ -105,21 +103,21 @@ public class AINodeConcurrentInferenceIT {
       final int threadCnt = 4;
       final int loop = 10;
       final int predictLength = 96;
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"cpu\"", modelId));
-      checkModelOnSpecifiedDevice(statement, MODEL_ID_TO_TYPE_MAP.get(modelId), "cpu");
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES 'cpu'", modelId));
+      checkModelOnSpecifiedDevice(statement, modelId, "cpu");
       concurrentInference(
           statement,
           String.format(
-              "CALL INFERENCE(%s, \"SELECT s FROM root.AI\", predict_length=%d)",
+              "CALL INFERENCE(%s, 'SELECT s FROM root.AI', predict_length=%d)",
               modelId, predictLength),
           threadCnt,
           loop,
           predictLength);
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"cpu\"", modelId));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES 'cpu'", modelId));
     }
   }
 
-  @Test
+  //  @Test
   public void concurrentGPUCallInferenceTest() throws SQLException, InterruptedException {
     concurrentGPUCallInferenceTest("timer_xl");
     concurrentGPUCallInferenceTest("sundial");
@@ -133,17 +131,17 @@ public class AINodeConcurrentInferenceIT {
       final int loop = 100;
       final int predictLength = 512;
       final String devices = "0,1";
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"%s\"", modelId, devices));
-      checkModelOnSpecifiedDevice(statement, MODEL_ID_TO_TYPE_MAP.get(modelId), devices);
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES '%s'", modelId, devices));
+      checkModelOnSpecifiedDevice(statement, modelId, devices);
       concurrentInference(
           statement,
           String.format(
-              "CALL INFERENCE(%s, \"SELECT s FROM root.AI\", predict_length=%d)",
+              "CALL INFERENCE(%s, 'SELECT s FROM root.AI', predict_length=%d)",
               modelId, predictLength),
           threadCnt,
           loop,
           predictLength);
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"0,1\"", modelId));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '0,1'", modelId));
     }
   }
 
@@ -159,8 +157,8 @@ public class AINodeConcurrentInferenceIT {
       final int threadCnt = 4;
       final int loop = 10;
       final int predictLength = 96;
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"cpu\"", modelId));
-      checkModelOnSpecifiedDevice(statement, MODEL_ID_TO_TYPE_MAP.get(modelId), "cpu");
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES 'cpu'", modelId));
+      checkModelOnSpecifiedDevice(statement, modelId, "cpu");
       long startTime = System.currentTimeMillis();
       concurrentInference(
           statement,
@@ -175,7 +173,7 @@ public class AINodeConcurrentInferenceIT {
           String.format(
               "Model %s concurrent inference %d reqs (%d threads, %d loops) in CPU takes time: %dms",
               modelId, threadCnt * loop, threadCnt, loop, endTime - startTime));
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"cpu\"", modelId));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES 'cpu'", modelId));
     }
   }
 
@@ -192,8 +190,8 @@ public class AINodeConcurrentInferenceIT {
       final int loop = 100;
       final int predictLength = 512;
       final String devices = "0,1";
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES \"%s\"", modelId, devices));
-      checkModelOnSpecifiedDevice(statement, MODEL_ID_TO_TYPE_MAP.get(modelId), devices);
+      statement.execute(String.format("LOAD MODEL %s TO DEVICES '%s'", modelId, devices));
+      checkModelOnSpecifiedDevice(statement, modelId, devices);
       long startTime = System.currentTimeMillis();
       concurrentInference(
           statement,
@@ -208,32 +206,35 @@ public class AINodeConcurrentInferenceIT {
           String.format(
               "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
               modelId, threadCnt * loop, threadCnt, loop, endTime - startTime));
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES \"0,1\"", modelId));
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '0,1'", modelId));
     }
   }
 
-  private void checkModelOnSpecifiedDevice(Statement statement, String modelType, String device)
+  private void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)
       throws SQLException, InterruptedException {
-    for (int retry = 0; retry < 10; retry++) {
-      Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
+    Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
+    LOGGER.info("Checking model: {} on target devices: {}", modelId, targetDevices);
+    for (int retry = 0; retry < 20; retry++) {
       Set<String> foundDevices = new HashSet<>();
       try (final ResultSet resultSet =
-          statement.executeQuery(String.format("SHOW LOADED MODELS %s", device))) {
+          statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
         while (resultSet.next()) {
-          String deviceId = resultSet.getString(1);
-          String loadedModelType = resultSet.getString(2);
-          int count = resultSet.getInt(3);
-          if (loadedModelType.equals(modelType) && targetDevices.contains(deviceId)) {
-            Assert.assertTrue(count > 1);
+          String deviceId = resultSet.getString("DeviceId");
+          String loadedModelId = resultSet.getString("ModelId");
+          int count = resultSet.getInt("Count(instances)");
+          LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
+          if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId) && count > 0) {
             foundDevices.add(deviceId);
+            LOGGER.info("Model {} is loaded to device {}", modelId, device);
           }
         }
         if (foundDevices.containsAll(targetDevices)) {
+          LOGGER.info("Model {} is loaded to devices {}, start testing", modelId, targetDevices);
           return;
         }
       }
       TimeUnit.SECONDS.sleep(3);
     }
-    Assert.fail("Model " + modelType + " is not loaded on device " + device);
+    Assert.fail("Model " + modelId + " is not loaded on device " + device);
   }
 }

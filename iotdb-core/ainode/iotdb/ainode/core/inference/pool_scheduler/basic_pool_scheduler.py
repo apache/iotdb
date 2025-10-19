@@ -28,6 +28,7 @@ from iotdb.ainode.core.inference.pool_scheduler.abstract_pool_scheduler import (
     ScaleActionType,
 )
 from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.manager.utils import (
     INFERENCE_EXTRA_MEMORY_RATIO,
     INFERENCE_MEMORY_USAGE_RATIO,
@@ -35,16 +36,18 @@ from iotdb.ainode.core.manager.utils import (
     estimate_pool_size,
     evaluate_system_resources,
 )
-from iotdb.ainode.core.model.model_info import BUILT_IN_LTSM_MAP
+from iotdb.ainode.core.model.model_info import BUILT_IN_LTSM_MAP, ModelInfo
 from iotdb.ainode.core.util.gpu_mapping import convert_device_id_to_torch_device
 
 logger = Logger()
 
+MODEL_MANAGER = ModelManager()
+
 
 def _estimate_shared_pool_size_by_total_mem(
     device: torch.device,
-    existing_model_ids: List[str],
-    new_model_id: Optional[str] = None,
+    existing_model_infos: List[ModelInfo],
+    new_model_info: Optional[ModelInfo] = None,
 ) -> Dict[str, int]:
     """
     Estimate pool counts for (existing_model_ids + new_model_id) by equally
@@ -54,17 +57,15 @@ def _estimate_shared_pool_size_by_total_mem(
         mapping {model_id: pool_num}
     """
     # Extract unique model IDs
-    all_models = existing_model_ids + (
-        [new_model_id] if new_model_id is not None else []
+    all_models = existing_model_infos + (
+        [new_model_info] if new_model_info is not None else []
     )
 
     # Seize memory usage for each model
     mem_usages: Dict[str, float] = {}
-    for model_id in all_models:
-        model_info = BUILT_IN_LTSM_MAP.get(model_id)
-        model_type = model_info.model_type
-        mem_usages[model_id] = (
-            MODEL_MEM_USAGE_MAP[model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+    for model_info in all_models:
+        mem_usages[model_info.model_id] = (
+            MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
         )
 
     # Evaluate system resources and get TOTAL memory
@@ -84,14 +85,14 @@ def _estimate_shared_pool_size_by_total_mem(
 
     # Calculate pool allocation for each model
     allocation: Dict[str, int] = {}
-    for model_id in all_models:
-        pool_num = int(per_model_share // mem_usages[model_id])
+    for model_info in all_models:
+        pool_num = int(per_model_share // mem_usages[model_info.model_id])
         if pool_num <= 0:
             logger.warning(
-                f"[Inference][Device-{device}] Not enough TOTAL memory to guarantee at least 1 pool for model {model_id}, no pool will be scheduled for this model. "
-                f"Per-model share={per_model_share / 1024 ** 2:.2f} MB, need>={mem_usages[model_id] / 1024 ** 2:.2f} MB"
+                f"[Inference][Device-{device}] Not enough TOTAL memory to guarantee at least 1 pool for model {model_info.model_id}, no pool will be scheduled for this model. "
+                f"Per-model share={per_model_share / 1024 ** 2:.2f} MB, need>={mem_usages[model_info.model_id] / 1024 ** 2:.2f} MB"
             )
-        allocation[model_id] = pool_num
+        allocation[model_info.model_id] = pool_num
     logger.info(
         f"[Inference][Device-{device}] Shared pool allocation (by TOTAL memory): {allocation}"
     )
@@ -119,39 +120,41 @@ class BasicPoolScheduler(AbstractPoolScheduler):
             return [ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id)]
 
     def schedule_load_model_to_device(
-        self, model_id: str, device_id: str
+        self, model_info: ModelInfo, device_id: str
     ) -> List[ScaleAction]:
-        existing_model_ids = [
-            existing_model_id
+        existing_model_infos = [
+            MODEL_MANAGER.get_model_info(existing_model_id)
             for existing_model_id, pool_group_map in self._request_pool_map.items()
-            if existing_model_id != model_id and device_id in pool_group_map
+            if existing_model_id != model_info.model_id and device_id in pool_group_map
         ]
         allocation_result = _estimate_shared_pool_size_by_total_mem(
             device=convert_device_id_to_torch_device(device_id),
-            existing_model_ids=existing_model_ids,
-            new_model_id=model_id,
+            existing_model_infos=existing_model_infos,
+            new_model_info=model_info,
         )
         return self._convert_allocation_result_to_scale_actions(
             allocation_result, device_id
         )
 
     def schedule_unload_model_from_device(
-        self, model_id: str, device_id: str
+        self, model_info: ModelInfo, device_id: str
     ) -> List[ScaleAction]:
-        existing_model_ids = [
-            existing_model_id
+        existing_model_infos = [
+            MODEL_MANAGER.get_model_info(existing_model_id)
             for existing_model_id, pool_group_map in self._request_pool_map.items()
-            if existing_model_id != model_id and device_id in pool_group_map
+            if existing_model_id != model_info.model_id and device_id in pool_group_map
         ]
         allocation_result = (
             _estimate_shared_pool_size_by_total_mem(
                 device=convert_device_id_to_torch_device(device_id),
-                existing_model_ids=existing_model_ids,
-                new_model_id=None,
+                existing_model_infos=existing_model_infos,
+                new_model_info=None,
             )
-            if len(existing_model_ids) > 0
-            else {model_id: 0}
+            if len(existing_model_infos) > 0
+            else {model_info.model_id: 0}
         )
+        if len(existing_model_infos) > 0:
+            allocation_result[model_info.model_id] = 0
         return self._convert_allocation_result_to_scale_actions(
             allocation_result, device_id
         )

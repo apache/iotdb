@@ -31,10 +31,8 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.model.ModelStatus;
 import org.apache.iotdb.commons.model.ModelType;
-import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
-import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
 import org.apache.iotdb.confignode.exception.NoAvailableAINodeException;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
@@ -186,33 +184,15 @@ public class ModelManager {
   }
 
   public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
-    try {
-      GetModelInfoResp response =
-          (GetModelInfoResp) configManager.getConsensusManager().read(new GetModelInfoPlan(req));
-      if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return new TGetModelInfoResp(response.getStatus());
-      }
-      int aiNodeId = response.getTargetAINodeId();
-      if (aiNodeId != 0) {
-        response.setTargetAINodeAddress(
-            configManager.getNodeManager().getRegisteredAINode(aiNodeId));
-      } else {
-        if (configManager.getNodeManager().getRegisteredAINodes().isEmpty()) {
-          return new TGetModelInfoResp(
-              new TSStatus(TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode())
-                  .setMessage("There is no AINode available"));
-        }
-        response.setTargetAINodeAddress(
-            configManager.getNodeManager().getRegisteredAINodes().get(0));
-      }
-      return response.convertToThriftResponse();
-    } catch (ConsensusException e) {
-      LOGGER.warn("Unexpected error happened while getting model: ", e);
-      // consensus layer related errors
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
-      return new TGetModelInfoResp(res);
-    }
+    return new TGetModelInfoResp()
+        .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+        .setAiNodeAddress(
+            configManager
+                .getNodeManager()
+                .getRegisteredAINodes()
+                .get(0)
+                .getLocation()
+                .getInternalEndPoint());
   }
 
   // Currently this method is only used by built-in timer_xl

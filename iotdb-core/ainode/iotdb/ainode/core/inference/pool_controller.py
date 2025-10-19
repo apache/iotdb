@@ -40,6 +40,8 @@ from iotdb.ainode.core.inference.pool_scheduler.basic_pool_scheduler import (
     ScaleActionType,
 )
 from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_enums import BuiltInModelType
 from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
 from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
 from iotdb.ainode.core.util.atmoic_int import AtomicInt
@@ -48,6 +50,7 @@ from iotdb.ainode.core.util.decorator import synchronized
 from iotdb.ainode.core.util.thread_name import ThreadName
 
 logger = Logger()
+MODEL_MANAGER = ModelManager()
 
 
 class PoolController:
@@ -169,7 +172,7 @@ class PoolController:
             for model_id, device_map in self._request_pool_map.items():
                 if device_id in device_map:
                     pool_group = device_map[device_id]
-                    device_models[model_id] = pool_group.get_pool_count()
+                    device_models[model_id] = pool_group.get_running_pool_count()
             result[device_id] = device_models
         return result
 
@@ -191,7 +194,7 @@ class PoolController:
         def _load_model_on_device_task(device_id: str):
             if not self.has_request_pools(model_id, device_id):
                 actions = self._pool_scheduler.schedule_load_model_to_device(
-                    model_id, device_id
+                    MODEL_MANAGER.get_model_info(model_id), device_id
                 )
                 for action in actions:
                     if action.action == ScaleActionType.SCALE_UP:
@@ -218,7 +221,7 @@ class PoolController:
         def _unload_model_on_device_task(device_id: str):
             if self.has_request_pools(model_id, device_id):
                 actions = self._pool_scheduler.schedule_unload_model_from_device(
-                    model_id, device_id
+                    MODEL_MANAGER.get_model_info(model_id), device_id
                 )
                 for action in actions:
                     if action.action == ScaleActionType.SCALE_DOWN:
@@ -253,13 +256,19 @@ class PoolController:
         def _expand_pool_on_device(*_):
             result_queue = mp.Queue()
             pool_id = self._new_pool_id.get_and_increment()
-            if model_id == "sundial":
+            model_info = MODEL_MANAGER.get_model_info(model_id)
+            model_type = model_info.model_type
+            if model_type == BuiltInModelType.SUNDIAL.value:
                 config = SundialConfig()
-            elif model_id == "timer_xl":
+            elif model_type == BuiltInModelType.TIMER_XL.value:
                 config = TimerConfig()
+            else:
+                raise InferenceModelInternalError(
+                    f"Unsupported model type {model_type} for loading model {model_id}"
+                )
             pool = InferenceRequestPool(
                 pool_id=pool_id,
-                model_id=model_id,
+                model_info=model_info,
                 device=device_id,
                 config=config,
                 request_queue=result_queue,

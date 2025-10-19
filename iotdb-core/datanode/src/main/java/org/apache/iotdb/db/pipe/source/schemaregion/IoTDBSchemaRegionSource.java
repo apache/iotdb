@@ -115,9 +115,14 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
         == 1) {
       SchemaRegionConsensusImpl.getInstance()
           .write(schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
-      database = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId).getDatabaseFullPath();
+    } else if (!PipeDataNodeAgent.runtime().schemaListener(schemaRegionId).isOpened()) {
+      // This may be being concurrently opened, we should not continue to start or else the snapshot
+      // may not be listened
+      PipeDataNodeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);
+      return;
     }
 
+    database = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId).getDatabaseFullPath();
     super.start();
   }
 

@@ -133,7 +133,6 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     } else if (context.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
-        || context.getCode() == TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode()
         || context.getCode() == TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -168,10 +167,6 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()
             && status.getCode() != TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
-          if (status.getCode() == TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode()) {
-            return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-                .setMessage(context.getMessage());
-          }
           return visitStatement(statement, context);
         }
       }

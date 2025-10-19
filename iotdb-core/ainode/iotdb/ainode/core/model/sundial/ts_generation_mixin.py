@@ -83,7 +83,7 @@ class TSGenerationMixin(GenerationMixin):
             outputs = (outputs * stdev) + means
         return outputs
 
-    def _greedy_search(
+    def _sample(
         self,
         input_ids: torch.Tensor,
         logits_processor: Optional[LogitsProcessorList] = None,
@@ -269,7 +269,7 @@ class TSGenerationMixin(GenerationMixin):
             horizon_length = next_tokens.shape[-1] // self.config.input_token_len
 
             past_key_values = model_kwargs.get("past_key_values")
-            if past_key_values is None:
+            if past_key_values is None or generate_results is None:
                 generate_results = next_tokens
             else:
                 generate_results = torch.cat([generate_results, next_tokens], dim=-1)
@@ -328,9 +328,13 @@ class TSGenerationMixin(GenerationMixin):
         standardize_cache_format: bool = False,
     ) -> Dict[str, Any]:
         # update past_key_values
-        model_kwargs["past_key_values"] = self._extract_past_from_model_output(
-            outputs, standardize_cache_format=standardize_cache_format
-        )
+        if "past_key_values" in outputs:
+            model_kwargs["past_key_values"] = outputs.past_key_values
+        elif "mems" in outputs:
+            model_kwargs["past_key_values"] = outputs.mems
+        elif "past_buckets_states" in outputs:
+            model_kwargs["past_key_values"] = outputs.past_buckets_states
+
         if getattr(outputs, "state", None) is not None:
             model_kwargs["state"] = outputs.state
 

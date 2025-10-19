@@ -19,13 +19,21 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.db.auth.LoginLockManager.UserLockInfo;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
@@ -62,32 +70,42 @@ public class LoginLockManagerTest {
     assertEquals(1000, getField(normal, "failedLoginAttemptsPerUser"));
     assertEquals(10, getField(normal, "passwordLockTimeMinutes"));
 
-    // 2. Test disabling both IP-level and user-level restrictions
-    LoginLockManager disableBoth = new LoginLockManager(-1, -1, 10);
-    assertEquals(-1, getField(disableBoth, "failedLoginAttempts"));
-    assertEquals(-1, getField(disableBoth, "failedLoginAttemptsPerUser"));
+    // 2. Test disabling both IP-level and user-level restrictions (using -1 or 0)
+    LoginLockManager disableBoth1 = new LoginLockManager(-1, -1, 10);
+    assertEquals(-1, getField(disableBoth1, "failedLoginAttempts"));
+    assertEquals(-1, getField(disableBoth1, "failedLoginAttemptsPerUser"));
 
-    // 3. Test enabling only user-level restriction
-    LoginLockManager userOnly = new LoginLockManager(-1, 5, 10);
-    assertEquals(-1, getField(userOnly, "failedLoginAttempts"));
-    assertEquals(5, getField(userOnly, "failedLoginAttemptsPerUser"));
+    LoginLockManager disableBoth2 = new LoginLockManager(0, 0, 10);
+    assertEquals(-1, getField(disableBoth2, "failedLoginAttempts"));
+    assertEquals(-1, getField(disableBoth2, "failedLoginAttemptsPerUser"));
 
-    // 4. Test that enabling IP-level automatically enables user-level with default value
-    LoginLockManager ipEnable = new LoginLockManager(3, -1, 10);
-    assertEquals(3, getField(ipEnable, "failedLoginAttempts"));
-    assertEquals(1000, getField(ipEnable, "failedLoginAttemptsPerUser"));
+    // 3. Test mixed scenarios (IP enabled + user disabled, and vice versa)
+    LoginLockManager ipEnabledUserDisabled = new LoginLockManager(3, 0, 10);
+    assertEquals(3, getField(ipEnabledUserDisabled, "failedLoginAttempts"));
+    assertEquals(-1, getField(ipEnabledUserDisabled, "failedLoginAttemptsPerUser"));
 
-    // 5. Test invalid IP attempts value falls back to default (5)
-    LoginLockManager invalidIp = new LoginLockManager(0, -1, 10);
-    assertEquals(5, getField(invalidIp, "failedLoginAttempts"));
+    LoginLockManager ipDisabledUserEnabled = new LoginLockManager(-1, 5, 10);
+    assertEquals(-1, getField(ipDisabledUserEnabled, "failedLoginAttempts"));
+    assertEquals(5, getField(ipDisabledUserEnabled, "failedLoginAttemptsPerUser"));
 
-    // 6. Test invalid user attempts value falls back to default (1000)
-    LoginLockManager invalidUser = new LoginLockManager(-1, 0, 10);
-    assertEquals(1000, getField(invalidUser, "failedLoginAttemptsPerUser"));
+    // 4. Test invalid positive values fall back to defaults
+    LoginLockManager invalidIp =
+        new LoginLockManager(-5, 1000, 10); // Negative treated as disable (-1)
+    assertEquals(-1, getField(invalidIp, "failedLoginAttempts"));
 
-    // 7. Test invalid lock time value falls back to default (10 minutes)
-    LoginLockManager invalidTime = new LoginLockManager(5, 1000, 0);
-    assertEquals(10, getField(invalidTime, "passwordLockTimeMinutes"));
+    LoginLockManager invalidUser =
+        new LoginLockManager(5, -2, 10); // Negative treated as disable (-1)
+    assertEquals(-1, getField(invalidUser, "failedLoginAttemptsPerUser"));
+
+    // 5. Test lock time validation
+    LoginLockManager zeroLockTime = new LoginLockManager(5, 1000, 0);
+    assertEquals(10, getField(zeroLockTime, "passwordLockTimeMinutes"));
+
+    LoginLockManager negativeLockTime = new LoginLockManager(5, 1000, -5);
+    assertEquals(10, getField(negativeLockTime, "passwordLockTimeMinutes"));
+
+    LoginLockManager customLockTime = new LoginLockManager(5, 1000, 30);
+    assertEquals(30, getField(customLockTime, "passwordLockTimeMinutes"));
   }
 
   private int getField(LoginLockManager manager, String fieldName) {
@@ -332,29 +350,6 @@ public class LoginLockManagerTest {
   }
 
   // ---------------- Configuration and Invalid Input ----------------
-
-  @Test
-  public void testInvalidConfigurationDefaults() {
-    {
-      LoginLockManager invalidConfigManager = new LoginLockManager(-1, 0, -1);
-      for (int i = 0; i < 1000; i++) {
-        invalidConfigManager.recordFailure(TEST_USER_ID, TEST_IP);
-      }
-      assertTrue(
-          "Should use default config when invalid values provided",
-          invalidConfigManager.checkLock(TEST_USER_ID, TEST_IP));
-    }
-    {
-      LoginLockManager invalidConfigManager = new LoginLockManager(-3, 0, -1);
-      for (int i = 0; i < 5; i++) {
-        invalidConfigManager.recordFailure(TEST_USER_ID, TEST_IP);
-      }
-      assertTrue(
-          "Should use default config when invalid values provided",
-          invalidConfigManager.checkLock(TEST_USER_ID, TEST_IP));
-    }
-  }
-
   @Test
   public void testNullIpHandling() {
     lockManager.recordFailure(TEST_USER_ID, null);
@@ -534,5 +529,30 @@ public class LoginLockManagerTest {
 
     // Final verification: no inconsistencies detected during test
     assertTrue("Lock state should remain valid during concurrent access", consistencyFlag.get());
+  }
+
+  @Test
+  public void testConcurrentOperateLockInfo() throws InterruptedException, ExecutionException {
+    int numThreads = 100;
+    final int numAttempts = 100000;
+    UserLockInfo userLockInfo = new UserLockInfo(numThreads * numAttempts);
+    ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+    List<Future<Void>> threads = new ArrayList<>(numThreads);
+    for (int i = 0; i < numThreads; i++) {
+      threads.add(
+          executor.submit(
+              () -> {
+                for (int i1 = 0; i1 < numAttempts; i1++) {
+                  userLockInfo.addFailureTime(i1);
+                  if (i1 > 30) {
+                    userLockInfo.removeOldFailures(i1 - 30);
+                  }
+                }
+                return null;
+              }));
+    }
+    for (Future<Void> thread : threads) {
+      thread.get();
+    }
   }
 }

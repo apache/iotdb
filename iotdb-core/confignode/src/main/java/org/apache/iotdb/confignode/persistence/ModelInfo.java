@@ -46,7 +46,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -282,7 +281,6 @@ public class ModelInfo implements SnapshotProcessor {
       PublicBAOS buffer = new PublicBAOS();
       DataOutputStream stream = new DataOutputStream(buffer);
       modelInformation.serialize(stream);
-      getModelInfoResp.setModelInfo(ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size()));
       // select the nodeId to process the task, currently we default use the first one.
       int aiNodeId = getAvailableAINodeForModel(modelName, modelType);
       if (aiNodeId == -1) {

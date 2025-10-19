@@ -58,8 +58,10 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyStore;
@@ -394,6 +396,10 @@ public class Utils {
         TrustManager trustManager =
             new NoHostnameVerificationTrustManager((X509TrustManager) originalTrustManager);
         GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
+      } catch (AccessDeniedException e) {
+        LOGGER.error("Failed or truststore to load keystore file");
+      } catch (FileNotFoundException e) {
+        LOGGER.error("keystore or truststore file not found");
       } catch (Exception e) {
         LOGGER.error("Failed to read key store or trust store.", e);
       }

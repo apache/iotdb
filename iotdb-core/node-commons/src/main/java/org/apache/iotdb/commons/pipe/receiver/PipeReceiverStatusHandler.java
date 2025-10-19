@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -127,7 +127,7 @@ public class PipeReceiverStatusHandler {
               LOGGER::info,
               "Temporary unavailable exception: will retry forever. status: %s",
               status);
-          throw new PipeRuntimeSinkCriticalException(exceptionMessage);
+          throw new PipeNonReportException(exceptionMessage);
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION

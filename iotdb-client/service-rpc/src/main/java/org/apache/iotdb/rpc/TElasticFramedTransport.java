@@ -25,6 +25,9 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.apache.thrift.transport.layered.TFramedTransport;
 
+import javax.net.ssl.SSLHandshakeException;
+
+import java.io.EOFException;
 import java.net.SocketTimeoutException;
 
 // https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
@@ -125,6 +128,13 @@ public class TElasticFramedTransport extends TTransport {
       // Adding this workaround to avoid the problem.
       if (e.getCause() instanceof SocketTimeoutException) {
         throw new TTransportException(TTransportException.TIMED_OUT, e.getCause());
+      }
+      // When client with SSL shut down due to time out. Some unnecessary error logs may be printed.
+      // Adding this workaround to avoid the problem.
+      if (e.getCause() instanceof SSLHandshakeException
+          && e.getCause().getCause() != null
+          && e.getCause().getCause() instanceof EOFException) {
+        throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
       }
       throw e;
     }
