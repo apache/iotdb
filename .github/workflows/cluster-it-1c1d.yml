@@ -43,7 +43,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: oracle
+          distribution: corretto
           java-version: 17
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
