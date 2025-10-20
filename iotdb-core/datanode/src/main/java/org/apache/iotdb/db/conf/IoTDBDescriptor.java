@@ -1731,13 +1731,6 @@ public class IoTDBDescriptor {
                 ConfigurationFileUtils.getConfigurationDefaultValue("nan_string_infer_type"))));
     conf.setDefaultDatabaseLevel(
         Integer.parseInt(
-            properties.getProperty(
-                "default_storage_group_level",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "default_storage_group_level"))),
-        startUp);
-    conf.setDefaultDatabaseLevel(
-        Integer.parseInt(
             Optional.ofNullable(properties.getProperty("default_database_level"))
                 .orElse(
                     properties.getProperty(
