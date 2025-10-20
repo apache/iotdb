@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.buffer;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
@@ -44,6 +40,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -93,34 +93,38 @@ public class TimeSeriesMetadataCacheTest {
       for (int c = 0; c < concurrency; c++) {
         final int finalC = c;
         QueryContext finalQueryContext = queryContext;
-        futures.add(executor.submit(() -> {
-          for (int k = 0; k < 10; k++) {
-            for (int i = devicePerThread * finalC; i < devicePerThread * (finalC + 1); i++) {
-              for (int j = 0;
-                  j < seriesPerDevice + (int) (seriesPerDevice * nonExistSeriesRatio);
-                  j++) {
-                TimeSeriesMetadataCacheKey key =
-                    new TimeSeriesMetadataCacheKey(tsFileID, deviceIDList.get(i), "s" + j);
-                TimeseriesMetadata timeseriesMetadata =
-                    TimeSeriesMetadataCache.getInstance()
-                        .get(
-                            file.getPath(),
-                            key,
-                            Collections.singleton("s" + j),
-                            true,
-                            false,
-                            finalQueryContext);
-                if (j < seriesPerDevice) {
-                  assertNotNull(timeseriesMetadata);
-                  assertEquals("s" + j, timeseriesMetadata.getMeasurementId());
-                } else {
-                  assertNull(timeseriesMetadata);
-                }
-              }
-            }
-          }
-          return null;
-        }));
+        futures.add(
+            executor.submit(
+                () -> {
+                  for (int k = 0; k < 10; k++) {
+                    for (int i = devicePerThread * finalC;
+                        i < devicePerThread * (finalC + 1);
+                        i++) {
+                      for (int j = 0;
+                          j < seriesPerDevice + (int) (seriesPerDevice * nonExistSeriesRatio);
+                          j++) {
+                        TimeSeriesMetadataCacheKey key =
+                            new TimeSeriesMetadataCacheKey(tsFileID, deviceIDList.get(i), "s" + j);
+                        TimeseriesMetadata timeseriesMetadata =
+                            TimeSeriesMetadataCache.getInstance()
+                                .get(
+                                    file.getPath(),
+                                    key,
+                                    Collections.singleton("s" + j),
+                                    true,
+                                    false,
+                                    finalQueryContext);
+                        if (j < seriesPerDevice) {
+                          assertNotNull(timeseriesMetadata);
+                          assertEquals("s" + j, timeseriesMetadata.getMeasurementId());
+                        } else {
+                          assertNull(timeseriesMetadata);
+                        }
+                      }
+                    }
+                  }
+                  return null;
+                }));
       }
       for (Future<Void> future : futures) {
         future.get();
@@ -135,32 +139,36 @@ public class TimeSeriesMetadataCacheTest {
       for (int c = 0; c < concurrency; c++) {
         final int finalC = c;
         QueryContext finalQueryContext = queryContext;
-        futures.add(executor.submit(() -> {
-          for (int i = devicePerThread * finalC; i < devicePerThread * (finalC + 1); i++) {
-            for (int j = 0; j < seriesPerDevice + (int) (seriesPerDevice * nonExistSeriesRatio); j++) {
-              TimeSeriesMetadataCacheKey key =
-                  new TimeSeriesMetadataCacheKey(tsFileID, deviceIDList.get(i), "s" + j);
-              for (int k = 0; k < 10; k++) {
-                TimeseriesMetadata timeseriesMetadata =
-                    TimeSeriesMetadataCache.getInstance()
-                        .get(
-                            file.getPath(),
-                            key,
-                            Collections.singleton("s" + j),
-                            true,
-                            false,
-                            finalQueryContext);
-                if (j < seriesPerDevice) {
-                  assertNotNull(timeseriesMetadata);
-                  assertEquals("s" + j, timeseriesMetadata.getMeasurementId());
-                } else {
-                  assertNull(timeseriesMetadata);
-                }
-              }
-            }
-          }
-          return null;
-        }));
+        futures.add(
+            executor.submit(
+                () -> {
+                  for (int i = devicePerThread * finalC; i < devicePerThread * (finalC + 1); i++) {
+                    for (int j = 0;
+                        j < seriesPerDevice + (int) (seriesPerDevice * nonExistSeriesRatio);
+                        j++) {
+                      TimeSeriesMetadataCacheKey key =
+                          new TimeSeriesMetadataCacheKey(tsFileID, deviceIDList.get(i), "s" + j);
+                      for (int k = 0; k < 10; k++) {
+                        TimeseriesMetadata timeseriesMetadata =
+                            TimeSeriesMetadataCache.getInstance()
+                                .get(
+                                    file.getPath(),
+                                    key,
+                                    Collections.singleton("s" + j),
+                                    true,
+                                    false,
+                                    finalQueryContext);
+                        if (j < seriesPerDevice) {
+                          assertNotNull(timeseriesMetadata);
+                          assertEquals("s" + j, timeseriesMetadata.getMeasurementId());
+                        } else {
+                          assertNull(timeseriesMetadata);
+                        }
+                      }
+                    }
+                  }
+                  return null;
+                }));
       }
       for (Future<Void> future : futures) {
         future.get();

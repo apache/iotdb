@@ -316,27 +316,29 @@ public class TimeSeriesMetadataCache {
         "Evicted non-existing/existing series count: {}/{}({}), total request: {}",
         evictedNonExistingEntryCount.get(),
         evictedExistingEntryCount.get(),
-        ((double) evictedNonExistingEntryCount.get()) / evictedExistingEntryCount.get(), lruCache.stats().requestCount());
-    lruCache = Caffeine.newBuilder()
-        .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
-        .weigher(
-            (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
-                (key, value) ->
-                    (int)
-                        (key.getRetainedSizeInBytes()
-                            + (value == NULL_EXISTS_CACHE_PLACE_HOLDER
-                            ? 0
-                            : value.getRetainedSizeInBytes())))
-        .recordStats()
-        .evictionListener(
-            (k, v, c) -> {
-              if (v == NULL_EXISTS_CACHE_PLACE_HOLDER) {
-                evictedNonExistingEntryCount.incrementAndGet();
-              } else {
-                evictedExistingEntryCount.incrementAndGet();
-              }
-            })
-        .build();
+        ((double) evictedNonExistingEntryCount.get()) / evictedExistingEntryCount.get(),
+        lruCache.stats().requestCount());
+    lruCache =
+        Caffeine.newBuilder()
+            .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
+            .weigher(
+                (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
+                    (key, value) ->
+                        (int)
+                            (key.getRetainedSizeInBytes()
+                                + (value == NULL_EXISTS_CACHE_PLACE_HOLDER
+                                    ? 0
+                                    : value.getRetainedSizeInBytes())))
+            .recordStats()
+            .evictionListener(
+                (k, v, c) -> {
+                  if (v == NULL_EXISTS_CACHE_PLACE_HOLDER) {
+                    evictedNonExistingEntryCount.incrementAndGet();
+                  } else {
+                    evictedExistingEntryCount.incrementAndGet();
+                  }
+                })
+            .build();
     evictedNonExistingEntryCount.set(0);
     evictedExistingEntryCount.set(0);
   }
