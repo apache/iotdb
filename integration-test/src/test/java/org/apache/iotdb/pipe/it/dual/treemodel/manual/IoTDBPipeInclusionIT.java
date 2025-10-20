@@ -103,6 +103,77 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
+  public void testPureSchemaInclusionWithMultiplePattern() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "schema");
+      extractorAttributes.put("path", "root.ln.wf01.wt01.status,root.ln.wf02.**");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4",
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf02.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf02.wt01.status ADD ATTRIBUTES attr4=v4",
+              "create timeseries root.ln.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf03.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf03.wt01.status ADD ATTRIBUTES attr4=v4"),
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries root.ln.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          new HashSet<String>() {
+            {
+              add(
+                  "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,");
+              add(
+                  "root.ln.wf02.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,");
+            }
+          });
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"),
+          null);
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+    }
+  }
+
+  @Test
   public void testAuthExclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
