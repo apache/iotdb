@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,6 +48,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -530,6 +533,24 @@ public abstract class AbstractOperatePipeProcedureV2
         copyAndFilterOutNonWorkingDataRegionPipeTasks(
                 pipeTaskInfo.get().getPipeMetaByPipeName(pipeName))
             .serialize());
+  }
+
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes4Realtime(
+      String pipeName, ConfigNodeProcedureEnv env) throws IOException {
+    final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    // Note that although the altered pipe has progress in it,
+    // if we alter it to realtime we should ignore the previous data
+    if (!pipeMeta.getStaticMeta().isSourceExternal()) {
+      pipeMeta
+          .getStaticMeta()
+          .getSourceParameters()
+          .addOrReplaceEquivalentAttributes(
+              new PipeParameters(
+                  Collections.singletonMap(
+                      SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
+    }
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
   }
 
   /**

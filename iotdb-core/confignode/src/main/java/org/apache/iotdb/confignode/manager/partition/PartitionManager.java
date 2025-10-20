@@ -1003,14 +1003,10 @@ public class PartitionManager {
   }
 
   public Optional<TConsensusGroupId> generateTConsensusGroupIdByRegionId(final int regionId) {
-    if (configManager
-        .getPartitionManager()
-        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
+    if (isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
       return Optional.of(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId));
     }
-    if (configManager
-        .getPartitionManager()
-        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
+    if (isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
       return Optional.of(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
     }
     String msg =
