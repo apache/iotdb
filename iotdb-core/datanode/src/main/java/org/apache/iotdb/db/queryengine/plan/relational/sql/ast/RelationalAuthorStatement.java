@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -423,6 +424,11 @@ public class RelationalAuthorStatement extends Statement {
           return AuthorityChecker.getTSStatus(
               false, "Cannot grant or revoke any privileges to information_schema");
         }
+        if (Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false,
+              "Cannot grant or revoke any privileges to " + Audit.TABLE_MODEL_AUDIT_DATABASE);
+        }
         break;
       case GRANT_USER_TB:
       case GRANT_ROLE_TB:
@@ -435,6 +441,11 @@ public class RelationalAuthorStatement extends Statement {
         if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
           return AuthorityChecker.getTSStatus(
               false, "Cannot grant or revoke any privileges to information_schema");
+        }
+        if (Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false,
+              "Cannot grant or revoke any privileges to " + Audit.TABLE_MODEL_AUDIT_DATABASE);
         }
         break;
       default:
