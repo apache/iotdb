@@ -2281,13 +2281,12 @@ public class IoTDBConfig {
     if (defaultDatabaseLevel < 1) {
       if (startUp) {
         logger.warn(
-            "Illegal defaultStorageGroupLevel: {}, should >= 1, use default value 1",
+            "Illegal defaultDatabaseLevel: {}, should >= 1, use default value 1",
             defaultDatabaseLevel);
         defaultDatabaseLevel = 1;
       } else {
         throw new IllegalArgumentException(
-            String.format(
-                "Illegal defaultStorageGroupLevel: %d, should >= 1", defaultDatabaseLevel));
+            String.format("Illegal defaultDatabaseLevel: %d, should >= 1", defaultDatabaseLevel));
       }
     }
     this.defaultDatabaseLevel = defaultDatabaseLevel;
