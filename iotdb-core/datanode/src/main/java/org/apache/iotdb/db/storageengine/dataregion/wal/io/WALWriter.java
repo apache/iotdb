@@ -65,7 +65,7 @@ public class WALWriter extends LogWriter {
   private void endFile() throws IOException {
     if (logFile.length() == WALFileVersion.V2.getVersionBytes().length) {
       super.close();
-      logFile.delete();
+      // logFile.delete();
       return;
     }
     WALSignalEntry endMarker = new WALSignalEntry(WALEntryType.WAL_FILE_INFO_END_MARKER);
