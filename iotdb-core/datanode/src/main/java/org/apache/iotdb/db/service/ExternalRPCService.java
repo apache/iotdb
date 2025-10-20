@@ -79,7 +79,6 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
                   config.isRpcThriftCompressionEnable(),
                   commonConfig.getKeyStorePath(),
                   commonConfig.getKeyStorePwd(),
-                  config.getConnectionTimeoutInMS(),
                   ZeroCopyRpcTransportFactory.INSTANCE)
               : new ThriftServiceThread(
                   processor,
