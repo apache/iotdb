@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -42,8 +43,15 @@ import java.util.Map;
 
 public class PipeStatementPatternParseVisitorTest {
 
-  private final IoTDBPipePattern prefixPathPattern = new IoTDBPipePattern("root.db.device.**");
-  private final IoTDBPipePattern fullPathPattern = new IoTDBPipePattern("root.db.device.s1");
+  private final UnionIoTDBPipePattern prefixPathPattern =
+      new UnionIoTDBPipePattern(new IoTDBPipePattern("root.db.device.**"));
+  private final UnionIoTDBPipePattern fullPathPattern =
+      new UnionIoTDBPipePattern(new IoTDBPipePattern("root.db.device.s1"));
+  private final UnionIoTDBPipePattern multiplePathPattern =
+      new UnionIoTDBPipePattern(
+          Arrays.asList(
+              new IoTDBPipePattern("root.db.device.s1"),
+              new IoTDBPipePattern("root.db.device.s2")));
 
   @Test
   public void testCreateTimeSeries() throws IllegalPathException {
@@ -76,6 +84,15 @@ public class PipeStatementPatternParseVisitorTest {
     Assert.assertFalse(
         new PipeStatementPatternParseVisitor()
             .visitCreateTimeseries(createTimeSeriesStatementToFilter, prefixPathPattern)
+            .isPresent());
+    Assert.assertEquals(
+        createTimeSeriesStatement,
+        new PipeStatementPatternParseVisitor()
+            .visitCreateTimeseries(createTimeSeriesStatement, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementPatternParseVisitor()
+            .visitCreateTimeseries(createTimeSeriesStatementToFilter, multiplePathPattern)
             .isPresent());
   }
 
@@ -118,6 +135,13 @@ public class PipeStatementPatternParseVisitorTest {
         new PipeStatementPatternParseVisitor()
             .visitCreateAlignedTimeseries(originalCreateAlignedTimeSeriesStatement, fullPathPattern)
             .orElseThrow(AssertionError::new));
+
+    Assert.assertEquals(
+        originalCreateAlignedTimeSeriesStatement,
+        new PipeStatementPatternParseVisitor()
+            .visitCreateAlignedTimeseries(
+                originalCreateAlignedTimeSeriesStatement, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
   }
 
   @Test
@@ -149,6 +173,15 @@ public class PipeStatementPatternParseVisitorTest {
         new PipeStatementPatternParseVisitor()
             .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, prefixPathPattern)
             .isPresent());
+    Assert.assertEquals(
+        alterTimeSeriesStatement,
+        new PipeStatementPatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatement, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementPatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, multiplePathPattern)
+            .isPresent());
   }
 
   @Test
@@ -166,6 +199,15 @@ public class PipeStatementPatternParseVisitorTest {
     Assert.assertFalse(
         new PipeStatementPatternParseVisitor()
             .visitActivateTemplate(activateTemplateStatementToFilter, prefixPathPattern)
+            .isPresent());
+    Assert.assertEquals(
+        activateTemplateStatement,
+        new PipeStatementPatternParseVisitor()
+            .visitActivateTemplate(activateTemplateStatement, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementPatternParseVisitor()
+            .visitActivateTemplate(activateTemplateStatementToFilter, multiplePathPattern)
             .isPresent());
   }
 

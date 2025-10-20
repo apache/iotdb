@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -528,12 +530,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     final Set<ConfigPhysicalPlanType> executionTypes =
         PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBPipePattern pattern =
-        new IoTDBPipePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final List<PipePattern> pipePatterns =
+        PipePattern.parseMultiplePatterns(
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN), IoTDBPipePattern::new);
+    final PipePattern pipePattern = PipePattern.buildUnionPattern(pipePatterns);
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
       IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
-          .process(generator.next(), pattern)
+          .process(generator.next(), (UnionIoTDBPipePattern) pipePattern)
           .filter(configPhysicalPlan -> executionTypes.contains(configPhysicalPlan.getType()))
           .ifPresent(
               configPhysicalPlan ->

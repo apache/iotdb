@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
@@ -86,8 +86,8 @@ public class TsFileInsertionDataContainerProvider {
           pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
-    if (pattern instanceof IoTDBPipePattern
-        && !((IoTDBPipePattern) pattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+    if (pattern instanceof UnionIoTDBPipePattern
+        && !((UnionIoTDBPipePattern) pattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // If the pattern matches only one time series in one device, use query container here
       // because there is no timestamps merge overhead.
       //

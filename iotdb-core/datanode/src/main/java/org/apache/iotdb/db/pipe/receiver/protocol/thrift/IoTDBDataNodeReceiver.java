@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -501,8 +503,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBPipePattern pattern =
-        new IoTDBPipePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final List<PipePattern> pipePatterns =
+        PipePattern.parseMultiplePatterns(
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN), IoTDBPipePattern::new);
+    final PipePattern pipePattern = PipePattern.buildUnionPattern(pipePatterns);
 
     // Clear to avoid previous exceptions
     batchVisitor.clear();
@@ -517,7 +521,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       // Here we apply the statements as many as possible
       // Even if there are failed statements
       STATEMENT_PATTERN_PARSE_VISITOR
-          .process(originalStatement, pattern)
+          .process(originalStatement, (UnionIoTDBPipePattern) pipePattern)
           .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
           .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
     }
