@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -185,7 +186,13 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
                     && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                     && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
-                    && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")) {
+                    && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")
+                    && !(PipeTaskAgent.isHistoryOnlyPipe(
+                            currentPipeStaticMeta.getSourceParameters())
+                        && PipeTaskAgent.isHistoryOnlyPipe(
+                            updatedPipeStaticMeta.getSourceParameters())
+                        && regionGroupId.getType() == TConsensusGroupType.DataRegion
+                        && currentPipeTaskMeta.isNewlyAdded())) {
                   // Pipe only collect user's data, filter metric database here.
                   // If it is altered to "pure historical", then the regionIds are always new here,
                   // then it will extract all existing data now, not existing data since the
