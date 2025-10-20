@@ -220,7 +220,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
 
-  TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode);
+  TSStatus alterLogicalViewByPipe(
+      AlterLogicalViewNode alterLogicalViewNode, boolean shouldMarkAsPipeRequest);
 
   SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
 
