@@ -582,7 +582,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(validateTsFile.get());
-    statement.setAutoCreateDatabase(true);
+    statement.setAutoCreateDatabase(
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
 
     return executeStatementAndClassifyExceptions(statement);
