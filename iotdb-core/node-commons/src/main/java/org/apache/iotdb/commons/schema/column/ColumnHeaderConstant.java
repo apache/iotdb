@@ -35,7 +35,7 @@ public class ColumnHeaderConstant {
   public static final String ENDTIME = "__endTime";
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
-  public static final String DEVICE_ID = "DeviceID";
+  public static final String DEVICE_ID = "DeviceId";
   public static final String EXPLAIN_ANALYZE = "Explain Analyze";
 
   // column names for schema statement
@@ -635,7 +635,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showLoadedModelsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DEVICE_ID, TSDataType.TEXT),
-          new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
+          new ColumnHeader(MODEL_ID, TSDataType.TEXT),
           new ColumnHeader(COUNT_INSTANCES, TSDataType.INT32));
 
   public static final List<ColumnHeader> showAIDevicesColumnHeaders =

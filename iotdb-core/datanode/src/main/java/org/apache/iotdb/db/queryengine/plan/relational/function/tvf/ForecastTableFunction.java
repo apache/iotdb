@@ -207,6 +207,7 @@ public class ForecastTableFunction implements TableFunction {
   private static final String IS_INPUT_COLUMN_NAME = "is_input";
   private static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
   private static final String DEFAULT_OPTIONS = "";
+  private static final int MAX_INPUT_LENGTH = 1440;
 
   private static final String INVALID_OPTIONS_FORMAT = "Invalid options: %s";
 
@@ -284,16 +285,7 @@ public class ForecastTableFunction implements TableFunction {
           String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
     }
 
-    // make sure modelId exists
-    ModelInferenceDescriptor descriptor = getModelInfo(modelId);
-    if (descriptor == null || !descriptor.getModelInformation().available()) {
-      throw new IoTDBRuntimeException(
-          String.format("model [%s] is not available", modelId),
-          TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
-    }
-
-    int maxInputLength = descriptor.getModelInformation().getInputShape()[0];
-    TEndPoint targetAINode = descriptor.getTargetAINode();
+    TEndPoint targetAINode = getModelInfo(modelId).getTargetAINode();
 
     int outputLength =
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
@@ -393,7 +385,7 @@ public class ForecastTableFunction implements TableFunction {
     ForecastTableFunctionHandle functionHandle =
         new ForecastTableFunctionHandle(
             keepInput,
-            maxInputLength,
+            MAX_INPUT_LENGTH,
             modelId,
             parseOptions(options),
             outputLength,

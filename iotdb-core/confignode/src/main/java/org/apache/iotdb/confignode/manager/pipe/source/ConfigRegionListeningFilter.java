@@ -23,8 +23,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -245,6 +248,23 @@ public class ConfigRegionListeningFilter {
     // Do not transfer roll back set template plan
     if (type.equals(ConfigPhysicalPlanType.CommitSetSchemaTemplate)
         && ((CommitSetSchemaTemplatePlan) plan).isRollback()) {
+      return false;
+    }
+
+    // system / audit DB
+    if (type.equals(ConfigPhysicalPlanType.DeleteDatabase)
+            && (((DeleteDatabasePlan) plan).getName().equals(SchemaConstant.AUDIT_DATABASE)
+                || ((DeleteDatabasePlan) plan).getName().equals(SchemaConstant.SYSTEM_DATABASE))
+        || (type.equals(ConfigPhysicalPlanType.CreateDatabase)
+                || type.equals(ConfigPhysicalPlanType.AlterDatabase))
+            && (((DatabaseSchemaPlan) plan)
+                    .getSchema()
+                    .getName()
+                    .equals(SchemaConstant.SYSTEM_DATABASE)
+                || ((DatabaseSchemaPlan) plan)
+                    .getSchema()
+                    .getName()
+                    .equals(SchemaConstant.AUDIT_DATABASE))) {
       return false;
     }
 
