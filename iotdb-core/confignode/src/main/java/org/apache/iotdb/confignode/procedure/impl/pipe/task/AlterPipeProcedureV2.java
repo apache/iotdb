@@ -187,12 +187,25 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
                     && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")) {
                   // Pipe only collect user's data, filter metric database here.
-                  // The region ids are always new here, and if it is altered to "historical" it
-                  // will extract all existing data now, not existing data since the original pipe
-                  // was created
+                  // If it is altered to "pure historical", then the regionIds are always new here,
+                  // then it will extract all existing data now, not existing data since the
+                  // original pipe was created
+                  // Similar for "pure realtime"
                   updatedConsensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
-                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
+                      new PipeTaskMeta(
+                          currentPipeTaskMeta.getProgressIndex(),
+                          PipeTaskMeta.isNewlyAdded(currentPipeTaskMeta.getLeaderNodeId())
+                                  && !(!PipeTaskAgent.isHistoryOnlyPipe(
+                                          currentPipeStaticMeta.getSourceParameters())
+                                      && PipeTaskAgent.isHistoryOnlyPipe(
+                                          updatedPipeStaticMeta.getSourceParameters()))
+                                  && !(!PipeTaskAgent.isRealtimeOnlyPipe(
+                                          currentPipeStaticMeta.getSourceParameters())
+                                      && PipeTaskAgent.isRealtimeOnlyPipe(
+                                          updatedPipeStaticMeta.getSourceParameters()))
+                              ? PipeTaskMeta.getRevertedLeader(regionLeaderNodeId)
+                              : regionLeaderNodeId));
                 }
               });
 
