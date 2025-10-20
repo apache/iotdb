@@ -2616,7 +2616,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode) {
+  public TSStatus alterLogicalViewByPipe(
+      final AlterLogicalViewNode alterLogicalViewNode, final boolean shouldMarkAsPipeRequest) {
     final Map<PartialPath, ViewExpression> viewPathToSourceMap =
         alterLogicalViewNode.getViewPathToSourceMap();
 
@@ -2635,7 +2636,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TAlterLogicalViewReq(
                 Coordinator.getInstance().createQueryId().getId(),
                 ByteBuffer.wrap(stream.toByteArray()))
-            .setIsGeneratedByPipe(true);
+            .setIsGeneratedByPipe(shouldMarkAsPipeRequest);
     TSStatus tsStatus;
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

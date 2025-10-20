@@ -434,7 +434,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case DeleteTriggerInTable:
         return configManager.dropTrigger(
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(shouldMarkAsPipeRequest.get()));
       case SetTTL:
         return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
             ? configManager
