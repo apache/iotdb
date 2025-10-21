@@ -101,7 +101,9 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.LongType;
@@ -111,6 +113,7 @@ import org.apache.tsfile.utils.Pair;
 import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -1779,7 +1782,36 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitUnion(UnionNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
-    return visitMultiChildProcess(node, context);
+    List<List<PlanNode>> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(toImmutableList());
+
+    List<PlanNode> newUnionChildren =
+        children.stream().flatMap(Collection::stream).collect(toImmutableList());
+
+    // after rewrite, we need to reconstruct SymbolMapping
+    ListMultimap<Symbol, Symbol> oldSymbolMapping = node.getSymbolMapping();
+    ImmutableListMultimap.Builder<Symbol, Symbol> newSymbolMapping =
+        ImmutableListMultimap.builder();
+    for (Symbol symbol : oldSymbolMapping.keySet()) {
+      List<Symbol> oldSymbols = oldSymbolMapping.get(symbol);
+      for (int i = 0; i < oldSymbols.size(); i++) {
+        Symbol target = oldSymbols.get(i);
+        int duplicateSize = children.get(i).size();
+        // add the same Symbol for all children spilt from one original node
+        while (duplicateSize > 0) {
+          newSymbolMapping.put(symbol, target);
+          duplicateSize--;
+        }
+      }
+    }
+    return Collections.singletonList(
+        new UnionNode(
+            node.getPlanNodeId(),
+            newUnionChildren,
+            newSymbolMapping.build(),
+            node.getOutputSymbols()));
   }
 
   public static class PlanContext {

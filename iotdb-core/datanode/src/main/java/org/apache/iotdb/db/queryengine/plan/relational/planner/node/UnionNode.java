@@ -69,6 +69,16 @@ public class UnionNode extends SetOperationNode {
     PlanNodeType.TABLE_UNION_NODE.serialize(byteBuffer);
     ReadWriteIOUtils.write(getOutputSymbols().size(), byteBuffer);
     getOutputSymbols().forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
+
+    ListMultimap<Symbol, Symbol> multimap = getSymbolMapping();
+    ReadWriteIOUtils.write(multimap.size(), byteBuffer);
+    for (Symbol key : multimap.keySet()) {
+      Symbol.serialize(key, byteBuffer);
+      ReadWriteIOUtils.write(multimap.get(key).size(), byteBuffer);
+      for (Symbol value : multimap.get(key)) {
+        Symbol.serialize(value, byteBuffer);
+      }
+    }
   }
 
   @Override
@@ -78,6 +88,16 @@ public class UnionNode extends SetOperationNode {
     for (Symbol symbol : getOutputSymbols()) {
       Symbol.serialize(symbol, stream);
     }
+
+    ListMultimap<Symbol, Symbol> multimap = getSymbolMapping();
+    ReadWriteIOUtils.write(multimap.keySet().size(), stream);
+    for (Symbol key : multimap.keySet()) {
+      Symbol.serialize(key, stream);
+      ReadWriteIOUtils.write(multimap.get(key).size(), stream);
+      for (Symbol value : multimap.get(key)) {
+        Symbol.serialize(value, stream);
+      }
+    }
   }
 
   public static UnionNode deserialize(ByteBuffer byteBuffer) {
@@ -86,8 +106,17 @@ public class UnionNode extends SetOperationNode {
     while (size-- > 0) {
       outputs.add(Symbol.deserialize(byteBuffer));
     }
+    ImmutableListMultimap.Builder<Symbol, Symbol> builder = ImmutableListMultimap.builder();
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    while (size-- > 0) {
+      Symbol key = Symbol.deserialize(byteBuffer);
+      int valueSize = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < valueSize; i++) {
+        builder.put(key, Symbol.deserialize(byteBuffer));
+      }
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new UnionNode(planNodeId, ImmutableListMultimap.of(), outputs);
+    return new UnionNode(planNodeId, builder.build(), outputs);
   }
 
   @Override
