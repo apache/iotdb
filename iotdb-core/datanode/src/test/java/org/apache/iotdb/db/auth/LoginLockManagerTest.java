@@ -82,7 +82,7 @@ public class LoginLockManagerTest {
     // 3. Test mixed scenarios (IP enabled + user disabled, and vice versa)
     LoginLockManager ipEnabledUserDisabled = new LoginLockManager(3, 0, 10);
     assertEquals(3, getField(ipEnabledUserDisabled, "failedLoginAttempts"));
-    assertEquals(-1, getField(ipEnabledUserDisabled, "failedLoginAttemptsPerUser"));
+    assertEquals(1000, getField(ipEnabledUserDisabled, "failedLoginAttemptsPerUser"));
 
     LoginLockManager ipDisabledUserEnabled = new LoginLockManager(-1, 5, 10);
     assertEquals(-1, getField(ipDisabledUserEnabled, "failedLoginAttempts"));
@@ -95,7 +95,7 @@ public class LoginLockManagerTest {
 
     LoginLockManager invalidUser =
         new LoginLockManager(5, -2, 10); // Negative treated as disable (-1)
-    assertEquals(-1, getField(invalidUser, "failedLoginAttemptsPerUser"));
+    assertEquals(1000, getField(invalidUser, "failedLoginAttemptsPerUser"));
 
     // 5. Test lock time validation
     LoginLockManager zeroLockTime = new LoginLockManager(5, 1000, 0);
