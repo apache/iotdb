@@ -56,9 +56,6 @@ public class CteDataStore {
     int rows = tsBlock.getPositionCount();
     if (bytesSize + cachedBytes >= iotConfig.getCteBufferSize()
         || rows + cachedRows >= iotConfig.getMaxRowsInCteBuffer()) {
-      cachedData.clear();
-      cachedBytes = 0;
-      cachedRows = 0;
       return false;
     }
     cachedData.add(tsBlock);
@@ -70,6 +67,7 @@ public class CteDataStore {
   public void clear() {
     cachedData.clear();
     cachedBytes = 0L;
+    cachedRows = 0;
   }
 
   public List<TsBlock> getCachedData() {
