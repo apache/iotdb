@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,6 +52,11 @@ public class CheckpointReader {
         Checkpoint checkpoint = Checkpoint.deserialize(logStream);
         checkpoints.add(checkpoint);
       }
+    } catch (EOFException e) {
+      logger.debug(
+          "Meet error when reading checkpoint file {}, skip broken checkpoints",
+          logFile,
+          e.getMessage());
     } catch (IOException e) {
       logger.warn(
           "Meet error when reading checkpoint file {}, skip broken checkpoints", logFile, e);
