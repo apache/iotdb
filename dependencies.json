@@ -93,6 +93,8 @@
         "org.apache.commons:commons-lang3",
         "org.apache.commons:commons-math3",
         "org.apache.commons:commons-pool2",
+        "org.apache.httpcomponents:httpclient",
+        "org.apache.httpcomponents:httpcore",
         "com.timecho.ratis:ratis-client",
         "com.timecho.ratis:ratis-common",
         "com.timecho.ratis:ratis-grpc",
