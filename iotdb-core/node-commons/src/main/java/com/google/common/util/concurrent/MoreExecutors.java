@@ -14,16 +14,12 @@
 
 package com.google.common.util.concurrent;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.util.concurrent.Internal.toNanosSaturated;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import com.google.common.util.concurrent.ForwardingListenableFuture.SimpleForwardingListenableFuture;
+
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.util.Collection;
@@ -46,6 +42,11 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.util.concurrent.Internal.toNanosSaturated;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Factory and utility methods for {@link java.util.concurrent.Executor}, {@link ExecutorService},
@@ -613,8 +614,7 @@ public final class MoreExecutors {
 
     @Override
     public ListenableScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
-      TrustedListenableFutureTask<Void> task =
-          TrustedListenableFutureTask.create(command, null);
+      TrustedListenableFutureTask<Void> task = TrustedListenableFutureTask.create(command, null);
       ScheduledFuture<?> scheduled = delegate.schedule(task, delay, unit);
       return new ListenableScheduledTask<Void>(task, scheduled);
     }

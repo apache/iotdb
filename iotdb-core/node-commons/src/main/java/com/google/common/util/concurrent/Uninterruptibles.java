@@ -14,11 +14,8 @@
 
 package com.google.common.util.concurrent;
 
-import static com.google.common.base.Verify.verify;
-import static com.google.common.util.concurrent.Internal.toNanosSaturated;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
-
 import com.google.common.base.Preconditions;
+
 import java.time.Duration;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
@@ -31,6 +28,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
+
+import static com.google.common.base.Verify.verify;
+import static com.google.common.util.concurrent.Internal.toNanosSaturated;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
  * Utilities for treating interruptible operations as uninterruptible. In all cases, if a thread is
@@ -250,8 +251,8 @@ public final class Uninterruptibles {
    * @throws TimeoutException if the wait timed out
    * @since 28.0
    */
-  public static <V extends Object> V getUninterruptibly(
-      Future<V> future, Duration timeout) throws ExecutionException, TimeoutException {
+  public static <V extends Object> V getUninterruptibly(Future<V> future, Duration timeout)
+      throws ExecutionException, TimeoutException {
     return getUninterruptibly(future, toNanosSaturated(timeout), TimeUnit.NANOSECONDS);
   }
 

@@ -14,12 +14,13 @@
 
 package com.google.common.base;
 
+import javax.annotation.CheckForNull;
+
+import java.util.logging.Logger;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.logging.Level.WARNING;
-
-import java.util.logging.Logger;
-import javax.annotation.CheckForNull;
 
 /**
  * Static utility methods pertaining to {@code String} or {@code CharSequence} instances.
@@ -255,8 +256,7 @@ public final class Strings {
    * @since 25.1
    */
   // TODO(diamondm) consider using Arrays.toString() for array parameters
-  public static String lenientFormat(
-      @CheckForNull String template, @CheckForNull Object... args) {
+  public static String lenientFormat(@CheckForNull String template, @CheckForNull Object... args) {
     template = String.valueOf(template); // null -> "null"
 
     if (args == null) {

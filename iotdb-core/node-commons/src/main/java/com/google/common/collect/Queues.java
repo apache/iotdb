@@ -15,6 +15,7 @@
 package com.google.common.collect;
 
 import com.google.common.base.Preconditions;
+
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;

@@ -14,12 +14,12 @@
 
 package com.google.common.base;
 
+import java.util.Arrays;
+import java.util.BitSet;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkPositionIndex;
-
-import java.util.Arrays;
-import java.util.BitSet;
 
 /**
  * Determines a true or false value for any Java {@code char} value, just as {@link Predicate} does

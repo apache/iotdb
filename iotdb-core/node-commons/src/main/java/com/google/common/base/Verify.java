@@ -14,9 +14,9 @@
 
 package com.google.common.base;
 
-import static com.google.common.base.Strings.lenientFormat;
-
 import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Strings.lenientFormat;
 
 /**
  * Static convenience methods that serve the same purpose as Java language <a
@@ -114,9 +114,7 @@ public final class Verify {
    * @see Preconditions#checkState Preconditions.checkState()
    */
   public static void verify(
-      boolean expression,
-      String errorMessageTemplate,
-      @CheckForNull Object... errorMessageArgs) {
+      boolean expression, String errorMessageTemplate, @CheckForNull Object... errorMessageArgs) {
     if (!expression) {
       throw new VerifyException(lenientFormat(errorMessageTemplate, errorMessageArgs));
     }

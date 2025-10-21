@@ -14,9 +14,9 @@
 
 package com.google.common.base;
 
-import static com.google.common.base.Strings.lenientFormat;
-
 import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Strings.lenientFormat;
 
 /**
  * Static convenience methods that help a method or constructor check whether it was invoked
@@ -153,9 +153,7 @@ public final class Preconditions {
    * @throws IllegalArgumentException if {@code expression} is false
    */
   public static void checkArgument(
-      boolean expression,
-      String errorMessageTemplate,
-      @CheckForNull Object... errorMessageArgs) {
+      boolean expression, String errorMessageTemplate, @CheckForNull Object... errorMessageArgs) {
     if (!expression) {
       throw new IllegalArgumentException(lenientFormat(errorMessageTemplate, errorMessageArgs));
     }

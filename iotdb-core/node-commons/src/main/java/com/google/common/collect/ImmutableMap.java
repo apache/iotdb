@@ -16,11 +16,9 @@
 
 package com.google.common.collect;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.CollectPreconditions.checkEntryNotNull;
-import static com.google.common.collect.CollectPreconditions.checkNonnegative;
-import static java.util.Objects.requireNonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import javax.annotation.CheckForNull;
 
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
@@ -43,8 +41,12 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import javax.annotation.CheckForNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.CollectPreconditions.checkEntryNotNull;
+import static com.google.common.collect.CollectPreconditions.checkNonnegative;
+import static java.util.Objects.requireNonNull;
 
 /**
  * A {@link Map} whose contents will never change, with many other important properties detailed at

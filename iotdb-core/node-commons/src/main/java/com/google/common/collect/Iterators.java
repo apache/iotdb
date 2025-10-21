@@ -16,14 +16,6 @@
 
 package com.google.common.collect;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Predicates.instanceOf;
-import static com.google.common.collect.CollectPreconditions.checkRemove;
-import static com.google.common.collect.NullnessCasts.uncheckedCastNullableTToT;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
@@ -31,6 +23,11 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.primitives.Ints;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import javax.annotation.CheckForNull;
+
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
@@ -44,9 +41,14 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.PriorityQueue;
 import java.util.Queue;
-import javax.annotation.CheckForNull;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Predicates.instanceOf;
+import static com.google.common.collect.CollectPreconditions.checkRemove;
+import static com.google.common.collect.NullnessCasts.uncheckedCastNullableTToT;
+import static java.util.Objects.requireNonNull;
 
 /**
  * This class contains static utility methods that operate on or return objects of type {@link
@@ -630,8 +632,7 @@ public final class Iterators {
           throw new NoSuchElementException();
         }
         @SuppressWarnings("unchecked") // we only put Ts in it
-        @Nullable
-        T[] array = (@Nullable T[]) new Object[size];
+        @Nullable T[] array = (@Nullable T[]) new Object[size];
         int count = 0;
         for (; count < size && iterator.hasNext(); count++) {
           array[count] = iterator.next();

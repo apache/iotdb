@@ -14,11 +14,12 @@
 
 package com.google.common.util.concurrent;
 
+import com.google.common.math.LongMath;
+
+import java.util.concurrent.TimeUnit;
+
 import static java.lang.Math.min;
 import static java.util.concurrent.TimeUnit.SECONDS;
-
-import com.google.common.math.LongMath;
-import java.util.concurrent.TimeUnit;
 
 abstract class SmoothRateLimiter extends RateLimiter {
   /*
@@ -201,6 +202,7 @@ abstract class SmoothRateLimiter extends RateLimiter {
    */
   static final class SmoothWarmingUp extends SmoothRateLimiter {
     private final long warmupPeriodMicros;
+
     /**
      * The slope of the line from the stable interval (when permits == 0), to the cold interval
      * (when permits == maxPermits)

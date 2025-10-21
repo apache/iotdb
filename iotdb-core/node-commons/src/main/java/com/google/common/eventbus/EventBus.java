@@ -14,10 +14,9 @@
 
 package com.google.common.eventbus;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.base.MoreObjects;
 import com.google.common.util.concurrent.MoreExecutors;
+
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Locale;
@@ -25,9 +24,10 @@ import java.util.concurrent.Executor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 /**
  * Dispatches events to listeners, and provides ways for listeners to register themselves.
-
  *
  * <h2>Avoid EventBus</h2>
  *
@@ -82,8 +82,6 @@ import java.util.logging.Logger;
  *   <li>With the introduction of lambdas in Java 8, EventBus went from less verbose than listeners
  *       to <a href="https://github.com/google/guava/issues/3311">more verbose</a>.
  * </ul>
- *
-
  *
  * <h2>EventBus Summary</h2>
  *

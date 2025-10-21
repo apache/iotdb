@@ -16,14 +16,7 @@
 
 package com.google.common.collect;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkElementIndex;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkPositionIndexes;
-import static com.google.common.collect.CollectPreconditions.checkNonnegative;
-import static com.google.common.collect.ObjectArrays.checkElementsNotNull;
-import static com.google.common.collect.RegularImmutableList.EMPTY;
-import static java.util.Objects.requireNonNull;
+import javax.annotation.CheckForNull;
 
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
@@ -39,7 +32,15 @@ import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
-import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkElementIndex;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkPositionIndexes;
+import static com.google.common.collect.CollectPreconditions.checkNonnegative;
+import static com.google.common.collect.ObjectArrays.checkElementsNotNull;
+import static com.google.common.collect.RegularImmutableList.EMPTY;
+import static java.util.Objects.requireNonNull;
 
 /**
  * A {@link List} whose contents will never change, with many other important properties detailed at

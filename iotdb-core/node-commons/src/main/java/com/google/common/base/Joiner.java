@@ -14,8 +14,7 @@
 
 package com.google.common.base;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static java.util.Objects.requireNonNull;
+import javax.annotation.CheckForNull;
 
 import java.io.IOException;
 import java.util.AbstractList;
@@ -23,7 +22,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 /**
  * An object which joins pieces of text (specified as an array, {@link Iterable}, varargs or even a
@@ -119,17 +120,13 @@ public class Joiner {
    * Appends the string representation of each of {@code parts}, using the previously configured
    * separator between each, to {@code appendable}.
    */
-  public final <A extends Appendable> A appendTo(A appendable, Object[] parts)
-      throws IOException {
+  public final <A extends Appendable> A appendTo(A appendable, Object[] parts) throws IOException {
     return appendTo(appendable, Arrays.asList(parts));
   }
 
   /** Appends to {@code appendable} the string representation of each of the remaining arguments. */
   public final <A extends Appendable> A appendTo(
-      A appendable,
-      @CheckForNull Object first,
-      @CheckForNull Object second,
-      Object... rest)
+      A appendable, @CheckForNull Object first, @CheckForNull Object second, Object... rest)
       throws IOException {
     return appendTo(appendable, iterable(first, second, rest));
   }
@@ -139,8 +136,7 @@ public class Joiner {
    * separator between each, to {@code builder}. Identical to {@link #appendTo(Appendable,
    * Iterable)}, except that it does not throw {@link IOException}.
    */
-  public final StringBuilder appendTo(
-      StringBuilder builder, Iterable<? extends Object> parts) {
+  public final StringBuilder appendTo(StringBuilder builder, Iterable<? extends Object> parts) {
     return appendTo(builder, parts.iterator());
   }
 
@@ -151,8 +147,7 @@ public class Joiner {
    *
    * @since 11.0
    */
-  public final StringBuilder appendTo(
-      StringBuilder builder, Iterator<? extends Object> parts) {
+  public final StringBuilder appendTo(StringBuilder builder, Iterator<? extends Object> parts) {
     try {
       appendTo((Appendable) builder, parts);
     } catch (IOException impossible) {
@@ -249,8 +244,8 @@ public class Joiner {
   public Joiner skipNulls() {
     return new Joiner(this) {
       @Override
-      public <A extends Appendable> A appendTo(
-          A appendable, Iterator<? extends Object> parts) throws IOException {
+      public <A extends Appendable> A appendTo(A appendable, Iterator<? extends Object> parts)
+          throws IOException {
         checkNotNull(appendable, "appendable");
         checkNotNull(parts, "parts");
         while (parts.hasNext()) {

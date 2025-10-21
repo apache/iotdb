@@ -14,8 +14,6 @@
 
 package com.google.common.util.concurrent;
 
-import static com.google.common.util.concurrent.Internal.toNanosSaturated;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -26,6 +24,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import static com.google.common.util.concurrent.Internal.toNanosSaturated;
 
 /**
  * An {@link ExecutorService} that returns {@link ListenableFuture} instances. To create an instance
@@ -55,8 +55,7 @@ public interface ListeningExecutorService extends ExecutorService {
    * @throws RejectedExecutionException {@inheritDoc}
    */
   @Override
-  <T extends Object> ListenableFuture<T> submit(
-      Runnable task, @ParametricNullness T result);
+  <T extends Object> ListenableFuture<T> submit(Runnable task, @ParametricNullness T result);
 
   /**
    * {@inheritDoc}
@@ -119,8 +118,7 @@ public interface ListeningExecutorService extends ExecutorService {
    *
    * @since 32.1.0
    */
-  default <T extends Object> T invokeAny(
-      Collection<? extends Callable<T>> tasks, Duration timeout)
+  default <T extends Object> T invokeAny(Collection<? extends Callable<T>> tasks, Duration timeout)
       throws InterruptedException, ExecutionException, TimeoutException {
     return invokeAny(tasks, toNanosSaturated(timeout), TimeUnit.NANOSECONDS);
   }

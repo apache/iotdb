@@ -14,19 +14,20 @@
 
 package com.google.common.math;
 
+import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Ints;
+
+import java.math.RoundingMode;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Double.NEGATIVE_INFINITY;
 import static java.lang.Double.NaN;
 import static java.lang.Double.POSITIVE_INFINITY;
 import static java.util.Arrays.sort;
 import static java.util.Collections.unmodifiableMap;
-
-import com.google.common.primitives.Doubles;
-import com.google.common.primitives.Ints;
-import java.math.RoundingMode;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Provides a fluent API for calculating <a

@@ -14,6 +14,11 @@
 
 package com.google.common.math;
 
+import com.google.common.primitives.Ints;
+
+import java.math.BigInteger;
+import java.math.RoundingMode;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.math.MathPreconditions.checkNoOverflow;
@@ -24,10 +29,6 @@ import static java.lang.Math.abs;
 import static java.lang.Math.min;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.math.RoundingMode.HALF_UP;
-
-import com.google.common.primitives.Ints;
-import java.math.BigInteger;
-import java.math.RoundingMode;
 
 /**
  * A class for arithmetic on values of type {@code int}. Where possible, methods are defined and

@@ -16,13 +16,11 @@
 
 package com.google.common.collect;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.collect.CollectPreconditions.checkNonnegative;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.math.IntMath;
 import com.google.common.primitives.Ints;
+
+import javax.annotation.CheckForNull;
+
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
@@ -37,7 +35,11 @@ import java.util.SortedSet;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
-import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.CollectPreconditions.checkNonnegative;
+import static java.util.Objects.requireNonNull;
 
 /**
  * A {@link Set} whose contents will never change, with many other important properties detailed at
@@ -370,7 +372,7 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
     }
 
     @Override
-    int copyIntoArray(@Nullable Object[] dst, int offset) {
+    int copyIntoArray(Object[] dst, int offset) {
       return asList().copyIntoArray(dst, offset);
     }
 
@@ -813,8 +815,8 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
     }
 
     /** Builds a new open-addressed hash table from the first n objects in elements. */
-    static @Nullable Object[] rebuildHashTable(int newTableSize, Object[] elements, int n) {
-      @Nullable Object[] hashTable = new @Nullable Object[newTableSize];
+    static Object[] rebuildHashTable(int newTableSize, Object[] elements, int n) {
+      Object[] hashTable = new Object[newTableSize];
       int mask = hashTable.length - 1;
       for (int i = 0; i < n; i++) {
         // requireNonNull is safe because we ensure that the first n elements have been populated.
@@ -874,7 +876,7 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
      * <p>This method may return {@code true} even on truly random input, but {@code
      * ImmutableSetTest} tests that the probability of that is low.
      */
-    static boolean hashFloodingDetected(@Nullable Object[] hashTable) {
+    static boolean hashFloodingDetected(Object[] hashTable) {
       int maxRunBeforeFallback = maxRunBeforeFallback(hashTable.length);
       int mask = hashTable.length - 1;
 

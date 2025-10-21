@@ -18,7 +18,6 @@ package com.google.common.collect;
 
 import static com.google.common.base.Preconditions.checkState;
 
-
 /** Precondition checks useful in collection implementations. */
 final class CollectPreconditions {
 

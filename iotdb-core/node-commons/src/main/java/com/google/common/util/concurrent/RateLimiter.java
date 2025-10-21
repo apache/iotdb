@@ -14,20 +14,22 @@
 
 package com.google.common.util.concurrent;
 
+import com.google.common.base.Stopwatch;
+import com.google.common.util.concurrent.SmoothRateLimiter.SmoothBursty;
+import com.google.common.util.concurrent.SmoothRateLimiter.SmoothWarmingUp;
+
+import javax.annotation.CheckForNull;
+
+import java.time.Duration;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.util.concurrent.Internal.toNanosSaturated;
 import static java.lang.Math.max;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-
-import com.google.common.base.Stopwatch;
-import com.google.common.util.concurrent.SmoothRateLimiter.SmoothBursty;
-import com.google.common.util.concurrent.SmoothRateLimiter.SmoothWarmingUp;
-import java.time.Duration;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
-import javax.annotation.CheckForNull;
 
 /**
  * A rate limiter. Conceptually, a rate limiter distributes permits at a configurable rate. Each

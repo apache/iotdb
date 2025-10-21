@@ -15,6 +15,7 @@
 package com.google.common.util.concurrent;
 
 import com.google.common.base.Preconditions;
+
 import java.util.concurrent.Executor;
 
 /**
@@ -27,8 +28,8 @@ import java.util.concurrent.Executor;
  * @author Shardul Deo
  * @since 4.0
  */
-public abstract class ForwardingListenableFuture<V extends Object>
-    extends ForwardingFuture<V> implements ListenableFuture<V> {
+public abstract class ForwardingListenableFuture<V extends Object> extends ForwardingFuture<V>
+    implements ListenableFuture<V> {
 
   /** Constructor for use by subclasses. */
   protected ForwardingListenableFuture() {}

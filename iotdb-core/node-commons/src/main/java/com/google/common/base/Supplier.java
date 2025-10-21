@@ -14,7 +14,6 @@
 
 package com.google.common.base;
 
-
 /**
  * Legacy version of {@link java.util.function.Supplier java.util.function.Supplier}. Semantically,
  * this could be a factory, generator, builder, closure, or something else entirely. No guarantees

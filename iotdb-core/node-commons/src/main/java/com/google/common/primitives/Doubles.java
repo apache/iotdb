@@ -14,15 +14,10 @@
 
 package com.google.common.primitives;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkElementIndex;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkPositionIndexes;
-import static com.google.common.base.Strings.lenientFormat;
-import static java.lang.Double.NEGATIVE_INFINITY;
-import static java.lang.Double.POSITIVE_INFINITY;
-
 import com.google.common.base.Converter;
+
+import javax.annotation.CheckForNull;
+
 import java.io.Serializable;
 import java.util.AbstractList;
 import java.util.Arrays;
@@ -33,7 +28,14 @@ import java.util.List;
 import java.util.RandomAccess;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkElementIndex;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkPositionIndexes;
+import static com.google.common.base.Strings.lenientFormat;
+import static java.lang.Double.NEGATIVE_INFINITY;
+import static java.lang.Double.POSITIVE_INFINITY;
 
 /**
  * Static utility methods pertaining to {@code double} primitives, that are not already found in
@@ -702,13 +704,9 @@ public final class Doubles extends DoublesMethodsForWeb {
    * inputs. All valid inputs must pass this regex, but it's semantically fine if not all inputs
    * that pass this regex are valid -- only a performance hit is incurred, not a semantics bug.
    */
-  static final
-  java.util.regex.Pattern
-      FLOATING_POINT_PATTERN = fpPattern();
+  static final java.util.regex.Pattern FLOATING_POINT_PATTERN = fpPattern();
 
-  private static
-  java.util.regex.Pattern
-      fpPattern() {
+  private static java.util.regex.Pattern fpPattern() {
     /*
      * We use # instead of * for possessive quantifiers. This lets us strip them out when building
      * the regex for RE2 (which doesn't support them) but leave them in when building it for
@@ -719,14 +717,8 @@ public final class Doubles extends DoublesMethodsForWeb {
     String hex = "(?:[0-9a-fA-F]+#(?:\\.[0-9a-fA-F]*#)?|\\.[0-9a-fA-F]+#)";
     String completeHex = "0[xX]" + hex + "[pP][+-]?\\d+#[fFdD]?";
     String fpPattern = "[+-]?(?:NaN|Infinity|" + completeDec + "|" + completeHex + ")";
-    fpPattern =
-        fpPattern.replace(
-            "#",
-            "+"
-            );
-    return
-    java.util.regex.Pattern
-        .compile(fpPattern);
+    fpPattern = fpPattern.replace("#", "+");
+    return java.util.regex.Pattern.compile(fpPattern);
   }
 
   /**

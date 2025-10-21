@@ -14,6 +14,18 @@
 
 package com.google.common.io;
 
+import com.google.common.base.Ascii;
+
+import javax.annotation.CheckForNull;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.Arrays;
+import java.util.Objects;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkPositionIndexes;
@@ -23,16 +35,6 @@ import static com.google.common.math.IntMath.log2;
 import static java.math.RoundingMode.CEILING;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
-
-import com.google.common.base.Ascii;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
-import java.util.Arrays;
-import java.util.Objects;
-import javax.annotation.CheckForNull;
 
 /**
  * A binary encoding scheme for reversibly translating between byte sequences and printable ASCII
@@ -220,8 +222,7 @@ public abstract class BaseEncoding {
    * @throws DecodingException if the input is not a valid encoded string according to this
    *     encoding.
    */
-  final byte[] decodeChecked(CharSequence chars)
-      throws DecodingException {
+  final byte[] decodeChecked(CharSequence chars) throws DecodingException {
     chars = trimTrailingPadding(chars);
     byte[] tmp = new byte[maxDecodedSize(chars.length())];
     int len = decodeTo(tmp, chars);

@@ -17,7 +17,6 @@ package com.google.common.base;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-
 /**
  * Static methods pertaining to ASCII characters (those in the range of values {@code 0x00} through
  * {@code 0x7F}), and to strings containing such characters.

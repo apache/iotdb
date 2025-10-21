@@ -14,7 +14,6 @@
 
 package com.google.common.util.concurrent;
 
-
 /**
  * A {@link ListenableFuture} whose result can be set by a {@link #set(Object)}, {@link
  * #setException(Throwable)} or {@link #setFuture(ListenableFuture)} call. It can also, like any
@@ -30,8 +29,7 @@ package com.google.common.util.concurrent;
  * @since 9.0 (in 1.0 as {@code ValueFuture})
  */
 @ElementTypesAreNonnullByDefault
-public final class SettableFuture<V extends Object>
-    extends AbstractFuture.TrustedFuture<V> {
+public final class SettableFuture<V extends Object> extends AbstractFuture.TrustedFuture<V> {
   /**
    * Creates a new {@code SettableFuture} that can be completed or cancelled by a later method call.
    */

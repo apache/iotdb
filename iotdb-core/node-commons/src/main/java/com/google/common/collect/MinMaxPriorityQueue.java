@@ -16,14 +16,10 @@
 
 package com.google.common.collect;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkPositionIndex;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.CollectPreconditions.checkRemove;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.math.IntMath;
+
+import javax.annotation.CheckForNull;
+
 import java.util.AbstractQueue;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -36,7 +32,13 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.PriorityQueue;
 import java.util.Queue;
-import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkPositionIndex;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.CollectPreconditions.checkRemove;
+import static java.util.Objects.requireNonNull;
 
 /**
  * A double-ended priority queue, which provides constant-time access to both its least element and

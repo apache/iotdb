@@ -14,12 +14,10 @@
 
 package com.google.common.primitives;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkElementIndex;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkPositionIndexes;
-
 import com.google.common.base.Converter;
+
+import javax.annotation.CheckForNull;
+
 import java.io.Serializable;
 import java.util.AbstractList;
 import java.util.Arrays;
@@ -30,7 +28,11 @@ import java.util.List;
 import java.util.RandomAccess;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkElementIndex;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkPositionIndexes;
 
 /**
  * Static utility methods pertaining to {@code int} primitives, that are not already found in either

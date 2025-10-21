@@ -14,10 +14,7 @@
 
 package com.google.common.base;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
-import static java.util.Objects.requireNonNull;
+import javax.annotation.CheckForNull;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -28,7 +25,11 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableList;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Static utility methods pertaining to instances of {@link Throwable}.
@@ -435,8 +436,7 @@ public final class Throwables {
   static final String SHARED_SECRETS_CLASSNAME = "sun.misc.SharedSecrets";
 
   /** Access to some fancy internal JVM internals. */
-  @CheckForNull
-  private static final Object jla = getJLA();
+  @CheckForNull private static final Object jla = getJLA();
 
   /**
    * The "getStackTraceElementMethod" method, only available on some JDKs so we use reflection to

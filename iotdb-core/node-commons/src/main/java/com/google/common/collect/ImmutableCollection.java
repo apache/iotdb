@@ -16,7 +16,7 @@
 
 package com.google.common.collect;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import javax.annotation.CheckForNull;
 
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
@@ -30,7 +30,8 @@ import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Predicate;
-import javax.annotation.CheckForNull;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A {@link Collection} whose contents will never change, and which offers a few additional
