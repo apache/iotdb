@@ -216,7 +216,7 @@
                     <!-- We don't use thrift http connection -->
                     <exclusion>
                         <groupId>org.apache.httpcomponents</groupId>
-                        <artifactId>httpclient</artifactId>
+                        <artifactId>httpcore</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
