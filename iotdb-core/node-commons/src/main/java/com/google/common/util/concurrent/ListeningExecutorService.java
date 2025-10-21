@@ -55,7 +55,7 @@ public interface ListeningExecutorService extends ExecutorService {
    * @throws RejectedExecutionException {@inheritDoc}
    */
   @Override
-  <T extends Object> ListenableFuture<T> submit(Runnable task, @ParametricNullness T result);
+  <T extends Object> ListenableFuture<T> submit(Runnable task, T result);
 
   /**
    * {@inheritDoc}

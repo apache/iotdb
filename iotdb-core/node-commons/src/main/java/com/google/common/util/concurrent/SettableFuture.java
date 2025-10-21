@@ -28,7 +28,6 @@ package com.google.common.util.concurrent;
  * @author Sven Mawson
  * @since 9.0 (in 1.0 as {@code ValueFuture})
  */
-@ElementTypesAreNonnullByDefault
 public final class SettableFuture<V extends Object> extends AbstractFuture.TrustedFuture<V> {
   /**
    * Creates a new {@code SettableFuture} that can be completed or cancelled by a later method call.
@@ -38,7 +37,7 @@ public final class SettableFuture<V extends Object> extends AbstractFuture.Trust
   }
 
   @Override
-  public boolean set(@ParametricNullness V value) {
+  public boolean set(V value) {
     return super.set(value);
   }
 

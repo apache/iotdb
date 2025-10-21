@@ -168,21 +168,6 @@ public abstract class BaseEncoding {
    */
   public abstract OutputStream encodingStream(Writer writer);
 
-  /**
-   * Returns a {@code ByteSink} that writes base-encoded bytes to the specified {@code CharSink}.
-   */
-  public final ByteSink encodingSink(CharSink encodedSink) {
-    checkNotNull(encodedSink);
-    return new ByteSink() {
-      @Override
-      public OutputStream openStream() throws IOException {
-        return encodingStream(encodedSink.openStream());
-      }
-    };
-  }
-
-  // TODO(lowasser): document the extent of leniency, probably after adding ignore(CharMatcher)
-
   private static byte[] extract(byte[] result, int length) {
     if (length == result.length) {
       return result;
@@ -234,20 +219,6 @@ public abstract class BaseEncoding {
    * Reader}. The returned stream throws a {@link DecodingException} upon decoding-specific errors.
    */
   public abstract InputStream decodingStream(Reader reader);
-
-  /**
-   * Returns a {@code ByteSource} that reads base-encoded bytes from the specified {@code
-   * CharSource}.
-   */
-  public final ByteSource decodingSource(CharSource encodedSource) {
-    checkNotNull(encodedSource);
-    return new ByteSource() {
-      @Override
-      public InputStream openStream() throws IOException {
-        return decodingStream(encodedSource.openStream());
-      }
-    };
-  }
 
   // Implementations for encoding/decoding
 

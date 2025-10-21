@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.relational.grammar.sql;
 
-import com.google.common.collect.ImmutableSet;
 import org.antlr.v4.runtime.Vocabulary;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,8 +34,8 @@ public final class RelationalSqlKeywords {
   private RelationalSqlKeywords() {}
 
   public static Set<String> sqlKeywords() {
-    final ImmutableSet.Builder<String> names = ImmutableSet.builder();
     final Vocabulary vocabulary = RelationalSqlLexer.VOCABULARY;
+    final Set<String> names = new HashSet<>(vocabulary.getMaxTokenType() + 1);
     for (int i = 0; i <= vocabulary.getMaxTokenType(); i++) {
       final String name = nullToEmpty(vocabulary.getLiteralName(i));
       final Matcher matcher = IDENTIFIER.matcher(name);
@@ -43,6 +43,6 @@ public final class RelationalSqlKeywords {
         names.add(matcher.group(1));
       }
     }
-    return names.build();
+    return names;
   }
 }
