@@ -165,6 +165,7 @@ public class CteMaterializer {
                 "!!! Failed to materialize CTE. The main query falls back to INLINE mode !!!");
           }
           context.releaseMemoryReservedForFrontEnd(cteDataStore.getCachedBytes());
+          cteDataStore.clear();
           return null;
         }
       }
@@ -179,6 +180,7 @@ public class CteMaterializer {
     } catch (final Throwable throwable) {
       if (cteDataStore != null) {
         context.releaseMemoryReservedForFrontEnd(cteDataStore.getCachedBytes());
+        cteDataStore.clear();
       }
       t = throwable;
     } finally {
