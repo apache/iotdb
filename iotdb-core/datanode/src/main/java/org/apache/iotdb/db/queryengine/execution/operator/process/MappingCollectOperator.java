@@ -25,12 +25,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
 public class MappingCollectOperator extends CollectOperator {
-  private static final long INSTANCE_SIZE =
+  protected static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MappingCollectOperator.class);
 
   // record mapping for each child
@@ -55,7 +56,10 @@ public class MappingCollectOperator extends CollectOperator {
           columns[i] = tsBlock.getColumn(mapping.get(i));
         }
         return TsBlock.wrapBlocksWithoutCopy(
-            tsBlock.getPositionCount(), TableScanOperator.TIME_COLUMN_TEMPLATE, columns);
+            tsBlock.getPositionCount(),
+            new RunLengthEncodedColumn(
+                TableScanOperator.TIME_COLUMN_TEMPLATE, tsBlock.getPositionCount()),
+            columns);
       }
     } else {
       closeCurrentChild(currentIndex);
