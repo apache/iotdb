@@ -83,7 +83,7 @@ public class Joiner {
   }
 
   /*
-   * In this file, we use <? extends @Nullable Object> instead of <?> to work around a Kotlin bug
+   * In this file, we use <? extends Object> instead of <?> to work around a Kotlin bug
    * (see b/189937072 until we file a bug against Kotlin itself). (The two should be equivalent, so
    * we normally prefer the shorter one.)
    */

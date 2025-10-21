@@ -19,8 +19,8 @@ import javax.annotation.CheckForNull;
 /** A utility method to perform unchecked casts to suppress errors produced by nullness analyses. */
 final class NullnessCasts {
   /**
-   * Accepts a {@code @Nullable T} and returns a plain {@code T}, without performing any check that
-   * that conversion is safe.
+   * Accepts a {@code T} and returns a plain {@code T}, without performing any check that that
+   * conversion is safe.
    *
    * <p>This method is intended to help with usages of type parameters that have {@linkplain
    * ParametricNullness parametric nullness}. If a type parameter instead ranges over only non-null
@@ -29,22 +29,22 @@ final class NullnessCasts {
    * its runtime check.
    *
    * <p>An example use case for this method is in implementing an {@code Iterator<T>} whose {@code
-   * next} field is lazily initialized. The type of that field would be {@code @Nullable T}, and the
-   * code would be responsible for populating a "real" {@code T} (which might still be the value
-   * {@code null}!) before returning it to callers. Depending on how the code is structured, a
-   * nullness analysis might not understand that the field has been populated. To avoid that problem
-   * without having to add {@code @SuppressWarnings}, the code can call this method.
+   * next} field is lazily initialized. The type of that field would be {@code T}, and the code
+   * would be responsible for populating a "real" {@code T} (which might still be the value {@code
+   * null}!) before returning it to callers. Depending on how the code is structured, a nullness
+   * analysis might not understand that the field has been populated. To avoid that problem without
+   * having to add {@code @SuppressWarnings}, the code can call this method.
    *
    * <p>Why <i>not</i> just add {@code SuppressWarnings}? The problem is that this method is
    * typically useful for {@code return} statements. That leaves the code with two options: Either
    * add the suppression to the whole method (which turns off checking for a large section of code),
    * or extract a variable, and put the suppression on that. However, a local variable typically
    * doesn't work: Because nullness analyses typically infer the nullness of local variables,
-   * there's no way to assign a {@code @Nullable T} to a field {@code T foo;} and instruct the
-   * analysis that that means "plain {@code T}" rather than the inferred type {@code @Nullable T}.
-   * (Even if supported added {@code @NonNull}, that would not help, since the problem case
-   * addressed by this method is the case in which {@code T} has parametric nullness -- and thus its
-   * value may be legitimately {@code null}.)
+   * there's no way to assign a {@code T} to a field {@code T foo;} and instruct the analysis that
+   * that means "plain {@code T}" rather than the inferred type {@code T}. (Even if supported added
+   * {@code @NonNull}, that would not help, since the problem case addressed by this method is the
+   * case in which {@code T} has parametric nullness -- and thus its value may be legitimately
+   * {@code null}.)
    */
   @SuppressWarnings("nullness")
   static <T extends Object> T uncheckedCastNullableTToT(@CheckForNull T t) {

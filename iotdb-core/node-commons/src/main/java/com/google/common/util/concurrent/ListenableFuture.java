@@ -14,8 +14,6 @@
 
 package com.google.common.util.concurrent;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
@@ -116,7 +114,7 @@ import java.util.concurrent.RejectedExecutionException;
  * that affects users, especially users of the Android Gradle Plugin, since the plugin developers
  * put in a special hack for us: https://issuetracker.google.com/issues/131431257)
  */
-public interface ListenableFuture<V extends @Nullable Object> extends Future<V> {
+public interface ListenableFuture<V extends Object> extends Future<V> {
   /**
    * Registers a listener to be {@linkplain Executor#execute(Runnable) run} on the given executor.
    * The listener will run when the {@code Future}'s computation is {@linkplain Future#isDone()

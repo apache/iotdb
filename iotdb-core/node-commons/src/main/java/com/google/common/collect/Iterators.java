@@ -441,9 +441,9 @@ public final class Iterators {
    * Returns an Iterator that walks the specified array, nulling out elements behind it. This can
    * avoid memory leaks when an element is no longer necessary.
    *
-   * <p>This method accepts an array with element type {@code @Nullable T}, but callers must pass an
-   * array whose contents are initially non-null. The {@code @Nullable} annotation indicates that
-   * this method will write nulls into the array during iteration.
+   * <p>This method accepts an array with element type {@code T}, but callers must pass an array
+   * whose contents are initially non-null. The {@code @Nullable} annotation indicates that this
+   * method will write nulls into the array during iteration.
    *
    * <p>This is mainly just to avoid the intermediate ArrayDeque in ConsumingQueueIterator.
    */

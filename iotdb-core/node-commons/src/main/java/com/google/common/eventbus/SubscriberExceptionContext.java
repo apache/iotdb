@@ -28,7 +28,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @since 16.0
  */
-@ElementTypesAreNonnullByDefault
 public class SubscriberExceptionContext {
   private final EventBus eventBus;
   private final Object event;

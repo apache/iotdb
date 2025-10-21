@@ -56,7 +56,7 @@ abstract class AbstractSetMultimap<K extends Object, V extends Object>
   }
 
   @Override
-  Collection<V> wrapCollection(@ParametricNullness K key, Collection<V> collection) {
+  Collection<V> wrapCollection(K key, Collection<V> collection) {
     return new WrappedSet(key, (Set<V>) collection);
   }
 
@@ -69,7 +69,7 @@ abstract class AbstractSetMultimap<K extends Object, V extends Object>
    * {@link Set}, instead of the {@link Collection} specified in the {@link Multimap} interface.
    */
   @Override
-  public Set<V> get(@ParametricNullness K key) {
+  public Set<V> get(K key) {
     return (Set<V>) super.get(key);
   }
 
@@ -104,7 +104,7 @@ abstract class AbstractSetMultimap<K extends Object, V extends Object>
    * <p>Any duplicates in {@code values} will be stored in the multimap once.
    */
   @Override
-  public Set<V> replaceValues(@ParametricNullness K key, Iterable<? extends V> values) {
+  public Set<V> replaceValues(K key, Iterable<? extends V> values) {
     return (Set<V>) super.replaceValues(key, values);
   }
 
@@ -128,7 +128,7 @@ abstract class AbstractSetMultimap<K extends Object, V extends Object>
    *     multimap already contained the key-value pair
    */
   @Override
-  public boolean put(@ParametricNullness K key, @ParametricNullness V value) {
+  public boolean put(K key, V value) {
     return super.put(key, value);
   }
 

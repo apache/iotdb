@@ -56,7 +56,7 @@ abstract class AbstractListMultimap<K extends Object, V extends Object>
   }
 
   @Override
-  Collection<V> wrapCollection(@ParametricNullness K key, Collection<V> collection) {
+  Collection<V> wrapCollection(K key, Collection<V> collection) {
     return wrapList(key, (List<V>) collection, null);
   }
 
@@ -70,7 +70,7 @@ abstract class AbstractListMultimap<K extends Object, V extends Object>
    * Multimap} interface.
    */
   @Override
-  public List<V> get(@ParametricNullness K key) {
+  public List<V> get(K key) {
     return (List<V>) super.get(key);
   }
 
@@ -94,7 +94,7 @@ abstract class AbstractListMultimap<K extends Object, V extends Object>
    * Multimap} interface.
    */
   @Override
-  public List<V> replaceValues(@ParametricNullness K key, Iterable<? extends V> values) {
+  public List<V> replaceValues(K key, Iterable<? extends V> values) {
     return (List<V>) super.replaceValues(key, values);
   }
 
@@ -106,7 +106,7 @@ abstract class AbstractListMultimap<K extends Object, V extends Object>
    * @return {@code true} always
    */
   @Override
-  public boolean put(@ParametricNullness K key, @ParametricNullness V value) {
+  public boolean put(K key, V value) {
     return super.put(key, value);
   }
 

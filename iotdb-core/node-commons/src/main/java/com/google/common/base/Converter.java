@@ -114,7 +114,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * doForward and doBackward methods to indicate that the parameter cannot be null. (We also take
  * advantage of that for convertAll, as discussed on that method.)
  *
- * 2. The supertype of this class could be `Function<@Nullable A, @Nullable B>`, since
+ * 2. The supertype of this class could be `Function<A, B>`, since
  * Converter.apply (like Converter.convert) is capable of accepting null inputs. However, a
  * supertype of `Function<A, B>` turns out to be massively more useful to callers in practice: They
  * want their output to be non-null in operations like `stream.map(myConverter)`, and we can
@@ -124,11 +124,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * Disclaimer: Part of the reason that callers are so well adapted to `Function<A, B>` may be that
  * that is how the signature looked even prior to this comment! So naturally any change can break
  * existing users, but it can't *fix* existing users because any users who needed
- * `Function<@Nullable A, @Nullable B>` already had to find a workaround. Still, there is a *ton* of
+ * `Function<A, B>` already had to find a workaround. Still, there is a *ton* of
  * fallout from trying to switch. I would be shocked if the switch would offer benefits to anywhere
  * near enough users to justify the costs.
  *
- * Fortunately, if anyone does want to use a Converter as a `Function<@Nullable A, @Nullable B>`,
+ * Fortunately, if anyone does want to use a Converter as a `Function<A, B>`,
  * it's easy to get one: `converter::convert`.
  *
  * [*] In annotating this class, we're ignoring LegacyConverter.
@@ -251,7 +251,7 @@ public abstract class Converter<A, B> implements Function<A, B> {
    * element.
    */
   /*
-   * Just as Converter could implement `Function<@Nullable A, @Nullable B>` instead of `Function<A,
+   * Just as Converter could implement `Function<A, B>` instead of `Function<A,
    * B>`, convertAll could accept and return iterables with nullable element types. In both cases,
    * we've chosen to instead use a signature that benefits existing users -- and is still safe.
    *

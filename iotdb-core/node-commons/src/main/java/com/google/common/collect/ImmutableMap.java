@@ -16,8 +16,6 @@
 
 package com.google.common.collect;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-
 import javax.annotation.CheckForNull;
 
 import java.io.InvalidObjectException;
@@ -74,10 +72,9 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    *
    * @since 21.0
    */
-  public static <T extends @Nullable Object, K, V>
-      Collector<T, ?, ImmutableMap<K, V>> toImmutableMap(
-          Function<? super T, ? extends K> keyFunction,
-          Function<? super T, ? extends V> valueFunction) {
+  public static <T extends Object, K, V> Collector<T, ?, ImmutableMap<K, V>> toImmutableMap(
+      Function<? super T, ? extends K> keyFunction,
+      Function<? super T, ? extends V> valueFunction) {
     return CollectCollectors.toImmutableMap(keyFunction, valueFunction);
   }
 
@@ -91,11 +88,10 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    *
    * @since 21.0
    */
-  public static <T extends @Nullable Object, K, V>
-      Collector<T, ?, ImmutableMap<K, V>> toImmutableMap(
-          Function<? super T, ? extends K> keyFunction,
-          Function<? super T, ? extends V> valueFunction,
-          BinaryOperator<V> mergeFunction) {
+  public static <T extends Object, K, V> Collector<T, ?, ImmutableMap<K, V>> toImmutableMap(
+      Function<? super T, ? extends K> keyFunction,
+      Function<? super T, ? extends V> valueFunction,
+      BinaryOperator<V> mergeFunction) {
     return CollectCollectors.toImmutableMap(keyFunction, valueFunction, mergeFunction);
   }
 
@@ -400,7 +396,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    */
   public static class Builder<K, V> {
     @CheckForNull Comparator<? super V> valueComparator;
-    @Nullable Entry<K, V>[] entries;
+    Entry<K, V>[] entries;
     int size;
     boolean entriesUsed;
 
@@ -414,7 +410,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     Builder(int initialCapacity) {
-      this.entries = new @Nullable Entry[initialCapacity];
+      this.entries = new Entry[initialCapacity];
       this.size = 0;
       this.entriesUsed = false;
     }
@@ -528,7 +524,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
       // It's possible to keep using this Builder after calling buildKeepingLast(), so we need to
       // ensure that its state is not corrupted by removing duplicates that should cause a later
       // buildOrThrow() to fail, or by changing the size.
-      @Nullable Entry<K, V>[] localEntries;
+      Entry<K, V>[] localEntries;
       int localSize = size;
       if (valueComparator == null) {
         localEntries = entries;
@@ -549,7 +545,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
             0,
             localSize,
             Ordering.from(valueComparator).onResultOf(Maps.<V>valueFunction()));
-        localEntries = (@Nullable Entry<K, V>[]) nonNullEntries;
+        localEntries = (Entry<K, V>[]) nonNullEntries;
       }
       entriesUsed = true;
       return RegularImmutableMap.fromEntryArray(localSize, localEntries, throwIfDuplicateKeys);
@@ -832,8 +828,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    */
   @Deprecated
   @Override
-  public final V compute(
-      K key, BiFunction<? super K, ? super @Nullable V, ? extends V> remappingFunction) {
+  public final V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
     throw new UnsupportedOperationException();
   }
 
@@ -846,8 +841,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
   @Deprecated
   @Override
   @CheckForNull
-  public final V merge(
-      K key, V value, BiFunction<? super V, ? super V, ? extends @Nullable V> function) {
+  public final V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> function) {
     throw new UnsupportedOperationException();
   }
 

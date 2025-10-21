@@ -117,7 +117,7 @@ public final class MinMaxPriorityQueue<E> extends AbstractQueue<E> {
    * that use {@code comparator} to determine the least and greatest elements.
    */
   /*
-   * TODO(cpovirk): Change to Comparator<? super B> to permit Comparator<@Nullable ...> and
+   * TODO(cpovirk): Change to Comparator<? super B> to permit Comparator<...> and
    * Comparator<SupertypeOfB>? What we have here matches the immutable collections, but those also
    * expose a public Builder constructor that accepts "? super." So maybe we should do *that*
    * instead.

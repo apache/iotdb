@@ -17,7 +17,6 @@ package com.google.common.collect;
 import com.google.common.base.Objects;
 import com.google.common.collect.Multisets.ImmutableEntry;
 import com.google.common.primitives.Ints;
-import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.CheckForNull;
 
@@ -118,7 +117,7 @@ class RegularImmutableMultiset<E> extends ImmutableMultiset<E> {
   private final transient int size;
   private final transient int hashCode;
 
-  @LazyInit @CheckForNull private transient ImmutableSet<E> elementSet;
+  @CheckForNull private transient ImmutableSet<E> elementSet;
 
   private RegularImmutableMultiset(
       ImmutableEntry<E>[] entries,

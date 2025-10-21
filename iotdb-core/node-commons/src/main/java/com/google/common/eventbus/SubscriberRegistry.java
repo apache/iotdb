@@ -58,7 +58,6 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
  *
  * @author Colin Decker
  */
-@ElementTypesAreNonnullByDefault
 final class SubscriberRegistry {
 
   /**

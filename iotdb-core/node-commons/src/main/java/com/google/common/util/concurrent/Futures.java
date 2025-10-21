@@ -821,8 +821,8 @@ public final class Futures extends GwtFuturesCatchingSpecialization {
       ListenableFuture<? extends V>... futures) {
     /*
      * Another way to express this signature would be to bound <V> by @NonNull and accept
-     * LF<? extends @Nullable V>. That might be better: There's currently no difference between the
-     * outputs users get when calling this with <Foo> and calling it with <@Nullable Foo>. The only
+     * LF<? extends V>. That might be better: There's currently no difference between the
+     * outputs users get when calling this with <Foo> and calling it with <Foo>. The only
      * difference is that calling it with <Foo> won't work when an input Future has a @Nullable
      * type. So why even make that error possible by giving callers the choice?
      *

@@ -196,7 +196,7 @@ public abstract class ImmutableCollection<E> extends AbstractCollection<E> imple
    *
    * 2. `other[size] = null` is unsound. We could "fix" this by requiring callers to pass in an
    * array with a nullable element type. But probably they usually want an array with a non-nullable
-   * type. That said, we could *accept* a `@Nullable T[]` (which, given that we treat arrays as
+   * type. That said, we could *accept* a `T[]` (which, given that we treat arrays as
    * covariant, would still permit a plain `T[]`) and return a plain `T[]`. But of course that would
    * require its own suppression, since it is also unsound. toArray(T[]) is just a mess from a
    * nullness perspective. The signature below at least has the virtue of being relatively simple.

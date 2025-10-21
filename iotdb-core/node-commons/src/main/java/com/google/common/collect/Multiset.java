@@ -16,8 +16,6 @@
 
 package com.google.common.collect;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-
 import javax.annotation.CheckForNull;
 
 import java.util.Collection;
@@ -92,7 +90,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author Kevin Bourrillion
  * @since 2.0
  */
-public interface Multiset<E extends @Nullable Object> extends Collection<E> {
+public interface Multiset<E extends Object> extends Collection<E> {
   // Query Operations
 
   /**
@@ -269,7 +267,7 @@ public interface Multiset<E extends @Nullable Object> extends Collection<E> {
    *
    * @since 2.0
    */
-  interface Entry<E extends @Nullable Object> {
+  interface Entry<E extends Object> {
 
     /**
      * Returns the multiset element corresponding to this entry. Multiple calls to this method

@@ -87,7 +87,7 @@ final class Platform {
    */
   /*
    * The new array contains nulls, even if the old array did not. If we wanted to be accurate, we
-   * would declare a return type of `@Nullable T[]`. However, we've decided not to think too hard
+   * would declare a return type of `T[]`. However, we've decided not to think too hard
    * about arrays for now, as they're a mess. (We previously discussed this in the review of
    * ObjectArrays, which is the main caller of this method.)
    */

@@ -35,8 +35,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * <ul>
  *   <li>{@code getElement} on a {@code Multiset.Entry<@NonNull String>} returns {@code @NonNull
  *       String}.
- *   <li>{@code getElement} on a {@code Multiset.Entry<@Nullable String>} returns {@code @Nullable
- *       String}.
+ *   <li>{@code getElement} on a {@code Multiset.Entry<String>} returns {@code String}.
  * </ul>
  *
  * This is the same behavior as type-variable usages have to Kotlin and to the Checker Framework.
@@ -46,11 +45,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *   <li>methods whose return type is a type variable but which can never return {@code null},
  *       typically because the type forbids nullable type arguments: For example, {@code
  *       ImmutableList.get} returns {@code E}, but that value is never {@code null}. (Accordingly,
- *       {@code ImmutableList} is declared to forbid {@code ImmutableList<@Nullable String>}.)
+ *       {@code ImmutableList} is declared to forbid {@code ImmutableList<String>}.)
  *   <li>methods whose return type is a type variable but which can return {@code null} regardless
  *       of the type argument supplied by the user of the class: For example, {@code
- *       ImmutableMap.get} returns {@code @Nullable E} because the method can return {@code null}
- *       even on an {@code ImmutableMap<K, @NonNull String>}.
+ *       ImmutableMap.get} returns {@code E} because the method can return {@code null} even on an
+ *       {@code ImmutableMap<K, @NonNull String>}.
  * </ul>
  *
  * <p>Consumers of this annotation include:

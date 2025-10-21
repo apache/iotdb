@@ -130,7 +130,7 @@ public final class Iterables {
    * cases where {@link Collection#contains} might throw {@link NullPointerException} or {@link
    * ClassCastException}.
    */
-  // <? extends @Nullable Object> instead of <?> because of Kotlin b/189937072, discussed in Joiner.
+  // <? extends Object> instead of <?> because of Kotlin b/189937072, discussed in Joiner.
   public static boolean contains(
       Iterable<? extends Object> iterable, @CheckForNull Object element) {
     if (iterable instanceof Collection) {
@@ -650,19 +650,19 @@ public final class Iterables {
    */
   // The signature we really want here is...
   //
-  // <T extends @Nullable Object> @JointlyNullable T find(
+  // <T extends Object> @JointlyNullable T find(
   //     Iterable<? extends T> iterable,
   //     Predicate<? super T> predicate,
   //     @JointlyNullable T defaultValue);
   //
   // ...where "@JointlyNullable" is similar to @PolyNull but slightly different:
   //
-  // - @PolyNull means "@Nullable or @Nonnull"
-  //   (That would be unsound for an input Iterable<@Nullable Foo>. So, if we wanted to use
+  // - @PolyNull means "or @Nonnull"
+  //   (That would be unsound for an input Iterable<Foo>. So, if we wanted to use
   //   @PolyNull, we would have to restrict this method to non-null <T>. But it has users who pass
   //   iterables with null elements.)
   //
-  // - @JointlyNullable means "@Nullable or no annotation"
+  // - @JointlyNullable means "or no annotation"
   @CheckForNull
   public static <T extends Object> T find(
       Iterable<? extends T> iterable,
