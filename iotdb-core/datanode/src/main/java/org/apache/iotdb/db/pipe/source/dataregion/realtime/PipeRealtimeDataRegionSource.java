@@ -53,7 +53,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -568,8 +567,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return realtimeDataExtractionEndTime;
   }
 
-  public void setDataRegionTimePartitionIdBound(
-      @NonNull final Pair<Long, Long> timePartitionIdBound) {
+  public void setDataRegionTimePartitionIdBound(final Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
         "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
         taskID,
