@@ -960,7 +960,6 @@ public final class Multisets {
   static <E extends Object> Iterator<E> elementIterator(Iterator<Entry<E>> entryIterator) {
     return new TransformedIterator<Entry<E>, E>(entryIterator) {
       @Override
-      @ParametricNullness
       E transform(Entry<E> entry) {
         return entry.getElement();
       }
@@ -1078,7 +1077,6 @@ public final class Multisets {
     }
 
     @Override
-    @ParametricNullness
     public E next() {
       if (!hasNext()) {
         throw new NoSuchElementException();
