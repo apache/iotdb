@@ -742,6 +742,27 @@ public class TableMetadataImpl implements Metadata {
         }
 
         break;
+      case SqlConstant.PERCENTILE:
+        if (argumentTypes.size() != 2) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have two arguments", functionName));
+        }
+
+        if (!isNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName));
+        }
+        // Validate percentage parameter
+        if (!isDecimalType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have percentage as decimal type",
+                  functionName));
+        }
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -766,6 +787,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
       case SqlConstant.APPROX_PERCENTILE:
+      case SqlConstant.PERCENTILE:
         return argumentTypes.get(0);
       case SqlConstant.AVG:
       case SqlConstant.SUM:

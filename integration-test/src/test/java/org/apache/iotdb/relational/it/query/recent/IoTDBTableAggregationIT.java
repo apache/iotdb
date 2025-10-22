@@ -4346,6 +4346,42 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void percentileTest() {
+    tableResultSetEqualTest(
+        "select percentile(time, 0.5),percentile(s1,0.5),percentile(s2,0.5),percentile(s3,0.5),percentile(s4,0.5),percentile(s9,0.5) from table1",
+        buildHeaders(6),
+        new String[] {"2024-09-24T06:15:40.000Z,40,43000,37.5,43.0,2024-09-24T06:15:40.000Z,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,province,percentile(time, 0.5),percentile(s1,0.5),percentile(s2,0.5) from table1 group by 1,2 order by 2,1",
+        new String[] {"time", "province", "_col2", "_col3", "_col4"},
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,2024-09-24T06:15:30.000Z,30,null,",
+          "2024-09-24T06:15:31.000Z,beijing,2024-09-24T06:15:31.000Z,null,31000,",
+          "2024-09-24T06:15:35.000Z,beijing,2024-09-24T06:15:35.000Z,null,35000,",
+          "2024-09-24T06:15:36.000Z,beijing,2024-09-24T06:15:36.000Z,36,null,",
+          "2024-09-24T06:15:40.000Z,beijing,2024-09-24T06:15:40.000Z,40,40000,",
+          "2024-09-24T06:15:41.000Z,beijing,2024-09-24T06:15:41.000Z,41,null,",
+          "2024-09-24T06:15:46.000Z,beijing,2024-09-24T06:15:46.000Z,null,46000,",
+          "2024-09-24T06:15:50.000Z,beijing,2024-09-24T06:15:50.000Z,null,50000,",
+          "2024-09-24T06:15:51.000Z,beijing,2024-09-24T06:15:51.000Z,null,null,",
+          "2024-09-24T06:15:55.000Z,beijing,2024-09-24T06:15:55.000Z,55,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,2024-09-24T06:15:30.000Z,30,null,",
+          "2024-09-24T06:15:31.000Z,shanghai,2024-09-24T06:15:31.000Z,null,31000,",
+          "2024-09-24T06:15:35.000Z,shanghai,2024-09-24T06:15:35.000Z,null,35000,",
+          "2024-09-24T06:15:36.000Z,shanghai,2024-09-24T06:15:36.000Z,36,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,2024-09-24T06:15:40.000Z,40,40000,",
+          "2024-09-24T06:15:41.000Z,shanghai,2024-09-24T06:15:41.000Z,41,null,",
+          "2024-09-24T06:15:46.000Z,shanghai,2024-09-24T06:15:46.000Z,null,46000,",
+          "2024-09-24T06:15:50.000Z,shanghai,2024-09-24T06:15:50.000Z,null,50000,",
+          "2024-09-24T06:15:51.000Z,shanghai,2024-09-24T06:15:51.000Z,null,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,2024-09-24T06:15:55.000Z,55,null,",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "select avg() from table1",
@@ -4422,6 +4458,22 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select approx_percentile(s5,0.5) from table1",
         "701: Aggregation functions [approx_percentile] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select percentile() from table1",
+        "701: Aggregation functions [percentile] should only have two arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select percentile(s1,1.1) from table1",
+        "701: percentage should be in [0,1], got 1.1",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select percentile(s1,'test') from table1",
+        "701: The second argument of 'percentile' function percentage must be a double literal",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select percentile(s5,0.5) from table1",
+        "701: Aggregation functions [percentile] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
         DATABASE_NAME);
   }
 
