@@ -22,7 +22,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.moquette.broker.security.IAuthenticator;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

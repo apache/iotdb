@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.library.dprofile.util;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.tsfile.external.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.List;

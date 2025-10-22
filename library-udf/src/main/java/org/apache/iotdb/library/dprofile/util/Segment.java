@@ -21,7 +21,7 @@ package org.apache.iotdb.library.dprofile.util;
 
 import org.apache.iotdb.library.util.LinearRegression;
 
-import org.apache.commons.lang3.ArrayUtils;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;

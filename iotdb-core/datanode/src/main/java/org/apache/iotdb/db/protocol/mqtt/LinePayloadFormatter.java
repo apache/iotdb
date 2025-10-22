@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.NotImplementedException;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;

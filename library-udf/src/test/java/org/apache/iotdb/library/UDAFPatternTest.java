@@ -31,7 +31,7 @@ import org.apache.iotdb.udf.api.exception.UDFInputSeriesNumberNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 

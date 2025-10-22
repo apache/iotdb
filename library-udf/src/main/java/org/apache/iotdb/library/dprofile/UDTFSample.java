@@ -34,7 +34,7 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.tsfile.external.commons.lang3.tuple.Pair;
 
 import java.util.Arrays;
 import java.util.LinkedList;
