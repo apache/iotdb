@@ -102,6 +102,7 @@ public abstract class TreePattern {
             // Default pattern if no keys are found
             defaultInclusionPattern);
 
+    // 3. Parse EXCLUSION patterns using the helper
     final TreePattern exclusionPattern =
         parsePatternUnion(
             sourceParameters,
