@@ -112,6 +112,20 @@ public class IoTDBCteIT {
   }
 
   @Test
+  public void testMultipleWith() {
+    String mainQuery =
+        "select * from cte1 where voltage > "
+            + "(with cte2 as materialized (select avg(voltage) as avg_voltage from testtb) select avg_voltage from cte2)";
+    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:01.000Z,d2,300.0,",
+        };
+    String[] cteTemplateQueries = new String[] {"cte1 as %s (select * from testtb)"};
+    testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
+  }
+
+  @Test
   public void testFilterQuery() {
     // case 1
     String mainQuery = "select * from cte where time > 1000 order by deviceid";
