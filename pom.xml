@@ -46,7 +46,6 @@
         <module>iotdb-protocol</module>
         <module>distribution</module>
         <module>example</module>
-        <module>library-udf</module>
     </modules>
     <properties>
         <!-- This was the last version to support Java 8 -->
@@ -67,14 +66,10 @@
         <checker-qual.version>3.38.0</checker-qual.version>
         <cmake.build.type>Release</cmake.build.type>
         <commons-cli.version>1.5.0</commons-cli.version>
-        <commons-codec.version>1.16.1</commons-codec.version>
         <commons-csv.version>1.10.0</commons-csv.version>
-        <commons-io.version>2.14.0</commons-io.version>
         <commons-jexl3.version>3.3</commons-jexl3.version>
-        <commons-lang3.version>3.18.0</commons-lang3.version>
         <commons-math3.version>3.6.1</commons-math3.version>
         <commons-pool2.version>2.11.1</commons-pool2.version>
-        <commons.collections4.version>4.4</commons.collections4.version>
         <ctest.skip.tests>false</ctest.skip.tests>
         <disruptor.version>3.4.4</disruptor.version>
         <drill.freemarker.maven.plugin.version>1.21.1</drill.freemarker.maven.plugin.version>
@@ -230,11 +225,6 @@
                 <version>${commons-cli.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-lang3</artifactId>
-                <version>${commons-lang3.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.jline</groupId>
                 <artifactId>jline</artifactId>
                 <version>${jline.version}</version>
@@ -330,11 +320,6 @@
                 <version>${bouncycastle.version}</version>
             </dependency>
             <dependency>
-                <groupId>commons-io</groupId>
-                <artifactId>commons-io</artifactId>
-                <version>${commons-io.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-server</artifactId>
                 <version>${ratis.version}</version>
@@ -373,11 +358,6 @@
                 <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-thirdparty-misc</artifactId>
                 <version>${ratis-thirdparty-misc.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-collections4</artifactId>
-                <version>${commons.collections4.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -594,11 +574,6 @@
                 <groupId>jakarta.validation</groupId>
                 <artifactId>jakarta.validation-api</artifactId>
                 <version>${jakarta.validation-api.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>commons-codec</groupId>
-                <artifactId>commons-codec</artifactId>
-                <version>${commons-codec.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
