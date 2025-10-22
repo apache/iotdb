@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedExceptionAction;
 
 /** Left-hand side padding for cache line alignment */
 class LhsPadding {
@@ -57,9 +59,14 @@ public class Sequence extends RhsPadding {
 
   static {
     try {
-      Field field = Unsafe.class.getDeclaredField("theUnsafe");
-      field.setAccessible(true);
-      UNSAFE = (Unsafe) field.get(null);
+      final PrivilegedExceptionAction<Unsafe> action =
+          () -> {
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            return (Unsafe) theUnsafe.get(null);
+          };
+
+      UNSAFE = AccessController.doPrivileged(action);
       // CRITICAL: Get offset of 'value' field from Value class
       VALUE_OFFSET = UNSAFE.objectFieldOffset(Value.class.getDeclaredField("value"));
     } catch (final Exception e) {

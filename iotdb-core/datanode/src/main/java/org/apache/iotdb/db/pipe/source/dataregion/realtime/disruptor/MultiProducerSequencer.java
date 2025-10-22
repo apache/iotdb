@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedExceptionAction;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -43,9 +45,14 @@ public final class MultiProducerSequencer {
 
   static {
     try {
-      Field field = Unsafe.class.getDeclaredField("theUnsafe");
-      field.setAccessible(true);
-      UNSAFE = (Unsafe) field.get(null);
+      final PrivilegedExceptionAction<Unsafe> action =
+          () -> {
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            return (Unsafe) theUnsafe.get(null);
+          };
+
+      UNSAFE = AccessController.doPrivileged(action);
 
       // Initialize array access offsets for available buffer
       BASE = UNSAFE.arrayBaseOffset(int[].class);
