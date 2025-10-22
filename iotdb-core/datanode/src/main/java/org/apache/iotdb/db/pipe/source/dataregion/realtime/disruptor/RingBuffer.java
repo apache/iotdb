@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedExceptionAction;
 
 /**
  * Left-hand side padding for cache line alignment
@@ -56,10 +58,13 @@ abstract class RingBufferFields<E> extends RingBufferPad {
 
   static {
     try {
-      // Get Unsafe instance through reflection
-      Field field = Unsafe.class.getDeclaredField("theUnsafe");
-      field.setAccessible(true);
-      UNSAFE = (Unsafe) field.get(null);
+      final PrivilegedExceptionAction<Unsafe> action = () -> {
+        Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+        theUnsafe.setAccessible(true);
+        return (Unsafe) theUnsafe.get(null);
+      };
+
+      UNSAFE = AccessController.doPrivileged(action);
 
       // Determine pointer size and calculate shift
       final int scale = UNSAFE.arrayIndexScale(Object[].class);
