@@ -527,4 +527,184 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           expectedResSet);
     }
   }
+
+  @Test
+  public void testPrefixPatternWithExclusionHistoricalData() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      // Inclusion: Match everything under root.db.d1 and root.db.d2
+      extractorAttributes.put("extractor.pattern", "root.db.d1, root.db.d2");
+      // Exclusion: Exclude anything with the prefix root.db.d1.s1
+      extractorAttributes.put("extractor.pattern.exclusion", "root.db.d1.s1");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              // s matches, s1 is excluded
+              "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+              // s matches
+              "insert into root.db.d2(time, s) values (2, 2)",
+              "insert into root.db1.d1(time, s) values (3, 3)"),
+          null);
+      awaitUntilFlush(senderEnv);
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      final Set<String> expectedResSet = new HashSet<>();
+      expectedResSet.add("1,1.0,null,");
+      expectedResSet.add("2,null,2.0,");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select * from root.db.**",
+          "Time,root.db.d1.s,root.db.d2.s,",
+          expectedResSet);
+    }
+  }
+
+  @Test
+  public void testIoTDBPatternWithExclusionHistoricalData() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      // Inclusion: Match everything under root.db
+      extractorAttributes.put("extractor.path", "root.db.**");
+      // Exclusion: Exclude root.db.d1.s* and root.db.d3.*
+      extractorAttributes.put("extractor.path.exclusion", "root.db.d1.s*, root.db.d3.*");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              // s, s1 excluded, t matches
+              "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
+              // s matches
+              "insert into root.db.d2(time, s) values (2, 2)",
+              // s excluded
+              "insert into root.db.d3(time, s) values (3, 3)",
+              "insert into root.db1.d1(time, s) values (4, 4)"),
+          null);
+      awaitUntilFlush(senderEnv);
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      final Set<String> expectedResSet = new HashSet<>();
+      expectedResSet.add("1,1.0,null,");
+      expectedResSet.add("2,null,2.0,");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select * from root.db.**",
+          "Time,root.db.d1.t,root.db.d2.s,",
+          expectedResSet);
+    }
+  }
+
+  @Test
+  public void testHybridPatternWithHybridExclusionRealtimeData() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      // Inclusion: Match root.db.** (IoTDB) AND root.db2.d1 (Prefix)
+      extractorAttributes.put("extractor.path", "root.db.**");
+      extractorAttributes.put("extractor.pattern", "root.db2.d1");
+      // Exclusion: Exclude root.db.d1.* (IoTDB) AND root.db2.d1.s (Prefix)
+      extractorAttributes.put("extractor.path.exclusion", "root.db.d1.*");
+      extractorAttributes.put("extractor.pattern.exclusion", "root.db2.d1.s");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              // s, s1 excluded by path.exclusion
+              "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+              // s matches
+              "insert into root.db.d2(time, s) values (2, 2)",
+              // s excluded by pattern.exclusion, t matches
+              "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
+              "insert into root.db3.d1(time, s) values (4, 4)"),
+          null);
+      awaitUntilFlush(senderEnv);
+
+      final Set<String> expectedResSet = new HashSet<>();
+      expectedResSet.add("2,2.0,null,");
+      expectedResSet.add("3,null,3.0,");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select * from root.db.**,root.db2.**",
+          "Time,root.db.d2.s,root.db2.d1.t,",
+          expectedResSet);
+    }
+  }
 }
