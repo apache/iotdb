@@ -61,6 +61,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -88,6 +90,9 @@ import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivil
 public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeDataRegionSource.class);
+
+  private static final ConcurrentMap<String, Set<PipeRealtimeDataRegionSource>> PIPE_SOURCES =
+      new ConcurrentHashMap<>();
 
   protected String pipeName;
   protected long creationTime;

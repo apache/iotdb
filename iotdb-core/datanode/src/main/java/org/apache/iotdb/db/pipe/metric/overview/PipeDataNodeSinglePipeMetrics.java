@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -233,15 +234,21 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void decreaseInsertNodeEventCount(
       final String pipeName, final long creationTime, final long transferTime) {
+    final String pipeID = pipeName + "_" + creationTime;
     PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+            pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
 
     operator.decreaseInsertNodeEventCount();
 
     if (transferTime > 0) {
       operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+      if (transferTime / 1_000_000
+          >= PipeConfig.getInstance().getPipeConnectorInsertNodeDegradeTransferThresholdMs()) {
+        PipeDataNodeAgent.task().reportHighTransferTime(pipeName, creationTime);
+      } else {
+        PipeDataNodeAgent.task().reportStableTransferTime(pipeName, creationTime);
+      }
     }
   }
 
@@ -283,15 +290,21 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void decreaseTsFileEventCount(
       final String pipeName, final long creationTime, final long transferTime) {
+    final String pipeID = pipeName + "_" + creationTime;
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+            pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
 
     operator.decreaseTsFileEventCount();
 
     if (transferTime > 0) {
       operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+      if (transferTime / 1_000_000
+          >= PipeConfig.getInstance().getPipeConnectorTsFileDegradeTransferThresholdMs()) {
+        PipeDataNodeAgent.task().reportHighTransferTime(pipeName, creationTime);
+      } else {
+        PipeDataNodeAgent.task().reportStableTransferTime(pipeName, creationTime);
+      }
     }
   }
 
