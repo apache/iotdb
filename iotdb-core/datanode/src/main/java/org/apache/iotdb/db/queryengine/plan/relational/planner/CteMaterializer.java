@@ -109,6 +109,7 @@ public class CteMaterializer {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     CteDataStore cteDataStore = null;
+    long startTime = System.nanoTime();
     try {
       final ExecutionResult executionResult =
           coordinator.executeForTableModel(
@@ -178,6 +179,8 @@ public class CteMaterializer {
       }
       t = throwable;
     } finally {
+      long cost = System.nanoTime() - startTime;
+      context.addCteMaterializationCost(table, cost);
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
     return null;

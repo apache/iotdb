@@ -71,6 +71,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       RamUsageEstimator.shallowSizeOfInstance(ExplainAnalyzeOperator.class);
   private static final String LOG_TITLE =
       "---------------------Intermediate Results of EXPLAIN ANALYZE---------------------:";
+  private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
+
   private final OperatorContext operatorContext;
   private final Operator child;
   private final boolean verbose;
@@ -233,6 +235,23 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
             sb.append(SPACE);
           }
           analyzeResult.add(sb.toString());
+          if (line.contains("Logical Plan Cost:")) {
+            mppQueryContext
+                .getCteMaterializationCosts()
+                .forEach(
+                    (tableRef, cost) -> {
+                      sb.setLength(0);
+                      sb.append(
+                          String.format(
+                              "  %s Materialization Total Cost: %.3f ms",
+                              tableRef.getNode().getName().toString(), cost * NS_TO_MS_FACTOR));
+                      int currentLength = sb.length();
+                      for (int i = 0; i < maxLineLength - currentLength; i++) {
+                        sb.append(SPACE);
+                      }
+                      analyzeResult.add(sb.toString());
+                    });
+          }
         });
 
     return analyzeResult;
