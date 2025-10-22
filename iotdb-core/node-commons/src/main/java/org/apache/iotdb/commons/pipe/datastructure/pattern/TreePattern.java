@@ -62,6 +62,49 @@ public abstract class TreePattern {
     return isTreeModelDataAllowedToBeCaptured;
   }
 
+  //////////////////////////// Interface ////////////////////////////
+
+  public abstract boolean isSingle();
+
+  public abstract String getPattern();
+
+  public abstract boolean isRoot();
+
+  /** Check if this pattern is legal. Different pattern type may have different rules. */
+  public abstract boolean isLegal();
+
+  /** Check if this pattern matches all time-series under a database. */
+  public abstract boolean coversDb(final String db);
+
+  /** Check if a device's all measurements are covered by this pattern. */
+  public abstract boolean coversDevice(final IDeviceID device);
+
+  /**
+   * Check if a database may have some measurements matched by the pattern.
+   *
+   * @return {@code true} if the pattern may overlap with the database, {@code false} otherwise.
+   */
+  public abstract boolean mayOverlapWithDb(final String db);
+
+  /**
+   * Check if a device may have some measurements matched by the pattern.
+   *
+   * <p>NOTE1: this is only called when {@link TreePattern#coversDevice} is {@code false}.
+   *
+   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
+   * measurement matches the pattern, please use {@link TreePattern#matchesMeasurement} after this.
+   */
+  public abstract boolean mayOverlapWithDevice(final IDeviceID device);
+
+  /**
+   * Check if a full path with device and measurement can be matched by pattern.
+   *
+   * <p>NOTE: this is only called when {@link TreePattern#mayOverlapWithDevice} is {@code true}.
+   */
+  public abstract boolean matchesMeasurement(final IDeviceID device, final String measurement);
+
+  //////////////////////////// Utilities ////////////////////////////
+
   public static <T> List<T> applyIndexesOnList(
       final int[] filteredIndexes, final List<T> originalList) {
     return Objects.nonNull(originalList)
@@ -302,43 +345,4 @@ public abstract class TreePattern {
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
                 .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
-
-  public abstract boolean isSingle();
-
-  public abstract String getPattern();
-
-  public abstract boolean isRoot();
-
-  /** Check if this pattern is legal. Different pattern type may have different rules. */
-  public abstract boolean isLegal();
-
-  /** Check if this pattern matches all time-series under a database. */
-  public abstract boolean coversDb(final String db);
-
-  /** Check if a device's all measurements are covered by this pattern. */
-  public abstract boolean coversDevice(final IDeviceID device);
-
-  /**
-   * Check if a database may have some measurements matched by the pattern.
-   *
-   * @return {@code true} if the pattern may overlap with the database, {@code false} otherwise.
-   */
-  public abstract boolean mayOverlapWithDb(final String db);
-
-  /**
-   * Check if a device may have some measurements matched by the pattern.
-   *
-   * <p>NOTE1: this is only called when {@link TreePattern#coversDevice} is {@code false}.
-   *
-   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
-   * measurement matches the pattern, please use {@link TreePattern#matchesMeasurement} after this.
-   */
-  public abstract boolean mayOverlapWithDevice(final IDeviceID device);
-
-  /**
-   * Check if a full path with device and measurement can be matched by pattern.
-   *
-   * <p>NOTE: this is only called when {@link TreePattern#mayOverlapWithDevice} is {@code true}.
-   */
-  public abstract boolean matchesMeasurement(final IDeviceID device, final String measurement);
 }
