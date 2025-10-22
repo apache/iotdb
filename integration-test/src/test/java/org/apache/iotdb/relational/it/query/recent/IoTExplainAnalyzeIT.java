@@ -188,7 +188,7 @@ public class IoTExplainAnalyzeIT {
   @Test
   public void testCteQuerySuccess() {
     String sql =
-        "explain analyze with cte1 as materialized (select * from testtb3) select * from testtb where testtb.deviceid in (select deviceid from cte1)";
+        "explain analyze with cte1 as materialized (select voltage, deviceid from testtb3) select * from testtb where testtb.deviceid in (select deviceid from cte1)";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
       statement.execute("Use " + DATABASE_NAME);
@@ -208,7 +208,7 @@ public class IoTExplainAnalyzeIT {
 
       String result = sb.toString();
       Assert.assertTrue(
-          "Main Query should contain CteScan node when the CTE query's result set exceeds threshold.",
+          "Main Query should contain CteScan node when the CTE query's result set does not exceeds threshold.",
           result.contains("CteScanNode(CteScanOperator)"));
       Assert.assertFalse(
           "Explain Analyze should not contain ExplainAnalyze node.",

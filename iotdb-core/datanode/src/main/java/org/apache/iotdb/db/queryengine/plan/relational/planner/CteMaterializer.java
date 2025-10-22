@@ -78,14 +78,8 @@ public class CteMaterializer {
         .forEach(
             (tableRef, query) -> {
               Table table = tableRef.getNode();
-              if (query.isMaterialized()) {
-                CteDataStore dataStore = query.getCteDataStore();
-                if (dataStore != null) {
-                  context.addCteDataStore(table, dataStore);
-                  return;
-                }
-
-                dataStore = fetchCteQueryResult(table, query, context);
+              if (query.isMaterialized() && !query.isDone()) {
+                CteDataStore dataStore = fetchCteQueryResult(table, query, context);
                 if (dataStore == null) {
                   // CTE query execution failed. Use inline instead of materialization
                   // in the outer query
@@ -94,7 +88,7 @@ public class CteMaterializer {
                 }
 
                 context.addCteDataStore(table, dataStore);
-                query.setCteDataStore(dataStore);
+                query.setDone(true);
               }
             });
   }
