@@ -68,7 +68,6 @@
         <commons-cli.version>1.5.0</commons-cli.version>
         <commons-csv.version>1.10.0</commons-csv.version>
         <commons-jexl3.version>3.3</commons-jexl3.version>
-        <commons-math3.version>3.6.1</commons-math3.version>
         <commons-pool2.version>2.11.1</commons-pool2.version>
         <ctest.skip.tests>false</ctest.skip.tests>
         <disruptor.version>3.4.4</disruptor.version>
@@ -554,11 +553,6 @@
                 <groupId>org.eclipse.collections</groupId>
                 <artifactId>eclipse-collections-api</artifactId>
                 <version>${eclipse-collections.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-math3</artifactId>
-                <version>${commons-math3.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.wendykierp</groupId>
