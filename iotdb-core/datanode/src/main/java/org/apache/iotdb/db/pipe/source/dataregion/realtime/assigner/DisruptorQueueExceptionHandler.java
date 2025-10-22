@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 
-import com.lmax.disruptor.ExceptionHandler;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.ExceptionHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
