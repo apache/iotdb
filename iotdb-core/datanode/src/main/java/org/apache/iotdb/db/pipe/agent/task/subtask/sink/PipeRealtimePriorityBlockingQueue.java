@@ -36,8 +36,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -201,9 +201,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     return tsfileInsertEventDeque.peek();
   }
 
-  public synchronized void replace(
+  public void replace(
       String dataRegionId, Set<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
-
     final int regionId = Integer.parseInt(dataRegionId);
     final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeRemovedGroupByCommitterKey =
         tsfileInsertEventDeque.stream()
@@ -211,6 +210,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
                 event ->
                     event instanceof PipeTsFileInsertionEvent
                         && ((PipeTsFileInsertionEvent) event).getRegionId() == regionId)
+            .filter(e -> sourceFiles.contains(((PipeTsFileInsertionEvent) e).getTsFileResource()))
             .map(event -> (PipeTsFileInsertionEvent) event)
             .collect(
                 Collectors.groupingBy(
@@ -220,87 +220,15 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
             // Replace if all source files are present in the queue
             .filter(entry -> entry.getValue().size() == sourceFiles.size())
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    if (eventsToBeRemovedGroupByCommitterKey.isEmpty()) {
-      LOGGER.info(
-          "Region {}: No TsFileInsertionEvents to replace for source files {}",
-          regionId,
-          sourceFiles.stream()
-              .map(TsFileResource::getTsFilePath)
-              .collect(Collectors.joining(", ")));
-      return;
-    }
 
-    final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeAddedGroupByCommitterKey =
-        new HashMap<>();
-    for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> entry :
+    for (Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> entry :
         eventsToBeRemovedGroupByCommitterKey.entrySet()) {
       final CommitterKey committerKey = entry.getKey();
-      final PipeTsFileInsertionEvent anyEvent = entry.getValue().stream().findFirst().orElse(null);
-      final Set<PipeTsFileInsertionEvent> newEvents = new HashSet<>();
-      for (int i = 0; i < targetFiles.size(); i++) {
-        newEvents.add(
-            new PipeCompactedTsFileInsertionEvent(
-                committerKey,
-                entry.getValue(),
-                anyEvent,
-                targetFiles.get(i),
-                i == targetFiles.size() - 1));
-      }
-      eventsToBeAddedGroupByCommitterKey.put(committerKey, newEvents);
-    }
-
-    // Handling new events
-    final Set<PipeTsFileInsertionEvent> successfullyReferenceIncreasedEvents = new HashSet<>();
-    final AtomicBoolean
-        allSuccess = // To track if all events successfully increased the reference count
-        new AtomicBoolean(true);
-    outerLoop:
-    for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> committerKeySetEntry :
-        eventsToBeAddedGroupByCommitterKey.entrySet()) {
-      for (final PipeTsFileInsertionEvent event : committerKeySetEntry.getValue()) {
-        if (event != null) {
-          try {
-            if (!event.increaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
-              allSuccess.set(false);
-              break outerLoop;
-            } else {
-              successfullyReferenceIncreasedEvents.add(event);
-            }
-          } catch (final Exception e) {
-            allSuccess.set(false);
-            break outerLoop;
-          }
-        }
-      }
-    }
-    if (!allSuccess.get()) {
-      // If any event failed to increase the reference count,
-      // we need to decrease the reference count for all successfully increased events
-      for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
-        try {
-          event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue",
-              event,
-              e);
-        }
-      }
-      return; // Exit early if any event failed to increase the reference count
-    } else {
-      // If all events successfully increased reference count,
-      // we can proceed to add them to the deque
-      for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
-        tsfileInsertEventDeque.add(event);
-        eventCounter.increaseEventCount(event);
-      }
-    }
-
-    // Handling old events
-    for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> entry :
-        eventsToBeRemovedGroupByCommitterKey.entrySet()) {
-      for (final PipeTsFileInsertionEvent event : entry.getValue()) {
-        if (event != null) {
+      final Set<PipeTsFileInsertionEvent> copyOfEventsToBeRemoved = new HashSet<>(entry.getValue());
+      final Iterator<PipeTsFileInsertionEvent> iterator = copyOfEventsToBeRemoved.iterator();
+      while (iterator.hasNext()) {
+        PipeTsFileInsertionEvent event = iterator.next();
+        if (tsfileInsertEventDeque.remove(event)) {
           try {
             event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
           } catch (final Exception e) {
@@ -310,27 +238,96 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
                 e);
           }
           eventCounter.decreaseEventCount(event);
+        } else {
+          iterator.remove();
         }
       }
-    }
-    final Set<PipeTsFileInsertionEvent> eventsToRemove = new HashSet<>();
-    for (Set<PipeTsFileInsertionEvent> pipeTsFileInsertionEvents :
-        eventsToBeRemovedGroupByCommitterKey.values()) {
-      eventsToRemove.addAll(pipeTsFileInsertionEvents);
-    }
-    tsfileInsertEventDeque.removeIf(eventsToRemove::contains);
 
-    LOGGER.info(
-        "Region {}: Replaced TsFileInsertionEvents {} with {}",
-        regionId,
-        eventsToBeRemovedGroupByCommitterKey.values().stream()
-            .flatMap(Set::stream)
-            .map(PipeTsFileInsertionEvent::coreReportMessage)
-            .collect(Collectors.joining(", ")),
-        eventsToBeAddedGroupByCommitterKey.values().stream()
-            .flatMap(Set::stream)
-            .map(PipeTsFileInsertionEvent::coreReportMessage)
-            .collect(Collectors.joining(", ")));
+      if (copyOfEventsToBeRemoved.isEmpty()) {
+        // All events to be removed are not in the deque, skip this replacement
+        continue;
+      }
+
+      final PipeTsFileInsertionEvent anyEvent = entry.getValue().stream().findFirst().orElse(null);
+      final Set<PipeTsFileInsertionEvent> newEvents = new HashSet<>();
+      for (int i = 0; i < targetFiles.size(); i++) {
+        newEvents.add(
+            new PipeCompactedTsFileInsertionEvent(
+                committerKey,
+                copyOfEventsToBeRemoved,
+                anyEvent,
+                targetFiles.get(i),
+                i == targetFiles.size() - 1));
+      }
+
+      // Handling new events
+      final Set<PipeTsFileInsertionEvent> successfullyReferenceIncreasedEvents = new HashSet<>();
+      final AtomicBoolean
+          allSuccess = // To track if all events successfully increased the reference count
+          new AtomicBoolean(true);
+      outerLoop:
+      for (final PipeTsFileInsertionEvent event : newEvents) {
+        if (event != null) {
+          try {
+            if (!event.increaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
+              allSuccess.set(false);
+              break;
+            } else {
+              successfullyReferenceIncreasedEvents.add(event);
+            }
+          } catch (final Exception e) {
+            allSuccess.set(false);
+            break;
+          }
+        }
+      }
+      if (!allSuccess.get()) {
+        // If any event failed to increase the reference count,
+        // we need to decrease the reference count for all successfully increased events
+        for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
+          try {
+            event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
+          } catch (final Exception e) {
+            LOGGER.warn(
+                "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue",
+                event,
+                e);
+          }
+        }
+
+        for (PipeTsFileInsertionEvent e : copyOfEventsToBeRemoved) {
+          try {
+            if (e.increaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
+              tsfileInsertEventDeque.add(e);
+              eventCounter.increaseEventCount(e);
+            }
+          } catch (final Exception ex) {
+            LOGGER.warn(
+                "Failed to increase reference count for event {} in PipeRealtimePriorityBlockingQueue",
+                e,
+                ex);
+          }
+        }
+        return; // Exit early if any event failed to increase the reference count
+      } else {
+        // If all events successfully increased reference count,
+        // we can proceed to add them to the deque
+        for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
+          tsfileInsertEventDeque.add(event);
+          eventCounter.increaseEventCount(event);
+        }
+      }
+
+      LOGGER.info(
+          "Region {}: Replaced TsFileInsertionEvents {} with {}",
+          regionId,
+          copyOfEventsToBeRemoved.stream()
+              .map(PipeTsFileInsertionEvent::coreReportMessage)
+              .collect(Collectors.joining(", ")),
+          newEvents.stream()
+              .map(PipeTsFileInsertionEvent::coreReportMessage)
+              .collect(Collectors.joining(", ")));
+    }
   }
 
   @Override

@@ -265,6 +265,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return tsFile;
   }
 
+  public TsFileResource getTsFileResource() {
+    return resource;
+  }
+
   public File getModFile() {
     return modFile;
   }

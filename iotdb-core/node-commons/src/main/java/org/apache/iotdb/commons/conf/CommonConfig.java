@@ -205,6 +205,7 @@ public class CommonConfig {
   private boolean pipeFileReceiverFsyncEnabled = true;
 
   private int pipeRealTimeQueuePollTsFileThreshold = 10;
+  private boolean pipeRealTimeQueueCompactionEnabled = true;
 
   // Sequentially poll the tsFile by default
   private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 1;
@@ -1456,6 +1457,19 @@ public class CommonConfig {
     }
     this.pipeRealTimeQueuePollTsFileThreshold = pipeRealTimeQueuePollTsFileThreshold;
     logger.info("pipeRealTimeQueuePollTsFileThreshold is {}", pipeRealTimeQueuePollTsFileThreshold);
+  }
+
+  public boolean isPipeRealTimeQueueCompactionEnabled() {
+    return pipeRealTimeQueueCompactionEnabled;
+  }
+
+  public void setPipeRealTimeQueueCompactionEnabled(boolean pipeRealTimeQueueCompactionEnabled) {
+    if (this.pipeRealTimeQueueCompactionEnabled == pipeRealTimeQueueCompactionEnabled) {
+      return;
+    }
+    this.pipeRealTimeQueueCompactionEnabled = pipeRealTimeQueueCompactionEnabled;
+    logger.info(
+        "pipeRealTimeQueueCompactionEnabled is set to {}.", pipeRealTimeQueueCompactionEnabled);
   }
 
   public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
