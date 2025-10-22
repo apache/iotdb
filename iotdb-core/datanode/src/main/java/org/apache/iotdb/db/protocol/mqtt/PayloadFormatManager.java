@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.google.common.base.Preconditions;
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,8 +127,8 @@ public class PayloadFormatManager {
   private static URL[] getPluginJarURLs(String folderPath) throws IOException {
     HashSet<File> fileSet =
         new HashSet<>(
-            org.apache.commons.io.FileUtils.listFiles(
+            org.apache.tsfile.external.commons.io.FileUtils.listFiles(
                 SystemFileFactory.INSTANCE.getFile(folderPath), new String[] {"jar"}, true));
-    return org.apache.commons.io.FileUtils.toURLs(fileSet.toArray(new File[0]));
+    return org.apache.tsfile.external.commons.io.FileUtils.toURLs(fileSet.toArray(new File[0]));
   }
 }

@@ -55,8 +55,8 @@ import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

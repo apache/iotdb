@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.it.env.cluster;
 
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
 
 import java.io.File;
 
