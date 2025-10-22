@@ -18,6 +18,7 @@
     "com.github.luben:zstd-jni",
     "com.github.moquette-io.moquette:moquette-broker",
     "com.github.stephenc.jcip:jcip-annotations",
+    "com.github.wendykierp:JTransforms",
     "com.google.code.findbugs:jsr305",
     "com.google.code.gson:gson",
     "com.google.errorprone:error_prone_annotations",
@@ -100,6 +101,8 @@
     "org.apache.commons:commons-csv",
     "org.apache.commons:commons-jexl3",
     "org.apache.commons:commons-lang3",
+    "org.apache.commons:commons-lang3",
+    "org.apache.commons:commons-math3",
     "org.apache.commons:commons-pool2",
     "org.apache.httpcomponents:httpclient",
     "org.apache.httpcomponents:httpcore",
@@ -112,6 +115,8 @@
     "org.bouncycastle:bcutil-jdk18on",
     "org.checkerframework:checker-qual",
     "org.checkerframework:checker-qual",
+    "org.eclipse.collections:eclipse-collections",
+    "org.eclipse.collections:eclipse-collections-api",
     "org.eclipse.jetty:jetty-http",
     "org.eclipse.jetty:jetty-io",
     "org.eclipse.jetty:jetty-security",
@@ -161,6 +166,7 @@
     "org.slf4j:slf4j-reload4j",
     "org.tukaani:xz",
     "org.xerial.snappy:snappy-java",
-    "org.yaml:snakeyaml"
+    "org.yaml:snakeyaml",
+    "pl.edu.icm:JLargeArrays"
   ]
 }
