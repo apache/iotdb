@@ -26,8 +26,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.google.common.base.Strings.nullToEmpty;
-
 public final class RelationalSqlKeywords {
   private static final Pattern IDENTIFIER = Pattern.compile("'([A-Z_]+)'");
 
@@ -44,5 +42,15 @@ public final class RelationalSqlKeywords {
       }
     }
     return names;
+  }
+
+  /**
+   * Returns the string if it is not null, or an empty string otherwise.
+   *
+   * @param string the string to test and possibly return
+   * @return {@code string} if it is not null; {@code ""} otherwise
+   */
+  static String nullToEmpty(String string) {
+    return (string == null) ? "" : string;
   }
 }

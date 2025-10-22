@@ -17,7 +17,6 @@ package com.google.common.util.concurrent;
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.internal.InternalFutureFailureAccess;
 import com.google.common.util.concurrent.internal.InternalFutures;
-import com.google.errorprone.annotations.ForOverride;
 
 import javax.annotation.CheckForNull;
 
@@ -166,11 +165,9 @@ abstract class AbstractCatchingFuture<V extends Object, X extends Throwable, F, 
   }
 
   /** Template method for subtypes to actually run the fallback. */
-  @ForOverride
   abstract T doFallback(F fallback, X throwable) throws Exception;
 
   /** Template method for subtypes to actually set the result. */
-  @ForOverride
   abstract void setResult(T result);
 
   @Override

@@ -17,8 +17,6 @@ package com.google.common.cache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ExecutionError;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import com.google.errorprone.annotations.CompatibleWith;
-import com.google.errorprone.annotations.DoNotMock;
 
 import javax.annotation.CheckForNull;
 
@@ -40,7 +38,6 @@ import java.util.concurrent.ExecutionException;
  * @author Charles Fry
  * @since 10.0
  */
-@DoNotMock("Use CacheBuilder.newBuilder().build()")
 public interface Cache<K, V> {
 
   /**
@@ -50,7 +47,7 @@ public interface Cache<K, V> {
    * @since 11.0
    */
   @CheckForNull
-  V getIfPresent(@CompatibleWith("K") Object key);
+  V getIfPresent(Object key);
 
   /**
    * Returns the value associated with {@code key} in this cache, obtaining that value from {@code
@@ -134,7 +131,7 @@ public interface Cache<K, V> {
   void putAll(Map<? extends K, ? extends V> m);
 
   /** Discards any cached value for key {@code key}. */
-  void invalidate(@CompatibleWith("K") Object key);
+  void invalidate(Object key);
 
   /**
    * Discards any cached values for keys {@code keys}.
