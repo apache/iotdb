@@ -58,6 +58,8 @@ public abstract class AbstractSessionBuilder {
   // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
   public boolean enableAutoFetch = SessionConfig.DEFAULT_ENABLE_AUTO_FETCH;
 
+  public String endpointSelectionStrategyName = SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY;
+
   public boolean useSSL = false;
   public String trustStore;
   public String trustStorePwd;

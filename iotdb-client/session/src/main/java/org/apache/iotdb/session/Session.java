@@ -56,6 +56,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.endpointselector.EndpointSelectionStrategy;
+import org.apache.iotdb.session.endpointselector.EndpointSelectionStrategyFactory;
 import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
@@ -201,6 +203,8 @@ public class Session implements ISession {
   // may be null
   protected volatile String database;
 
+  private final EndpointSelectionStrategy selectionStrategy;
+
   private static final String REDIRECT_TWICE = "redirect twice";
 
   private static final String REDIRECT_TWICE_RETRY = "redirect twice, please try again.";
@@ -237,7 +241,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
@@ -251,7 +256,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
@@ -265,7 +271,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
@@ -279,7 +286,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public Session(
@@ -299,7 +307,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
@@ -314,7 +323,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public Session(
@@ -329,7 +339,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         enableRedirection,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public Session(
@@ -350,7 +361,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         enableRedirection,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   @SuppressWarnings("squid:S107")
@@ -364,7 +376,8 @@ public class Session implements ISession {
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
       boolean enableRedirection,
-      Version version) {
+      Version version,
+      String endpointSelectStrategyName) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
@@ -374,6 +387,8 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
+    this.selectionStrategy =
+        EndpointSelectionStrategyFactory.createSelectionStrategy(endpointSelectStrategyName);
   }
 
   public Session(List<String> nodeUrls, String username, String password) {
@@ -386,7 +401,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   /**
@@ -404,7 +420,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
@@ -417,7 +434,8 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
   }
 
   public Session(
@@ -429,7 +447,8 @@ public class Session implements ISession {
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
       boolean enableRedirection,
-      Version version) {
+      Version version,
+      String endpointSelectStrategyName) {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
     }
@@ -443,6 +462,8 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
+    this.selectionStrategy =
+        EndpointSelectionStrategyFactory.createSelectionStrategy(endpointSelectStrategyName);
   }
 
   public Session(AbstractSessionBuilder builder) {
@@ -475,11 +496,18 @@ public class Session implements ISession {
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
     this.enableAutoFetch = builder.enableAutoFetch;
+    this.selectionStrategy =
+        EndpointSelectionStrategyFactory.createSelectionStrategy(
+            builder.endpointSelectionStrategyName);
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
     this.database = builder.database;
+  }
+
+  public EndpointSelectionStrategy getEndpointSelectionStrategy() {
+    return this.selectionStrategy;
   }
 
   @Override
@@ -4426,6 +4454,11 @@ public class Session implements ISession {
 
     public Builder trustStorePwd(String trustStorePwd) {
       this.trustStorePwd = trustStorePwd;
+      return this;
+    }
+
+    public Builder endpointSelectionStrategyName(String endpointSelectionStrategyName) {
+      this.endpointSelectionStrategyName = endpointSelectionStrategyName;
       return this;
     }
 

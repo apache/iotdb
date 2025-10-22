@@ -558,6 +558,8 @@ public interface ISessionPool {
 
   Version getVersion();
 
+  String getEndpointSelectStrategyName();
+
   void setQueryTimeout(long timeoutInMs);
 
   long getQueryTimeout();

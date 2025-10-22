@@ -78,7 +78,8 @@ public class ExportDataTree extends AbstractExportData {
             SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
             rpcMaxFrameSize,
             SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
     session.open(false);
     timestampPrecision = session.getTimestampPrecision();
     if (timeZoneID != null) {
