@@ -373,7 +373,9 @@ public class TableLogicalPlanner {
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
     // materialize cte if needed
-    CteMaterializer.getInstance().materializeCTE(analysis, queryContext);
+    if (!queryContext.isSubquery()) {
+      CteMaterializer.getInstance().materializeCTE(analysis, queryContext);
+    }
     return getRelationPlanner(analysis).process(query, null);
   }
 
