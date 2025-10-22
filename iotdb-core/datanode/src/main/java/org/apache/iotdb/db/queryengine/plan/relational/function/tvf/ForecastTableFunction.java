@@ -207,7 +207,7 @@ public class ForecastTableFunction implements TableFunction {
   private static final String IS_INPUT_COLUMN_NAME = "is_input";
   private static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
   private static final String DEFAULT_OPTIONS = "";
-  private static final int MAX_INPUT_LENGTH = 1440;
+  private static final int MAX_INPUT_LENGTH = 2880;
 
   private static final String INVALID_OPTIONS_FORMAT = "Invalid options: %s";
 
