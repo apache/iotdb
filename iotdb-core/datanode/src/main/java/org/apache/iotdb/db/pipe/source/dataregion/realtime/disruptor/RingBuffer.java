@@ -58,11 +58,12 @@ abstract class RingBufferFields<E> extends RingBufferPad {
 
   static {
     try {
-      final PrivilegedExceptionAction<Unsafe> action = () -> {
-        Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-        theUnsafe.setAccessible(true);
-        return (Unsafe) theUnsafe.get(null);
-      };
+      final PrivilegedExceptionAction<Unsafe> action =
+          () -> {
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            return (Unsafe) theUnsafe.get(null);
+          };
 
       UNSAFE = AccessController.doPrivileged(action);
 
