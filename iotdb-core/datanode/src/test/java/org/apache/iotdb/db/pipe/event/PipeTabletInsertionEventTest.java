@@ -21,9 +21,7 @@ package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -35,17 +33,13 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public class PipeTabletInsertionEventTest {
 
@@ -399,43 +393,5 @@ public class PipeTabletInsertionEventTest {
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
     event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
-  }
-
-  private void setExclusions(Object parser, List<TreePattern> exclusions) throws Exception {
-    final Field f =
-        parser
-            .getClass()
-            .getDeclaredField("exclusionPatterns"); // present per data structure assumption
-    f.setAccessible(true);
-    f.set(parser, exclusions);
-  }
-
-  @Test
-  public void testExclusionFilteringInTabletParser() throws Exception {
-    // Include all measurements under device
-    final PrefixTreePattern includePattern = new PrefixTreePattern("root.sg.d1");
-
-    // Exclude a single measurement s1
-    final TreePattern excludeS1 = new PrefixTreePattern("root.sg.d1.s1");
-
-    final TabletInsertionEventTreePatternParser parser =
-        new TabletInsertionEventTreePatternParser(insertTabletNode, includePattern);
-    setExclusions(parser, Collections.singletonList(excludeS1));
-
-    final Tablet filtered = parser.convertToTablet();
-    // Ensure s1 is filtered out
-    for (final IMeasurementSchema s : filtered.getSchemas()) {
-      Assert.assertNotEquals("s1", s.getMeasurementName());
-    }
-    Assert.assertEquals("All except s1", schemas.length - 1, filtered.getSchemas().size());
-
-    // Exclude entire device
-    final TreePattern excludeDevice = new IoTDBTreePattern("root.sg.d1.**");
-    final TabletInsertionEventTreePatternParser parser2 =
-        new TabletInsertionEventTreePatternParser(insertTabletNode, includePattern);
-    setExclusions(parser2, Collections.singletonList(excludeDevice));
-
-    final Tablet filtered2 = parser2.convertToTablet();
-    Assert.assertEquals(0, filtered2.getSchemas().size());
   }
 }

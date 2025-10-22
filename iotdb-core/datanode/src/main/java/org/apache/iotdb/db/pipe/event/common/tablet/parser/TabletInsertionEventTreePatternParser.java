@@ -45,10 +45,6 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
 
   private final TreePattern pattern;
 
-  // Exclusion patterns for tree model filtering
-  // This field is expected to be initialized by the constructor externally in upstream changes.
-  private List<TreePattern> exclusionPatterns;
-
   public TabletInsertionEventTreePatternParser(
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
@@ -96,22 +92,11 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
       final Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 
-    // Helper to check exclusion
-    final java.util.function.Predicate<String> excluded = m -> isMeasurementExcluded(deviceId, m);
-
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
     if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
-      int filteredCount = 0;
       for (int i = 0; i < originColumnSize; i++) {
-        final String measurement = originMeasurementList[i];
-        // ignore null measurement for partial insert
-        if (measurement == null) {
-          continue;
-        }
-        if (!excluded.test(measurement)) {
-          originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
-        }
+        originColumnIndex2FilteredColumnIndexMapperList[i] = i;
       }
     }
 
@@ -128,31 +113,11 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
           continue;
         }
 
-        if (pattern.matchesMeasurement(deviceId, measurement) && !excluded.test(measurement)) {
+        if (pattern.matchesMeasurement(deviceId, measurement)) {
           originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
         }
       }
     }
-  }
-
-  private boolean isMeasurementExcluded(
-      final org.apache.tsfile.file.metadata.IDeviceID device, final String measurement) {
-    if (Objects.isNull(exclusionPatterns) || exclusionPatterns.isEmpty()) {
-      return false;
-    }
-    for (final TreePattern ex : exclusionPatterns) {
-      if (Objects.isNull(ex)) {
-        continue;
-      }
-      // If the exclusion covers the device, exclude all measurements
-      if (ex.coversDevice(device)) {
-        return true;
-      }
-      if (ex.mayOverlapWithDevice(device) && ex.matchesMeasurement(device, measurement)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   ////////////////////////////  process  ////////////////////////////
