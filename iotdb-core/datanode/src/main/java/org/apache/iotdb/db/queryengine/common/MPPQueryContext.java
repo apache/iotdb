@@ -113,6 +113,7 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
+  private final Map<NodeRef<Table>, Long> cteMaterializationCosts = new HashMap<>();
   private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
   // table -> (maxLineLength, 'explain' or 'explain analyze' result)
   // Max line length of each CTE should be remembered because we need to standardize
@@ -476,6 +477,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setSubquery(boolean subquery) {
     this.subquery = subquery;
+  }
+
+  public void addCteMaterializationCost(Table table, long cost) {
+    cteMaterializationCosts.put(NodeRef.of(table), cost);
+  }
+
+  public Map<NodeRef<Table>, Long> getCteMaterializationCosts() {
+    return cteMaterializationCosts;
   }
 
   public void addCteDataStore(Table table, CteDataStore dataStore) {
