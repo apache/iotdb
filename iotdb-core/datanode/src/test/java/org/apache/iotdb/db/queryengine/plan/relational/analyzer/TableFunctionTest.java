@@ -372,7 +372,7 @@ public class TableFunctionTest {
                 .handle(
                     new ForecastTableFunction.ForecastTableFunctionHandle(
                         false,
-                        1440,
+                        2880,
                         "timer_xl",
                         Collections.emptyMap(),
                         96,
@@ -433,7 +433,7 @@ public class TableFunctionTest {
                 .handle(
                     new ForecastTableFunction.ForecastTableFunctionHandle(
                         false,
-                        1440,
+                        2880,
                         "timer_xl",
                         Collections.emptyMap(),
                         96,
