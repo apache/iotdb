@@ -24,8 +24,8 @@ import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
@@ -66,8 +66,7 @@ public class PhiAccrualDetector implements IFailureDetector {
     this.minHeartbeatStdNs = minHeartbeatStdNs;
     this.codeStartSampleCount = minimalSampleCount;
     this.fallbackDuringColdStart = fallbackDuringColdStart;
-    this.availibilityCache =
-        CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).build();
+    this.availibilityCache = Caffeine.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).build();
   }
 
   @Override

@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.DisjointSet;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -354,7 +353,6 @@ public class EqualityInference {
    * Returns a canonical expression that is fully contained by the symbolScope and that is
    * equivalent to the specified expression. Returns null if unable to find a canonical.
    */
-  @VisibleForTesting
   Expression getScopedCanonical(Expression expression, Predicate<Symbol> symbolScope) {
     Expression canonicalIndex = canonicalMap.get(expression);
     if (canonicalIndex == null) {

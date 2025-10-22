@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.warnings;
 
 import com.google.common.collect.ImmutableList;
-import com.google.errorprone.annotations.concurrent.GuardedBy;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -32,7 +31,6 @@ import static java.util.Objects.requireNonNull;
 
 @ThreadSafe
 public class DefaultWarningCollector implements WarningCollector {
-  @GuardedBy("this")
   private final Set<IoTDBWarning> warnings = new LinkedHashSet<>();
 
   private final int maxWarnings;

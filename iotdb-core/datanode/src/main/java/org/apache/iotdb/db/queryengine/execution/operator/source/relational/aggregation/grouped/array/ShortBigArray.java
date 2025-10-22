@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array;
 
-import com.google.common.primitives.Shorts;
-
 import java.util.Arrays;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.INITIAL_SEGMENTS;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.SEGMENT_SIZE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.offset;
@@ -97,7 +96,21 @@ public final class ShortBigArray {
    * @param value the value
    */
   public void add(long index, long value) {
-    array[segment(index)][offset(index)] += Shorts.checkedCast(value);
+    array[segment(index)][offset(index)] += checkedCast(value);
+  }
+
+  /**
+   * Returns the {@code short} value that is equal to {@code value}, if possible.
+   *
+   * @param value any value in the range of the {@code short} type
+   * @return the {@code short} value that equals {@code value}
+   * @throws IllegalArgumentException if {@code value} is greater than {@link Short#MAX_VALUE} or
+   *     less than {@link Short#MIN_VALUE}
+   */
+  public static short checkedCast(long value) {
+    short result = (short) value;
+    checkArgument(result == value, "Out of range: %s", value);
+    return result;
   }
 
   /**
