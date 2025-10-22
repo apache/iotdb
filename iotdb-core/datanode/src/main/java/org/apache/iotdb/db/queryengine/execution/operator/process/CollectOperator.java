@@ -35,10 +35,10 @@ public class CollectOperator implements ProcessOperator {
       RamUsageEstimator.shallowSizeOfInstance(CollectOperator.class);
 
   private final OperatorContext operatorContext;
-  private final List<Operator> children;
+  protected final List<Operator> children;
   private boolean inited = false;
 
-  private int currentIndex;
+  protected int currentIndex;
 
   public CollectOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
@@ -62,7 +62,7 @@ public class CollectOperator implements ProcessOperator {
     }
   }
 
-  private void closeCurrentChild(int index) throws Exception {
+  protected void closeCurrentChild(int index) throws Exception {
     children.get(index).close();
     children.set(index, null);
   }
