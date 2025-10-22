@@ -318,3 +318,15 @@ The following files include code modified from Dropwizard Metrics project.
 Copyright (c) 2010-2013 Coda Hale, Yammer.com, 2014-2021 Dropwizard Team
 Project page: https://github.com/dropwizard/metrics
 License: https://github.com/dropwizard/metrics/blob/release/4.2.x/LICENSE
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Apache Commons Collections project.
+
+./iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/external/collections4/*
+
+Apache Commons Collections is open source software licensed under the Apache License 2.0 and supported by the Apache Software Foundation.
+Project page: https://github.com/apache/commons-collections
+License: https://github.com/apache/commons-collections/blob/master/LICENSE.txt
+
+--------------------------------------------------------------------------------
