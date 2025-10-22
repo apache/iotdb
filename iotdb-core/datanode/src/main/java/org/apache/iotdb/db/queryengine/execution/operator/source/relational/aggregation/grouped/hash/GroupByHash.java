@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.type.Type;
@@ -56,6 +55,5 @@ public interface GroupByHash {
 
   long getRawHash(int groupId);
 
-  @VisibleForTesting
   int getCapacity();
 }

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -48,7 +46,6 @@ public class ArrayView {
     return length;
   }
 
-  @VisibleForTesting
   public int[] toArray() {
     return Arrays.copyOf(array, length);
   }

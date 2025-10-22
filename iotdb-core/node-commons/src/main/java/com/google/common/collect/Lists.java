@@ -32,12 +32,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.RandomAccess;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -162,96 +160,6 @@ public final class Lists {
   public static <E extends Object> ArrayList<E> newArrayListWithCapacity(int initialArraySize) {
     checkNonnegative(initialArraySize, "initialArraySize"); // for GWT.
     return new ArrayList<>(initialArraySize);
-  }
-
-  /**
-   * Creates an {@code ArrayList} instance to hold {@code estimatedSize} elements, <i>plus</i> an
-   * unspecified amount of padding; you almost certainly mean to call {@link
-   * #newArrayListWithCapacity} (see that method for further advice on usage).
-   *
-   * <p><b>Note:</b> This method will soon be deprecated. Even in the rare case that you do want
-   * some amount of padding, it's best if you choose your desired amount explicitly.
-   *
-   * @param estimatedSize an estimate of the eventual {@link List#size()} of the new list
-   * @return a new, empty {@code ArrayList}, sized appropriately to hold the estimated number of
-   *     elements
-   * @throws IllegalArgumentException if {@code estimatedSize} is negative
-   */
-  public static <E extends Object> ArrayList<E> newArrayListWithExpectedSize(int estimatedSize) {
-    return new ArrayList<>(computeArrayListCapacity(estimatedSize));
-  }
-
-  // LinkedList
-
-  /**
-   * Creates a <i>mutable</i>, empty {@code LinkedList} instance (for Java 6 and earlier).
-   *
-   * <p><b>Note:</b> if you won't be adding any elements to the list, use {@link ImmutableList#of()}
-   * instead.
-   *
-   * <p><b>Performance note:</b> {@link ArrayList} and {@link java.util.ArrayDeque} consistently
-   * outperform {@code LinkedList} except in certain rare and specific situations. Unless you have
-   * spent a lot of time benchmarking your specific needs, use one of those instead.
-   *
-   * <p><b>Note:</b> this method is now unnecessary and should be treated as deprecated. Instead,
-   * use the {@code LinkedList} {@linkplain LinkedList#LinkedList() constructor} directly, taking
-   * advantage of <a href="http://goo.gl/iz2Wi">"diamond" syntax</a>.
-   */
-  public static <E extends Object> LinkedList<E> newLinkedList() {
-    return new LinkedList<>();
-  }
-
-  /**
-   * Creates a <i>mutable</i> {@code LinkedList} instance containing the given elements; a very thin
-   * shortcut for creating an empty list then calling {@link Iterables#addAll}.
-   *
-   * <p><b>Note:</b> if mutability is not required and the elements are non-null, use {@link
-   * ImmutableList#copyOf(Iterable)} instead. (Or, change {@code elements} to be a {@link
-   * FluentIterable} and call {@code elements.toList()}.)
-   *
-   * <p><b>Performance note:</b> {@link ArrayList} and {@link java.util.ArrayDeque} consistently
-   * outperform {@code LinkedList} except in certain rare and specific situations. Unless you have
-   * spent a lot of time benchmarking your specific needs, use one of those instead.
-   *
-   * <p><b>Note:</b> if {@code elements} is a {@link Collection}, you don't need this method. Use
-   * the {@code LinkedList} {@linkplain LinkedList#LinkedList(Collection) constructor} directly,
-   * taking advantage of <a href="http://goo.gl/iz2Wi">"diamond" syntax</a>.
-   */
-  public static <E extends Object> LinkedList<E> newLinkedList(Iterable<? extends E> elements) {
-    LinkedList<E> list = newLinkedList();
-    Iterables.addAll(list, elements);
-    return list;
-  }
-
-  /**
-   * Creates an empty {@code CopyOnWriteArrayList} instance.
-   *
-   * <p><b>Note:</b> if you need an immutable empty {@link List}, use {@link Collections#emptyList}
-   * instead.
-   *
-   * @return a new, empty {@code CopyOnWriteArrayList}
-   * @since 12.0
-   */
-  public static <E extends Object> CopyOnWriteArrayList<E> newCopyOnWriteArrayList() {
-    return new CopyOnWriteArrayList<>();
-  }
-
-  /**
-   * Creates a {@code CopyOnWriteArrayList} instance containing the given elements.
-   *
-   * @param elements the elements that the list should contain, in order
-   * @return a new {@code CopyOnWriteArrayList} containing those elements
-   * @since 12.0
-   */
-  public static <E extends Object> CopyOnWriteArrayList<E> newCopyOnWriteArrayList(
-      Iterable<? extends E> elements) {
-    // We copy elements to an ArrayList first, rather than incurring the
-    // quadratic cost of adding them to the COWAL directly.
-    Collection<? extends E> elementsCollection =
-        (elements instanceof Collection)
-            ? (Collection<? extends E>) elements
-            : newArrayList(elements);
-    return new CopyOnWriteArrayList<>(elementsCollection);
   }
 
   /**

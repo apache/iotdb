@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -55,7 +54,6 @@ public class MarkDistinctHash {
         groupByHash.getGroupCount(), groupIds, columns[0].getPositionCount());
   }
 
-  @VisibleForTesting
   public int getCapacity() {
     return groupByHash.getCapacity();
   }

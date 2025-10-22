@@ -16,15 +16,9 @@ package com.google.common.base;
 
 import javax.annotation.CheckForNull;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -241,83 +235,6 @@ public final class Splitter {
   }
 
   /**
-   * Returns a splitter that considers any subsequence matching a given pattern (regular expression)
-   * to be a separator. For example, {@code Splitter.onPattern("\r?\n").split(entireFile)} splits a
-   * string into lines whether it uses DOS-style or UNIX-style line terminators. This is equivalent
-   * to {@code Splitter.on(Pattern.compile(pattern))}.
-   *
-   * @param separatorPattern the pattern that determines whether a subsequence is a separator. This
-   *     pattern may not match the empty string.
-   * @return a splitter, with default settings, that uses this pattern
-   * @throws IllegalArgumentException if {@code separatorPattern} matches the empty string or is a
-   *     malformed expression
-   */
-  public static Splitter onPattern(String separatorPattern) {
-    return on(Platform.compilePattern(separatorPattern));
-  }
-
-  /**
-   * Returns a splitter that divides strings into pieces of the given length. For example, {@code
-   * Splitter.fixedLength(2).split("abcde")} returns an iterable containing {@code ["ab", "cd",
-   * "e"]}. The last piece can be smaller than {@code length} but will never be empty.
-   *
-   * <p><b>Note:</b> if {@link #fixedLength} is used in conjunction with {@link #limit}, the final
-   * split piece <i>may be longer than the specified fixed length</i>. This is because the splitter
-   * will <i>stop splitting when the limit is reached</i>, and just return the final piece as-is.
-   *
-   * <p><b>Exception:</b> for consistency with separator-based splitters, {@code split("")} does not
-   * yield an empty iterable, but an iterable containing {@code ""}. This is the only case in which
-   * {@code Iterables.size(split(input))} does not equal {@code IntMath.divide(input.length(),
-   * length, CEILING)}. To avoid this behavior, use {@code omitEmptyStrings}.
-   *
-   * @param length the desired length of pieces after splitting, a positive integer
-   * @return a splitter, with default settings, that can split into fixed sized pieces
-   * @throws IllegalArgumentException if {@code length} is zero or negative
-   */
-  public static Splitter fixedLength(final int length) {
-    checkArgument(length > 0, "The length may not be less than 1");
-
-    return new Splitter(
-        new Strategy() {
-          @Override
-          public SplittingIterator iterator(final Splitter splitter, CharSequence toSplit) {
-            return new SplittingIterator(splitter, toSplit) {
-              @Override
-              public int separatorStart(int start) {
-                int nextChunkStart = start + length;
-                return (nextChunkStart < toSplit.length() ? nextChunkStart : -1);
-              }
-
-              @Override
-              public int separatorEnd(int separatorPosition) {
-                return separatorPosition;
-              }
-            };
-          }
-        });
-  }
-
-  /**
-   * Returns a splitter that behaves equivalently to {@code this} splitter, but automatically omits
-   * empty strings from the results. For example, {@code
-   * Splitter.on(',').omitEmptyStrings().split(",a,,,b,c,,")} returns an iterable containing only
-   * {@code ["a", "b", "c"]}.
-   *
-   * <p>If either {@code trimResults} option is also specified when creating a splitter, that
-   * splitter always trims results first before checking for emptiness. So, for example, {@code
-   * Splitter.on(':').omitEmptyStrings().trimResults().split(": : : ")} returns an empty iterable.
-   *
-   * <p>Note that it is ordinarily not possible for {@link #split(CharSequence)} to return an empty
-   * iterable, but when using this option, it can (if the input sequence consists of nothing but
-   * separators).
-   *
-   * @return a splitter with the desired configuration
-   */
-  public Splitter omitEmptyStrings() {
-    return new Splitter(strategy, true, trimmer, limit);
-  }
-
-  /**
    * Returns a splitter that behaves equivalently to {@code this} splitter but stops splitting after
    * it reaches the limit. The limit defines the maximum number of items returned by the iterator,
    * or the maximum size of the list returned by {@link #splitToList}.
@@ -396,132 +313,6 @@ public final class Splitter {
 
   private Iterator<String> splittingIterator(CharSequence sequence) {
     return strategy.iterator(this, sequence);
-  }
-
-  /**
-   * Splits {@code sequence} into string components and returns them as an immutable list. If you
-   * want an {@link Iterable} which may be lazily evaluated, use {@link #split(CharSequence)}.
-   *
-   * @param sequence the sequence of characters to split
-   * @return an immutable list of the segments split from the parameter
-   * @since 15.0
-   */
-  public List<String> splitToList(CharSequence sequence) {
-    checkNotNull(sequence);
-
-    Iterator<String> iterator = splittingIterator(sequence);
-    List<String> result = new ArrayList<>();
-
-    while (iterator.hasNext()) {
-      result.add(iterator.next());
-    }
-
-    return Collections.unmodifiableList(result);
-  }
-
-  /**
-   * Splits {@code sequence} into string components and makes them available through an {@link
-   * Stream}, which may be lazily evaluated. If you want an eagerly computed {@link List}, use
-   * {@link #splitToList(CharSequence)}.
-   *
-   * @param sequence the sequence of characters to split
-   * @return a stream over the segments split from the parameter
-   * @since 28.2
-   */
-  public Stream<String> splitToStream(CharSequence sequence) {
-    // Can't use Streams.stream() from base
-    return StreamSupport.stream(split(sequence).spliterator(), false);
-  }
-
-  /**
-   * Returns a {@code MapSplitter} which splits entries based on this splitter, and splits entries
-   * into keys and values using the specified separator.
-   *
-   * @since 10.0
-   */
-  public MapSplitter withKeyValueSeparator(String separator) {
-    return withKeyValueSeparator(on(separator));
-  }
-
-  /**
-   * Returns a {@code MapSplitter} which splits entries based on this splitter, and splits entries
-   * into keys and values using the specified separator.
-   *
-   * @since 14.0
-   */
-  public MapSplitter withKeyValueSeparator(char separator) {
-    return withKeyValueSeparator(on(separator));
-  }
-
-  /**
-   * Returns a {@code MapSplitter} which splits entries based on this splitter, and splits entries
-   * into keys and values using the specified key-value splitter.
-   *
-   * <p>Note: Any configuration option configured on this splitter, such as {@link #trimResults},
-   * does not change the behavior of the {@code keyValueSplitter}.
-   *
-   * <p>Example:
-   *
-   * <pre>{@code
-   * String toSplit = " x -> y, z-> a ";
-   * Splitter outerSplitter = Splitter.on(',').trimResults();
-   * MapSplitter mapSplitter = outerSplitter.withKeyValueSeparator(Splitter.on("->"));
-   * Map<String, String> result = mapSplitter.split(toSplit);
-   * assertThat(result).isEqualTo(ImmutableMap.of("x ", " y", "z", " a"));
-   * }</pre>
-   *
-   * @since 10.0
-   */
-  public MapSplitter withKeyValueSeparator(Splitter keyValueSplitter) {
-    return new MapSplitter(this, keyValueSplitter);
-  }
-
-  /**
-   * An object that splits strings into maps as {@code Splitter} splits iterables and lists. Like
-   * {@code Splitter}, it is thread-safe and immutable. The common way to build instances is by
-   * providing an additional {@linkplain Splitter#withKeyValueSeparator key-value separator} to
-   * {@link Splitter}.
-   *
-   * @since 10.0
-   */
-  public static final class MapSplitter {
-    private static final String INVALID_ENTRY_MESSAGE = "Chunk [%s] is not a valid entry";
-    private final Splitter outerSplitter;
-    private final Splitter entrySplitter;
-
-    private MapSplitter(Splitter outerSplitter, Splitter entrySplitter) {
-      this.outerSplitter = outerSplitter; // only "this" is passed
-      this.entrySplitter = checkNotNull(entrySplitter);
-    }
-
-    /**
-     * Splits {@code sequence} into substrings, splits each substring into an entry, and returns an
-     * unmodifiable map with each of the entries. For example, {@code
-     * Splitter.on(';').trimResults().withKeyValueSeparator("=>").split("a=>b ; c=>b")} will return
-     * a mapping from {@code "a"} to {@code "b"} and {@code "c"} to {@code "b"}.
-     *
-     * <p>The returned map preserves the order of the entries from {@code sequence}.
-     *
-     * @throws IllegalArgumentException if the specified sequence does not split into valid map
-     *     entries, or if there are duplicate keys
-     */
-    public Map<String, String> split(CharSequence sequence) {
-      Map<String, String> map = new LinkedHashMap<>();
-      for (String entry : outerSplitter.split(sequence)) {
-        Iterator<String> entryFields = entrySplitter.splittingIterator(entry);
-
-        checkArgument(entryFields.hasNext(), INVALID_ENTRY_MESSAGE, entry);
-        String key = entryFields.next();
-        checkArgument(!map.containsKey(key), "Duplicate key [%s] found.", key);
-
-        checkArgument(entryFields.hasNext(), INVALID_ENTRY_MESSAGE, entry);
-        String value = entryFields.next();
-        map.put(key, value);
-
-        checkArgument(!entryFields.hasNext(), INVALID_ENTRY_MESSAGE, entry);
-      }
-      return Collections.unmodifiableMap(map);
-    }
   }
 
   private interface Strategy {

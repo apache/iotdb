@@ -34,7 +34,6 @@ import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -62,10 +61,8 @@ import java.util.stream.Collector;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Predicates.compose;
-import static com.google.common.collect.CollectPreconditions.checkEntryNotNull;
 import static com.google.common.collect.CollectPreconditions.checkNonnegative;
 import static com.google.common.collect.NullnessCasts.uncheckedCastNullableTToT;
-import static java.util.Collections.singletonMap;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -133,65 +130,6 @@ public final class Maps {
   }
 
   /**
-   * Returns an immutable map instance containing the given entries. Internally, the returned map
-   * will be backed by an {@link EnumMap}.
-   *
-   * <p>The iteration order of the returned map follows the enum's iteration order, not the order in
-   * which the elements appear in the given map.
-   *
-   * @param map the map to make an immutable copy of
-   * @return an immutable map containing those entries
-   * @since 14.0
-   */
-  public static <K extends Enum<K>, V> ImmutableMap<K, V> immutableEnumMap(
-      Map<K, ? extends V> map) {
-    if (map instanceof ImmutableEnumMap) {
-      @SuppressWarnings("unchecked") // safe covariant cast
-      ImmutableEnumMap<K, V> result = (ImmutableEnumMap<K, V>) map;
-      return result;
-    }
-    Iterator<? extends Entry<K, ? extends V>> entryItr = map.entrySet().iterator();
-    if (!entryItr.hasNext()) {
-      return ImmutableMap.of();
-    }
-    Entry<K, ? extends V> entry1 = entryItr.next();
-    K key1 = entry1.getKey();
-    V value1 = entry1.getValue();
-    checkEntryNotNull(key1, value1);
-    // Do something that works for j2cl, where we can't call getDeclaredClass():
-    EnumMap<K, V> enumMap = new EnumMap<>(singletonMap(key1, value1));
-    while (entryItr.hasNext()) {
-      Entry<K, ? extends V> entry = entryItr.next();
-      K key = entry.getKey();
-      V value = entry.getValue();
-      checkEntryNotNull(key, value);
-      enumMap.put(key, value);
-    }
-    return ImmutableEnumMap.asImmutable(enumMap);
-  }
-
-  /**
-   * Returns a {@link Collector} that accumulates elements into an {@code ImmutableMap} whose keys
-   * and values are the result of applying the provided mapping functions to the input elements. The
-   * resulting implementation is specialized for enum key types. The returned map and its views will
-   * iterate over keys in their enum definition order, not encounter order.
-   *
-   * <p>If the mapped keys contain duplicates, an {@code IllegalArgumentException} is thrown when
-   * the collection operation is performed. (This differs from the {@code Collector} returned by
-   * {@link java.util.stream.Collectors#toMap(java.util.function.Function,
-   * java.util.function.Function) Collectors.toMap(Function, Function)}, which throws an {@code
-   * IllegalStateException}.)
-   *
-   * @since 21.0
-   */
-  public static <T extends Object, K extends Enum<K>, V>
-      Collector<T, ?, ImmutableMap<K, V>> toImmutableEnumMap(
-          java.util.function.Function<? super T, ? extends K> keyFunction,
-          java.util.function.Function<? super T, ? extends V> valueFunction) {
-    return CollectCollectors.toImmutableEnumMap(keyFunction, valueFunction);
-  }
-
-  /**
    * Returns a {@link Collector} that accumulates elements into an {@code ImmutableMap} whose keys
    * and values are the result of applying the provided mapping functions to the input elements. The
    * resulting implementation is specialized for enum key types. The returned map and its views will
@@ -225,25 +163,6 @@ public final class Maps {
    */
   public static <K extends Object, V extends Object> HashMap<K, V> newHashMap() {
     return new HashMap<>();
-  }
-
-  /**
-   * Creates a <i>mutable</i> {@code HashMap} instance with the same mappings as the specified map.
-   *
-   * <p><b>Note:</b> if mutability is not required, use {@link ImmutableMap#copyOf(Map)} instead.
-   *
-   * <p><b>Note:</b> if {@code K} is an {@link Enum} type, use {@link #newEnumMap} instead.
-   *
-   * <p><b>Note:</b> this method is now unnecessary and should be treated as deprecated. Instead,
-   * use the {@code HashMap} constructor directly, taking advantage of <a
-   * href="http://goo.gl/iz2Wi">"diamond" syntax</a>.
-   *
-   * @param map the mappings to be placed in the new map
-   * @return a new {@code HashMap} initialized with the mappings from {@code map}
-   */
-  public static <K extends Object, V extends Object> HashMap<K, V> newHashMap(
-      Map<? extends K, ? extends V> map) {
-    return new HashMap<>(map);
   }
 
   /**
@@ -305,24 +224,6 @@ public final class Maps {
   }
 
   /**
-   * Creates a <i>mutable</i>, insertion-ordered {@code LinkedHashMap} instance with the same
-   * mappings as the specified map.
-   *
-   * <p><b>Note:</b> if mutability is not required, use {@link ImmutableMap#copyOf(Map)} instead.
-   *
-   * <p><b>Note:</b> this method is now unnecessary and should be treated as deprecated. Instead,
-   * use the {@code LinkedHashMap} constructor directly, taking advantage of <a
-   * href="http://goo.gl/iz2Wi">"diamond" syntax</a>.
-   *
-   * @param map the mappings to be placed in the new map
-   * @return a new, {@code LinkedHashMap} initialized with the mappings from {@code map}
-   */
-  public static <K extends Object, V extends Object> LinkedHashMap<K, V> newLinkedHashMap(
-      Map<? extends K, ? extends V> map) {
-    return new LinkedHashMap<>(map);
-  }
-
-  /**
    * Creates a {@code LinkedHashMap} instance, with a high enough "initial capacity" that it
    * <i>should</i> hold {@code expectedSize} elements without growth. This behavior cannot be
    * broadly guaranteed, but it is observed to be true for OpenJDK 1.7. It also can't be guaranteed
@@ -349,43 +250,6 @@ public final class Maps {
   }
 
   /**
-   * Creates a <i>mutable</i>, empty {@code TreeMap} instance using the natural ordering of its
-   * elements.
-   *
-   * <p><b>Note:</b> if mutability is not required, use {@link ImmutableSortedMap#of()} instead.
-   *
-   * <p><b>Note:</b> this method is now unnecessary and should be treated as deprecated. Instead,
-   * use the {@code TreeMap} constructor directly, taking advantage of <a
-   * href="http://goo.gl/iz2Wi">"diamond" syntax</a>.
-   *
-   * @return a new, empty {@code TreeMap}
-   */
-  public static <K extends Comparable, V extends Object> TreeMap<K, V> newTreeMap() {
-    return new TreeMap<>();
-  }
-
-  /**
-   * Creates a <i>mutable</i> {@code TreeMap} instance with the same mappings as the specified map
-   * and using the same ordering as the specified map.
-   *
-   * <p><b>Note:</b> if mutability is not required, use {@link
-   * ImmutableSortedMap#copyOfSorted(SortedMap)} instead.
-   *
-   * <p><b>Note:</b> this method is now unnecessary and should be treated as deprecated. Instead,
-   * use the {@code TreeMap} constructor directly, taking advantage of <a
-   * href="http://goo.gl/iz2Wi">"diamond" syntax</a>.
-   *
-   * @param map the sorted map whose mappings are to be placed in the new map and whose comparator
-   *     is to be used to sort the new map
-   * @return a new {@code TreeMap} initialized with the mappings from {@code map} and using the
-   *     comparator of {@code map}
-   */
-  public static <K extends Object, V extends Object> TreeMap<K, V> newTreeMap(
-      SortedMap<K, ? extends V> map) {
-    return new TreeMap<>(map);
-  }
-
-  /**
    * Creates a <i>mutable</i>, empty {@code TreeMap} instance using the given comparator.
    *
    * <p><b>Note:</b> if mutability is not required, use {@code
@@ -406,33 +270,6 @@ public final class Maps {
     // Comparator<Class<?>> comparator = null;
     // Map<Class<? extends Throwable>, String> map = newTreeMap(comparator);
     return new TreeMap<>(comparator);
-  }
-
-  /**
-   * Creates an {@code EnumMap} instance.
-   *
-   * @param type the key type for this map
-   * @return a new, empty {@code EnumMap}
-   */
-  public static <K extends Enum<K>, V extends Object> EnumMap<K, V> newEnumMap(Class<K> type) {
-    return new EnumMap<>(checkNotNull(type));
-  }
-
-  /**
-   * Creates an {@code EnumMap} with the same mappings as the specified map.
-   *
-   * <p><b>Note:</b> this method is now unnecessary and should be treated as deprecated. Instead,
-   * use the {@code EnumMap} constructor directly, taking advantage of <a
-   * href="http://goo.gl/iz2Wi">"diamond" syntax</a>.
-   *
-   * @param map the map from which to initialize this {@code EnumMap}
-   * @return a new {@code EnumMap} initialized with the mappings from {@code map}
-   * @throws IllegalArgumentException if {@code m} is not an {@code EnumMap} instance and contains
-   *     no mappings
-   */
-  public static <K extends Enum<K>, V extends Object> EnumMap<K, V> newEnumMap(
-      Map<K, ? extends V> map) {
-    return new EnumMap<>(map);
   }
 
   /**

@@ -32,16 +32,6 @@ public final class Strings {
   private Strings() {}
 
   /**
-   * Returns the given string if it is non-null; the empty string otherwise.
-   *
-   * @param string the string to test and possibly return
-   * @return {@code string} itself if it is non-null; {@code ""} if it is null
-   */
-  public static String nullToEmpty(@CheckForNull String string) {
-    return Platform.nullToEmpty(string);
-  }
-
-  /**
    * Returns the given string if it is nonempty; {@code null} otherwise.
    *
    * @param string the string to test and possibly return
@@ -65,68 +55,6 @@ public final class Strings {
    */
   public static boolean isNullOrEmpty(@CheckForNull String string) {
     return Platform.stringIsNullOrEmpty(string);
-  }
-
-  /**
-   * Returns a string, of length at least {@code minLength}, consisting of {@code string} prepended
-   * with as many copies of {@code padChar} as are necessary to reach that length. For example,
-   *
-   * <ul>
-   *   <li>{@code padStart("7", 3, '0')} returns {@code "007"}
-   *   <li>{@code padStart("2010", 3, '0')} returns {@code "2010"}
-   * </ul>
-   *
-   * <p>See {@link java.util.Formatter} for a richer set of formatting capabilities.
-   *
-   * @param string the string which should appear at the end of the result
-   * @param minLength the minimum length the resulting string must have. Can be zero or negative, in
-   *     which case the input string is always returned.
-   * @param padChar the character to insert at the beginning of the result until the minimum length
-   *     is reached
-   * @return the padded string
-   */
-  public static String padStart(String string, int minLength, char padChar) {
-    checkNotNull(string); // eager for GWT.
-    if (string.length() >= minLength) {
-      return string;
-    }
-    StringBuilder sb = new StringBuilder(minLength);
-    for (int i = string.length(); i < minLength; i++) {
-      sb.append(padChar);
-    }
-    sb.append(string);
-    return sb.toString();
-  }
-
-  /**
-   * Returns a string, of length at least {@code minLength}, consisting of {@code string} appended
-   * with as many copies of {@code padChar} as are necessary to reach that length. For example,
-   *
-   * <ul>
-   *   <li>{@code padEnd("4.", 5, '0')} returns {@code "4.000"}
-   *   <li>{@code padEnd("2010", 3, '!')} returns {@code "2010"}
-   * </ul>
-   *
-   * <p>See {@link java.util.Formatter} for a richer set of formatting capabilities.
-   *
-   * @param string the string which should appear at the beginning of the result
-   * @param minLength the minimum length the resulting string must have. Can be zero or negative, in
-   *     which case the input string is always returned.
-   * @param padChar the character to append to the end of the result until the minimum length is
-   *     reached
-   * @return the padded string
-   */
-  public static String padEnd(String string, int minLength, char padChar) {
-    checkNotNull(string); // eager for GWT.
-    if (string.length() >= minLength) {
-      return string;
-    }
-    StringBuilder sb = new StringBuilder(minLength);
-    sb.append(string);
-    for (int i = string.length(); i < minLength; i++) {
-      sb.append(padChar);
-    }
-    return sb.toString();
   }
 
   /**
@@ -165,62 +93,6 @@ public final class Strings {
     }
     System.arraycopy(array, 0, array, n, size - n);
     return new String(array);
-  }
-
-  /**
-   * Returns the longest string {@code prefix} such that {@code a.toString().startsWith(prefix) &&
-   * b.toString().startsWith(prefix)}, taking care not to split surrogate pairs. If {@code a} and
-   * {@code b} have no common prefix, returns the empty string.
-   *
-   * @since 11.0
-   */
-  public static String commonPrefix(CharSequence a, CharSequence b) {
-    checkNotNull(a);
-    checkNotNull(b);
-
-    int maxPrefixLength = Math.min(a.length(), b.length());
-    int p = 0;
-    while (p < maxPrefixLength && a.charAt(p) == b.charAt(p)) {
-      p++;
-    }
-    if (validSurrogatePairAt(a, p - 1) || validSurrogatePairAt(b, p - 1)) {
-      p--;
-    }
-    return a.subSequence(0, p).toString();
-  }
-
-  /**
-   * Returns the longest string {@code suffix} such that {@code a.toString().endsWith(suffix) &&
-   * b.toString().endsWith(suffix)}, taking care not to split surrogate pairs. If {@code a} and
-   * {@code b} have no common suffix, returns the empty string.
-   *
-   * @since 11.0
-   */
-  public static String commonSuffix(CharSequence a, CharSequence b) {
-    checkNotNull(a);
-    checkNotNull(b);
-
-    int maxSuffixLength = Math.min(a.length(), b.length());
-    int s = 0;
-    while (s < maxSuffixLength && a.charAt(a.length() - s - 1) == b.charAt(b.length() - s - 1)) {
-      s++;
-    }
-    if (validSurrogatePairAt(a, a.length() - s - 1)
-        || validSurrogatePairAt(b, b.length() - s - 1)) {
-      s--;
-    }
-    return a.subSequence(a.length() - s, a.length()).toString();
-  }
-
-  /**
-   * True when a valid surrogate pair starts at the given {@code index} in the given {@code string}.
-   * Out-of-range indexes return false.
-   */
-  static boolean validSurrogatePairAt(CharSequence string, int index) {
-    return index >= 0
-        && index <= (string.length() - 2)
-        && Character.isHighSurrogate(string.charAt(index))
-        && Character.isLowSurrogate(string.charAt(index + 1));
   }
 
   /**

@@ -42,9 +42,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -80,79 +78,6 @@ public final class Sets {
     public boolean retainAll(Collection<?> c) {
       return super.retainAll(checkNotNull(c)); // GWT compatibility
     }
-  }
-
-  /**
-   * Returns an immutable set instance containing the given enum elements. Internally, the returned
-   * set will be backed by an {@link EnumSet}.
-   *
-   * <p>The iteration order of the returned set follows the enum's iteration order, not the order in
-   * which the elements are provided to the method.
-   *
-   * @param anElement one of the elements the set should contain
-   * @param otherElements the rest of the elements the set should contain
-   * @return an immutable set containing those elements, minus duplicates
-   */
-  // http://code.google.com/p/google-web-toolkit/issues/detail?id=3028
-  public static <E extends Enum<E>> ImmutableSet<E> immutableEnumSet(
-      E anElement, E... otherElements) {
-    return ImmutableEnumSet.asImmutable(EnumSet.of(anElement, otherElements));
-  }
-
-  /**
-   * Returns an immutable set instance containing the given enum elements. Internally, the returned
-   * set will be backed by an {@link EnumSet}.
-   *
-   * <p>The iteration order of the returned set follows the enum's iteration order, not the order in
-   * which the elements appear in the given collection.
-   *
-   * @param elements the elements, all of the same {@code enum} type, that the set should contain
-   * @return an immutable set containing those elements, minus duplicates
-   */
-  // http://code.google.com/p/google-web-toolkit/issues/detail?id=3028
-  public static <E extends Enum<E>> ImmutableSet<E> immutableEnumSet(Iterable<E> elements) {
-    if (elements instanceof ImmutableEnumSet) {
-      return (ImmutableEnumSet<E>) elements;
-    } else if (elements instanceof Collection) {
-      Collection<E> collection = (Collection<E>) elements;
-      if (collection.isEmpty()) {
-        return ImmutableSet.of();
-      } else {
-        return ImmutableEnumSet.asImmutable(EnumSet.copyOf(collection));
-      }
-    } else {
-      Iterator<E> itr = elements.iterator();
-      if (itr.hasNext()) {
-        EnumSet<E> enumSet = EnumSet.of(itr.next());
-        Iterators.addAll(enumSet, itr);
-        return ImmutableEnumSet.asImmutable(enumSet);
-      } else {
-        return ImmutableSet.of();
-      }
-    }
-  }
-
-  /**
-   * Returns a {@code Collector} that accumulates the input elements into a new {@code ImmutableSet}
-   * with an implementation specialized for enums. Unlike {@link ImmutableSet#toImmutableSet}, the
-   * resulting set will iterate over elements in their enum definition order, not encounter order.
-   *
-   * @since 21.0
-   */
-  public static <E extends Enum<E>> Collector<E, ?, ImmutableSet<E>> toImmutableEnumSet() {
-    return CollectCollectors.toImmutableEnumSet();
-  }
-
-  /**
-   * Returns a new, <i>mutable</i> {@code EnumSet} instance containing the given elements in their
-   * natural order. This method behaves identically to {@link EnumSet#copyOf(Collection)}, but also
-   * accepts non-{@code Collection} iterables and empty iterables.
-   */
-  public static <E extends Enum<E>> EnumSet<E> newEnumSet(
-      Iterable<E> iterable, Class<E> elementType) {
-    EnumSet<E> set = EnumSet.noneOf(elementType);
-    Iterables.addAll(set, iterable);
-    return set;
   }
 
   // HashSet
@@ -385,111 +310,6 @@ public final class Sets {
     TreeSet<E> set = newTreeSet();
     Iterables.addAll(set, elements);
     return set;
-  }
-
-  /**
-   * Creates a <i>mutable</i>, empty {@code TreeSet} instance with the given comparator.
-   *
-   * <p><b>Note:</b> if mutability is not required, use {@code
-   * ImmutableSortedSet.orderedBy(comparator).build()} instead.
-   *
-   * <p><b>Note:</b> this method is now unnecessary and should be treated as deprecated. Instead,
-   * use the {@code TreeSet} constructor directly, taking advantage of <a
-   * href="http://goo.gl/iz2Wi">"diamond" syntax</a>. One caveat to this is that the {@code TreeSet}
-   * constructor uses a null {@code Comparator} to mean "natural ordering," whereas this factory
-   * rejects null. Clean your code accordingly.
-   *
-   * @param comparator the comparator to use to sort the set
-   * @return a new, empty {@code TreeSet}
-   * @throws NullPointerException if {@code comparator} is null
-   */
-  public static <E extends Object> TreeSet<E> newTreeSet(Comparator<? super E> comparator) {
-    return new TreeSet<E>(checkNotNull(comparator));
-  }
-
-  /**
-   * Creates an empty {@code Set} that uses identity to determine equality. It compares object
-   * references, instead of calling {@code equals}, to determine whether a provided object matches
-   * an element in the set. For example, {@code contains} returns {@code false} when passed an
-   * object that equals a set member, but isn't the same instance. This behavior is similar to the
-   * way {@code IdentityHashMap} handles key lookups.
-   *
-   * @since 8.0
-   */
-  public static <E extends Object> Set<E> newIdentityHashSet() {
-    return Collections.newSetFromMap(Maps.<E, Boolean>newIdentityHashMap());
-  }
-
-  /**
-   * Creates an empty {@code CopyOnWriteArraySet} instance.
-   *
-   * <p><b>Note:</b> if you need an immutable empty {@link Set}, use {@link Collections#emptySet}
-   * instead.
-   *
-   * @return a new, empty {@code CopyOnWriteArraySet}
-   * @since 12.0
-   */
-  public static <E extends Object> CopyOnWriteArraySet<E> newCopyOnWriteArraySet() {
-    return new CopyOnWriteArraySet<E>();
-  }
-
-  /**
-   * Creates a {@code CopyOnWriteArraySet} instance containing the given elements.
-   *
-   * @param elements the elements that the set should contain, in order
-   * @return a new {@code CopyOnWriteArraySet} containing those elements
-   * @since 12.0
-   */
-  public static <E extends Object> CopyOnWriteArraySet<E> newCopyOnWriteArraySet(
-      Iterable<? extends E> elements) {
-    // We copy elements to an ArrayList first, rather than incurring the
-    // quadratic cost of adding them to the COWAS directly.
-    Collection<? extends E> elementsCollection =
-        (elements instanceof Collection)
-            ? (Collection<? extends E>) elements
-            : Lists.newArrayList(elements);
-    return new CopyOnWriteArraySet<E>(elementsCollection);
-  }
-
-  /**
-   * Creates an {@code EnumSet} consisting of all enum values that are not in the specified
-   * collection. If the collection is an {@link EnumSet}, this method has the same behavior as
-   * {@link EnumSet#complementOf}. Otherwise, the specified collection must contain at least one
-   * element, in order to determine the element type. If the collection could be empty, use {@link
-   * #complementOf(Collection, Class)} instead of this method.
-   *
-   * @param collection the collection whose complement should be stored in the enum set
-   * @return a new, modifiable {@code EnumSet} containing all values of the enum that aren't present
-   *     in the given collection
-   * @throws IllegalArgumentException if {@code collection} is not an {@code EnumSet} instance and
-   *     contains no elements
-   */
-  public static <E extends Enum<E>> EnumSet<E> complementOf(Collection<E> collection) {
-    if (collection instanceof EnumSet) {
-      return EnumSet.complementOf((EnumSet<E>) collection);
-    }
-    checkArgument(
-        !collection.isEmpty(), "collection is empty; use the other version of this method");
-    Class<E> type = collection.iterator().next().getDeclaringClass();
-    return makeComplementByHand(collection, type);
-  }
-
-  /**
-   * Creates an {@code EnumSet} consisting of all enum values that are not in the specified
-   * collection. This is equivalent to {@link EnumSet#complementOf}, but can act on any input
-   * collection, as long as the elements are of enum type.
-   *
-   * @param collection the collection whose complement should be stored in the {@code EnumSet}
-   * @param type the type of the elements in the set
-   * @return a new, modifiable {@code EnumSet} initially containing all the values of the enum not
-   *     present in the given collection
-   */
-  public static <E extends Enum<E>> EnumSet<E> complementOf(
-      Collection<E> collection, Class<E> type) {
-    checkNotNull(collection);
-    return (collection instanceof EnumSet)
-        ? EnumSet.complementOf((EnumSet<E>) collection)
-        : makeComplementByHand(collection, type);
   }
 
   private static <E extends Enum<E>> EnumSet<E> makeComplementByHand(
