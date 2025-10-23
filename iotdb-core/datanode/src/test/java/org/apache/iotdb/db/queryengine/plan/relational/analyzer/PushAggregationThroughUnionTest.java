@@ -26,9 +26,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
+
+import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
@@ -37,10 +42,12 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.union;
 import static org.junit.Assert.assertEquals;
@@ -106,6 +113,7 @@ public class PushAggregationThroughUnionTest {
         actualLogicalQueryPlan,
         output(aggregation(union(tableScan("testdb.t1"), tableScan("testdb.t2")))));
 
+    // verify the Distributed plan
     TableDistributedPlanner tableDistributedPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, actualLogicalQueryPlan, TEST_MATADATA, null);
@@ -115,13 +123,20 @@ public class PushAggregationThroughUnionTest {
     PlanMatchPattern expectedRootPattern =
         output(
             aggregation(
+                singleGroupingSet("tag1"),
+                ImmutableMap.of(
+                    Optional.of("count"),
+                    aggregationFunction("count", ImmutableList.of("count_12")),
+                    Optional.of("sum"),
+                    aggregationFunction("sum", ImmutableList.of("sum_13"))),
+                Optional.empty(),
+                AggregationNode.Step.FINAL,
                 collect(exchange(), exchange(), exchange(), exchange(), exchange(), exchange())));
     OutputNode outputNode =
         (OutputNode)
             actualDistributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
     assertPlan(outputNode, expectedRootPattern);
 
-    // verify the Distributed plan
     for (int i = 1; i < actualDistributedQueryPlan.getFragments().size(); i++) {
       PlanNode planNode =
           actualDistributedQueryPlan.getFragments().get(i).getPlanNodeTree().getChildren().get(0);
