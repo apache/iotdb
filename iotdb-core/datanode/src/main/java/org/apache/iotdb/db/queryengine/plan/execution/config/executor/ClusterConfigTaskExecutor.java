@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
+import org.apache.iotdb.ainode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -36,6 +38,8 @@ import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.ainode.AINodeClient;
+import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -129,7 +133,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
-import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
@@ -3669,8 +3672,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> loadModel(
       String existingModelId, List<String> deviceIdList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (final ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+    final TEndPoint AINODE_KEY_PLACEHOLDER = new TEndPoint("AINODE_KEY", 0);
+    try (final AINodeClient client =
+        AINodeClientManager.getInstance().borrowClient(AINODE_KEY_PLACEHOLDER)) {
       final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
       final TSStatus result = client.loadModel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
@@ -3678,7 +3682,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final ClientManagerException | TException e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
