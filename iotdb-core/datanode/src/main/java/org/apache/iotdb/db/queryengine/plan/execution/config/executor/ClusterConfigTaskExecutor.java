@@ -3606,16 +3606,40 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> loadModel(
       String existingModelId, List<String> deviceIdList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (final ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
-      final TSStatus result = client.loadModel(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
-        future.setException(new IoTDBException(result));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    // try (final ConfigNodeClient client =
+    //     CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+    //   final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
+    //   final TSStatus result = client.loadModel(req);
+    //   if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
+    //     future.setException(new IoTDBException(result));
+    //   } else {
+    //     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    //   }
+    // } catch (final ClientManagerException | TException e) {
+    //   future.setException(e);
+    // }
+    try {
+      // Connect to AINode
+      Optional<TEndPoint> ep = resolveAINodeFromLocalConfig();
+      if (!ep.isPresent()) {
+        future.setException(new IllegalStateException(
+          "No AINode endpoint configured. Set -Dai.infra.endpoints or AI_INFRA_ENDPOINTS."));
+        return future;
       }
-    } catch (final ClientManagerException | TException e) {
+
+      // Connect to ConfigNode
+      try (final AINodeClient client =
+              AINodeClientManager.getInstance().borrowClient(ep.get())) {
+        final org.apache.iotdb.ainode.rpc.thrift.TLoadModelReq req =
+            new org.apache.iotdb.ainode.rpc.thrift.TLoadModelReq(existingModelId, deviceIdList);
+        final TSStatus result = client.loadModel(req);
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
+          future.setException(new RuntimeException(result.getMessage()));
+        } else {
+          future.set(ConfigTaskResult.success());
+        }
+      }
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.db.exception.ainode.ModelNotFoundException;
@@ -54,35 +55,82 @@ public class ModelFetcher implements IModelFetcher {
 
   private ModelFetcher() {}
 
+  // @Override
+  // public TSStatus fetchModel(String modelName, Analysis analysis) {
+  //   try (ConfigNodeClient client =
+  //       configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+  //     TGetModelInfoResp getModelInfoResp = client.getModelInfo(new TGetModelInfoReq(modelName));
+  //     if (getModelInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+  //       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  //     } else {
+  //       throw new ModelNotFoundException(getModelInfoResp.getStatus().getMessage());
+  //     }
+  //   } catch (ClientManagerException | TException e) {
+  //     throw new StatementAnalyzeException(e.getMessage());
+  //   }
+  // }
+  // [DEBUG]: New fetchmodel()
   @Override
   public TSStatus fetchModel(String modelName, Analysis analysis) {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetModelInfoResp getModelInfoResp = client.getModelInfo(new TGetModelInfoReq(modelName));
-      if (getModelInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
-        throw new ModelNotFoundException(getModelInfoResp.getStatus().getMessage());
-      }
-    } catch (ClientManagerException | TException e) {
-      throw new StatementAnalyzeException(e.getMessage());
+    Optional<TEndPoint> ep = resolveAINodeFromLocalConfig();
+    if (ep.isPresent()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+    // [DEBUG]: fallback
+    if (allowFallbackToConfigNode()) {
+      try (ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TGetModelInfoResp resp = client.getModelInfo(new TGetModelInfoReq(modelName));
+        return resp.getStatus();
+      } catch (ClientManagerException | TException e) {
+        throw new StatementAnalyzeException(e.getMessage());
+      }
+    }
+    throw new StatementAnalyzeException(
+        "No AINode endpoint configured. Please set -Dai.infra.endpoints or AI_INFRA_ENDPOINTS.");
   }
 
+  // @Override
+  // public ModelInferenceDescriptor fetchModel(String modelName) {
+  //   try (ConfigNodeClient client =
+  //       configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+  //     TGetModelInfoResp getModelInfoResp = client.getModelInfo(new TGetModelInfoReq(modelName));
+  //     if (getModelInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+  //       return new ModelInferenceDescriptor(getModelInfoResp.aiNodeAddress);
+  //     } else {
+  //       throw new ModelNotFoundException(getModelInfoResp.getStatus().getMessage());
+  //     }
+  //   } catch (ClientManagerException | TException e) {
+  //     throw new IoTDBRuntimeException(
+  //         String.format("fetch model [%s] info failed: %s", modelName, e.getMessage()),
+  //         TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
+  //   }
+  // }
+  // [DEBUG]: New fetchmodel()
   @Override
   public ModelInferenceDescriptor fetchModel(String modelName) {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetModelInfoResp getModelInfoResp = client.getModelInfo(new TGetModelInfoReq(modelName));
-      if (getModelInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return new ModelInferenceDescriptor(getModelInfoResp.aiNodeAddress);
-      } else {
-        throw new ModelNotFoundException(getModelInfoResp.getStatus().getMessage());
-      }
-    } catch (ClientManagerException | TException e) {
-      throw new IoTDBRuntimeException(
-          String.format("fetch model [%s] info failed: %s", modelName, e.getMessage()),
-          TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
+    Optional<TEndPoint> ep = resolveAINodeFromLocalConfig();
+    if (ep.isPresent()) {
+      return new ModelInferenceDescriptor(ep.get());
     }
+    // [DEBUG]: fallback
+    if (allowFallbackToConfigNode()) {
+      try (ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TGetModelInfoResp resp = client.getModelInfo(new TGetModelInfoReq(modelName));
+        if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return new ModelInferenceDescriptor(resp.aiNodeAddress);
+        } else {
+          throw new ModelNotFoundException(resp.getStatus().getMessage());
+        }
+      } catch (ClientManagerException | TException e) {
+        throw new IoTDBRuntimeException(
+            String.format("fetch model [%s] info failed: %s", modelName, e.getMessage()),
+            TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
+      }
+    }
+    throw new IoTDBRuntimeException(
+        "No AINode endpoint configured. Please set -Dai.infra.endpoints or AI_INFRA_ENDPOINTS.",
+        TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
   }
 }

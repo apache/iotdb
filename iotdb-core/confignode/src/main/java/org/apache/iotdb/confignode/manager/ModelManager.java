@@ -54,7 +54,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.*;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class ModelManager {
 
@@ -66,6 +68,40 @@ public class ModelManager {
   public ModelManager(ConfigManager configManager, ModelInfo modelInfo) {
     this.configManager = configManager;
     this.modelInfo = modelInfo;
+  }
+
+  // [DEBUG] Resolve AI PRC interfaces from AINode instead of ConfigNode
+  private Optional<TEndPoint> resolveAINodeFromLocalConfig() {
+    // [DEBUG] System Property first: -Dai.infra.endpoints=host1:port1,host2:port2
+    String endpoints = System.getProperty("ai.infra.endpoints");
+    if (endpoints == null || endpoints.isEmpty()) {
+      // [DEBUG] Otherwise, try env: AI_INFRA_ENDPOINTS="host1:port1;host2:port2"
+      endpoints = System.getenv("AI_INFRA_ENDPOINTS");
+    }
+    if (endpoints == null || endpoints.isEmpty()) return Optional.empty();
+
+    String[] parts = endpoints.split("[,;]");
+    List<TEndPoint> cand = new ArrayList<>();
+    for (String part : parts) {
+      String s = part.trim();
+      if (s.isEmpty()) continue;
+      int idx = s.lastIndexOf(':');
+      if (idx <= 0 || idx == s.length() - 1) continue;
+      String host = s.substring(0, idx).trim();
+      String portStr = s.substring(idx + 1).trim();
+      try {
+        cand.add(new TEndPoint(host, Integer.parseInt(portStr)));
+      } catch (NumberFormatException ignore) {}
+    }
+    if (cand.isEmpty()) return Optional.empty();
+    return Optional.of(cand.get(ThreadLocalRandom.current().nextInt(cand.size())));
+  }
+
+  // [DEBUG] Fallback to original ConfigNode Service
+  private boolean allowFallbackToConfigNode() {
+    String v = System.getProperty("ai.infra.discovery.fallbackToConfigNode",
+                                  System.getenv("AI_INFRA_FALLBACK_CONFIGNODE"));
+    return v != null && (v.equalsIgnoreCase("true") || v.equals("1") || v.equalsIgnoreCase("yes"));
   }
 
   public TSStatus createModel(TCreateModelReq req) {
