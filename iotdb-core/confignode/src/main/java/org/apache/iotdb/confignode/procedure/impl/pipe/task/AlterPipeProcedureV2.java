@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -137,6 +139,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
+
     // data regions & schema regions
     env.getConfigManager()
         .getLoadManager()
@@ -151,11 +154,33 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
                   && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                   && currentPipeTaskMeta != null
-                  && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
+                  && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId
+                  && !(PipeTaskAgent.isHistoryOnlyPipe(
+                          currentPipeStaticMeta.getExtractorParameters())
+                      && PipeTaskAgent.isHistoryOnlyPipe(
+                          updatedPipeStaticMeta.getExtractorParameters())
+                      && regionGroupId.getType() == TConsensusGroupType.DataRegion
+                      && currentPipeTaskMeta.isNewlyAdded())) {
                 // Pipe only collect user's data, filter metric database here.
+                // If it is altered to "pure historical", then the regionIds are always new here,
+                // then it will extract all existing data now, not existing data since the
+                // original pipe was created
+                // Similar for "pure realtime"
                 updatedConsensusGroupIdToTaskMetaMap.put(
                     regionGroupId.getId(),
-                    new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
+                    new PipeTaskMeta(
+                        currentPipeTaskMeta.getProgressIndex(),
+                        PipeTaskMeta.isNewlyAdded(currentPipeTaskMeta.getLeaderNodeId())
+                                && !(!PipeTaskAgent.isHistoryOnlyPipe(
+                                        currentPipeStaticMeta.getExtractorParameters())
+                                    && PipeTaskAgent.isHistoryOnlyPipe(
+                                        updatedPipeStaticMeta.getExtractorParameters()))
+                                && !(!PipeTaskAgent.isRealtimeOnlyPipe(
+                                        currentPipeStaticMeta.getExtractorParameters())
+                                    && PipeTaskAgent.isRealtimeOnlyPipe(
+                                        updatedPipeStaticMeta.getExtractorParameters()))
+                            ? PipeTaskMeta.getRevertedLeader(regionLeaderNodeId)
+                            : regionLeaderNodeId));
               }
             });
 
@@ -209,8 +234,14 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pipeName = alterPipeRequest.getPipeName();
     LOGGER.info("AlterPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
+    final String exceptionMessage =
+        parsePushPipeMetaExceptionForPipe(
+            pipeName,
+            !PipeTaskAgent.isRealtimeOnlyPipe(currentPipeStaticMeta.getExtractorParameters())
+                    && PipeTaskAgent.isRealtimeOnlyPipe(
+                        updatedPipeStaticMeta.getExtractorParameters())
+                ? pushSinglePipeMetaToDataNodes4Realtime(pipeName, env)
+                : pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           "Failed to alter pipe {}, details: {}, metadata will be synchronized later.",

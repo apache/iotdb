@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.source.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
@@ -58,10 +59,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
@@ -81,7 +78,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_KEY;
@@ -123,7 +119,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
           "The pipe cannot transfer data when data region is using ratis consensus.");
     }
 
-    // Validate extractor.pattern.format is within valid range
+    // Validate source.pattern.format is within valid range
     validator
         .validateAttributeValueRange(
             EXTRACTOR_PATTERN_FORMAT_KEY,
@@ -143,7 +139,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     // Check whether the pattern is legal
     validatePattern(pattern);
 
-    // Validate extractor.history.enable and extractor.realtime.enable
+    // Validate source.history.enable and source.realtime.enable
     validator
         .validateAttributeValueRange(
             EXTRACTOR_HISTORY_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
@@ -167,7 +163,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                     Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
                     EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE));
 
-    // Validate extractor.realtime.mode
+    // Validate source.realtime.mode
     if (validator
             .getParameters()
             .getBooleanOrDefault(
@@ -245,28 +241,22 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   }
 
   private void constructRealtimeExtractor(final PipeParameters parameters) {
-    // Use heartbeat only extractor if disable realtime extractor
+    // Use heartbeat only source if disable realtime source
     if (!parameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
       realtimeExtractor = new PipeRealtimeDataRegionHeartbeatSource();
       LOGGER.info(
-          "Pipe: '{}' is set to false, use heartbeat realtime extractor.",
-          EXTRACTOR_REALTIME_ENABLE_KEY);
+          "Pipe: '{}' ('{}') is set to false, use heartbeat realtime source.",
+          EXTRACTOR_REALTIME_ENABLE_KEY,
+          SOURCE_REALTIME_ENABLE_KEY);
       return;
     }
 
-    // Use heartbeat only extractor if enable snapshot mode
-    final String extractorModeValue =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY), EXTRACTOR_MODE_DEFAULT_VALUE);
-    if (extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE)
-        || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_SNAPSHOT_VALUE)) {
+    // Use heartbeat only source if enable snapshot mode
+    if (PipeTaskAgent.isSnapshotMode(parameters)) {
       realtimeExtractor = new PipeRealtimeDataRegionHeartbeatSource();
-      LOGGER.info(
-          "Pipe: '{}' is set to {}, use heartbeat realtime extractor.",
-          EXTRACTOR_MODE_KEY,
-          EXTRACTOR_MODE_SNAPSHOT_VALUE);
+      LOGGER.info("Pipe: snapshot mode is enabled, use heartbeat realtime source.");
       return;
     }
 
@@ -295,7 +285,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         realtimeExtractor = new PipeRealtimeDataRegionHybridSource();
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(
-              "Pipe: Unsupported extractor realtime mode: {}, create a hybrid extractor.",
+              "Pipe: Unsupported source realtime mode: {}, create a hybrid source.",
               parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
         }
     }
@@ -345,7 +335,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
     final long startTime = System.currentTimeMillis();
     LOGGER.info(
-        "Pipe {}@{}: Starting historical extractor {} and realtime extractor {}.",
+        "Pipe {}@{}: Starting historical source {} and realtime source {}.",
         pipeName,
         regionId,
         historicalExtractor.getClass().getSimpleName(),
@@ -356,7 +346,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
     final DataRegionId dataRegionIdObject = new DataRegionId(this.regionId);
     while (true) {
-      // try to start extractors in the data region ...
+      // try to start sources in the data region ...
       // first try to run if data region exists, then try to run if data region does not exist.
       // both conditions fail is not common, which means the data region is created during the
       // runIfPresent and runIfAbsent operations. in this case, we need to retry.
@@ -379,7 +369,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         rethrowExceptionIfAny(exceptionHolder);
 
         LOGGER.info(
-            "Pipe {}@{}: Started historical extractor {} and realtime extractor {} successfully within {} ms.",
+            "Pipe {}@{}: Started historical source {} and realtime source {} successfully within {} ms.",
             pipeName,
             regionId,
             historicalExtractor.getClass().getSimpleName(),
@@ -404,7 +394,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     } catch (final Exception e) {
       exceptionHolder.set(e);
       LOGGER.warn(
-          "Pipe {}@{}: Start historical extractor {} and realtime extractor {} error.",
+          "Pipe {}@{}: Start historical source {} and realtime source {} error.",
           pipeName,
           regionId,
           historicalExtractor.getClass().getSimpleName(),
@@ -415,7 +405,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   private void rethrowExceptionIfAny(final AtomicReference<Exception> exceptionHolder) {
     if (exceptionHolder.get() != null) {
-      throw new PipeException("failed to start extractors.", exceptionHolder.get());
+      throw new PipeException("failed to start sources.", exceptionHolder.get());
     }
   }
 
