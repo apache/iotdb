@@ -22,6 +22,20 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.locks.LockSupport;
 
+/**
+ * Multi-producer sequencer for coordinating concurrent publishers
+ *
+ * <p>This implementation is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
+ * and preserves the core lock-free multi-producer algorithm for IoTDB's Pipe module.
+ *
+ * <p>Key features preserved from LMAX Disruptor:
+ * <ul>
+ *   <li>Lock-free CAS-based sequence claiming
+ *   <li>Availability buffer for out-of-order publishing detection
+ *   <li>Backpressure via gating sequences
+ *   <li>Cache line padding to prevent false sharing
+ * </ul>
+ */
 public final class MultiProducerSequencer {
 
   /** Ring buffer size (must be power of 2) - immutable after construction */

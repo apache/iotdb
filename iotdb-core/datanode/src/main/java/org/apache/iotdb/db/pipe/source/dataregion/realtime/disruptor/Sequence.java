@@ -39,11 +39,14 @@ class RhsPadding extends Value {
 /**
  * Lock-free sequence counter with cache line padding
  *
+ * <p>This implementation is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
+ * and preserves the core sequence tracking mechanism for IoTDB's Pipe module.
+ *
  * <p>Key design features:
  *
  * <ul>
  *   <li>Three-level inheritance ensures proper field ordering for padding
- *   <li>Uses volatile long with Unsafe for direct memory access
+ *   <li>Uses AtomicLong for thread-safe atomic operations
  *   <li>Cache line padding prevents false sharing between CPU cores
  *   <li>Supports both ordered writes (cheaper) and volatile writes (stronger)
  * </ul>

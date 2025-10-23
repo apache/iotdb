@@ -25,12 +25,17 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ThreadFactory;
 
 /**
- * High-level API for setting up a lock-free event processing pipeline
+ * Simplified Disruptor implementation for IoTDB Pipe
  *
- * <p>Provides a fluent interface for configuring producers and consumers. Internally manages a
- * RingBuffer and event processor thread.
+ * <p>This implementation is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
+ * and simplified for IoTDB's specific use case in the Pipe module.
  *
- * <p>Configuration is simplified to multi-producer mode with blocking wait strategy.
+ * <p>Key simplifications:
+ * <ul>
+ *   <li>Single event handler support (no complex dependency graphs)
+ *   <li>Simplified lifecycle management
+ *   <li>Removed wait strategies (using simple sleep-based waiting)
+ * </ul>
  *
  * @param <T> event type
  */
@@ -88,7 +93,6 @@ public class Disruptor<T> {
     }
   }
 
-  /** Start - MUST keep for IoTDB */
   public RingBuffer<T> start() {
     if (started) {
       throw new IllegalStateException("Disruptor already started");

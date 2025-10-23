@@ -98,6 +98,9 @@ abstract class RingBufferFields<E> extends RingBufferPad {
 /**
  * Lock-free ring buffer for storing pre-allocated event objects
  *
+ * <p>This implementation is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
+ * and preserves the core ring buffer algorithm for IoTDB's Pipe module.
+ *
  * <p>Supports multi-producer concurrent access with zero-garbage design. Events are pre-allocated
  * and reused, avoiding GC pressure. Uses cache line padding to prevent false sharing.
  *

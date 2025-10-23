@@ -25,9 +25,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Batch event processor for consuming events
  *
- * <p>Simplified from Disruptor (removed complex lifecycle management)
+ * <p>This implementation is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
+ * and simplified for IoTDB's Pipe module (removed complex lifecycle management).
  *
- * <p>CORE algorithm (MUST preserve):
+ * <p>Core algorithm preserved from LMAX Disruptor:
  *
  * <ul>
  *   <li>Batch processing loop
