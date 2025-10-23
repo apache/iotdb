@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FilenameUtils;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
+import org.apache.tsfile.external.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -234,15 +234,15 @@ public class FileUtils {
     if (file.isDirectory()) {
       File[] files = file.listFiles();
       if (files == null || files.length == 0) {
-        org.apache.commons.io.FileUtils.deleteDirectory(file);
+        org.apache.tsfile.external.commons.io.FileUtils.deleteDirectory(file);
       } else {
         for (File f : files) {
           recursivelyDeleteFolder(f.getAbsolutePath());
         }
-        org.apache.commons.io.FileUtils.deleteDirectory(file);
+        org.apache.tsfile.external.commons.io.FileUtils.deleteDirectory(file);
       }
     } else {
-      org.apache.commons.io.FileUtils.delete(file);
+      org.apache.tsfile.external.commons.io.FileUtils.delete(file);
     }
   }
 
@@ -284,7 +284,7 @@ public class FileUtils {
     try {
       if (unfinishedTarget.exists()) {
         if (unfinishedTarget.isFile()) {
-          org.apache.commons.io.FileUtils.delete(unfinishedTarget);
+          org.apache.tsfile.external.commons.io.FileUtils.delete(unfinishedTarget);
         } else {
           recursivelyDeleteFolder(unfinishedTarget.getAbsolutePath());
         }
@@ -306,7 +306,7 @@ public class FileUtils {
           return false;
         }
       } else {
-        org.apache.commons.io.FileUtils.copyFile(source, unfinishedTarget);
+        org.apache.tsfile.external.commons.io.FileUtils.copyFile(source, unfinishedTarget);
       }
     } catch (IOException e) {
       LOGGER.error("file copy fail", e);
@@ -324,7 +324,7 @@ public class FileUtils {
       if (source.isDirectory()) {
         recursivelyDeleteFolder(source.getAbsolutePath());
       } else {
-        org.apache.commons.io.FileUtils.delete(source);
+        org.apache.tsfile.external.commons.io.FileUtils.delete(source);
       }
     } catch (IOException e) {
       LOGGER.error("delete source file fail: {}", source.getAbsolutePath(), e);
@@ -420,7 +420,8 @@ public class FileUtils {
     if (targetFile.exists()) {
       moveFile(sourceFile, targetFile);
     } else {
-      org.apache.commons.io.FileUtils.moveFileToDirectory(sourceFile, targetDir, true);
+      org.apache.tsfile.external.commons.io.FileUtils.moveFileToDirectory(
+          sourceFile, targetDir, true);
     }
   }
 
@@ -443,7 +444,7 @@ public class FileUtils {
       String exitsFileMD5 = DigestUtils.md5Hex(is2);
 
       if (sourceFileMD5.equals(exitsFileMD5)) {
-        org.apache.commons.io.FileUtils.forceDelete(sourceFile);
+        org.apache.tsfile.external.commons.io.FileUtils.forceDelete(sourceFile);
         LOGGER.info(
             "Deleted the file {} because it already exists in the target directory: {}",
             sourceFile.getName(),
@@ -540,7 +541,7 @@ public class FileUtils {
   }
 
   private static void moveFileRename(File sourceFile, File targetFile) throws IOException {
-    org.apache.commons.io.FileUtils.moveFile(
+    org.apache.tsfile.external.commons.io.FileUtils.moveFile(
         sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
 
     LOGGER.info(

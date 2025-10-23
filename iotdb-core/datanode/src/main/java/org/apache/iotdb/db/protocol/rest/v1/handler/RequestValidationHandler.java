@@ -21,7 +21,7 @@ import org.apache.iotdb.db.protocol.rest.v1.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.rest.v1.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.v1.model.SQL;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 
 import java.util.Objects;
 
