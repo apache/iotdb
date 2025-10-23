@@ -72,7 +72,7 @@ public class TsFileInsertionDataContainerProvider {
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionDataContainer provide() throws IOException {
+  public TsFileInsertionDataContainer provide(final boolean isWithMod) throws IOException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
@@ -83,7 +83,15 @@ public class TsFileInsertionDataContainerProvider {
             / PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes()
         > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionScanDataContainer(
-          pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName,
+          creationTime,
+          tsFile,
+          pattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          isWithMod);
     }
 
     if (pattern instanceof IoTDBPipePattern
@@ -95,7 +103,15 @@ public class TsFileInsertionDataContainerProvider {
       // hard to know whether it only matches one timeseries, while matching multiple is often the
       // case.
       return new TsFileInsertionQueryDataContainer(
-          pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName,
+          creationTime,
+          tsFile,
+          pattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          isWithMod);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -104,7 +120,15 @@ public class TsFileInsertionDataContainerProvider {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.
       return new TsFileInsertionScanDataContainer(
-          pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName,
+          creationTime,
+          tsFile,
+          pattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          isWithMod);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -114,7 +138,15 @@ public class TsFileInsertionDataContainerProvider {
     return (double) filteredDeviceIsAlignedMap.size() / originalSize
             > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
         ? new TsFileInsertionScanDataContainer(
-            pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent)
+            pipeName,
+            creationTime,
+            tsFile,
+            pattern,
+            startTime,
+            endTime,
+            pipeTaskMeta,
+            sourceEvent,
+            isWithMod)
         : new TsFileInsertionQueryDataContainer(
             pipeName,
             creationTime,
@@ -124,7 +156,8 @@ public class TsFileInsertionDataContainerProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            filteredDeviceIsAlignedMap);
+            filteredDeviceIsAlignedMap,
+            isWithMod);
   }
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(
