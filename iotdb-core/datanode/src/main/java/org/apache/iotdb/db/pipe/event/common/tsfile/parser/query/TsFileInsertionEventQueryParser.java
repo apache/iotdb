@@ -222,7 +222,6 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
         // If measurements list is empty after filtering, remove the entire entry
         if (measurements.isEmpty()) {
-          LOGGER.warn("No valid measurements left for deviceId: {}, removing entry", deviceId);
           iterator.remove();
         }
       }
