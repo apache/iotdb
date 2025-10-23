@@ -60,10 +60,10 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
                         endPoint.getIp(),
                         endPoint.getPort(),
                         property.getConnectionTimeoutMs(),
-                        commonConfig.getTrustStorePath(),
-                        commonConfig.getTrustStorePwd(),
-                        commonConfig.getKeyStorePath(),
-                        commonConfig.getKeyStorePwd())
+                        commonConfig.getInternalTrustStorePath(),
+                        commonConfig.getInternalTrustStorePwd(),
+                        commonConfig.getInternalKeyStorePath(),
+                        commonConfig.getInternalKeyStorePwd())
                     : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         new TSocket(
                             TConfigurationConst.defaultTConfiguration,

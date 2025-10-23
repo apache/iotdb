@@ -175,10 +175,11 @@ public class ConsensusManager {
                                       .setLeaderOutstandingAppendsMax(
                                           CONF.getConfigNodeRatisGrpcLeaderOutstandingAppendsMax())
                                       .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
-                                      .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
-                                      .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
-                                      .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
-                                      .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
+                                      .setSslKeyStorePath(COMMON_CONF.getInternalKeyStorePath())
+                                      .setSslKeyStorePassword(COMMON_CONF.getInternalKeyStorePwd())
+                                      .setSslTrustStorePath(COMMON_CONF.getInternalTrustStorePath())
+                                      .setSslTrustStorePassword(
+                                          COMMON_CONF.getInternalTrustStorePwd())
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()

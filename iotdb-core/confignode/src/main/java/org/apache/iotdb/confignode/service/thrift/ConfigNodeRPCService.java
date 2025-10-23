@@ -72,10 +72,10 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
                   configConf.getThriftServerAwaitTimeForStopService(),
                   new ConfigNodeRPCServiceHandler(),
                   commonConfig.isRpcThriftCompressionEnabled(),
-                  commonConfig.getKeyStorePath(),
-                  commonConfig.getKeyStorePwd(),
-                  commonConfig.getTrustStorePath(),
-                  commonConfig.getTrustStorePwd(),
+                  commonConfig.getInternalKeyStorePath(),
+                  commonConfig.getInternalKeyStorePwd(),
+                  commonConfig.getInternalTrustStorePath(),
+                  commonConfig.getInternalTrustStorePwd(),
                   DeepCopyRpcTransportFactory.INSTANCE)
               : new ThriftServiceThread(
                   processor,

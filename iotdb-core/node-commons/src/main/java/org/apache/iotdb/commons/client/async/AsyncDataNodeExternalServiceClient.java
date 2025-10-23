@@ -65,10 +65,10 @@ public class AsyncDataNodeExternalServiceClient extends IDataNodeRPCService.Asyn
                 endpoint.getIp(),
                 endpoint.getPort(),
                 property.getConnectionTimeoutMs(),
-                commonConfig.getKeyStorePath(),
-                commonConfig.getKeyStorePwd(),
-                commonConfig.getTrustStorePath(),
-                commonConfig.getTrustStorePwd())
+                commonConfig.getInternalKeyStorePath(),
+                commonConfig.getInternalKeyStorePwd(),
+                commonConfig.getInternalTrustStorePath(),
+                commonConfig.getInternalTrustStorePwd())
             : TNonblockingTransportWrapper.wrap(
                 endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
