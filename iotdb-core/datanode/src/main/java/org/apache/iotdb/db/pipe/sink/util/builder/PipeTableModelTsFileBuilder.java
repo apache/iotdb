@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.BitMap;

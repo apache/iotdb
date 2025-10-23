@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -324,15 +323,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         generateMeasurementSchemas();
 
     // Generate createTimeSeries in sender and receiver
-    String uuid = RandomStringUtils.random(8, true, false);
+    String uuid = "bcdedit";
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
+      createTimeSeries(uuid, pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
       createTimeSeries(
-          uuid.toString(), pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
-      createTimeSeries(
-          uuid.toString(),
-          pair.right.getMeasurementName(),
-          pair.right.getType().name(),
-          receiverEnv);
+          uuid, pair.right.getMeasurementName(), pair.right.getType().name(), receiverEnv);
     }
 
     try (ISession senderSession = senderEnv.getSessionConnection();

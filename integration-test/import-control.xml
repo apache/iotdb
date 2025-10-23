@@ -62,7 +62,7 @@
         <allow class="org.apache.iotdb.commons.path.PathDeserializeUtil"/>
         <allow class="org.apache.tsfile.utils.PublicBAOS"/>
         <allow class="org.apache.iotdb.commons.exception.IllegalPathException"/>
-        <allow class="org.apache.commons.codec.digest.DigestUtils"/>
+        <allow class="org.apache.tsfile.external.commons.codec.digest.DigestUtils"/>
         <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager"/>
         <allow class="org.apache.iotdb.db.queryengine.plan.statement.AuthorType"/>
         <allow class="org.apache.iotdb.commons.trigger.TriggerInformation"/>

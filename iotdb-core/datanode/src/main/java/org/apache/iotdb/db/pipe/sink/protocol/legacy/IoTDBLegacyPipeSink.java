@@ -54,8 +54,8 @@ import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.pool.SessionPool;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.NotImplementedException;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

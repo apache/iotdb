@@ -137,7 +137,7 @@ public class TagManager {
     }
 
     try {
-      org.apache.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
+      org.apache.tsfile.external.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
       return new TagManager(sgSchemaDirPath, regionStatistics);
     } catch (IOException e) {
       if (!tagFile.delete()) {

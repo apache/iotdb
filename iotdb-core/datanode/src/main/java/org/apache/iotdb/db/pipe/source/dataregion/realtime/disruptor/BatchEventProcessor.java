@@ -43,7 +43,7 @@ public final class BatchEventProcessor<T> implements Runnable {
   private final RingBuffer<T> ringBuffer;
   private final SequenceBarrier sequenceBarrier;
   private final EventHandler<? super T> eventHandler;
-  private final Sequence sequence = new Sequence(-1L);
+  private final Sequence sequence = new Sequence();
   private ExceptionHandler<? super T> exceptionHandler = new DefaultExceptionHandler<>();
   private volatile boolean running = true;
 

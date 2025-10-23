@@ -29,11 +29,11 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.encrypt.EncryptException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -99,7 +99,7 @@ public class DisruptorQueue {
 
   private static class EventContainer {
 
-    private PipeRealtimeEvent event;
+    private volatile PipeRealtimeEvent event;
 
     private EventContainer() {}
 

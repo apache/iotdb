@@ -42,9 +42,9 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;

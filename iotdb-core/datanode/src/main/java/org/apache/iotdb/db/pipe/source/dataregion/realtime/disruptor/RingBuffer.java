@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
-import sun.misc.Unsafe;
-
-import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedExceptionAction;
-
 /**
  * Left-hand side padding for cache line alignment
  *
@@ -41,53 +35,6 @@ abstract class RingBufferPad {
  * <p>Contains the actual event storage array and sequencing state
  */
 abstract class RingBufferFields<E> extends RingBufferPad {
-  /** Unsafe instance for direct memory access */
-  private static final Unsafe UNSAFE;
-
-  /** Base offset of Object array in memory */
-  private static final long ARRAY_BASE;
-
-  /** Number of padding elements at array boundaries (128 bytes / element size) */
-  private static final int BUFFER_PAD;
-
-  /** Actual base offset for accessing array elements (includes front padding) */
-  private static final long REF_ARRAY_BASE;
-
-  /** Bit shift for calculating element offset (2 for 32-bit, 3 for 64-bit) */
-  private static final int REF_ELEMENT_SHIFT;
-
-  static {
-    try {
-      final PrivilegedExceptionAction<Unsafe> action =
-          () -> {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            return (Unsafe) theUnsafe.get(null);
-          };
-
-      UNSAFE = AccessController.doPrivileged(action);
-
-      // Determine pointer size and calculate shift
-      final int scale = UNSAFE.arrayIndexScale(Object[].class);
-      if (4 == scale) {
-        REF_ELEMENT_SHIFT = 2; // 32-bit pointers: index << 2 = index * 4
-      } else if (8 == scale) {
-        REF_ELEMENT_SHIFT = 3; // 64-bit pointers: index << 3 = index * 8
-      } else {
-        throw new IllegalStateException("Unknown pointer size");
-      }
-
-      // Calculate padding size (128 bytes / element size)
-      BUFFER_PAD = 128 / scale;
-      ARRAY_BASE = UNSAFE.arrayBaseOffset(Object[].class);
-
-      // Skip front padding to start from actual data
-      REF_ARRAY_BASE = ARRAY_BASE + (BUFFER_PAD << REF_ELEMENT_SHIFT);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   /** Pre-allocated event storage with padding to prevent false sharing */
   private final Object[] entries;
 
@@ -119,7 +66,7 @@ abstract class RingBufferFields<E> extends RingBufferPad {
 
     this.indexMask = bufferSize - 1;
     // Allocate array with padding on both sides to prevent false sharing
-    this.entries = new Object[bufferSize + 2 * BUFFER_PAD];
+    this.entries = new Object[bufferSize];
     fill(eventFactory);
   }
 
@@ -131,7 +78,7 @@ abstract class RingBufferFields<E> extends RingBufferPad {
   private void fill(EventFactory<E> eventFactory) {
     for (int i = 0; i < bufferSize; i++) {
       // Store events starting after front padding
-      entries[BUFFER_PAD + i] = eventFactory.newInstance();
+      entries[i] = eventFactory.newInstance();
     }
   }
 
@@ -144,8 +91,7 @@ abstract class RingBufferFields<E> extends RingBufferPad {
   @SuppressWarnings("unchecked")
   protected final E elementAt(long sequence) {
     // Use Unsafe for lock-free array access with proper memory barriers
-    return (E)
-        UNSAFE.getObject(entries, REF_ARRAY_BASE + ((sequence & indexMask) << REF_ELEMENT_SHIFT));
+    return (E) entries[(int) (sequence & indexMask)];
   }
 }
 

@@ -29,8 +29,8 @@ import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.data.ImportDataScanTool;
 
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.RowRecord;
 
 import java.io.BufferedReader;

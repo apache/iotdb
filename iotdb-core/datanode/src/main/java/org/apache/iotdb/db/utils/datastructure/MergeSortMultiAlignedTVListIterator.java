@@ -92,6 +92,20 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   }
 
   @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    probeIterators.clear();
+    for (int i = 0; i < alignedTvListIterators.size(); i++) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (iterator.hasNextTimeValuePair()) {
+        probeIterators.add(i);
+      }
+    }
+    probeNext = false;
+  }
+
+  @Override
   protected void prepareNext() {
     hasNext = false;
     for (int i : probeIterators) {
@@ -291,5 +305,13 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   @Override
   protected int currentRowIndex(int columnIndex) {
     return rowIndices[columnIndex];
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (TVList.TVListIterator tvListIterator : this.alignedTvListIterators) {
+      tvListIterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

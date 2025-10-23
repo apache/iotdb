@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;

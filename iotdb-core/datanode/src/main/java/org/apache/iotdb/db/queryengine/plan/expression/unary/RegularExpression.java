@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

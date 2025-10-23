@@ -19,11 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
-import sun.misc.Unsafe;
-
-import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedExceptionAction;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Left-hand side padding for cache line alignment */
 class LhsPadding {
@@ -32,7 +28,7 @@ class LhsPadding {
 
 /** Value class holding the actual sequence */
 class Value extends LhsPadding {
-  protected volatile long value;
+  protected AtomicLong value = new AtomicLong();
 }
 
 /** Right-hand side padding for cache line alignment */
@@ -54,43 +50,15 @@ class RhsPadding extends Value {
  */
 public class Sequence extends RhsPadding {
   public static final long INITIAL_VALUE = -1L;
-  private static final Unsafe UNSAFE;
-  private static final long VALUE_OFFSET;
-
-  static {
-    try {
-      final PrivilegedExceptionAction<Unsafe> action =
-          () -> {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            return (Unsafe) theUnsafe.get(null);
-          };
-
-      UNSAFE = AccessController.doPrivileged(action);
-      // CRITICAL: Get offset of 'value' field from Value class
-      VALUE_OFFSET = UNSAFE.objectFieldOffset(Value.class.getDeclaredField("value"));
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   /** Create sequence with initial value -1 */
   public Sequence() {
-    this(INITIAL_VALUE);
-  }
-
-  /**
-   * Create sequence with specified initial value
-   *
-   * @param initialValue initial value
-   */
-  public Sequence(final long initialValue) {
-    UNSAFE.putOrderedLong(this, VALUE_OFFSET, initialValue);
+    value.set(INITIAL_VALUE);
   }
 
   /** Volatile read */
   public long get() {
-    return value;
+    return value.get();
   }
 
   /**
@@ -99,16 +67,7 @@ public class Sequence extends RhsPadding {
    * <p>CRITICAL: Cheaper than volatile write, sufficient for most cases
    */
   public void set(final long value) {
-    UNSAFE.putOrderedLong(this, VALUE_OFFSET, value);
-  }
-
-  /**
-   * Volatile write (full memory barrier)
-   *
-   * <p>Use when need full visibility guarantees
-   */
-  public void setVolatile(final long value) {
-    UNSAFE.putLongVolatile(this, VALUE_OFFSET, value);
+    this.value.set(value);
   }
 
   /**
@@ -119,7 +78,7 @@ public class Sequence extends RhsPadding {
    * @return true if successful
    */
   public boolean compareAndSet(final long expectedValue, final long newValue) {
-    return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expectedValue, newValue);
+    return value.compareAndSet(expectedValue, newValue);
   }
 
   /** Atomically increment */

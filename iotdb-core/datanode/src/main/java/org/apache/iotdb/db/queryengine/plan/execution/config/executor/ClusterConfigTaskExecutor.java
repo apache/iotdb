@@ -327,11 +327,11 @@ import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecific
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
