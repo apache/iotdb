@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree;
 
-// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -30,22 +30,22 @@ public interface IMeasurementSchemaInfo {
 
   String getName();
 
-//   IMeasurementSchema getSchema();
-// 
+  IMeasurementSchema getSchema();
+
   /**
    * If the IMeasurementSchema is MeasurementSchema, return itself; else return null.
    *
    * @return measurementSchema or null if IMeasurementSchema is not MeasurementSchema
    */
-//   MeasurementSchema getSchemaAsMeasurementSchema();
+  MeasurementSchema getSchemaAsMeasurementSchema();
 
-//   LogicalViewSchema getSchemaAsLogicalViewSchema();
-// 
+  LogicalViewSchema getSchemaAsLogicalViewSchema();
+
   Map<String, String> getTagMap();
 
   Map<String, String> getAttributeMap();
 
   String getAlias();
-// 
-//   boolean isLogicalView();
+
+  boolean isLogicalView();
 }

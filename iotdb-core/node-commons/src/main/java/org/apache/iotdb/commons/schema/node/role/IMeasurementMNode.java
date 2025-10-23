@@ -46,6 +46,6 @@ public interface IMeasurementMNode<N extends IMNode<N>> extends IMNode<N> {
   void setPreDeleted(boolean preDeleted);
 
   MeasurementPath getMeasurementPath();
-// 
+
   boolean isLogicalView();
 }

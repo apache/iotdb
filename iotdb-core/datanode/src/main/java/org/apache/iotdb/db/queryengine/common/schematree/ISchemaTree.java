@@ -75,12 +75,12 @@ public interface ISchemaTree extends Accountable {
 
   Set<String> getDatabases();
 
-//   void setDatabases(Set<String> databases);
-// 
+  void setDatabases(Set<String> databases);
+
   boolean isEmpty();
-// 
-//   void mergeSchemaTree(ISchemaTree schemaTree);
-// 
+
+  void mergeSchemaTree(ISchemaTree schemaTree);
+
   /**
    * Check whether this schema tree has normal series(not template series).
    *
@@ -108,7 +108,7 @@ public interface ISchemaTree extends Accountable {
    *
    * @return whether there's view in this schema tree
    */
-//   boolean hasLogicalViewMeasurement();
+  boolean hasLogicalViewMeasurement();
 
   void removeLogicalView();
 }

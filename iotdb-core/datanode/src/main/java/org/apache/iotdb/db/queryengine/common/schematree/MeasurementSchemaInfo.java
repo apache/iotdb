@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree;
 
-// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -32,13 +32,13 @@ import java.util.Map;
  * measurement name, alias and MeasurementSchema, which are necessary to construct schemaTree for
  * Query and Insertion.
  */
-// public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
+public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
 
   private final String name;
   private final String alias;
   private Map<String, String> tagMap;
   private Map<String, String> attributeMap;
-//   private final IMeasurementSchema schema;
+  private final IMeasurementSchema schema;
 
   public MeasurementSchemaInfo(
       String name,
@@ -57,18 +57,18 @@ import java.util.Map;
     return name;
   }
 
-//   public IMeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
-//   public MeasurementSchema getSchemaAsMeasurementSchema() {
-//     if (this.isLogicalView()) {
-//       return null;
-//     } else {
-//       return (MeasurementSchema) this.schema;
-//     }
-//   }
-// 
+  public MeasurementSchema getSchemaAsMeasurementSchema() {
+    if (this.isLogicalView()) {
+      return null;
+    } else {
+      return (MeasurementSchema) this.schema;
+    }
+  }
+
   @Override
   public Map<String, String> getTagMap() {
     return tagMap;
@@ -79,20 +79,20 @@ import java.util.Map;
     return attributeMap;
   }
 
-//   @Override
-//   public LogicalViewSchema getSchemaAsLogicalViewSchema() {
-//     if (this.isLogicalView()) {
-//       return (LogicalViewSchema) this.schema;
-//     }
-//     return null;
-//   }
-// 
+  @Override
+  public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+    if (this.isLogicalView()) {
+      return (LogicalViewSchema) this.schema;
+    }
+    return null;
+  }
+
   public String getAlias() {
     return alias;
   }
-// 
-//   @Override
-//   public boolean isLogicalView() {
-//     return this.schema.isLogicalView();
-//   }
+
+  @Override
+  public boolean isLogicalView() {
+    return this.schema.isLogicalView();
+  }
 }

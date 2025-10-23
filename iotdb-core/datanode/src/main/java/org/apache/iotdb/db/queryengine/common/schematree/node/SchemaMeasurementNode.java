@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree.node;
 
-// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -39,11 +39,11 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
       RamUsageEstimator.shallowSizeOfInstance(SchemaMeasurementNode.class);
 
   private String alias;
-//   private IMeasurementSchema schema;
+  private IMeasurementSchema schema;
   private Map<String, String> tagMap;
   private Map<String, String> attributeMap;
 
-//   public SchemaMeasurementNode(String name, IMeasurementSchema schema) {
+  public SchemaMeasurementNode(String name, IMeasurementSchema schema) {
     super(name);
     this.schema = schema;
   }
@@ -68,35 +68,35 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     return alias;
   }
 
-//   @Override
-//   public boolean isLogicalView() {
-//     return this.schema.isLogicalView();
-//   }
-// 
+  @Override
+  public boolean isLogicalView() {
+    return this.schema.isLogicalView();
+  }
+
   public void setAlias(String alias) {
     this.alias = alias;
   }
 
-//   public IMeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
-//   @Override
-//   public MeasurementSchema getSchemaAsMeasurementSchema() {
-//     if (this.schema instanceof MeasurementSchema) {
-//       return (MeasurementSchema) this.getSchema();
-//     }
-//     return null;
-//   }
-// 
-//   @Override
-//   public LogicalViewSchema getSchemaAsLogicalViewSchema() {
-//     if (this.schema instanceof LogicalViewSchema) {
-//       return (LogicalViewSchema) this.getSchema();
-//     }
-//     return null;
-//   }
-// 
+  @Override
+  public MeasurementSchema getSchemaAsMeasurementSchema() {
+    if (this.schema instanceof MeasurementSchema) {
+      return (MeasurementSchema) this.getSchema();
+    }
+    return null;
+  }
+
+  @Override
+  public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+    if (this.schema instanceof LogicalViewSchema) {
+      return (LogicalViewSchema) this.getSchema();
+    }
+    return null;
+  }
+
   @Override
   public Map<String, String> getTagMap() {
     return tagMap;
@@ -138,7 +138,7 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     measurementNode.setAlias(alias);
   }
 
-//   private void setSchema(IMeasurementSchema schema) {
+  private void setSchema(IMeasurementSchema schema) {
     this.schema = schema;
   }
 
@@ -170,12 +170,12 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     ReadWriteIOUtils.write(getType(), outputStream);
     ReadWriteIOUtils.write(name, outputStream);
     ReadWriteIOUtils.write(alias, outputStream);
-// 
-//     MeasurementSchemaType measurementSchemaType = schema.getSchemaType();
-//     ReadWriteIOUtils.write(
-//         measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), outputStream);
+
+    MeasurementSchemaType measurementSchemaType = schema.getSchemaType();
+    ReadWriteIOUtils.write(
+        measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), outputStream);
     schema.serializeTo(outputStream);
-// 
+
     ReadWriteIOUtils.write(tagMap, outputStream);
     ReadWriteIOUtils.write(attributeMap, outputStream);
   }
@@ -183,17 +183,17 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
   public static SchemaMeasurementNode deserialize(InputStream inputStream) throws IOException {
     String name = ReadWriteIOUtils.readString(inputStream);
     String alias = ReadWriteIOUtils.readString(inputStream);
-// 
-//     IMeasurementSchema schema = null;
+
+    IMeasurementSchema schema = null;
     byte measurementSchemaType = ReadWriteIOUtils.readByte(inputStream);
-//     if (measurementSchemaType
-//         == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
-//       schema = MeasurementSchema.deserializeFrom(inputStream);
-//     } else if (measurementSchemaType
-//         == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
-//       schema = LogicalViewSchema.deserializeFrom(inputStream);
-//     }
-// 
+    if (measurementSchemaType
+        == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+      schema = MeasurementSchema.deserializeFrom(inputStream);
+    } else if (measurementSchemaType
+        == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+      schema = LogicalViewSchema.deserializeFrom(inputStream);
+    }
+
     Map<String, String> tagMap = ReadWriteIOUtils.readMap(inputStream);
     Map<String, String> attributeMap = ReadWriteIOUtils.readMap(inputStream);
 

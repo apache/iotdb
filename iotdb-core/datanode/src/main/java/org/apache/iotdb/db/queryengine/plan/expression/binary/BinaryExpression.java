@@ -152,12 +152,12 @@ public abstract class BinaryExpression extends Expression {
     Expression.serialize(leftExpression, stream);
     Expression.serialize(rightExpression, stream);
   }
-// 
-//   @Override
+
+  @Override
   public String getOutputSymbolInternal() {
     String left = this.getLeftExpression().getOutputSymbol();
     String right = this.getRightExpression().getOutputSymbol();
-// 
+
     return buildExpression(left, right);
   }
 
@@ -169,20 +169,20 @@ public abstract class BinaryExpression extends Expression {
   }
 
   private String buildExpression(String left, String right) {
-//     StringBuilder builder = new StringBuilder();
-//     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
-//       builder.append("(").append(left).append(")");
-//     } else {
-//       builder.append(left);
-//     }
-//     builder.append(" ").append(operator()).append(" ");
-//     if (rightExpression.getExpressionType().getPriority()
-//         < this.getExpressionType().getPriority()) {
-//       builder.append("(").append(right).append(")");
-//     } else {
-//       builder.append(right);
-//     }
-// 
-//     return builder.toString();
-//   }
+    StringBuilder builder = new StringBuilder();
+    if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
+      builder.append("(").append(left).append(")");
+    } else {
+      builder.append(left);
+    }
+    builder.append(" ").append(operator()).append(" ");
+    if (rightExpression.getExpressionType().getPriority()
+        < this.getExpressionType().getPriority()) {
+      builder.append("(").append(right).append(")");
+    } else {
+      builder.append(right);
+    }
+
+    return builder.toString();
+  }
 }

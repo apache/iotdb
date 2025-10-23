@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -60,11 +60,11 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-// import java.util.Arrays;
-// import java.util.Collections;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-// import java.util.Map;
+import java.util.Map;
 import java.util.Objects;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
@@ -83,17 +83,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   protected int rowCount = 0;
 
-//   /**
-//    * This param record whether the source of logical view is aligned. Only used when there are
-//    * views.
-//    */
+  /**
+   * This param record whether the source of logical view is aligned. Only used when there are
+   * views.
+   */
   protected boolean[] measurementIsAligned;
-// 
+
   public InsertTabletStatement() {
     super();
     statementType = StatementType.BATCH_INSERT;
-//     this.recordedBeginOfLogicalViewSchemaList = 0;
-//     this.recordedEndOfLogicalViewSchemaList = 0;
+    this.recordedBeginOfLogicalViewSchemaList = 0;
+    this.recordedEndOfLogicalViewSchemaList = 0;
   }
 
   public InsertTabletStatement(
@@ -302,72 +302,72 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
   }
 
-//   public boolean isNeedSplit() {
+  public boolean isNeedSplit() {
     return hasLogicalViewNeedProcess();
-//   }
-// 
-//   public List<InsertTabletStatement> getSplitList() {
-//     if (!isNeedSplit()) {
-//       return Collections.singletonList(this);
-//     }
-//     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
-//         this.getMapFromDeviceToMeasurementAndIndex();
-//     // Reconstruct statements
-//     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
-//     for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry :
-//         mapFromDeviceToMeasurementAndIndex.entrySet()) {
-//       List<Pair<String, Integer>> pairList = entry.getValue();
-//       InsertTabletStatement statement = new InsertTabletStatement();
-//       statement.setTimes(this.times);
-//       statement.setDevicePath(entry.getKey());
-//       statement.setRowCount(this.rowCount);
-//       statement.setAligned(this.isAligned);
+  }
+
+  public List<InsertTabletStatement> getSplitList() {
+    if (!isNeedSplit()) {
+      return Collections.singletonList(this);
+    }
+    Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
+        this.getMapFromDeviceToMeasurementAndIndex();
+    // Reconstruct statements
+    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+    for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry :
+        mapFromDeviceToMeasurementAndIndex.entrySet()) {
+      List<Pair<String, Integer>> pairList = entry.getValue();
+      InsertTabletStatement statement = new InsertTabletStatement();
+      statement.setTimes(this.times);
+      statement.setDevicePath(entry.getKey());
+      statement.setRowCount(this.rowCount);
+      statement.setAligned(this.isAligned);
       Object[] copiedColumns = new Object[pairList.size()];
-//       String[] measurements = new String[pairList.size()];
+      String[] measurements = new String[pairList.size()];
       BitMap[] copiedBitMaps = new BitMap[pairList.size()];
-//       MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];
-//       TSDataType[] dataTypes = new TSDataType[pairList.size()];
-//       for (int i = 0; i < pairList.size(); i++) {
-//         int realIndex = pairList.get(i).right;
+      MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];
+      TSDataType[] dataTypes = new TSDataType[pairList.size()];
+      for (int i = 0; i < pairList.size(); i++) {
+        int realIndex = pairList.get(i).right;
         copiedColumns[i] = this.columns[realIndex];
         measurements[i] =
             Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
-//         measurementSchemas[i] = this.measurementSchemas[realIndex];
-//         dataTypes[i] = this.dataTypes[realIndex];
+        measurementSchemas[i] = this.measurementSchemas[realIndex];
+        dataTypes[i] = this.dataTypes[realIndex];
         if (this.nullBitMaps != null) {
           copiedBitMaps[i] = this.nullBitMaps[realIndex];
-//         }
-//         if (this.measurementIsAligned != null) {
-//           statement.setAligned(this.measurementIsAligned[realIndex]);
-//         }
-//       }
+        }
+        if (this.measurementIsAligned != null) {
+          statement.setAligned(this.measurementIsAligned[realIndex]);
+        }
+      }
       statement.setColumns(copiedColumns);
-//       statement.setMeasurements(measurements);
-//       statement.setMeasurementSchemas(measurementSchemas);
-//       statement.setDataTypes(dataTypes);
+      statement.setMeasurements(measurements);
+      statement.setMeasurementSchemas(measurementSchemas);
+      statement.setDataTypes(dataTypes);
       if (this.nullBitMaps != null) {
         statement.setBitMaps(copiedBitMaps);
-//       }
-//       statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
-//       insertTabletStatementList.add(statement);
-//     }
-//     return insertTabletStatementList;
-//   }
-// 
-//   @Override
-//   public InsertBaseStatement removeLogicalView() {
-//     if (!isNeedSplit()) {
-//       return this;
-//     }
-//     List<InsertTabletStatement> insertTabletStatementList = this.getSplitList();
-//     if (insertTabletStatementList.size() == 1) {
-//       return insertTabletStatementList.get(0);
-//     }
-//     InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
-//     insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
-//     return insertMultiTabletsStatement;
-//   }
-// 
+      }
+      statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
+      insertTabletStatementList.add(statement);
+    }
+    return insertTabletStatementList;
+  }
+
+  @Override
+  public InsertBaseStatement removeLogicalView() {
+    if (!isNeedSplit()) {
+      return this;
+    }
+    List<InsertTabletStatement> insertTabletStatementList = this.getSplitList();
+    if (insertTabletStatementList.size() == 1) {
+      return insertTabletStatementList.get(0);
+    }
+    InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
+    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+    return insertMultiTabletsStatement;
+  }
+
   @Override
   public long getMinTime() {
     return times[0];
@@ -429,7 +429,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public void validateDeviceSchema(boolean isAligned) {
-//     this.isAligned = isAligned;
+    this.isAligned = isAligned;
   }
 
   @Override
@@ -440,17 +440,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-//       if (measurementSchemaInfo.isLogicalView()) {
-//         if (logicalViewSchemaList == null || indexOfSourcePathsOfLogicalViews == null) {
-//           logicalViewSchemaList = new ArrayList<>();
-//           indexOfSourcePathsOfLogicalViews = new ArrayList<>();
-//         }
-//         logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
-//         indexOfSourcePathsOfLogicalViews.add(index);
-//         return;
-//       } else {
-//         measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
-//       }
+      if (measurementSchemaInfo.isLogicalView()) {
+        if (logicalViewSchemaList == null || indexOfSourcePathsOfLogicalViews == null) {
+          logicalViewSchemaList = new ArrayList<>();
+          indexOfSourcePathsOfLogicalViews = new ArrayList<>();
+        }
+        logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
+        indexOfSourcePathsOfLogicalViews.add(index);
+        return;
+      } else {
+        measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
+      }
     }
 
     try {
@@ -459,49 +459,49 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       throw new SemanticException(e);
     }
   }
-// 
-//   @Override
-//   public void validateMeasurementSchema(
-//       int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
-//     this.validateMeasurementSchema(index, measurementSchemaInfo);
-//     if (this.measurementIsAligned == null) {
-//       this.measurementIsAligned = new boolean[this.measurements.length];
-//       Arrays.fill(this.measurementIsAligned, this.isAligned);
-//     }
-//     this.measurementIsAligned[index] = isAligned;
-//   }
-// 
-//   @Override
-//   public boolean hasLogicalViewNeedProcess() {
-//     if (this.indexOfSourcePathsOfLogicalViews == null) {
-//       return false;
-//     }
-//     return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
-//   }
-// 
-//   @Override
-//   public List<LogicalViewSchema> getLogicalViewSchemaList() {
-//     return this.logicalViewSchemaList;
-//   }
-// 
-//   @Override
-//   public List<Integer> getIndexListOfLogicalViewPaths() {
-//     return this.indexOfSourcePathsOfLogicalViews;
-//   }
-// 
-//   @Override
-//   public void recordRangeOfLogicalViewSchemaListNow() {
-//     if (this.logicalViewSchemaList != null) {
-//       this.recordedBeginOfLogicalViewSchemaList = this.recordedEndOfLogicalViewSchemaList;
-//       this.recordedEndOfLogicalViewSchemaList = this.logicalViewSchemaList.size();
-//     }
-//   }
-// 
-//   @Override
-//   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
-//     return new Pair<>(
-//         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
-//   }
+
+  @Override
+  public void validateMeasurementSchema(
+      int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
+    this.validateMeasurementSchema(index, measurementSchemaInfo);
+    if (this.measurementIsAligned == null) {
+      this.measurementIsAligned = new boolean[this.measurements.length];
+      Arrays.fill(this.measurementIsAligned, this.isAligned);
+    }
+    this.measurementIsAligned[index] = isAligned;
+  }
+
+  @Override
+  public boolean hasLogicalViewNeedProcess() {
+    if (this.indexOfSourcePathsOfLogicalViews == null) {
+      return false;
+    }
+    return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
+  }
+
+  @Override
+  public List<LogicalViewSchema> getLogicalViewSchemaList() {
+    return this.logicalViewSchemaList;
+  }
+
+  @Override
+  public List<Integer> getIndexListOfLogicalViewPaths() {
+    return this.indexOfSourcePathsOfLogicalViews;
+  }
+
+  @Override
+  public void recordRangeOfLogicalViewSchemaListNow() {
+    if (this.logicalViewSchemaList != null) {
+      this.recordedBeginOfLogicalViewSchemaList = this.recordedEndOfLogicalViewSchemaList;
+      this.recordedEndOfLogicalViewSchemaList = this.logicalViewSchemaList.size();
+    }
+  }
+
+  @Override
+  public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
+    return new Pair<>(
+        this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
+  }
 
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {

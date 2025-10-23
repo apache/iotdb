@@ -1028,9 +1028,9 @@ public class RegionWriteExecutor {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
     }
-// 
-//     @Override
-//     public RegionExecutionResult visitCreateLogicalView(
+
+    @Override
+    public RegionExecutionResult visitCreateLogicalView(
         final CreateLogicalViewNode node, final WritePlanNodeExecutionContext context) {
       return executeCreateLogicalView(node, context, false);
     }
@@ -1042,48 +1042,48 @@ public class RegionWriteExecutor {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
-//         context.getRegionWriteValidationRWLock().writeLock().lock();
-//         try {
+        context.getRegionWriteValidationRWLock().writeLock().lock();
+        try {
           // step 1. make sure all target paths do NOT exist.
           final List<PartialPath> targetPaths = node.getViewPathList();
           final List<MetadataException> failingMetadataException = new ArrayList<>();
           for (final PartialPath thisPath : targetPaths) {
-//             // no alias list for a view, so the third parameter is null
+            // no alias list for a view, so the third parameter is null
             final Map<Integer, MetadataException> failingMeasurementMap =
-//                 schemaRegion.checkMeasurementExistence(
-//                     thisPath.getDevicePath(),
-//                     Collections.singletonList(thisPath.getMeasurement()),
-//                     null);
+                schemaRegion.checkMeasurementExistence(
+                    thisPath.getDevicePath(),
+                    Collections.singletonList(thisPath.getMeasurement()),
+                    null);
             // merge all exceptions into one map
             for (final Map.Entry<Integer, MetadataException> entry :
                 failingMeasurementMap.entrySet()) {
-//               failingMetadataException.add(entry.getValue());
-//             }
-//           }
+              failingMetadataException.add(entry.getValue());
+            }
+          }
           // if there are some exceptions, handle each exception and return first of them.
-//           if (!failingMetadataException.isEmpty()) {
+          if (!failingMetadataException.isEmpty()) {
             final MetadataException metadataException = failingMetadataException.get(0);
             LOGGER.info(METADATA_ERROR_MSG, metadataException.getMessage());
             return RegionExecutionResult.create(
                 false,
                 metadataException.getMessage(),
-//                 RpcUtils.getStatus(
-//                     metadataException.getErrorCode(), metadataException.getMessage()));
-//           }
+                RpcUtils.getStatus(
+                    metadataException.getErrorCode(), metadataException.getMessage()));
+          }
           // step 2. make sure all source paths exist.
           return receivedFromPipe
               ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
               : super.visitCreateLogicalView(node, context);
-//         } finally {
-//           context.getRegionWriteValidationRWLock().writeLock().unlock();
-//         }
-//       } else {
+        } finally {
+          context.getRegionWriteValidationRWLock().writeLock().unlock();
+        }
+      } else {
         return receivedFromPipe
             ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
             : super.visitCreateLogicalView(node, context);
-//       }
-//       // end of visitCreateLogicalView
-//     }
+      }
+      // end of visitCreateLogicalView
+    }
 
     @Override
     public RegionExecutionResult visitCreateOrUpdateTableDevice(

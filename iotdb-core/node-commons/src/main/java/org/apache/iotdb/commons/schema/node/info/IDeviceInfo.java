@@ -64,9 +64,9 @@ public interface IDeviceInfo<N extends IMNode<N>> {
 
   void deactivateTemplate();
 
-//   Boolean isAligned();
+  Boolean isAligned();
 
-//   void setAligned(Boolean isAligned);
+  void setAligned(Boolean isAligned);
 
   int estimateSize();
 }

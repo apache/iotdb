@@ -235,19 +235,19 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
   @Override
   public boolean isAligned() {
     Boolean align = basicMNode.getDeviceInfo().isAligned();
-//     if (align == null) {
-//       return false;
-//     }
-//     return align;
-//   }
-// 
-//   @Override
-//   public Boolean isAlignedNullable() {
+    if (align == null) {
+      return false;
+    }
+    return align;
+  }
+
+  @Override
+  public Boolean isAlignedNullable() {
     return basicMNode.getDeviceInfo().isAligned();
   }
 
   @Override
-//   public void setAligned(Boolean isAligned) {
+  public void setAligned(Boolean isAligned) {
     basicMNode.getDeviceInfo().setAligned(isAligned);
   }
 

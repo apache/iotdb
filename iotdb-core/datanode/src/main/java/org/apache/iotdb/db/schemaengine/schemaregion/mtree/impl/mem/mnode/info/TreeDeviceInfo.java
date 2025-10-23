@@ -50,7 +50,7 @@ public class TreeDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   @SuppressWarnings("squid:S3077")
   private transient volatile Map<String, IMeasurementMNode<N>> aliasChildren = null;
 
-//   private volatile Boolean isAligned = false;
+  private volatile Boolean isAligned = false;
 
   @Override
   public void moveDataToNewMNode(final IDeviceMNode<N> newMNode) {
@@ -169,7 +169,7 @@ public class TreeDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   }
 
   @Override
-//   public Boolean isAligned() {
+  public Boolean isAligned() {
     return isAligned;
   }
 

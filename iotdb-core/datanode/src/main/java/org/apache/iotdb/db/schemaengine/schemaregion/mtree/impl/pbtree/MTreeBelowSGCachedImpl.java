@@ -1436,8 +1436,8 @@ public class MTreeBelowSGCachedImpl {
                 return node.getAlias();
               }
 
-//               public IMeasurementSchema getSchema() {
-//                 return node.getSchema();
+              public IMeasurementSchema getSchema() {
+                return node.getSchema();
               }
 
               public Map<String, String> getTags() {
@@ -1458,11 +1458,11 @@ public class MTreeBelowSGCachedImpl {
                 return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
               }
 
-//               @Override
-//               public boolean isLogicalView() {
-//                 return node.isLogicalView();
-//               }
-// 
+              @Override
+              public boolean isLogicalView() {
+                return node.isLogicalView();
+              }
+
               public String getFullPath() {
                 return getPartialPathFromRootToNode(node.getAsMNode()).getFullPath();
               }

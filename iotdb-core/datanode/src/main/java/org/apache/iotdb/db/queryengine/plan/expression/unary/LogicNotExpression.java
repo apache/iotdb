@@ -52,15 +52,15 @@ public class LogicNotExpression extends UnaryExpression {
         : "!(" + expression.getExpressionString() + ")";
   }
 
-//   @Override
+  @Override
   public String getOutputSymbolInternal() {
-//     return expression instanceof FunctionExpression
-//             || expression instanceof ConstantOperand
-//             || expression instanceof TimeSeriesOperand
+    return expression instanceof FunctionExpression
+            || expression instanceof ConstantOperand
+            || expression instanceof TimeSeriesOperand
         ? "!" + expression.getOutputSymbol()
         : "!(" + expression.getOutputSymbol() + ")";
-//   }
-// 
+  }
+
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.LOGIC_NOT;

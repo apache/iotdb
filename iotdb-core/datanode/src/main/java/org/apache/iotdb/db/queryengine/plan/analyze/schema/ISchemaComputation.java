@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
-// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 
 import org.apache.tsfile.utils.Pair;
-// 
-// import java.util.List;
+
+import java.util.List;
 
 /**
  * This interface defines the required behaviour invoked during schema fetch/computation, which is
@@ -47,41 +47,41 @@ public interface ISchemaComputation {
    * @param measurementSchemaInfo the measurement schema of fetched measurement
    */
   void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo);
-// 
-//   // region used by logical view
-//   boolean hasLogicalViewNeedProcess();
-// 
-//   /**
-//    * @return the logical view schema list recorded by this statement. It may be NULL if it is not
-//    *     used before.
-//    */
-//   List<LogicalViewSchema> getLogicalViewSchemaList();
-// 
-//   /**
-//    * @return the index list of logical view paths, where source of views should be placed. For
-//    *     example, IndexListOfLogicalViewPaths[alpha] = beta, then you should use
-//    *     LogicalViewSchemaList[alpha] to fill measurementSchema[beta].
-//    */
-//   List<Integer> getIndexListOfLogicalViewPaths();
-// 
-//   /**
-//    * Record the beginning and ending of logical schema list. After calling this interface, the range
-//    * should be record. For example, the range is [0,4) which means 4 schemas exist. Later, more 3
-//    * schemas are added, this function is called, then it records [4,7).
-//    */
-//   void recordRangeOfLogicalViewSchemaListNow();
-// 
+
+  // region used by logical view
+  boolean hasLogicalViewNeedProcess();
+
+  /**
+   * @return the logical view schema list recorded by this statement. It may be NULL if it is not
+   *     used before.
+   */
+  List<LogicalViewSchema> getLogicalViewSchemaList();
+
+  /**
+   * @return the index list of logical view paths, where source of views should be placed. For
+   *     example, IndexListOfLogicalViewPaths[alpha] = beta, then you should use
+   *     LogicalViewSchemaList[alpha] to fill measurementSchema[beta].
+   */
+  List<Integer> getIndexListOfLogicalViewPaths();
+
+  /**
+   * Record the beginning and ending of logical schema list. After calling this interface, the range
+   * should be record. For example, the range is [0,4) which means 4 schemas exist. Later, more 3
+   * schemas are added, this function is called, then it records [4,7).
+   */
+  void recordRangeOfLogicalViewSchemaListNow();
+
   /**
    * @return the recorded range of logical view schema list.
    */
-//   Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded();
-// 
-//   /**
-//    * @param index the index of fetched measurement in array returned by getMeasurements
-//    * @param measurementSchemaInfo the measurement schema of source of the logical view
-//    * @param isAligned whether the source of this view is aligned.
-//    */
-//   void computeMeasurementOfView(
-//       int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned);
-//   // endregion
+  Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded();
+
+  /**
+   * @param index the index of fetched measurement in array returned by getMeasurements
+   * @param measurementSchemaInfo the measurement schema of source of the logical view
+   * @param isAligned whether the source of this view is aligned.
+   */
+  void computeMeasurementOfView(
+      int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned);
+  // endregion
 }

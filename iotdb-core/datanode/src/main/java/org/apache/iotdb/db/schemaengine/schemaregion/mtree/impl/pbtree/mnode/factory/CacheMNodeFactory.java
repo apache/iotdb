@@ -69,10 +69,10 @@ public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
   public ICachedMNode createInternalMNode(ICachedMNode parent, String name) {
     return new CachedBasicInternalMNode(parent, name);
   }
-// 
-//   @Override
-//   public IMeasurementMNode<ICachedMNode> createLogicalViewMNode(
+
+  @Override
+  public IMeasurementMNode<ICachedMNode> createLogicalViewMNode(
       IDeviceMNode<ICachedMNode> parent, String name, IMeasurementSchema measurementSchema) {
     throw new UnsupportedOperationException("View is not supported.");
-//   }
+  }
 }

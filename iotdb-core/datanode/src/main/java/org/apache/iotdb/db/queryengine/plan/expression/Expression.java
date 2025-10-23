@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression;
 
-// import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression;

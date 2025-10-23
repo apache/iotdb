@@ -187,12 +187,12 @@ public class MockSchemaFile implements ISchemaFile {
       return result;
     } else if (node.isDatabase() && node.isDevice()) {
       ICachedMNode result = nodeFactory.createDatabaseDeviceMNode(null, node.getName());
-//       result.getAsDeviceMNode().setAligned(node.getAsDeviceMNode().isAlignedNullable());
+      result.getAsDeviceMNode().setAligned(node.getAsDeviceMNode().isAlignedNullable());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isDevice()) {
       ICachedMNode result = nodeFactory.createDeviceMNode(null, node.getName()).getAsMNode();
-//       result.getAsDeviceMNode().setAligned(node.getAsDeviceMNode().isAlignedNullable());
+      result.getAsDeviceMNode().setAligned(node.getAsDeviceMNode().isAlignedNullable());
       result
           .getAsDeviceMNode()
           .setSchemaTemplateId(node.getAsDeviceMNode().getSchemaTemplateIdWithState());

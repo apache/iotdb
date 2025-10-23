@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
-// import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -362,28 +362,28 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       }
       return result;
     }
-// 
-//     @Override
-//     public ISchemaRegionPlan visitCreateLogicalView(
+
+    @Override
+    public ISchemaRegionPlan visitCreateLogicalView(
         final ICreateLogicalViewPlan createLogicalViewPlan, final ByteBuffer buffer) {
-// 
+
       final int viewSize = buffer.getInt();
       final Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
-//       for (int i = 0; i < viewSize; i++) {
+      for (int i = 0; i < viewSize; i++) {
         final int byteSizeOfPath = buffer.getInt();
         final byte[] bytesOfPath = new byte[byteSizeOfPath];
-//         buffer.get(bytesOfPath);
-//         try {
+        buffer.get(bytesOfPath);
+        try {
           final PartialPath thisPath = new PartialPath(new String(bytesOfPath));
-//           ViewExpression thisExp = ViewExpression.deserialize(buffer);
-//           viewPathToSourceMap.put(thisPath, thisExp);
+          ViewExpression thisExp = ViewExpression.deserialize(buffer);
+          viewPathToSourceMap.put(thisPath, thisExp);
         } catch (final IllegalPathException e) {
-//           LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
-//         }
-//       }
-//       createLogicalViewPlan.setViewPathToSourceExpressionMap(viewPathToSourceMap);
-//       return createLogicalViewPlan;
-//     }
+          LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
+        }
+      }
+      createLogicalViewPlan.setViewPathToSourceExpressionMap(viewPathToSourceMap);
+      return createLogicalViewPlan;
+    }
 
     @Override
     public ISchemaRegionPlan visitPreDeleteLogicalView(

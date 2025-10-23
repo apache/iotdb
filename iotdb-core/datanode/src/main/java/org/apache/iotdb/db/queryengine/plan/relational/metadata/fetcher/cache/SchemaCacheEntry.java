@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -51,14 +51,14 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   private static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(SchemaCacheEntry.class) + 75;
 
-//   private final IMeasurementSchema iMeasurementSchema;
+  private final IMeasurementSchema iMeasurementSchema;
 
   private final Map<String, String> tagMap;
 
   public SchemaCacheEntry(
       final @Nonnull IMeasurementSchema iMeasurementSchema,
       final @Nullable Map<String, String> tagMap) {
-//     this.iMeasurementSchema = iMeasurementSchema;
+    this.iMeasurementSchema = iMeasurementSchema;
     this.tagMap = tagMap;
   }
 
@@ -73,7 +73,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   }
 
   public TSDataType getTsDataType() {
-//     return iMeasurementSchema.getType();
+    return iMeasurementSchema.getType();
   }
 
   public static int estimateSize(final SchemaCacheEntry schemaCacheEntry) {
@@ -88,33 +88,33 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   }
 
   @Override
-//   public IMeasurementSchema getSchema() {
-//     return iMeasurementSchema;
-//   }
-// 
-//   @Override
-//   public MeasurementSchema getSchemaAsMeasurementSchema() {
-//     if (this.iMeasurementSchema instanceof MeasurementSchema) {
-//       return (MeasurementSchema) this.getSchema();
-//     }
-//     return null;
+  public IMeasurementSchema getSchema() {
+    return iMeasurementSchema;
   }
 
-//   @Override
-//   public LogicalViewSchema getSchemaAsLogicalViewSchema() {
-//     if (this.iMeasurementSchema instanceof LogicalViewSchema) {
-//       return (LogicalViewSchema) this.getSchema();
-//     }
-//     return null;
-//   }
-// 
+  @Override
+  public MeasurementSchema getSchemaAsMeasurementSchema() {
+    if (this.iMeasurementSchema instanceof MeasurementSchema) {
+      return (MeasurementSchema) this.getSchema();
+    }
+    return null;
+  }
+
+  @Override
+  public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+    if (this.iMeasurementSchema instanceof LogicalViewSchema) {
+      return (LogicalViewSchema) this.getSchema();
+    }
+    return null;
+  }
+
   @Override
   public String getAlias() {
     return null;
   }
-// 
-//   @Override
-//   public boolean isLogicalView() {
-//     return this.iMeasurementSchema.isLogicalView();
-//   }
+
+  @Override
+  public boolean isLogicalView() {
+    return this.iMeasurementSchema.isLogicalView();
+  }
 }

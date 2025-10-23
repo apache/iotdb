@@ -39,7 +39,7 @@ public interface IMNodeFactory<N extends IMNode<N>> {
   N createAboveDatabaseMNode(N parent, String name);
 
   N createInternalMNode(N parent, String name);
-// 
-//   IMeasurementMNode<N> createLogicalViewMNode(
+
+  IMeasurementMNode<N> createLogicalViewMNode(
       IDeviceMNode<N> parent, String name, IMeasurementSchema measurementSchema);
 }

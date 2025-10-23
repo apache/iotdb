@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
-// import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
@@ -208,24 +208,24 @@ class ClusterSchemaFetchExecutor {
   }
 
   ClusterSchemaTree fetchSchemaWithFullPaths(List<String> fullPathList, MPPQueryContext context) {
-//     PathPatternTree patternTree = new PathPatternTree();
-//     for (String fullPath : fullPathList) {
-//       try {
+    PathPatternTree patternTree = new PathPatternTree();
+    for (String fullPath : fullPathList) {
+      try {
         patternTree.appendFullPath(new MeasurementPath(fullPath));
-//       } catch (IllegalPathException e) {
-//         throw new RuntimeException(e);
-//       }
-//     }
-//     patternTree.constructTree();
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    patternTree.constructTree();
     return fetchSchemaAndCacheResult(patternTree, context);
-//   }
-// 
+  }
+
   ClusterSchemaTree fetchSchemaWithPatternTreeAndCache(
       PathPatternTree patternTree, MPPQueryContext context) {
-//     patternTree.constructTree();
+    patternTree.constructTree();
     return fetchSchemaAndCacheResult(patternTree, context);
-//   }
-// 
+  }
+
   private ClusterSchemaTree fetchSchemaAndCacheResult(
       PathPatternTree patternTree, MPPQueryContext context) {
     ClusterSchemaTree schemaTree =
@@ -338,8 +338,8 @@ class ClusterSchemaFetchExecutor {
       }
     } catch (MemoryNotEnoughException e) {
       throw e;
-//     } catch (Exception e) {
-//       throw new RuntimeException(e);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 }

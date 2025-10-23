@@ -30,8 +30,8 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
-// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-// import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -279,13 +279,6 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-//       if (device.isDevice()
-//           && device.getAsDeviceMNode().isAlignedNullable() != null
-//           && device.getAsDeviceMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "time series under this device is aligned, please use createAlignedTimeseries or change device.",
-            device.getFullPath());
-      }
       final IDeviceMNode<IMemMNode> entityMNode;
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
@@ -293,10 +286,11 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode = store.setToEntity(device);
       }
 
-//       if (entityMNode.isAlignedNullable() == null) {
-//         entityMNode.setAligned(false);
-//       }
-// 
+      // create a non-aligned time series
+      if (entityMNode.isAlignedNullable() == null) {
+        entityMNode.setAligned(false);
+      }
+
       final IMeasurementMNode<IMemMNode> measurementMNode =
           nodeFactory.createMeasurementMNode(
               entityMNode,
@@ -371,14 +365,6 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-//       if (device.isDevice()
-//           && device.getAsDeviceMNode().isAlignedNullable() != null
-//           && !device.getAsDeviceMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "Time series under this device is not aligned, please use createTimeSeries or change device.",
-            devicePath.getFullPath());
-      }
-
       final IDeviceMNode<IMemMNode> entityMNode;
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
@@ -388,10 +374,10 @@ public class MTreeBelowSGMemoryImpl {
       }
 
       // create an aligned time series
-//       if (entityMNode.isAlignedNullable() == null) {
-//         entityMNode.setAligned(true);
-//       }
-// 
+      if (entityMNode.isAlignedNullable() == null) {
+        entityMNode.setAligned(true);
+      }
+
       for (int i = 0; i < measurements.size(); i++) {
         if (existingMeasurementIndexes.contains(i)) {
           continue;
@@ -585,17 +571,17 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
-//       boolean hasNonViewMeasurement = false;
+      boolean hasNonViewMeasurement = false;
       IMemMNode child;
       IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode);
       while (iterator.hasNext()) {
         child = iterator.next();
         if (child.isMeasurement()) {
           hasMeasurement = true;
-//           if (!child.getAsMeasurementMNode().isLogicalView()) {
-//             hasNonViewMeasurement = true;
-//             break;
-//           }
+          if (!child.getAsMeasurementMNode().isLogicalView()) {
+            hasNonViewMeasurement = true;
+            break;
+          }
         }
       }
 
@@ -603,9 +589,9 @@ public class MTreeBelowSGMemoryImpl {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
         }
-//       } else if (!hasNonViewMeasurement) {
-//         // has some measurement but they are all logical view
-//         entityMNode.setAligned(null);
+      } else if (!hasNonViewMeasurement) {
+        // has some measurement but they are all logical view
+        entityMNode.setAligned(null);
       }
     }
 
@@ -1375,8 +1361,8 @@ public class MTreeBelowSGMemoryImpl {
               }
 
               @Override
-//               public IMeasurementSchema getSchema() {
-//                 return node.getSchema();
+              public IMeasurementSchema getSchema() {
+                return node.getSchema();
               }
 
               @Override
@@ -1400,11 +1386,11 @@ public class MTreeBelowSGMemoryImpl {
                 return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
               }
 
-//               @Override
-//               public boolean isLogicalView() {
-//                 return node.isLogicalView();
-//               }
-// 
+              @Override
+              public boolean isLogicalView() {
+                return node.isLogicalView();
+              }
+
               @Override
               public String getFullPath() {
                 return getPartialPathFromRootToNode(node.getAsMNode()).getFullPath();
@@ -1493,58 +1479,58 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   // endregion
-// 
-//   // region interfaces for logical view
-//   public IMeasurementMNode<IMemMNode> createLogicalView(
+
+  // region interfaces for logical view
+  public IMeasurementMNode<IMemMNode> createLogicalView(
       final PartialPath path, final ViewExpression viewExpression) throws MetadataException {
-//     // check path
+    // check path
     final String[] nodeNames = path.getNodes();
-//     if (nodeNames.length <= 2) {
-//       throw new IllegalPathException(path.getFullPath());
-//     }
-//     MetaFormatUtils.checkTimeseries(path);
+    if (nodeNames.length <= 2) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    MetaFormatUtils.checkTimeseries(path);
     final PartialPath devicePath = path.getDevicePath();
     final IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
-// 
-//     synchronized (this) {
+
+    synchronized (this) {
       final String leafName = path.getMeasurement();
       final IMeasurementMNode<IMemMNode> measurementMNode =
           nodeFactory.createLogicalViewMNode(
               null, leafName, new LogicalViewSchema(leafName, viewExpression));
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
-// 
-//       // no need to check alias, because logical view has no alias
-// 
-//       if (device.hasChild(leafName)) {
+
+      // no need to check alias, because logical view has no alias
+
+      if (device.hasChild(leafName)) {
         final IMemMNode node = device.getChild(leafName);
-//         if (node.isMeasurement()) {
-//           if (node.getAsMeasurementMNode().isPreDeleted()) {
-//             throw new MeasurementInBlackListException(path);
-//           } else {
-//             throw new MeasurementAlreadyExistException(
-//                 path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
-//           }
-//         } else {
-//           throw new PathAlreadyExistException(path.getFullPath());
-//         }
-//       }
-// 
+        if (node.isMeasurement()) {
+          if (node.getAsMeasurementMNode().isPreDeleted()) {
+            throw new MeasurementInBlackListException(path);
+          } else {
+            throw new MeasurementAlreadyExistException(
+                path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
+          }
+        } else {
+          throw new PathAlreadyExistException(path.getFullPath());
+        }
+      }
+
       final IDeviceMNode<IMemMNode> entityMNode;
-//       if (device.isDevice()) {
-//         entityMNode = device.getAsDeviceMNode();
-//       } else {
-//         entityMNode = store.setToEntity(device);
-//         // this parent has no measurement before. The leafName is his first child who is a logical
-//         // view.
-//         entityMNode.setAligned(null);
-//       }
-// 
+      if (device.isDevice()) {
+        entityMNode = device.getAsDeviceMNode();
+      } else {
+        entityMNode = store.setToEntity(device);
+        // this parent has no measurement before. The leafName is his first child who is a logical
+        // view.
+        entityMNode.setAligned(null);
+      }
+
       measurementMNode.setParent(entityMNode.getAsMNode());
-//       store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
-// 
-//       return measurementMNode;
-//     }
-//   }
+      store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
+
+      return measurementMNode;
+    }
+  }
 
   public List<PartialPath> constructLogicalViewBlackList(final PartialPath pathPattern)
       throws MetadataException {
@@ -1818,5 +1804,5 @@ public class MTreeBelowSGMemoryImpl {
     return true;
   }
 
-//   // endregion
+  // endregion
 }
