@@ -534,17 +534,15 @@ public abstract class AbstractOperatePipeProcedureV2
     final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
     // Note that although the altered pipe has progress in it,
     // if we alter it to realtime we should ignore the previous data
-    if (!pipeMeta.getStaticMeta().isSourceExternal()) {
-      pipeMeta
-          .getStaticMeta()
-          .getSourceParameters()
-          .addOrReplaceEquivalentAttributes(
-              new PipeParameters(
-                  Collections.singletonMap(
-                      SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
-    }
+    pipeMeta
+        .getStaticMeta()
+        .getExtractorParameters()
+        .addOrReplaceEquivalentAttributes(
+            new PipeParameters(
+                Collections.singletonMap(
+                    SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
     return env.pushSinglePipeMetaToDataNodes(
-        copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
+        pipeTaskInfo.get().getPipeMetaByPipeName(pipeName).serialize());
   }
 
   /**

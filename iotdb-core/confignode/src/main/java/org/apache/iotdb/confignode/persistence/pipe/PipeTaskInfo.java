@@ -613,7 +613,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
                           } else if (!PipeTaskAgent.isHistoryOnlyPipe(
-                                  pipeMeta.getStaticMeta().getSourceParameters())
+                                  pipeMeta.getStaticMeta().getExtractorParameters())
                               || !consensusGroupId
                                   .getType()
                                   .equals(TConsensusGroupType.DataRegion)) {
