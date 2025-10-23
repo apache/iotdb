@@ -86,6 +86,12 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   public static final String MSG_CONNECTION_FAIL =
       "Fail to connect to AINode. Please check status of AINode";
+  private static final int MAX_RETRY = 3;
+
+  @FunctionalInterface
+  private interface RemoteCall<R> {
+    R apply(IAINodeRPCService.Client c) throws TException;
+  }
 
   private final TsBlockSerde tsBlockSerde = new TsBlockSerde();
 
@@ -100,6 +106,29 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     this.clientManager = clientManager;
     this.endPoint = endPoint;
     init();
+  }
+
+  private <R> R executeRemoteCallWithRetry(RemoteCall<R> call) throws TException {
+    TException last = null;
+    for (int i = 0; i < MAX_RETRY; i++) {
+      try {
+        if (transport == null || !transport.isOpen()) {
+          init();
+        }
+        return call.apply(client);
+      } catch (TException e) {
+        last = e;
+        try {
+          close();
+        } catch (Exception ignore) {
+          // ignore
+        }
+      }
+    }
+    if (last != null) {
+      throw last;
+    }
+    throw new TException(MSG_CONNECTION_FAIL);
   }
 
   private void init() throws TException {
@@ -201,15 +230,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
   }
 
   public TSStatus loadModel(TLoadModelReq req) throws TException {
-    try {
-      return client.loadModel(req);
-    } catch (TException e) {
-      logger.warn(
-          "Failed to connect to AINode from ConfigNode when executing {}: {}",
-          Thread.currentThread().getStackTrace()[1].getMethodName(),
-          e.getMessage());
-      throw new TException(MSG_CONNECTION_FAIL);
-    }
+    return executeRemoteCallWithRetry(c -> c.loadModel(req));
   }
 
   public TSStatus unloadModel(TUnloadModelReq req) throws TException {
