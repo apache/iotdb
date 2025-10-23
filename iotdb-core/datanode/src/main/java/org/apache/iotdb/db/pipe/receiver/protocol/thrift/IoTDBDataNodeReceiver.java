@@ -685,7 +685,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
       return new TPipeTransferResp(
           ClusterConfigTaskExecutor.getInstance()
-              .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()));
+              .alterLogicalViewByPipe(
+                  (AlterLogicalViewNode) req.getPlanNode(), shouldMarkAsPipeRequest.get()));
     }
     final Object statement = PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null);
     return statement instanceof Statement
