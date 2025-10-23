@@ -20,8 +20,8 @@ package org.apache.iotdb.db.protocol.rest.table.v1.handler;
 import org.apache.iotdb.db.protocol.rest.table.v1.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.table.v1.model.SQL;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.Validate;
 
 import java.util.ArrayList;
 import java.util.List;

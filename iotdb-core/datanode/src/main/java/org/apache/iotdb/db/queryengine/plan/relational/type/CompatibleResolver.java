@@ -95,6 +95,10 @@ public class CompatibleResolver {
     addCondition(UNKNOWN, DOUBLE, DOUBLE);
     addCondition(UNKNOWN, DATE, DATE);
     addCondition(UNKNOWN, TIMESTAMP, TIMESTAMP);
+    addCondition(UNKNOWN, BOOLEAN, BOOLEAN);
+    addCondition(UNKNOWN, TEXT, TEXT);
+    addCondition(UNKNOWN, STRING, STRING);
+    addCondition(UNKNOWN, BLOB, BLOB);
   }
 
   private static void addCondition(Type condition1, Type condition2, Type result) {

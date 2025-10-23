@@ -27,8 +27,13 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
@@ -44,23 +49,20 @@ public abstract class TreePattern {
   private static final Logger LOGGER = LoggerFactory.getLogger(TreePattern.class);
 
   protected final boolean isTreeModelDataAllowedToBeCaptured;
-  protected final String pattern;
 
-  protected TreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
+  protected TreePattern(final boolean isTreeModelDataAllowedToBeCaptured) {
     this.isTreeModelDataAllowedToBeCaptured = isTreeModelDataAllowedToBeCaptured;
-    this.pattern = pattern != null ? pattern : getDefaultPattern();
   }
 
   public boolean isTreeModelDataAllowedToBeCaptured() {
     return isTreeModelDataAllowedToBeCaptured;
   }
 
-  public String getPattern() {
-    return pattern;
-  }
-
-  public boolean isRoot() {
-    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
+  public static <T> List<T> applyIndexesOnList(
+      final int[] filteredIndexes, final List<T> originalList) {
+    return Objects.nonNull(originalList)
+        ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
+        : null;
   }
 
   /**
@@ -74,42 +76,142 @@ public abstract class TreePattern {
         isTreeModelDataAllowToBeCaptured(sourceParameters);
 
     final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
-
-    // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path,
-    // ignoring the other 2 parameters.
-    if (path != null) {
-      return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, path);
-    }
-
     final String pattern =
         sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
 
-    // 2. Otherwise, If "source.pattern" is specified, it will be interpreted
-    // according to "source.pattern.format".
+    // 1. If both "source.path" and "source.pattern" are specified, their union will be used.
+    if (path != null && pattern != null) {
+      final List<TreePattern> result = new ArrayList<>();
+      // Parse "source.path" as IoTDB-style path.
+      result.addAll(
+          parseMultiplePatterns(
+              path, p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p)));
+      // Parse "source.pattern" using the helper method.
+      result.addAll(
+          parsePatternsFromPatternParameter(
+              pattern, sourceParameters, isTreeModelDataAllowedToBeCaptured));
+      return buildUnionPattern(isTreeModelDataAllowedToBeCaptured, result);
+    }
+
+    // 2. If only "source.path" is specified, it will be interpreted as an IoTDB-style path.
+    if (path != null) {
+      return buildUnionPattern(
+          isTreeModelDataAllowedToBeCaptured,
+          parseMultiplePatterns(
+              path, p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p)));
+    }
+
+    // 3. If only "source.pattern" is specified, parse it using the helper method.
     if (pattern != null) {
-      final String patternFormat =
-          sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY);
+      return buildUnionPattern(
+          isTreeModelDataAllowedToBeCaptured,
+          parsePatternsFromPatternParameter(
+              pattern, sourceParameters, isTreeModelDataAllowedToBeCaptured));
+    }
 
-      // If "source.pattern.format" is not specified, use prefix format by default.
-      if (patternFormat == null) {
-        return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
-      }
+    // 4. If neither "source.path" nor "source.pattern" is specified,
+    // this pipe source will match all data.
+    return buildUnionPattern(
+        isTreeModelDataAllowedToBeCaptured,
+        Collections.singletonList(new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null)));
+  }
 
-      switch (patternFormat.toLowerCase()) {
-        case EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE:
-          return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
-        case EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE:
-          return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
-        default:
-          LOGGER.info(
-              "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
-          return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
+  /**
+   * A private helper method to parse a list of {@link TreePattern}s from the "pattern" parameter,
+   * considering its "format".
+   *
+   * @param pattern The pattern string to parse.
+   * @param sourceParameters The source parameters to read the format from.
+   * @param isTreeModelDataAllowedToBeCaptured A boolean flag passed to the TreePattern constructor.
+   * @return A list of parsed {@link TreePattern}s.
+   */
+  private static List<TreePattern> parsePatternsFromPatternParameter(
+      final String pattern,
+      final PipeParameters sourceParameters,
+      final boolean isTreeModelDataAllowedToBeCaptured) {
+    final String patternFormat =
+        sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY);
+
+    // If "source.pattern.format" is not specified, use prefix format by default.
+    if (patternFormat == null) {
+      return parseMultiplePatterns(
+          pattern, p -> new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, p));
+    }
+
+    switch (patternFormat.toLowerCase()) {
+      case EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE:
+        return parseMultiplePatterns(
+            pattern, p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
+      case EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE:
+        return parseMultiplePatterns(
+            pattern, p -> new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, p));
+      default:
+        LOGGER.info(
+            "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
+        return parseMultiplePatterns(
+            pattern, p -> new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, p));
+    }
+  }
+
+  public static List<TreePattern> parseMultiplePatterns(
+      final String pattern, final Function<String, TreePattern> patternSupplier) {
+    if (pattern.isEmpty()) {
+      return Collections.singletonList(patternSupplier.apply(pattern));
+    }
+
+    final List<TreePattern> patterns = new ArrayList<>();
+    final StringBuilder currentPattern = new StringBuilder();
+    boolean inBackticks = false;
+
+    for (final char c : pattern.toCharArray()) {
+      if (c == '`') {
+        inBackticks = !inBackticks;
+        currentPattern.append(c);
+      } else if (c == ',' && !inBackticks) {
+        final String singlePattern = currentPattern.toString().trim();
+        if (!singlePattern.isEmpty()) {
+          patterns.add(patternSupplier.apply(singlePattern));
+        }
+        currentPattern.setLength(0);
+      } else {
+        currentPattern.append(c);
       }
     }
 
-    // 3. If neither "source.path" nor "source.pattern" is specified,
-    // this pipe source will match all data.
-    return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null);
+    final String lastPattern = currentPattern.toString().trim();
+    if (!lastPattern.isEmpty()) {
+      patterns.add(patternSupplier.apply(lastPattern));
+    }
+
+    return patterns;
+  }
+
+  /**
+   * A private helper method to build the most specific UnionTreePattern possible. If all patterns
+   * are IoTDBTreePattern, it returns an IoTDBUnionTreePattern. Otherwise, it returns a general
+   * UnionTreePattern.
+   */
+  public static TreePattern buildUnionPattern(
+      final boolean isTreeModelDataAllowedToBeCaptured, final List<TreePattern> patterns) {
+    // Check if all instances in the list are of type IoTDBTreePattern
+    boolean allIoTDB = true;
+    for (final TreePattern p : patterns) {
+      if (!(p instanceof IoTDBTreePattern)) {
+        allIoTDB = false;
+        break;
+      }
+    }
+
+    if (allIoTDB) {
+      final List<IoTDBTreePattern> iotdbPatterns = new ArrayList<>(patterns.size());
+      for (final TreePattern p : patterns) {
+        iotdbPatterns.add((IoTDBTreePattern) p);
+      }
+      return new UnionIoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, iotdbPatterns);
+    } else {
+      // If there's a mix of pattern types, use the general UnionTreePattern
+      return new UnionTreePattern(isTreeModelDataAllowedToBeCaptured, patterns);
+    }
   }
 
   public static boolean isTreeModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
@@ -128,7 +230,11 @@ public abstract class TreePattern {
                 .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
 
-  public abstract String getDefaultPattern();
+  public abstract boolean isSingle();
+
+  public abstract String getPattern();
+
+  public abstract boolean isRoot();
 
   /** Check if this pattern is legal. Different pattern type may have different rules. */
   public abstract boolean isLegal();
@@ -162,13 +268,4 @@ public abstract class TreePattern {
    * <p>NOTE: this is only called when {@link TreePattern#mayOverlapWithDevice} is {@code true}.
    */
   public abstract boolean matchesMeasurement(final IDeviceID device, final String measurement);
-
-  @Override
-  public String toString() {
-    return "{pattern='"
-        + pattern
-        + "', isTreeModelDataAllowedToBeCaptured="
-        + isTreeModelDataAllowedToBeCaptured
-        + '}';
-  }
 }

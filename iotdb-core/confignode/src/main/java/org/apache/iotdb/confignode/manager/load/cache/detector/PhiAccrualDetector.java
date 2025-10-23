@@ -26,12 +26,12 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -167,17 +167,17 @@ public class PhiAccrualDetector implements IFailureDetector {
      * @return phi value given the heartbeat interval history
      */
     double phi() {
-      final DescriptiveStatistics ds = new DescriptiveStatistics(heartbeatIntervals);
-      double mean = ds.getMean();
-      double std = ds.getStandardDeviation();
+      double mean = Arrays.stream(heartbeatIntervals).average().orElse(0.0);
+      double std =
+          Math.sqrt(
+              Arrays.stream(heartbeatIntervals).map(x -> Math.pow(x - mean, 2)).sum()
+                  / Math.max(1, heartbeatIntervals.length - 1));
 
       /* ensure the std is valid */
       std = Math.max(std, minHeartbeatStd);
 
       /* add tolerance specified by acceptableHeartbeatPause */
-      mean += acceptableHeartbeatPause;
-
-      return p(timeElapsedSinceLastHeartbeat, mean, std);
+      return p(timeElapsedSinceLastHeartbeat, mean + acceptableHeartbeatPause, std);
     }
 
     /**
