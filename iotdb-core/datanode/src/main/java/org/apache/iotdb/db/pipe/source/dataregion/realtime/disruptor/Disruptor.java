@@ -31,6 +31,7 @@ import java.util.concurrent.ThreadFactory;
  * and simplified for IoTDB's specific use case in the Pipe module.
  *
  * <p>Key simplifications:
+ *
  * <ul>
  *   <li>Single event handler support (no complex dependency graphs)
  *   <li>Simplified lifecycle management

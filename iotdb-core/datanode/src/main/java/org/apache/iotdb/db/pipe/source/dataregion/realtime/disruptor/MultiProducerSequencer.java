@@ -29,6 +29,7 @@ import java.util.concurrent.locks.LockSupport;
  * and preserves the core lock-free multi-producer algorithm for IoTDB's Pipe module.
  *
  * <p>Key features preserved from LMAX Disruptor:
+ *
  * <ul>
  *   <li>Lock-free CAS-based sequence claiming
  *   <li>Availability buffer for out-of-order publishing detection

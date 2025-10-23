@@ -22,8 +22,8 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 /**
  * Event factory for pre-allocating events in RingBuffer
  *
- * <p>This interface is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
- * and adapted for IoTDB's Pipe module.
+ * <p>This interface is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor) and
+ * adapted for IoTDB's Pipe module.
  *
  * @param <T> event type
  */
