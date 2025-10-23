@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
-// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
@@ -268,11 +268,11 @@ public class MemMTreeSnapshotUtil {
         node = deserializer.deserializeMeasurementMNode(inputStream);
         measurementProcess.accept(node.getAsMeasurementMNode());
         break;
-//       case LOGICAL_VIEW_MNODE_TYPE:
-//         childrenNum = 0;
-//         node = deserializer.deserializeLogicalViewMNode(inputStream);
-//         measurementProcess.accept(node.getAsMeasurementMNode());
-//         break;
+      case LOGICAL_VIEW_MNODE_TYPE:
+        childrenNum = 0;
+        node = deserializer.deserializeLogicalViewMNode(inputStream);
+        measurementProcess.accept(node.getAsMeasurementMNode());
+        break;
       case TABLE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
@@ -383,9 +383,9 @@ public class MemMTreeSnapshotUtil {
           ReadWriteIOUtils.write(node.getAlias(), outputStream);
           ReadWriteIOUtils.write(node.getOffset(), outputStream);
           ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
-//         }
+        }
         return true;
-//       } catch (Exception e) {
+      } catch (Exception e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
         return false;
       }
@@ -454,16 +454,16 @@ public class MemMTreeSnapshotUtil {
       node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
       return node.getAsMNode();
     }
-// 
-//     public IMemMNode deserializeLogicalViewMNode(InputStream inputStream) throws IOException {
-//       String name = ReadWriteIOUtils.readString(inputStream);
-//       LogicalViewSchema logicalViewSchema = LogicalViewSchema.deserializeFrom(inputStream);
+
+    public IMemMNode deserializeLogicalViewMNode(InputStream inputStream) throws IOException {
+      String name = ReadWriteIOUtils.readString(inputStream);
+      LogicalViewSchema logicalViewSchema = LogicalViewSchema.deserializeFrom(inputStream);
       long tagOffset = ReadWriteIOUtils.readLong(inputStream);
-//       IMeasurementMNode<IMemMNode> node =
+      IMeasurementMNode<IMemMNode> node =
           nodeFactory.createLogicalViewMNode(null, name, logicalViewSchema);
       node.setOffset(tagOffset);
       node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
-//       return node.getAsMNode();
-//     }
+      return node.getAsMNode();
+    }
   }
 }

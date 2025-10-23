@@ -119,34 +119,34 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for Timeseries operation
-//   /**
-//    * Create timeseries.
-//    *
-//    * @param plan a plan describes how to create the timeseries.
-//    * @param offset
-//    * @throws MetadataException
-//    */
+  /**
+   * Create timeseries.
+   *
+   * @param plan a plan describes how to create the timeseries.
+   * @param offset
+   * @throws MetadataException
+   */
   void createTimeSeries(final ICreateTimeSeriesPlan plan, final long offset)
       throws MetadataException;
 
-//   /**
-//    * Create aligned timeseries.
-//    *
-//    * @param plan a plan describes how to create the timeseries.
-//    * @throws MetadataException
-//    */
+  /**
+   * Create aligned timeseries.
+   *
+   * @param plan a plan describes how to create the timeseries.
+   * @throws MetadataException
+   */
   void createAlignedTimeSeries(final ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
-//   /**
-//    * Check whether measurement exists.
-//    *
-//    * @param devicePath the path of device that you want to check
-//    * @param measurementList a list of measurements that you want to check
-//    * @param aliasList a list of alias that you want to check
-//    * @return returns a map contains index of the measurements or alias that threw the exception, and
-//    *     exception details. The exceptions describe whether the measurement or alias exists. For
-//    *     example, a MeasurementAlreadyExistException means this measurement exists.
-//    */
+  /**
+   * Check whether measurement exists.
+   *
+   * @param devicePath the path of device that you want to check
+   * @param measurementList a list of measurements that you want to check
+   * @param aliasList a list of alias that you want to check
+   * @return returns a map contains index of the measurements or alias that threw the exception, and
+   *     exception details. The exceptions describe whether the measurement or alias exists. For
+   *     example, a MeasurementAlreadyExistException means this measurement exists.
+   */
   Map<Integer, MetadataException> checkMeasurementExistence(
       final PartialPath devicePath,
       final List<String> measurementList,
@@ -210,7 +210,7 @@ public interface ISchemaRegion {
 
   // endregion
 
-//   // region Interfaces for Logical View
+  // region Interfaces for Logical View
   void createLogicalView(final ICreateLogicalViewPlan createLogicalViewPlan)
       throws MetadataException;
 
@@ -222,8 +222,8 @@ public interface ISchemaRegion {
 
   void alterLogicalView(final IAlterLogicalViewPlan alterLogicalViewPlan) throws MetadataException;
 
-//   // endregion
-// 
+  // endregion
+
   // region Interfaces for metadata info Query
 
   // region Interfaces for timeSeries, measurement and schema info Query

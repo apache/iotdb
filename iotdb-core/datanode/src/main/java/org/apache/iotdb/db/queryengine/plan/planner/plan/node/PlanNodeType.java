@@ -226,7 +226,7 @@ public enum PlanNodeType {
   INTERNAL_CREATE_MULTI_TIMESERIES((short) 69),
   IDENTITY_SINK((short) 70),
   SHUFFLE_SINK((short) 71),
-//   BATCH_ACTIVATE_TEMPLATE((short) 72),
+  BATCH_ACTIVATE_TEMPLATE((short) 72),
   CREATE_LOGICAL_VIEW((short) 73),
   CONSTRUCT_LOGICAL_VIEW_BLACK_LIST((short) 74),
   ROLLBACK_LOGICAL_VIEW_BLACK_LIST((short) 75),
@@ -534,8 +534,8 @@ public enum PlanNodeType {
         return ShuffleSinkNode.deserialize(buffer);
       case 72:
         return BatchActivateTemplateNode.deserialize(buffer);
-//       case 73:
-//         return CreateLogicalViewNode.deserialize(buffer);
+      case 73:
+        return CreateLogicalViewNode.deserialize(buffer);
       case 74:
         return ConstructLogicalViewBlackListNode.deserialize(buffer);
       case 75:

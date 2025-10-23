@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-// import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -956,13 +956,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
-//   @Override
+  @Override
   public void createLogicalView(final ICreateLogicalViewPlan plan) throws MetadataException {
-//     if (!regionStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
-//     }
-// 
+    }
+
     final List<PartialPath> pathList = plan.getViewPathList();
     final Map<PartialPath, ViewExpression> viewPathToSourceMap =
         plan.getViewPathToSourceExpressionMap();
@@ -973,11 +973,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // write log
     if (!isRecovering) {
       writeToMLog(plan);
-//     }
-//     // update statistics
+    }
+    // update statistics
     regionStatistics.addView(1L);
-//   }
-// 
+  }
+
   @Override
   public long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
     long preDeletedNum = 0;
@@ -1906,17 +1906,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         return new RecoverOperationResult(e);
       }
     }
-// 
+
     @Override
-//     public RecoverOperationResult visitCreateLogicalView(
+    public RecoverOperationResult visitCreateLogicalView(
         final ICreateLogicalViewPlan createLogicalViewPlan, final SchemaRegionMemoryImpl context) {
-//       try {
-//         createLogicalView(createLogicalViewPlan);
-//         return RecoverOperationResult.SUCCESS;
+      try {
+        createLogicalView(createLogicalViewPlan);
+        return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
-//         return new RecoverOperationResult(e);
-//       }
-//     }
+        return new RecoverOperationResult(e);
+      }
+    }
 
     @Override
     public RecoverOperationResult visitPreDeleteLogicalView(

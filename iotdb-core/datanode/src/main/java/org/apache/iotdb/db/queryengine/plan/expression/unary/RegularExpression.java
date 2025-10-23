@@ -105,11 +105,11 @@ public class RegularExpression extends UnaryExpression {
     ReadWriteIOUtils.write(isNot, stream);
   }
 
-//   @Override
+  @Override
   public String getOutputSymbolInternal() {
     return expression.getOutputSymbol() + (isNot ? " NOT" : "") + " REGEXP '" + patternString + "'";
-//   }
-// 
+  }
+
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitRegularExpression(this, context);

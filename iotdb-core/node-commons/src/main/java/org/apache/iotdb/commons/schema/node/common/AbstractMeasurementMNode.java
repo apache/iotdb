@@ -83,7 +83,7 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   @Override
   public MeasurementPath getMeasurementPath() {
     MeasurementPath result = new MeasurementPath(getPartialPath(), getSchema());
-//     result.setUnderAlignedEntity(getParent().getAsDeviceMNode().isAlignedNullable());
+    result.setUnderAlignedEntity(getParent().getAsDeviceMNode().isAlignedNullable());
     return result;
   }
 
@@ -248,8 +248,8 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   public int estimateSize() {
     return 8 + 8 + measurementInfo.estimateSize() + basicMNode.estimateSize();
   }
-// 
-//   protected IMeasurementInfo getMeasurementInfo() {
-//     return this.measurementInfo;
-//   }
+
+  protected IMeasurementInfo getMeasurementInfo() {
+    return this.measurementInfo;
+  }
 }

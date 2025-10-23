@@ -287,10 +287,10 @@ public class ColumnHeaderConstant {
   // column names for show models/trials
   public static final String MODEL_ID = "ModelId";
 
-//   // column names for views (e.g. logical view)
-//   public static final String VIEW_TYPE = "ViewType";
+  // column names for views (e.g. logical view)
+  public static final String VIEW_TYPE = "ViewType";
   public static final String SOURCE = "Source";
-// 
+
   // column names for show current timestamp
   public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
 
@@ -342,8 +342,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TAGS, TSDataType.TEXT),
           new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
           new ColumnHeader(DEADBAND, TSDataType.TEXT),
-//           new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT),
-//           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT));
+          new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT),
+          new ColumnHeader(VIEW_TYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
       ImmutableList.of(

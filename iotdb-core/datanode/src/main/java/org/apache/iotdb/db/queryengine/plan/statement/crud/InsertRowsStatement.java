@@ -159,23 +159,23 @@ public class InsertRowsStatement extends InsertBaseStatement {
   public Object getFirstValueOfIndex(int index) {
     throw new NotImplementedException();
   }
-// 
-//   @Override
-//   public InsertBaseStatement removeLogicalView() {
-//     List<InsertRowStatement> mergedList = new ArrayList<>();
-//     boolean needSplit = false;
-//     for (InsertRowStatement child : this.insertRowStatementList) {
-//       List<InsertRowStatement> childSplitResult = child.getSplitList();
-//       needSplit = needSplit || child.isNeedSplit();
-//       mergedList.addAll(childSplitResult);
-//     }
-//     if (!needSplit) {
-//       return this;
-//     }
-//     InsertRowsStatement splitResult = new InsertRowsStatement();
-//     splitResult.setInsertRowStatementList(mergedList);
-//     return splitResult;
-//   }
+
+  @Override
+  public InsertBaseStatement removeLogicalView() {
+    List<InsertRowStatement> mergedList = new ArrayList<>();
+    boolean needSplit = false;
+    for (InsertRowStatement child : this.insertRowStatementList) {
+      List<InsertRowStatement> childSplitResult = child.getSplitList();
+      needSplit = needSplit || child.isNeedSplit();
+      mergedList.addAll(childSplitResult);
+    }
+    if (!needSplit) {
+      return this;
+    }
+    InsertRowsStatement splitResult = new InsertRowsStatement();
+    splitResult.setInsertRowStatementList(mergedList);
+    return splitResult;
+  }
 
   public List<Object[]> getDeviceIdListNoTableName() {
     return insertRowStatementList.stream()

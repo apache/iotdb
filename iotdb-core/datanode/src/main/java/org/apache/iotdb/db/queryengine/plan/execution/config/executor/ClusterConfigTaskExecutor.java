@@ -2863,7 +2863,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final PartialPath oldName = renameLogicalViewStatement.getOldName();
     if (oldName.hasWildcard()) {
       future.setException(
-//           new MetadataException("Rename view doesn't support path pattern with wildcard."));
+          new MetadataException("Rename view doesn't support path pattern with wildcard."));
       return future;
     }
 

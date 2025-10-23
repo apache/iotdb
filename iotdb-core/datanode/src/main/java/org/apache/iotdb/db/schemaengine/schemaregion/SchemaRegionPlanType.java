@@ -44,8 +44,8 @@ public enum SchemaRegionPlanType {
   PRE_DEACTIVATE_TEMPLATE((byte) 0),
   ROLLBACK_PRE_DEACTIVATE_TEMPLATE((byte) 1),
   DEACTIVATE_TEMPLATE((byte) 2),
-//   // logical view
-//   CREATE_LOGICAL_VIEW((byte) 66),
+  // logical view
+  CREATE_LOGICAL_VIEW((byte) 66),
   PRE_DELETE_LOGICAL_VIEW((byte) 67),
   ROLLBACK_PRE_DELETE_LOGICAL_VIEW((byte) 68),
   DELETE_LOGICAL_VIEW((byte) 69),

@@ -93,8 +93,8 @@ public class SchemaRegionWritePlanFactory {
         return new RollbackPreDeactivateTemplatePlanImpl();
       case DEACTIVATE_TEMPLATE:
         return new DeactivateTemplatePlanImpl();
-//       case CREATE_LOGICAL_VIEW:
-//         return new CreateLogicalViewPlanImpl();
+      case CREATE_LOGICAL_VIEW:
+        return new CreateLogicalViewPlanImpl();
       case PRE_DELETE_LOGICAL_VIEW:
         return new PreDeleteLogicalViewPlanImpl();
       case ROLLBACK_PRE_DELETE_LOGICAL_VIEW:

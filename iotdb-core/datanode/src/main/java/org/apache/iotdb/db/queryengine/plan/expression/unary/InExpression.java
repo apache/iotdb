@@ -32,7 +32,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.validation.constraints.NotNull;
-// 
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -82,11 +82,11 @@ public class InExpression extends UnaryExpression {
           .append(')')
           .append(operator);
     }
-//     return appendValuesToBuild(stringBuilder).toString();
-//   }
-// 
-//   @NotNull
-//   private StringBuilder appendValuesToBuild(StringBuilder stringBuilder) {
+    return appendValuesToBuild(stringBuilder).toString();
+  }
+
+  @NotNull
+  private StringBuilder appendValuesToBuild(StringBuilder stringBuilder) {
     Iterator<String> iterator = values.iterator();
     if (iterator.hasNext()) {
       stringBuilder.append(iterator.next());
@@ -95,7 +95,7 @@ public class InExpression extends UnaryExpression {
       stringBuilder.append(',').append(iterator.next());
     }
     stringBuilder.append(')');
-//     return stringBuilder;
+    return stringBuilder;
   }
 
   @Override
@@ -123,20 +123,20 @@ public class InExpression extends UnaryExpression {
     }
   }
 
-//   @Override
+  @Override
   public String getOutputSymbolInternal() {
     String operator = isNotIn ? " NOT IN (" : " IN (";
-//     StringBuilder stringBuilder = new StringBuilder();
-//     if (expression instanceof FunctionExpression
-//         || expression instanceof ConstantOperand
-//         || expression instanceof TimeSeriesOperand) {
+    StringBuilder stringBuilder = new StringBuilder();
+    if (expression instanceof FunctionExpression
+        || expression instanceof ConstantOperand
+        || expression instanceof TimeSeriesOperand) {
       stringBuilder.append(expression.getOutputSymbol()).append(operator);
-//     } else {
+    } else {
       stringBuilder.append('(').append(expression.getOutputSymbol()).append(')').append(operator);
-//     }
-//     return appendValuesToBuild(stringBuilder).toString();
-//   }
-// 
+    }
+    return appendValuesToBuild(stringBuilder).toString();
+  }
+
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitInExpression(this, context);

@@ -69,9 +69,9 @@ public class CachedMeasurementMNode extends AbstractMeasurementMNode<ICachedMNod
   public IMNodeContainer<ICachedMNode> getChildren() {
     return CachedMNodeContainer.emptyMNodeContainer();
   }
-// 
-//   @Override
-//   public final boolean isLogicalView() {
-//     return false;
-//   }
+
+  @Override
+  public final boolean isLogicalView() {
+    return false;
+  }
 }

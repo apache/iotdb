@@ -34,22 +34,22 @@ public interface ISchemaValidation extends ISchemaComputationWithAutoCreation {
     validateMeasurementSchema(index, measurementSchemaInfo);
   }
 
-//   @Override
-//   default void computeMeasurementOfView(
-//       int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
-//     validateMeasurementSchema(index, measurementSchemaInfo, isAligned);
-//   }
-// 
-//   /**
-//    * Record the real value of <code>isAligned</code> of this device. This will change the value of
-//    * <code>isAligned</code> in this insert statement.
-//    *
-//    * @param isAligned The real value of attribute <code>isAligned</code> of this device schema
-//    */
+  @Override
+  default void computeMeasurementOfView(
+      int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
+    validateMeasurementSchema(index, measurementSchemaInfo, isAligned);
+  }
+
+  /**
+   * Record the real value of <code>isAligned</code> of this device. This will change the value of
+   * <code>isAligned</code> in this insert statement.
+   *
+   * @param isAligned The real value of attribute <code>isAligned</code> of this device schema
+   */
   void validateDeviceSchema(boolean isAligned);
 
   void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo);
-// 
-//   void validateMeasurementSchema(
-//       int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned);
+
+  void validateMeasurementSchema(
+      int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned);
 }
