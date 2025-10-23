@@ -71,7 +71,6 @@ public final class BatchEventProcessor<T> implements Runnable {
     T event = null;
     long nextSequence = sequence.get() + 1L;
 
-    // CORE: Batch processing loop (MUST keep identical logic)
     while (running) {
       try {
         // Wait for available sequence
