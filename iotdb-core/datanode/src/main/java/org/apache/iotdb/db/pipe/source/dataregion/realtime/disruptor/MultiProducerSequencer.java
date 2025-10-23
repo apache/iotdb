@@ -192,27 +192,8 @@ public final class MultiProducerSequencer {
    *
    * @param gatingSequences consumer sequences to add
    */
-  public final void addGatingSequences(Sequence... gatingSequences) {
+  public void addGatingSequences(Sequence... gatingSequences) {
     SequenceGroups.addSequences(this, this.cursor, gatingSequences);
-  }
-
-  /**
-   * Remove a gating sequence
-   *
-   * @param sequence sequence to remove
-   * @return true if sequence was found and removed
-   */
-  public boolean removeGatingSequence(Sequence sequence) {
-    return SequenceGroups.removeSequence(this, sequence);
-  }
-
-  /**
-   * Get the minimum sequence from all consumers
-   *
-   * @return minimum gating sequence
-   */
-  public long getMinimumSequence() {
-    return Sequence.getMinimumSequence(gatingSequences, cursor.get());
   }
 
   /**

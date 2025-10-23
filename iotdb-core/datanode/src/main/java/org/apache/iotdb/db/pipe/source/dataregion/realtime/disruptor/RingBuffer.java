@@ -237,29 +237,6 @@ public final class RingBuffer<E> extends RingBufferFields<E> {
   }
 
   /**
-   * Remove a gating sequence
-   *
-   * <p>Should be called when a consumer is shut down
-   *
-   * @param sequence sequence to remove
-   * @return true if sequence was found and removed
-   */
-  public boolean removeGatingSequence(Sequence sequence) {
-    return sequencer.removeGatingSequence(sequence);
-  }
-
-  /**
-   * Get the minimum sequence from all consumers
-   *
-   * <p>Represents the slowest consumer's progress
-   *
-   * @return minimum gating sequence
-   */
-  public long getMinimumGatingSequence() {
-    return sequencer.getMinimumSequence();
-  }
-
-  /**
    * Create a sequence barrier for consumers
    *
    * <p>Barrier coordinates when events become available for processing

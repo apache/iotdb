@@ -74,48 +74,4 @@ final class SequenceGroups {
       sequence.set(cursorSequence);
     }
   }
-
-  /**
-   * Remove sequence from the group
-   *
-   * @param sequencer the sequencer
-   * @param sequence sequence to remove
-   * @return true if removed
-   */
-  static boolean removeSequence(final MultiProducerSequencer sequencer, final Sequence sequence) {
-    int numToRemove;
-    Sequence[] oldSequences;
-    Sequence[] newSequences;
-
-    do {
-      oldSequences = sequencer.gatingSequences;
-      numToRemove = countMatching(oldSequences, sequence);
-
-      if (0 == numToRemove) {
-        break;
-      }
-
-      final int oldSize = oldSequences.length;
-      newSequences = new Sequence[oldSize - numToRemove];
-
-      for (int i = 0, pos = 0; i < oldSize; i++) {
-        final Sequence testSequence = oldSequences[i];
-        if (sequence != testSequence) {
-          newSequences[pos++] = testSequence;
-        }
-      }
-    } while (!SEQUENCE_UPDATER.compareAndSet(sequencer, oldSequences, newSequences));
-
-    return numToRemove != 0;
-  }
-
-  private static int countMatching(Sequence[] values, final Sequence toMatch) {
-    int numToRemove = 0;
-    for (Sequence value : values) {
-      if (value == toMatch) {
-        numToRemove++;
-      }
-    }
-    return numToRemove;
-  }
 }
