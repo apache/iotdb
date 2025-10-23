@@ -95,15 +95,15 @@ public class BetweenExpression extends TernaryExpression {
     ReadWriteIOUtils.write(isNotBetween, stream);
   }
 
-  @Override
+//   @Override
   public String getOutputSymbolInternal() {
     return firstExpression.getOutputSymbol()
         + (isNotBetween ? " NOT BETWEEN " : " BETWEEN ")
         + secondExpression.getOutputSymbol()
-        + " AND "
+//         + " AND "
         + thirdExpression.getOutputSymbol();
-  }
-
+//   }
+// 
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitBetweenExpression(this, context);

@@ -280,12 +280,12 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showPipePluginsStatement, context);
   }
 
-  // Create Logical View
-  public R visitCreateLogicalView(
-      CreateLogicalViewStatement createLogicalViewStatement, C context) {
-    return visitStatement(createLogicalViewStatement, context);
-  }
-
+//   // Create Logical View
+//   public R visitCreateLogicalView(
+//       CreateLogicalViewStatement createLogicalViewStatement, C context) {
+//     return visitStatement(createLogicalViewStatement, context);
+//   }
+// 
   public R visitDeleteLogicalView(
       DeleteLogicalViewStatement deleteLogicalViewStatement, C context) {
     return visitStatement(deleteLogicalViewStatement, context);

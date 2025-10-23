@@ -57,7 +57,7 @@ public interface IDeviceMNode<N extends IMNode<N>> extends IInternalMNode<N> {
 
   boolean isAligned();
 
-  Boolean isAlignedNullable();
-
-  void setAligned(Boolean isAligned);
+//   Boolean isAlignedNullable();
+// 
+//   void setAligned(Boolean isAligned);
 }

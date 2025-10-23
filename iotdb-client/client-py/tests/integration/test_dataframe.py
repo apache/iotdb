@@ -71,7 +71,7 @@ def test_non_time_query():
         "Attributes",
         "Deadband",
         "DeadbandParameters",
-        "ViewType",
+//         "ViewType",
     ]
     assert_array_equal(
         df.values,

@@ -38,7 +38,7 @@ import java.util.Map;
 
 public abstract class UnaryExpression extends Expression {
 
-  protected Expression expression;
+//   protected Expression expression;
 
   protected UnaryExpression(Expression expression) {
     this.expression = expression;
@@ -48,10 +48,10 @@ public abstract class UnaryExpression extends Expression {
     return expression;
   }
 
-  public void setExpression(Expression expression) {
-    this.expression = expression;
-  }
-
+//   public void setExpression(Expression expression) {
+//     this.expression = expression;
+//   }
+// 
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitUnaryExpression(this, context);

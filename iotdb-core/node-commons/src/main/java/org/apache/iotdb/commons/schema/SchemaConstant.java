@@ -96,8 +96,8 @@ public class SchemaConstant {
   public static final byte ENTITY_MNODE_TYPE = 3;
   public static final byte STORAGE_GROUP_ENTITY_MNODE_TYPE = 4;
 
-  public static final byte LOGICAL_VIEW_MNODE_TYPE = 5;
-
+//   public static final byte LOGICAL_VIEW_MNODE_TYPE = 5;
+// 
   public static final byte TABLE_MNODE_TYPE = 6;
 
   public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
@@ -106,8 +106,8 @@ public class SchemaConstant {
   public static final String ENTITY_MNODE_TYPE_NAME = "EntityMNode";
   public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
 
-  public static final String LOGICAL_VIEW_MNODE_TYPE_NAME = "LogicalViewMNode";
-
+//   public static final String LOGICAL_VIEW_MNODE_TYPE_NAME = "LogicalViewMNode";
+// 
   public static final String TABLE_MNODE_TYPE_NAME = "TableMNode";
 
   public static final String SCHEMA_REGION_METRIC_NAME = "schema_region";
@@ -128,8 +128,8 @@ public class SchemaConstant {
         return ENTITY_MNODE_TYPE_NAME;
       case STORAGE_GROUP_ENTITY_MNODE_TYPE:
         return STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME;
-      case LOGICAL_VIEW_MNODE_TYPE:
-        return LOGICAL_VIEW_MNODE_TYPE_NAME;
+//       case LOGICAL_VIEW_MNODE_TYPE:
+//         return LOGICAL_VIEW_MNODE_TYPE_NAME;
       case TABLE_MNODE_TYPE:
         return TABLE_MNODE_TYPE_NAME;
       default:

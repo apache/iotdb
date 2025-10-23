@@ -403,14 +403,14 @@ public class ExpressionAnalyzer {
     }
   }
 
-  /**
-   * Bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
-   * Expression. And all logical view will be replaced.
-   *
-   * @param schemaTree interface for querying schema information
-   * @return the expression list after binding schema and whether there is logical view in
-   *     expressions
-   */
+//   /**
+//    * Bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+//    * Expression. And all logical view will be replaced.
+//    *
+//    * @param schemaTree interface for querying schema information
+//    * @return the expression list after binding schema and whether there is logical view in
+//    *     expressions
+//    */
   public static List<Expression> bindSchemaForExpression(
       final Expression expression,
       final ISchemaTree schemaTree,
@@ -419,15 +419,15 @@ public class ExpressionAnalyzer {
         .process(expression, new BindSchemaForExpressionVisitor.Context(schemaTree, queryContext));
   }
 
-  /**
-   * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
-   * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
-   * Expression. Logical view will be replaced.
-   *
-   * @param prefixPaths prefix paths in the FROM clause
-   * @param schemaTree interface for querying schema information
-   * @return the expression list with full path and after binding schema
-   */
+//   /**
+//    * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
+//    * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+//    * Expression. Logical view will be replaced.
+//    *
+//    * @param prefixPaths prefix paths in the FROM clause
+//    * @param schemaTree interface for querying schema information
+//    * @return the expression list with full path and after binding schema
+//    */
   public static List<Expression> bindSchemaForPredicate(
       final Expression predicate,
       final List<PartialPath> prefixPaths,
@@ -435,12 +435,12 @@ public class ExpressionAnalyzer {
       final boolean isRoot,
       final MPPQueryContext queryContext) {
     return new BindSchemaForPredicateVisitor()
-        .process(
+//         .process(
             predicate,
             new BindSchemaForPredicateVisitor.Context(
                 prefixPaths, schemaTree, isRoot, queryContext));
-  }
-
+//   }
+// 
   public static Expression replaceRawPathWithGroupedPath(
       Expression expression,
       GroupByLevelHelper.RawPathToGroupedPathMap rawPathToGroupedPathMap,

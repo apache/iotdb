@@ -20,7 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+// import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -954,11 +954,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planLimit(showQueriesStatement.getRowLimit());
     return planBuilder.getRoot();
   }
-
-  @Override
-  public PlanNode visitCreateLogicalView(
-      CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
-    List<ViewExpression> viewExpressionList = new ArrayList<>();
+// 
+//   @Override
+//   public PlanNode visitCreateLogicalView(
+//       CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
+//     List<ViewExpression> viewExpressionList = new ArrayList<>();
     if (createLogicalViewStatement.getViewExpressions() == null) {
       // Transform all Expressions into ViewExpressions.
       TransformToViewExpressionVisitor transformToViewExpressionVisitor =
@@ -969,13 +969,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       }
     } else {
       viewExpressionList = createLogicalViewStatement.getViewExpressions();
-    }
+//     }
 
-    return new CreateLogicalViewNode(
-        context.getQueryId().genPlanNodeId(),
-        createLogicalViewStatement.getTargetPathList(),
-        viewExpressionList);
-  }
+//     return new CreateLogicalViewNode(
+//         context.getQueryId().genPlanNodeId(),
+//         createLogicalViewStatement.getTargetPathList(),
+//         viewExpressionList);
+//   }
 
   @Override
   public PlanNode visitShowLogicalView(

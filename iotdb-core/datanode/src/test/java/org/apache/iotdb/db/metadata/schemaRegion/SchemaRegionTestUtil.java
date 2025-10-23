@@ -133,39 +133,39 @@ public class SchemaRegionTestUtil {
             tags,
             attributes));
   }
-
-  /**
-   * When testing some interfaces, if you only care about path and do not care the data type or
-   * compression type and other details, then use this function to create a timeseries quickly. It
-   * returns a CreateTimeSeriesPlanImpl with data type of INT64, TSEncoding of PLAIN, compression
-   * type of SNAPPY and without any tags or templates.
-   */
-  public static void createSimpleTimeSeriesInt64(ISchemaRegion schemaRegion, String path)
-      throws Exception {
-    SchemaRegionTestUtil.createTimeseries(
-        schemaRegion,
-        path,
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.SNAPPY,
-        null,
-        null,
-        null,
-        null);
-  }
-
-  /**
+// 
+//   /**
+//    * When testing some interfaces, if you only care about path and do not care the data type or
+//    * compression type and other details, then use this function to create a timeseries quickly. It
+//    * returns a CreateTimeSeriesPlanImpl with data type of INT64, TSEncoding of PLAIN, compression
+//    * type of SNAPPY and without any tags or templates.
+//    */
+//   public static void createSimpleTimeSeriesInt64(ISchemaRegion schemaRegion, String path)
+//       throws Exception {
+//     SchemaRegionTestUtil.createTimeseries(
+//         schemaRegion,
+//         path,
+//         TSDataType.INT64,
+//         TSEncoding.PLAIN,
+//         CompressionType.SNAPPY,
+//         null,
+//         null,
+//         null,
+//         null);
+//   }
+// 
+//   /**
    * Create time series quickly using createSimpleTimeSeriesInt64 with given string list of paths.
-   *
+//    *
    * @param schemaRegion schemaRegion which you want to create time series
-   * @param pathList
-   */
+//    * @param pathList
+//    */
   public static void createSimpleTimeSeriesByList(ISchemaRegion schemaRegion, List<String> pathList)
-      throws Exception {
-    for (String path : pathList) {
-      SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, path);
-    }
-  }
+//       throws Exception {
+//     for (String path : pathList) {
+//       SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, path);
+//     }
+//   }
 
   public static long getAllTimeSeriesCount(
       ISchemaRegion schemaRegion,

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+// import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -421,32 +421,32 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         }
       }
     }
-
-    @Override
-    public SchemaRegionPlanSerializationResult visitCreateLogicalView(
+// 
+//     @Override
+//     public SchemaRegionPlanSerializationResult visitCreateLogicalView(
         final ICreateLogicalViewPlan createLogicalViewPlan,
         final DataOutputStream dataOutputStream) {
-      try {
+//       try {
         final int viewSize = createLogicalViewPlan.getViewSize();
-        // serialize size of views
-        dataOutputStream.writeInt(viewSize);
+//         // serialize size of views
+//         dataOutputStream.writeInt(viewSize);
         final List<PartialPath> viewPAthList = createLogicalViewPlan.getViewPathList();
         final Map<PartialPath, ViewExpression> viewPathToSourceMap =
-            createLogicalViewPlan.getViewPathToSourceExpressionMap();
-        for (int i = 0; i < viewSize; i++) {
+//             createLogicalViewPlan.getViewPathToSourceExpressionMap();
+//         for (int i = 0; i < viewSize; i++) {
           final PartialPath thisPath = viewPAthList.get(i);
           final ViewExpression thisExp = viewPathToSourceMap.get(thisPath);
-          // for each view, serialize info of it
+//           // for each view, serialize info of it
           final byte[] bytes = thisPath.getFullPath().getBytes();
-          dataOutputStream.writeInt(bytes.length);
-          dataOutputStream.write(bytes);
-          ViewExpression.serialize(thisExp, dataOutputStream);
-        }
-        return SchemaRegionPlanSerializationResult.SUCCESS;
+//           dataOutputStream.writeInt(bytes.length);
+//           dataOutputStream.write(bytes);
+//           ViewExpression.serialize(thisExp, dataOutputStream);
+//         }
+//         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (final IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
-    }
+//         return new SchemaRegionPlanSerializationResult(e);
+//       }
+//     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitPreDeleteLogicalView(

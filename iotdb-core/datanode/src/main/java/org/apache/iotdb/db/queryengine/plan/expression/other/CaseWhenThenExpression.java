@@ -170,20 +170,20 @@ public class CaseWhenThenExpression extends Expression {
     return result;
   }
 
-  @Override
+//   @Override
   public String getOutputSymbolInternal() {
-    StringBuilder builder = new StringBuilder();
-    builder.append("CASE ");
-    for (Expression expression : this.whenThenExpressions) {
+//     StringBuilder builder = new StringBuilder();
+//     builder.append("CASE ");
+//     for (Expression expression : this.whenThenExpressions) {
       builder.append(expression.getOutputSymbol()).append(" ");
-    }
-    if (!(this.elseExpression instanceof NullOperand)) {
+//     }
+//     if (!(this.elseExpression instanceof NullOperand)) {
       builder.append("ELSE ").append(this.elseExpression.getOutputSymbol()).append(" ");
-    }
-    builder.append("END");
-    return builder.toString();
-  }
-
+//     }
+//     builder.append("END");
+//     return builder.toString();
+//   }
+// 
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitCaseWhenThenExpression(this, context);

@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -39,7 +39,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.rmi.UnexpectedException;
+// import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -59,7 +59,7 @@ public class MeasurementPath extends PartialPath {
 
   private Map<String, String> tagMap;
 
-  private Boolean isUnderAlignedEntity = false;
+//   private Boolean isUnderAlignedEntity = false;
 
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   private String measurementAlias = "";
@@ -92,7 +92,7 @@ public class MeasurementPath extends PartialPath {
   public MeasurementPath(
       PartialPath measurementPath,
       IMeasurementSchema measurementSchema,
-      Boolean isUnderAlignedEntity) {
+//       Boolean isUnderAlignedEntity) {
     super(measurementPath.getNodes());
     if (nodes.length < 2) {
       throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
@@ -127,7 +127,7 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
-  public MeasurementPath(String[] nodes, IMeasurementSchema schema) {
+//   public MeasurementPath(String[] nodes, IMeasurementSchema schema) {
     super(nodes);
     if (nodes.length < 2) {
       throw new IllegalArgumentException(String.format(NODES_LENGTH_ERROR, Arrays.toString(nodes)));
@@ -203,9 +203,9 @@ public class MeasurementPath extends PartialPath {
   }
 
   public boolean isUnderAlignedEntity() {
-    if (isUnderAlignedEntity == null) {
-      return false;
-    }
+//     if (isUnderAlignedEntity == null) {
+//       return false;
+//     }
     return isUnderAlignedEntity;
   }
 
@@ -213,7 +213,7 @@ public class MeasurementPath extends PartialPath {
     this.device = device;
   }
 
-  public void setUnderAlignedEntity(Boolean underAlignedEntity) {
+//   public void setUnderAlignedEntity(Boolean underAlignedEntity) {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
@@ -266,9 +266,9 @@ public class MeasurementPath extends PartialPath {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      MeasurementSchemaType measurementSchemaType = measurementSchema.getSchemaType();
-      ReadWriteIOUtils.write(
-          measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), byteBuffer);
+//       MeasurementSchemaType measurementSchemaType = measurementSchema.getSchemaType();
+//       ReadWriteIOUtils.write(
+//           measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), byteBuffer);
       measurementSchema.serializeTo(byteBuffer);
     }
     if (tagMap == null) {
@@ -289,8 +289,8 @@ public class MeasurementPath extends PartialPath {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
-      MeasurementSchemaType measurementSchemaType = measurementSchema.getSchemaType();
-      ReadWriteIOUtils.write(measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), stream);
+//       MeasurementSchemaType measurementSchemaType = measurementSchema.getSchemaType();
+//       ReadWriteIOUtils.write(measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), stream);
       measurementSchema.serializeTo(stream);
     }
     if (tagMap == null) {
@@ -309,24 +309,24 @@ public class MeasurementPath extends PartialPath {
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     if (isNull == 1) {
       byte type = ReadWriteIOUtils.readByte(byteBuffer);
-      if (type == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+//       if (type == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
         measurementPath.measurementSchema = MeasurementSchema.deserializeFrom(byteBuffer);
-      } else if (type
-          == MeasurementSchemaType.VECTOR_MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+//       } else if (type
+//           == MeasurementSchemaType.VECTOR_MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
         measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
-      } else if (type
-          == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
-        measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
-      } else {
-        throw new RuntimeException(
-            new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));
+//       } else if (type
+//           == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+//         measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
+//       } else {
+//         throw new RuntimeException(
+//             new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));
       }
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
     if (isNull == 1) {
       measurementPath.tagMap = ReadWriteIOUtils.readMap(byteBuffer);
     }
-    measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
+//     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
     measurementPath.nodes = partialPath.getNodes();
     measurementPath.device = measurementPath.getIDeviceID();

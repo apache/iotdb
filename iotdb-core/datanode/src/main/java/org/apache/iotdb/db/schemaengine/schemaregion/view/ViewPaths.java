@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.view;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
-import org.apache.iotdb.db.exception.metadata.view.ViewContainsAggregationException;
+// import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
+// import org.apache.iotdb.db.exception.metadata.view.ViewContainsAggregationException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregationExpressionsVisitor;
@@ -92,31 +92,31 @@ public class ViewPaths {
       }
     } else if (this.viewPathType == ViewPathType.QUERY_STATEMENT) {
       // no nothing. expressions should be set by setExpressionsList
-    } else if (this.viewPathType == ViewPathType.BATCH_GENERATION) {
-      // source paths has no intoItem. target paths should not be converted to expression.
+//     } else if (this.viewPathType == ViewPathType.BATCH_GENERATION) {
+//       // source paths has no intoItem. target paths should not be converted to expression.
     }
   }
 
-  /**
-   * Check all expression in this list, ensure that the views created using them are legal. Check
-   * follows above rules: 1. A legal view can NOT contain aggregation functions.
-   *
-   * @return If all check passed, return true; else return false with failure message.
-   */
-  public static Pair<Boolean, UnsupportedViewException> checkExpressionList(
-      List<Expression> expressionsList) {
-    CollectAggregationExpressionsVisitor collectAggExpVisitor =
-        new CollectAggregationExpressionsVisitor();
-
-    for (Expression expression : expressionsList) {
-      List<Expression> aggList = collectAggExpVisitor.process(expression, null);
+//   /**
+//    * Check all expression in this list, ensure that the views created using them are legal. Check
+//    * follows above rules: 1. A legal view can NOT contain aggregation functions.
+//    *
+//    * @return If all check passed, return true; else return false with failure message.
+//    */
+//   public static Pair<Boolean, UnsupportedViewException> checkExpressionList(
+//       List<Expression> expressionsList) {
+//     CollectAggregationExpressionsVisitor collectAggExpVisitor =
+//         new CollectAggregationExpressionsVisitor();
+// 
+//     for (Expression expression : expressionsList) {
+//       List<Expression> aggList = collectAggExpVisitor.process(expression, null);
       if (!aggList.isEmpty()) {
-        return new Pair<>(false, new ViewContainsAggregationException(aggList.get(0).toString()));
-      }
-    }
-    return new Pair<>(true, null);
-  }
-
+//         return new Pair<>(false, new ViewContainsAggregationException(aggList.get(0).toString()));
+//       }
+//     }
+//     return new Pair<>(true, null);
+//   }
+// 
   public void setExpressionsList(List<Expression> expressionsList) {
     this.expressionsList = expressionsList;
   }

@@ -214,27 +214,27 @@ public class FunctionExpression extends Expression {
     return expressions;
   }
 
-  @Override
+//   @Override
   public String getOutputSymbolInternal() {
-    StringBuilder builder = new StringBuilder();
-    if (!expressions.isEmpty()) {
+//     StringBuilder builder = new StringBuilder();
+//     if (!expressions.isEmpty()) {
       builder.append(expressions.get(0).getOutputSymbol());
-      for (int i = 1; i < expressions.size(); ++i) {
+//       for (int i = 1; i < expressions.size(); ++i) {
         builder.append(", ").append(expressions.get(i).getOutputSymbol());
-      }
-    }
-    if (!functionAttributes.isEmpty()) {
-      // Some built-in scalar functions may have different header.
-      if (BuiltinScalarFunction.contains(functionName)) {
-        BuiltInScalarFunctionHelperFactory.createHelper(functionName)
-            .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
-      } else {
-        appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
-      }
-    }
-    return functionName + "(" + builder + ")";
-  }
-
+//       }
+//     }
+//     if (!functionAttributes.isEmpty()) {
+//       // Some built-in scalar functions may have different header.
+//       if (BuiltinScalarFunction.contains(functionName)) {
+//         BuiltInScalarFunctionHelperFactory.createHelper(functionName)
+//             .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
+//       } else {
+//         appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
+//       }
+//     }
+//     return functionName + "(" + builder + ")";
+//   }
+// 
   @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {

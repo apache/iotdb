@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -59,11 +59,11 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+// import java.util.Arrays;
+// import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+// import java.util.Map;
 import java.util.Objects;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
@@ -80,19 +80,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   protected Object[] values;
   protected boolean isNeedInferType = false;
 
-  /**
-   * This param record whether the source of logical view is aligned. Only used when there are
-   * views.
-   */
+//   /**
+//    * This param record whether the source of logical view is aligned. Only used when there are
+//    * views.
+//    */
   protected boolean[] measurementIsAligned;
-
+// 
   protected IDeviceID deviceID;
 
   public InsertRowStatement() {
     super();
     statementType = StatementType.INSERT;
-    this.recordedBeginOfLogicalViewSchemaList = 0;
-    this.recordedEndOfLogicalViewSchemaList = 0;
+//     this.recordedBeginOfLogicalViewSchemaList = 0;
+//     this.recordedEndOfLogicalViewSchemaList = 0;
   }
 
   @Override
@@ -312,65 +312,65 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
   }
 
-  public boolean isNeedSplit() {
+//   public boolean isNeedSplit() {
     return hasLogicalViewNeedProcess();
-  }
-
-  public List<InsertRowStatement> getSplitList() {
-    if (!isNeedSplit()) {
-      return Collections.singletonList(this);
-    }
-    Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
-        this.getMapFromDeviceToMeasurementAndIndex();
-    // Reconstruct statements
-    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
-    for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry :
-        mapFromDeviceToMeasurementAndIndex.entrySet()) {
-      List<Pair<String, Integer>> pairList = entry.getValue();
-      InsertRowStatement statement = new InsertRowStatement();
-      statement.setTime(this.time);
-      statement.setNeedInferType(this.isNeedInferType);
-      statement.setDevicePath(entry.getKey());
-      statement.setAligned(this.isAligned);
+//   }
+// 
+//   public List<InsertRowStatement> getSplitList() {
+//     if (!isNeedSplit()) {
+//       return Collections.singletonList(this);
+//     }
+//     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
+//         this.getMapFromDeviceToMeasurementAndIndex();
+//     // Reconstruct statements
+//     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+//     for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry :
+//         mapFromDeviceToMeasurementAndIndex.entrySet()) {
+//       List<Pair<String, Integer>> pairList = entry.getValue();
+//       InsertRowStatement statement = new InsertRowStatement();
+//       statement.setTime(this.time);
+//       statement.setNeedInferType(this.isNeedInferType);
+//       statement.setDevicePath(entry.getKey());
+//       statement.setAligned(this.isAligned);
       Object[] copiedValues = new Object[pairList.size()];
-      String[] measurements = new String[pairList.size()];
-      MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];
-      TSDataType[] dataTypes = new TSDataType[pairList.size()];
-      for (int i = 0; i < pairList.size(); i++) {
-        int realIndex = pairList.get(i).right;
+//       String[] measurements = new String[pairList.size()];
+//       MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];
+//       TSDataType[] dataTypes = new TSDataType[pairList.size()];
+//       for (int i = 0; i < pairList.size(); i++) {
+//         int realIndex = pairList.get(i).right;
         copiedValues[i] = this.values[realIndex];
         measurements[i] =
             Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
-        measurementSchemas[i] = this.measurementSchemas[realIndex];
-        dataTypes[i] = this.dataTypes[realIndex];
-        if (this.measurementIsAligned != null) {
-          statement.setAligned(this.measurementIsAligned[realIndex]);
-        }
-      }
+//         measurementSchemas[i] = this.measurementSchemas[realIndex];
+//         dataTypes[i] = this.dataTypes[realIndex];
+//         if (this.measurementIsAligned != null) {
+//           statement.setAligned(this.measurementIsAligned[realIndex]);
+//         }
+//       }
       statement.setValues(copiedValues);
-      statement.setMeasurements(measurements);
-      statement.setMeasurementSchemas(measurementSchemas);
-      statement.setDataTypes(dataTypes);
-      statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
-      insertRowStatementList.add(statement);
-    }
-    return insertRowStatementList;
-  }
-
-  @Override
-  public InsertBaseStatement removeLogicalView() {
-    if (!isNeedSplit()) {
-      return this;
-    }
-    List<InsertRowStatement> insertRowStatementList = this.getSplitList();
-    if (insertRowStatementList.size() == 1) {
-      return insertRowStatementList.get(0);
-    }
-    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
-    return insertRowsStatement;
-  }
-
+//       statement.setMeasurements(measurements);
+//       statement.setMeasurementSchemas(measurementSchemas);
+//       statement.setDataTypes(dataTypes);
+//       statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
+//       insertRowStatementList.add(statement);
+//     }
+//     return insertRowStatementList;
+//   }
+// 
+//   @Override
+//   public InsertBaseStatement removeLogicalView() {
+//     if (!isNeedSplit()) {
+//       return this;
+//     }
+//     List<InsertRowStatement> insertRowStatementList = this.getSplitList();
+//     if (insertRowStatementList.size() == 1) {
+//       return insertRowStatementList.get(0);
+//     }
+//     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+//     insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
+//     return insertRowsStatement;
+//   }
+// 
   @Override
   public ISchemaValidation getSchemaValidation() {
     return this;
@@ -413,7 +413,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public void validateDeviceSchema(boolean isAligned) {
-    this.isAligned = isAligned;
+//     this.isAligned = isAligned;
   }
 
   @Override
@@ -424,17 +424,17 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-      if (measurementSchemaInfo.isLogicalView()) {
-        if (logicalViewSchemaList == null || indexOfSourcePathsOfLogicalViews == null) {
-          logicalViewSchemaList = new ArrayList<>();
-          indexOfSourcePathsOfLogicalViews = new ArrayList<>();
-        }
-        logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
-        indexOfSourcePathsOfLogicalViews.add(index);
-        return;
-      } else {
-        measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
-      }
+//       if (measurementSchemaInfo.isLogicalView()) {
+//         if (logicalViewSchemaList == null || indexOfSourcePathsOfLogicalViews == null) {
+//           logicalViewSchemaList = new ArrayList<>();
+//           indexOfSourcePathsOfLogicalViews = new ArrayList<>();
+//         }
+//         logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
+//         indexOfSourcePathsOfLogicalViews.add(index);
+//         return;
+//       } else {
+//         measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
+//       }
     }
     if (isNeedInferType) {
       return;
@@ -446,49 +446,49 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       throw new SemanticException(e);
     }
   }
-
-  @Override
-  public void validateMeasurementSchema(
-      int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
-    this.validateMeasurementSchema(index, measurementSchemaInfo);
-    if (this.measurementIsAligned == null) {
-      this.measurementIsAligned = new boolean[this.measurements.length];
-      Arrays.fill(this.measurementIsAligned, this.isAligned);
-    }
-    this.measurementIsAligned[index] = isAligned;
-  }
-
-  @Override
-  public boolean hasLogicalViewNeedProcess() {
-    if (this.indexOfSourcePathsOfLogicalViews == null) {
-      return false;
-    }
-    return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
-  }
-
-  @Override
-  public List<LogicalViewSchema> getLogicalViewSchemaList() {
-    return this.logicalViewSchemaList;
-  }
-
-  @Override
-  public List<Integer> getIndexListOfLogicalViewPaths() {
-    return this.indexOfSourcePathsOfLogicalViews;
-  }
-
-  @Override
-  public void recordRangeOfLogicalViewSchemaListNow() {
-    if (this.logicalViewSchemaList != null) {
-      this.recordedBeginOfLogicalViewSchemaList = this.recordedEndOfLogicalViewSchemaList;
-      this.recordedEndOfLogicalViewSchemaList = this.logicalViewSchemaList.size();
-    }
-  }
-
-  @Override
-  public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
-    return new Pair<>(
-        this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
-  }
+// 
+//   @Override
+//   public void validateMeasurementSchema(
+//       int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
+//     this.validateMeasurementSchema(index, measurementSchemaInfo);
+//     if (this.measurementIsAligned == null) {
+//       this.measurementIsAligned = new boolean[this.measurements.length];
+//       Arrays.fill(this.measurementIsAligned, this.isAligned);
+//     }
+//     this.measurementIsAligned[index] = isAligned;
+//   }
+// 
+//   @Override
+//   public boolean hasLogicalViewNeedProcess() {
+//     if (this.indexOfSourcePathsOfLogicalViews == null) {
+//       return false;
+//     }
+//     return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
+//   }
+// 
+//   @Override
+//   public List<LogicalViewSchema> getLogicalViewSchemaList() {
+//     return this.logicalViewSchemaList;
+//   }
+// 
+//   @Override
+//   public List<Integer> getIndexListOfLogicalViewPaths() {
+//     return this.indexOfSourcePathsOfLogicalViews;
+//   }
+// 
+//   @Override
+//   public void recordRangeOfLogicalViewSchemaListNow() {
+//     if (this.logicalViewSchemaList != null) {
+//       this.recordedBeginOfLogicalViewSchemaList = this.recordedEndOfLogicalViewSchemaList;
+//       this.recordedEndOfLogicalViewSchemaList = this.logicalViewSchemaList.size();
+//     }
+//   }
+// 
+//   @Override
+//   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
+//     return new Pair<>(
+//         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
+//   }
 
   @TableModel
   public IDeviceID getTableDeviceID() {

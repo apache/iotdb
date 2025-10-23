@@ -64,9 +64,9 @@ public class DeviceSchemaInfo {
     return measurementSchemaInfoList.stream()
         .map(
             measurementSchemaInfo ->
-                measurementSchemaInfo == null
-                    ? null
-                    : measurementSchemaInfo.getSchemaAsMeasurementSchema())
+//                 measurementSchemaInfo == null
+//                     ? null
+//                     : measurementSchemaInfo.getSchemaAsMeasurementSchema())
         .collect(Collectors.toList());
   }
 
