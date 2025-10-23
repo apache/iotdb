@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -164,11 +166,11 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new ConcurrentHashMap<>();
     if (currentPipeStaticMeta.isSourceExternal()) {
       currentConsensusGroupId2PipeTaskMeta.forEach(
-          (taskId, pipeTaskMeta) -> {
-            updatedConsensusGroupIdToTaskMetaMap.put(
-                taskId,
-                new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId()));
-          });
+          (taskId, pipeTaskMeta) ->
+              updatedConsensusGroupIdToTaskMetaMap.put(
+                  taskId,
+                  new PipeTaskMeta(
+                      pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId())));
     } else {
       // data regions & schema regions
       env.getConfigManager()
@@ -185,12 +187,32 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                     && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
                     && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")
-                    && currentPipeTaskMeta != null
-                    && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
+                    && !(PipeTaskAgent.isHistoryOnlyPipe(
+                            currentPipeStaticMeta.getSourceParameters())
+                        && PipeTaskAgent.isHistoryOnlyPipe(
+                            updatedPipeStaticMeta.getSourceParameters())
+                        && regionGroupId.getType() == TConsensusGroupType.DataRegion
+                        && currentPipeTaskMeta.isNewlyAdded())) {
                   // Pipe only collect user's data, filter metric database here.
+                  // If it is altered to "pure historical", then the regionIds are always new here,
+                  // then it will extract all existing data now, not existing data since the
+                  // original pipe was created
+                  // Similar for "pure realtime"
                   updatedConsensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
-                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
+                      new PipeTaskMeta(
+                          currentPipeTaskMeta.getProgressIndex(),
+                          PipeTaskMeta.isNewlyAdded(currentPipeTaskMeta.getLeaderNodeId())
+                                  && !(!PipeTaskAgent.isHistoryOnlyPipe(
+                                          currentPipeStaticMeta.getSourceParameters())
+                                      && PipeTaskAgent.isHistoryOnlyPipe(
+                                          updatedPipeStaticMeta.getSourceParameters()))
+                                  && !(!PipeTaskAgent.isRealtimeOnlyPipe(
+                                          currentPipeStaticMeta.getSourceParameters())
+                                      && PipeTaskAgent.isRealtimeOnlyPipe(
+                                          updatedPipeStaticMeta.getSourceParameters()))
+                              ? PipeTaskMeta.getRevertedLeader(regionLeaderNodeId)
+                              : regionLeaderNodeId));
                 }
               });
 
@@ -248,7 +270,12 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("AlterPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
+        parsePushPipeMetaExceptionForPipe(
+            pipeName,
+            !PipeTaskAgent.isRealtimeOnlyPipe(currentPipeStaticMeta.getSourceParameters())
+                    && PipeTaskAgent.isRealtimeOnlyPipe(updatedPipeStaticMeta.getSourceParameters())
+                ? pushSinglePipeMetaToDataNodes4Realtime(pipeName, env)
+                : pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           "Failed to alter pipe {}, details: {}, metadata will be synchronized later.",

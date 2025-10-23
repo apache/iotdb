@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -621,13 +623,21 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
-                          } else {
+                          } else if (!PipeTaskAgent.isHistoryOnlyPipe(
+                                  pipeMeta.getStaticMeta().getSourceParameters())
+                              || !consensusGroupId
+                                  .getType()
+                                  .equals(TConsensusGroupType.DataRegion)) {
                             // If CN does not contain the region group, it means the data
                             // region group is newly added.
+                            // We do not handle history only pipes for new data regions
+
+                            // Newly added leader
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
                                   consensusGroupId.getId(),
-                                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader)
+                                      .markAsNewlyAdded());
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or

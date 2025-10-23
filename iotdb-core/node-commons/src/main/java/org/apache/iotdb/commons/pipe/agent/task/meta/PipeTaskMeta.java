@@ -44,6 +44,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeTaskMeta {
 
   private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
+
+  // This is -2 - leaderNodeId iff it's a newly added region with internal source.
   private final AtomicInteger leaderNodeId = new AtomicInteger(0);
 
   /**
@@ -63,6 +65,37 @@ public class PipeTaskMeta {
     this.leaderNodeId.set(leaderNodeId);
   }
 
+  ///////////////////////// Region old & new test /////////////////////////
+
+  public PipeTaskMeta markAsNewlyAdded() {
+    leaderNodeId.getAndUpdate(PipeTaskMeta::getRevertedLeader);
+    return this;
+  }
+
+  public boolean isNewlyAdded() {
+    return isNewlyAdded(leaderNodeId.get());
+  }
+
+  public int getLeaderNodeId() {
+    final int result = leaderNodeId.get();
+    return isNewlyAdded(result) ? getRevertedLeader(result) : result;
+  }
+
+  public void setLeaderNodeId(final int leaderNodeId) {
+    this.leaderNodeId.updateAndGet(
+        leaderId -> isNewlyAdded(leaderId) ? getRevertedLeader(leaderNodeId) : leaderNodeId);
+  }
+
+  public static int getRevertedLeader(final int leaderNodeId) {
+    return -2 - leaderNodeId;
+  }
+
+  public static boolean isNewlyAdded(final int leaderNodeId) {
+    return leaderNodeId < -1;
+  }
+
+  ///////////////////////// Normal /////////////////////////
+
   public ProgressIndex getProgressIndex() {
     return progressIndex.get();
   }
@@ -70,14 +103,6 @@ public class PipeTaskMeta {
   public ProgressIndex updateProgressIndex(final ProgressIndex updateIndex) {
     return progressIndex.updateAndGet(
         index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
-  }
-
-  public int getLeaderNodeId() {
-    return leaderNodeId.get();
-  }
-
-  public void setLeaderNodeId(final int leaderNodeId) {
-    this.leaderNodeId.set(leaderNodeId);
   }
 
   public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {
