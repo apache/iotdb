@@ -1729,12 +1729,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "nan_string_infer_type",
                 ConfigurationFileUtils.getConfigurationDefaultValue("nan_string_infer_type"))));
-    conf.setDefaultStorageGroupLevel(
+    conf.setDefaultDatabaseLevel(
         Integer.parseInt(
-            properties.getProperty(
-                "default_storage_group_level",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "default_storage_group_level"))),
+            Optional.ofNullable(properties.getProperty("default_database_level"))
+                .orElse(
+                    properties.getProperty(
+                        "default_storage_group_level",
+                        Optional.ofNullable(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "default_database_level"))
+                            .orElse(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "default_storage_group_level"))))),
         startUp);
     conf.setDefaultBooleanEncoding(
         properties.getProperty(

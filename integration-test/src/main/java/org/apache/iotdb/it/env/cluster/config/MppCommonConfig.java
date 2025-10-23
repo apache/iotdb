@@ -581,7 +581,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
 
   @Override
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
-    setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
+    setProperty("default_database_level", String.valueOf(defaultStorageGroupLevel));
     return this;
   }
 
