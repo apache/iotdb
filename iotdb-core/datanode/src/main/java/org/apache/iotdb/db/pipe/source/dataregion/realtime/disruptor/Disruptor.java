@@ -106,7 +106,6 @@ public class Disruptor<T> {
     return ringBuffer;
   }
 
-  /** Shutdown - MUST keep for IoTDB */
   public void shutdown() {
     if (!started) {
       return;

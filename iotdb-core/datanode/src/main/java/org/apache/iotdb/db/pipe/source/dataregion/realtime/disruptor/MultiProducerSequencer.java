@@ -19,55 +19,16 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
-import sun.misc.Unsafe;
-
-import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedExceptionAction;
 import java.util.concurrent.locks.LockSupport;
 
-/**
- * Multi-producer sequencer for coordinating concurrent event publishing
- *
- * <p>Manages sequence allocation and tracking for multiple producer threads:
- *
- * <ul>
- *   <li>Lock-free sequence claiming using CAS operations
- *   <li>Available buffer tracks out-of-order publishing
- *   <li>Gating sequence cache optimizes consumer progress checks
- *   <li>Backpressure mechanism prevents buffer overwrites
- * </ul>
- */
 public final class MultiProducerSequencer {
-  private static final Unsafe UNSAFE;
-  private static final long BASE;
-  private static final long SCALE;
-
-  static {
-    try {
-      final PrivilegedExceptionAction<Unsafe> action =
-          () -> {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            return (Unsafe) theUnsafe.get(null);
-          };
-
-      UNSAFE = AccessController.doPrivileged(action);
-
-      // Initialize array access offsets for available buffer
-      BASE = UNSAFE.arrayBaseOffset(int[].class);
-      SCALE = UNSAFE.arrayIndexScale(int[].class);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   private final int bufferSize;
-  protected final Sequence cursor = new Sequence(Sequence.INITIAL_VALUE);
-  protected volatile Sequence[] gatingSequences;
+  private final Sequence cursor = new Sequence();
+  volatile Sequence[] gatingSequences;
 
   // CRITICAL: Cache to avoid repeated getMinimumSequence calls
-  private final Sequence gatingSequenceCache = new Sequence(Sequence.INITIAL_VALUE);
+  private final Sequence gatingSequenceCache = new Sequence();
 
   // CRITICAL: Available buffer tracks published sequences
   private final int[] availableBuffer;
@@ -148,8 +109,7 @@ public final class MultiProducerSequencer {
   public boolean isAvailable(long sequence) {
     int index = calculateIndex(sequence);
     int flag = calculateAvailabilityFlag(sequence);
-    long bufferAddress = (index * SCALE) + BASE;
-    return UNSAFE.getIntVolatile(availableBuffer, bufferAddress) == flag;
+    return availableBuffer[index] == flag;
   }
 
   /** CORE: Get highest published - exact same algorithm */
@@ -236,8 +196,7 @@ public final class MultiProducerSequencer {
 
   /** CRITICAL: Use Unsafe.putOrderedInt for correct memory semantics */
   private void setAvailableBufferValue(int index, int flag) {
-    long bufferAddress = (index * SCALE) + BASE;
-    UNSAFE.putOrderedInt(availableBuffer, bufferAddress, flag);
+    availableBuffer[index] = flag;
   }
 
   /** Calculate availability flag */
