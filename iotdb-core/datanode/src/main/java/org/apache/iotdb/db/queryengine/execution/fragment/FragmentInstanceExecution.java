@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -53,6 +53,7 @@ import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mer
 public class FragmentInstanceExecution {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceExecution.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
@@ -167,8 +168,8 @@ public class FragmentInstanceExecution {
       // We don't need to output the region having ExplainAnalyzeOperator only.
       return false;
     }
-    statistics.setDataRegion(((DataRegion) context.getDataRegion()).getDataRegionId());
-    statistics.setIp(IoTDBDescriptor.getInstance().getConfig().getAddressAndPort().ip);
+    statistics.setDataRegion(context.getDataRegion().getDataRegionId());
+    statistics.setIp(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
     statistics.setStartTimeInMS(context.getStartTime());
     statistics.setEndTimeInMS(
         context.isEndTimeUpdate() ? context.getEndTime() : System.currentTimeMillis());
@@ -177,6 +178,7 @@ public class FragmentInstanceExecution {
     statistics.setReadyQueuedTime(context.getReadyQueueTime());
 
     statistics.setInitDataQuerySourceCost(context.getInitQueryDataSourceCost());
+    statistics.setInitDataQuerySourceRetryCount(context.getInitQueryDataSourceRetryCount());
 
     statistics.setSeqClosednNum(context.getClosedSeqFileNum());
     statistics.setSeqUnclosedNum(context.getUnclosedSeqFileNum());
@@ -304,10 +306,16 @@ public class FragmentInstanceExecution {
             staticsRemoved = true;
             statisticsLock.writeLock().unlock();
 
-            clearShuffleSinkHandle(newState);
-
-            // delete tmp file if exists
-            deleteTmpFile();
+            // must clear shuffle sink handle before driver close
+            // because in failed state, if we can driver.close firstly, we will finally call
+            // sink.setNoMoreTsBlocks() which may mislead upstream that downstream normally ends
+            try {
+              clearShuffleSinkHandle(newState);
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to release sink, potentially leading to resource leakage.",
+                  t);
+            }
 
             // close the driver after sink is aborted or closed because in driver.close() it
             // will try to call ISink.setNoMoreTsBlocks()
@@ -320,11 +328,33 @@ public class FragmentInstanceExecution {
             // release file handlers
             context.releaseResourceWhenAllDriversAreClosed();
 
-            // release memory
-            exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
-                instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
+            try {
+              // delete tmp file if exists
+              deleteTmpFile();
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to delete tmp files, potentially leading to resource leakage.",
+                  t);
+            }
 
-            context.releaseMemoryReservationManager();
+            try {
+              // release memory
+              exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
+                  instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to deRegister FI from Memory Pool, potentially leading to resource leakage, status is {}.",
+                  newState,
+                  t);
+            }
+
+            try {
+              context.releaseMemoryReservationManager();
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to release memory, potentially leading to resource leakage.",
+                  t);
+            }
 
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);

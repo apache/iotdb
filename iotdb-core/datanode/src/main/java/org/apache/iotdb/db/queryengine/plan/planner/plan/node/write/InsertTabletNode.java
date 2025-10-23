@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -216,7 +217,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
-    for (int i = 1; i < times.length; i++) { // times are sorted in session API.
+    for (int i = 1; i < rowCount; i++) { // times are sorted in session API.
       if (times[i] >= upperBoundOfTimePartition) {
         // a new range.
         ranges.add(startLoc); // included
@@ -231,7 +232,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     // the final range
     ranges.add(startLoc); // included
-    ranges.add(times.length); // excluded
+    ranges.add(rowCount); // excluded
     timePartitionSlots.add(timePartitionSlot);
 
     // data region for each time partition
@@ -470,17 +471,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  private void writeTimes(ByteBuffer buffer) {
+  private void writeTimes(final ByteBuffer buffer) {
     ReadWriteIOUtils.write(rowCount, buffer);
-    for (long time : times) {
-      ReadWriteIOUtils.write(time, buffer);
+    for (int i = 0; i < rowCount; ++i) {
+      ReadWriteIOUtils.write(times[i], buffer);
     }
   }
 
-  private void writeTimes(DataOutputStream stream) throws IOException {
+  private void writeTimes(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(rowCount, stream);
-    for (long time : times) {
-      ReadWriteIOUtils.write(time, stream);
+    for (int i = 0; i < rowCount; ++i) {
+      ReadWriteIOUtils.write(times[i], stream);
     }
   }
 
@@ -498,7 +499,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(false), buffer);
         } else {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(true), buffer);
-          buffer.put(bitMaps[i].getByteArray());
+          buffer.put(bitMaps[i].getByteArray(), 0, rowCount / 8 + 1);
         }
       }
     }
@@ -518,7 +519,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
         } else {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
-          stream.write(bitMaps[i].getByteArray());
+          stream.write(bitMaps[i].getByteArray(), 0, rowCount / 8 + 1);
         }
       }
     }
@@ -585,7 +586,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(binaryValues[j], buffer);
+          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
+            buffer.putInt(binaryValues[j].getLength());
+            buffer.put(binaryValues[j].getValues());
+          } else {
+            buffer.putInt(0);
+          }
         }
         break;
       default:
@@ -633,7 +639,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(binaryValues[j], stream);
+          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
+            ReadWriteIOUtils.write(binaryValues[j], stream);
+          } else {
+            ReadWriteIOUtils.write(0, stream);
+          }
         }
         break;
       default:
@@ -887,8 +897,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
-          buffer.putInt(binaryValues[j].getLength());
-          buffer.put(binaryValues[j].getValues());
+          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
+            buffer.putInt(binaryValues[j].getLength());
+            buffer.put(binaryValues[j].getValues());
+          } else {
+            buffer.putInt(0);
+          }
         }
         break;
       default:
@@ -1117,5 +1131,21 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
     return new TimeValuePair(times[lastIdx], value);
+  }
+
+  public void updateLastCache(final String databaseName) {
+    final String[] rawMeasurements = getRawMeasurements();
+    final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+    for (int i = 0; i < rawMeasurements.length; i++) {
+      timeValuePairs[i] = composeLastTimeValuePair(i);
+    }
+    DataNodeSchemaCache.getInstance()
+        .updateLastCacheIfExists(
+            databaseName,
+            devicePath,
+            rawMeasurements,
+            timeValuePairs,
+            isAligned,
+            measurementSchemas);
   }
 }

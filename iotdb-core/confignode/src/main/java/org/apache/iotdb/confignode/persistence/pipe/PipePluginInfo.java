@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -149,7 +149,7 @@ public class PipePluginInfo implements SnapshotProcessor {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final String extractorPluginName =
         extractorParameters.getStringOrDefault(
-            Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+            Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
             IOTDB_EXTRACTOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(extractorPluginName)) {
       final String exceptionMessage =
@@ -176,7 +176,7 @@ public class PipePluginInfo implements SnapshotProcessor {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final String connectorPluginName =
         connectorParameters.getStringOrDefault(
-            Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+            Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
             IOTDB_THRIFT_CONNECTOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(connectorPluginName)) {
       final String exceptionMessage =

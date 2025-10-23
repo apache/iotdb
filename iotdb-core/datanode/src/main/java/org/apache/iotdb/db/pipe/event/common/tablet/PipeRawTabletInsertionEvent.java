@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.Pi
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -83,6 +83,13 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            eliminateProgressIndex();
+          }
+        });
   }
 
   public PipeRawTabletInsertionEvent(
@@ -130,7 +137,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
             allocatedMemoryBlock,
             PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .increaseRawTabletEventCount(pipeName, creationTime);
     }
     return true;
@@ -139,7 +146,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .decreaseRawTabletEventCount(pipeName, creationTime);
     }
     allocatedMemoryBlock.close();
@@ -151,13 +158,30 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     // Actually release the occupied memory.
     tablet = null;
     dataContainer = null;
+
+    // Update metrics of the source event
+    if (needToReport && shouldReportOnCommit && Objects.nonNull(pipeName)) {
+      if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateInsertNodeTransferTimer(
+                pipeName,
+                creationTime,
+                System.nanoTime()
+                    - ((PipeInsertNodeTabletInsertionEvent) sourceEvent).getExtractTime());
+      } else if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateTsFileTransferTimer(
+                pipeName,
+                creationTime,
+                System.nanoTime() - ((PipeTsFileInsertionEvent) sourceEvent).getExtractTime());
+      }
+    }
+
     return true;
   }
 
-  @Override
-  protected void reportProgress() {
+  protected void eliminateProgressIndex() {
     if (needToReport) {
-      super.reportProgress();
       if (sourceEvent instanceof PipeTsFileInsertionEvent) {
         ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
       }

@@ -54,9 +54,6 @@ public class PipeMemoryManager {
 
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
-  private static final double FLOATING_MEMORY_RATIO =
-      PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion();
-
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
@@ -102,18 +99,6 @@ public class PipeMemoryManager {
                     .getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
                 / 2)
         * getTotalNonFloatingMemorySizeInBytes();
-  }
-
-  public long getAllocatedMemorySizeInBytesOfWAL() {
-    return (long)
-        (PipeConfig.getInstance().getPipeDataStructureWalMemoryProportion()
-            * getTotalNonFloatingMemorySizeInBytes());
-  }
-
-  public long getAllocatedMemorySizeInBytesOfBatch() {
-    return (long)
-        (PipeConfig.getInstance().getPipeDataStructureBatchMemoryProportion()
-            * getTotalNonFloatingMemorySizeInBytes());
   }
 
   public boolean isEnough4TabletParsing() {
@@ -322,7 +307,12 @@ public class PipeMemoryManager {
             sizeInBytes));
   }
 
-  public synchronized void forceResize(PipeMemoryBlock block, long targetSize) {
+  public void forceResize(final PipeMemoryBlock block, final long targetSize) {
+    resize(block, targetSize, true);
+  }
+
+  public synchronized void resize(
+      final PipeMemoryBlock block, final long targetSize, final boolean force) {
     if (block == null || block.isReleased()) {
       LOGGER.warn("forceResize: cannot resize a null or released memory block");
       return;
@@ -382,15 +372,17 @@ public class PipeMemoryManager {
       }
     }
 
-    throw new PipeRuntimeOutOfMemoryCriticalException(
-        String.format(
-            "forceResize: failed to allocate memory after %d retries, "
-                + "total memory size %d bytes, used memory size %d bytes, "
-                + "requested memory size %d bytes",
-            memoryAllocateMaxRetries,
-            getTotalNonFloatingMemorySizeInBytes(),
-            usedMemorySizeInBytes,
-            sizeInBytes));
+    if (force) {
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          String.format(
+              "forceResize: failed to allocate memory after %d retries, "
+                  + "total memory size %d bytes, used memory size %d bytes, "
+                  + "requested memory size %d bytes",
+              memoryAllocateMaxRetries,
+              getTotalNonFloatingMemorySizeInBytes(),
+              usedMemorySizeInBytes,
+              sizeInBytes));
+    }
   }
 
   /**
@@ -653,10 +645,18 @@ public class PipeMemoryManager {
   }
 
   public static long getTotalNonFloatingMemorySizeInBytes() {
-    return (long) (TOTAL_MEMORY_SIZE_IN_BYTES * (1 - FLOATING_MEMORY_RATIO));
+    return (long)
+        (TOTAL_MEMORY_SIZE_IN_BYTES
+            * (1 - PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
   }
 
   public static long getTotalFloatingMemorySizeInBytes() {
-    return (long) (TOTAL_MEMORY_SIZE_IN_BYTES * FLOATING_MEMORY_RATIO);
+    return (long)
+        (TOTAL_MEMORY_SIZE_IN_BYTES
+            * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion());
+  }
+
+  public static long getTotalMemorySizeInBytes() {
+    return TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 }

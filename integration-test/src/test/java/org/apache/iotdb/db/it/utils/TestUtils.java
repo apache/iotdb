@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
@@ -695,6 +696,15 @@ public class TestUtils {
   }
 
   public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final Consumer<String> handleFailure) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, handleFailure);
+  }
+
+  public static void assertDataEventuallyOnEnv(
       BaseEnv env,
       String sql,
       String expectedHeader,
@@ -715,6 +725,44 @@ public class TestUtils {
                       executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
                 } catch (Exception e) {
                   Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final long timeoutSeconds,
+      final Consumer<String> handleFailure) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
                 }
               });
     } catch (Exception e) {

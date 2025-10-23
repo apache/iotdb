@@ -31,18 +31,26 @@ public class CompactionPathUtils {
 
   private CompactionPathUtils() {}
 
-  public static PartialPath getPath(IDeviceID device, String measurement)
+  public static PartialPath getPath(final IDeviceID device, String measurement)
       throws IllegalPathException {
     return getPath(device).concatNode(measurement);
   }
 
-  public static PartialPath getPath(IDeviceID device) throws IllegalPathException {
-    PartialPath path;
-    String plainDeviceId = ((PlainDeviceID) device).toStringID();
-    if (plainDeviceId.contains(TsFileConstant.BACK_QUOTE_STRING)) {
-      path = DataNodeDevicePathCache.getInstance().getPartialPath(plainDeviceId);
+  public static PartialPath getPath(final IDeviceID device) throws IllegalPathException {
+    return getPath(((PlainDeviceID) device).toStringID());
+  }
+
+  public static PartialPath getPath(final String device, String measurement)
+      throws IllegalPathException {
+    return getPath(device).concatNode(measurement);
+  }
+
+  public static PartialPath getPath(final String device) throws IllegalPathException {
+    final PartialPath path;
+    if (device.contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      path = DataNodeDevicePathCache.getInstance().getPartialPath(device);
     } else {
-      path = new PartialPath(plainDeviceId.split(TsFileConstant.PATH_SEPARATER_NO_REGEX));
+      path = new PartialPath(device.split(TsFileConstant.PATH_SEPARATER_NO_REGEX));
     }
     return path;
   }

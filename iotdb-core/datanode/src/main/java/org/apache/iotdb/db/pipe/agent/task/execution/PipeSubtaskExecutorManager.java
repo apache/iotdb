@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.pipe.agent.task.execution;
 
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.consensus.PipeConsensusSubtaskExecutor;
 import org.apache.iotdb.db.subscription.task.execution.SubscriptionSubtaskExecutor;
+
+import java.util.function.Supplier;
 
 /**
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the
@@ -28,33 +31,36 @@ import org.apache.iotdb.db.subscription.task.execution.SubscriptionSubtaskExecut
  */
 public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor processorExecutor;
-  private final PipeConnectorSubtaskExecutor connectorExecutor;
+  private final Supplier<PipeSinkSubtaskExecutor> connectorExecutorSupplier;
   private final SubscriptionSubtaskExecutor subscriptionExecutor;
-  private final PipeConsensusSubtaskExecutor consensusExecutor;
+  private final Supplier<PipeConsensusSubtaskExecutor> consensusExecutorSupplier;
 
   public PipeProcessorSubtaskExecutor getProcessorExecutor() {
     return processorExecutor;
   }
 
-  public PipeConnectorSubtaskExecutor getConnectorExecutor() {
-    return connectorExecutor;
+  public Supplier<PipeSinkSubtaskExecutor> getConnectorExecutorSupplier() {
+    return connectorExecutorSupplier;
   }
 
   public SubscriptionSubtaskExecutor getSubscriptionExecutor() {
     return subscriptionExecutor;
   }
 
-  public PipeConsensusSubtaskExecutor getConsensusExecutor() {
-    return consensusExecutor;
+  public Supplier<PipeConsensusSubtaskExecutor> getConsensusExecutorSupplier() {
+    return consensusExecutorSupplier;
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeSubtaskExecutorManager() {
     processorExecutor = new PipeProcessorSubtaskExecutor();
-    connectorExecutor = new PipeConnectorSubtaskExecutor();
-    subscriptionExecutor = new SubscriptionSubtaskExecutor();
-    consensusExecutor = new PipeConsensusSubtaskExecutor();
+    connectorExecutorSupplier = PipeSinkSubtaskExecutor::new;
+    subscriptionExecutor =
+        SubscriptionConfig.getInstance().getSubscriptionEnabled()
+            ? new SubscriptionSubtaskExecutor()
+            : null;
+    consensusExecutorSupplier = PipeConsensusSubtaskExecutor::new;
   }
 
   private static class PipeTaskExecutorHolder {

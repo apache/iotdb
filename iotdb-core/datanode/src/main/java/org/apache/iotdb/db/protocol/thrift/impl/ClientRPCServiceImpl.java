@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -101,6 +102,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -137,6 +140,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOnePrefixPathReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -173,6 +177,7 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -791,6 +796,101 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeLastDataQueryV2(TSLastDataQueryReq req) {
     return executeLastDataQueryInternal(req, SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeFastLastDataQueryForOnePrefixPath(
+      final TSFastLastDataQueryForOnePrefixPathReq req) {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    try {
+      final long queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // 1. Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
+
+      final PartialPath prefixPath = new PartialPath(req.getPrefixes().toArray(new String[0]));
+      if (prefixPath.hasWildcard()) {
+        RpcUtils.getTSExecuteStatementResp(
+            new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                .setMessage(
+                    "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards."));
+      }
+
+      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> resultMap = new HashMap<>();
+      int sensorNum = 0;
+
+      final String prefixString = prefixPath.toString();
+      for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
+        if (!prefixString.startsWith(region.getDatabaseFullPath())
+            && !region.getDatabaseFullPath().startsWith(prefixString)) {
+          continue;
+        }
+        sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
+      }
+
+      // 2.DATA_NODE_SCHEMA_CACHE.getLastCache()
+      if (!DataNodeSchemaCache.getInstance().getDeviceSchemaCache().getLastCache(resultMap)) {
+        // 2.1 any sensor miss cache, construct last query sql, then return
+        return executeLastDataQueryInternal(convert(req), SELECT_RESULT);
+      }
+
+      // 2.2 all sensors hit cache, return response ~= 20ms
+      final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
+
+      for (final Map.Entry<String, Map<PartialPath, Map<String, TimeValuePair>>> result :
+          resultMap.entrySet()) {
+        for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> device2MeasurementLastEntry :
+            result.getValue().entrySet()) {
+          final String deviceWithSeparator =
+              device2MeasurementLastEntry.getKey() + TsFileConstant.PATH_SEPARATOR;
+          for (final Map.Entry<String, TimeValuePair> measurementLastEntry :
+              device2MeasurementLastEntry.getValue().entrySet()) {
+            final TimeValuePair tvPair = measurementLastEntry.getValue();
+            if (tvPair != DeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+              LastQueryUtil.appendLastValue(
+                  builder,
+                  tvPair.getTimestamp(),
+                  new Binary(
+                      deviceWithSeparator + measurementLastEntry.getKey(),
+                      TSFileConfig.STRING_CHARSET),
+                  tvPair.getValue().getStringValue(),
+                  tvPair.getValue().getDataType().name());
+            }
+          }
+        }
+      }
+
+      final TSExecuteStatementResp resp =
+          createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
+      if (builder.isEmpty()) {
+        resp.setQueryResult(Collections.emptyList());
+      } else {
+        resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
+      }
+
+      resp.setMoreData(false);
+      return resp;
+    } catch (final Exception e) {
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
+    }
+  }
+
+  private TSLastDataQueryReq convert(final TSFastLastDataQueryForOnePrefixPathReq req) {
+    TSLastDataQueryReq tsLastDataQueryReq =
+        new TSLastDataQueryReq(
+            req.sessionId,
+            Collections.singletonList(String.join(".", req.getPrefixes()) + ".**"),
+            Long.MIN_VALUE,
+            req.statementId);
+    tsLastDataQueryReq.setFetchSize(req.fetchSize);
+    tsLastDataQueryReq.setEnableRedirectQuery(req.enableRedirectQuery);
+    tsLastDataQueryReq.setLegalPathNodes(true);
+    tsLastDataQueryReq.setTimeout(req.timeout);
+    return tsLastDataQueryReq;
   }
 
   @Override

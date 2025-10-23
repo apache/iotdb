@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.Inferenc
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -185,6 +186,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -299,6 +301,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeGlobalTimeFilter(analysis, queryStatement);
 
       if (queryStatement.isLastQuery()) {
+        context.generateGlobalTimeFilter(analysis);
         return analyzeLastQuery(queryStatement, analysis, schemaTree, context);
       }
 
@@ -532,7 +535,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       context.setFetchSchemaCost(schemaFetchCost);
       QueryPlanCostMetricSet.getInstance().recordPlanCost(SCHEMA_FETCHER, schemaFetchCost);
     }
-
     analysis.setSchemaTree(schemaTree);
     return schemaTree;
   }
@@ -600,48 +602,93 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       selectExpressions.add(resultColumn.getExpression());
     }
-    analyzeLastSource(analysis, selectExpressions, schemaTree, context);
-
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
 
-    // fetch partition information
-    analyzeDataPartition(analysis, queryStatement, schemaTree, context);
-
-    return analysis;
+    return analyzeLastSourceAndDataPartition(analysis, selectExpressions, schemaTree, context);
   }
 
-  private void analyzeLastSource(
+  private Analysis analyzeLastSourceAndDataPartition(
       Analysis analysis,
       List<Expression> selectExpressions,
       ISchemaTree schemaTree,
       MPPQueryContext context) {
-    Set<Expression> sourceExpressions = new LinkedHashSet<>();
-    Set<Expression> lastQueryBaseExpressions = new LinkedHashSet<>();
+
+    // For fetch data partition
+    Set<String> allDeviceSet = new HashSet<>();
+
+    // For LogicalPlan
+    Set<String> deviceExistViewSet = new HashSet<>();
+    Map<String, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
     Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
 
+    Ordering timeseriesOrdering = analysis.getTimeseriesOrderingForLastQuery();
+
+    boolean hasAliasView = false;
     for (Expression selectExpression : selectExpressions) {
       for (Expression lastQuerySourceExpression :
           bindSchemaForExpression(selectExpression, schemaTree, context)) {
         if (lastQuerySourceExpression instanceof TimeSeriesOperand) {
-          lastQueryBaseExpressions.add(lastQuerySourceExpression);
-          sourceExpressions.add(lastQuerySourceExpression);
-        } else {
-          if (lastQueryNonWritableViewSourceExpressionMap == null) {
-            lastQueryNonWritableViewSourceExpressionMap = new HashMap<>();
+          TimeSeriesOperand timeSeriesOperand = (TimeSeriesOperand) lastQuerySourceExpression;
+          MeasurementPath outputPath =
+              (MeasurementPath)
+                  (timeSeriesOperand.isViewExpression()
+                      ? timeSeriesOperand.getViewPath()
+                      : timeSeriesOperand.getPath());
+          String actualDeviceID =
+              ExpressionAnalyzer.getDeviceNameInSourceExpression(timeSeriesOperand);
+          String outputDeviceID =
+              timeSeriesOperand.isViewExpression() ? outputPath.getDevice() : actualDeviceID;
+          if (timeSeriesOperand.isViewExpression()) {
+            deviceExistViewSet.add(outputDeviceID);
+            if (!hasAliasView) {
+              allDeviceSet.addAll(outputPathToSourceExpressionMap.keySet());
+              hasAliasView = true;
+            }
+            allDeviceSet.add(actualDeviceID);
+          } else if (hasAliasView) {
+            allDeviceSet.add(actualDeviceID);
           }
+          // If we use actual deviceId, it may overwrite other expression of same measurement in
+          // Map<String, Expression>.
+          outputPathToSourceExpressionMap
+              .computeIfAbsent(
+                  outputDeviceID,
+                  k ->
+                      timeseriesOrdering != null
+                          ? new TreeMap<>(timeseriesOrdering.getStringComparator())
+                          : new LinkedHashMap<>())
+              .put(outputPath.getMeasurement(), timeSeriesOperand);
+        } else {
+          lastQueryNonWritableViewSourceExpressionMap =
+              lastQueryNonWritableViewSourceExpressionMap == null
+                  ? new HashMap<>()
+                  : lastQueryNonWritableViewSourceExpressionMap;
           List<Expression> sourceExpressionsOfNonWritableView =
               searchSourceExpressions(lastQuerySourceExpression);
           lastQueryNonWritableViewSourceExpressionMap.putIfAbsent(
               lastQuerySourceExpression, sourceExpressionsOfNonWritableView);
-          sourceExpressions.addAll(sourceExpressionsOfNonWritableView);
+          for (Expression expression : sourceExpressionsOfNonWritableView) {
+            allDeviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
+          }
         }
       }
     }
+    if (allDeviceSet.isEmpty()) {
+      allDeviceSet = outputPathToSourceExpressionMap.keySet();
+    } else if (!hasAliasView) {
+      allDeviceSet.addAll(outputPathToSourceExpressionMap.keySet());
+    }
 
-    analysis.setSourceExpressions(sourceExpressions);
-    analysis.setLastQueryBaseExpressions(lastQueryBaseExpressions);
+    analysis.setShouldHaveSourceExpression(!allDeviceSet.isEmpty());
+    analysis.setLastQueryOutputPathToSourceExpressionMap(outputPathToSourceExpressionMap);
+    analysis.setDeviceExistViewSet(
+        deviceExistViewSet.isEmpty() ? Collections.emptySet() : deviceExistViewSet);
     analysis.setLastQueryNonWritableViewSourceExpressionMap(
         lastQueryNonWritableViewSourceExpressionMap);
+
+    DataPartition dataPartition = fetchDataPartitionByDevices(allDeviceSet, schemaTree, context);
+    analysis.setDataPartitionInfo(dataPartition);
+    return analysis;
   }
 
   private void updateSchemaTreeByViews(
@@ -3184,13 +3231,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       updateSchemaTreeByViews(analysis, schemaTree, context);
       logger.debug("[EndFetchSchema]]");
 
-      analyzeLastSource(
+      analyzeLastSourceAndDataPartition(
           analysis,
           Collections.singletonList(
               new TimeSeriesOperand(showTimeSeriesStatement.getPathPattern())),
           schemaTree,
           context);
-      analyzeDataPartition(analysis, new QueryStatement(), schemaTree, context);
     }
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
@@ -3563,6 +3609,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     analysis.setSchemaTree(schemaTree);
+    context.setReleaseSchemaTreeAfterAnalyzing(false);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
 

@@ -457,8 +457,7 @@ public class QueryExecution implements IQueryExecution {
   private void dealWithException(Throwable t) throws IoTDBException {
     stateMachine.transitionToFailed(t);
     if (stateMachine.getFailureStatus() != null) {
-      throw new IoTDBException(
-          stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+      throw new IoTDBException(stateMachine.getFailureStatus());
     } else if (stateMachine.getFailureException() != null) {
       Throwable rootCause = stateMachine.getFailureException();
       throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -605,8 +604,12 @@ public class QueryExecution implements IQueryExecution {
 
     // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus() is also
     // not null. We should only return the failure status when QueryExecution is in Done state.
-    if (state.isDone() && stateMachine.getFailureStatus() != null) {
-      tsstatus = stateMachine.getFailureStatus();
+    if (state.isDone()) {
+      if (analysis.getFailStatus() != null) {
+        tsstatus = analysis.getFailStatus();
+      } else if (stateMachine.getFailureStatus() != null) {
+        tsstatus = stateMachine.getFailureStatus();
+      }
     }
 
     // collect redirect info to client for writing

@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
@@ -48,7 +49,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -1580,10 +1581,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus clearCache() {
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
+        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache(clearCacheOptions))
         : status;
   }
 
@@ -2347,7 +2348,7 @@ public class ConfigManager implements IManager {
   public TSStatus extendRegion(TExtendRegionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? procedureManager.extendRegion(req)
+        ? procedureManager.extendRegions(req)
         : status;
   }
 
@@ -2355,7 +2356,7 @@ public class ConfigManager implements IManager {
   public TSStatus removeRegion(TRemoveRegionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? procedureManager.removeRegion(req)
+        ? procedureManager.removeRegions(req)
         : status;
   }
 
@@ -2560,6 +2561,23 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterQuotaManager.getThrottleQuota()
         : new TThrottleQuotaResp(status);
+  }
+
+  @Override
+  public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    pipeManager
+        .getPipeRuntimeCoordinator()
+        .parseHeartbeat(
+            dataNodeId,
+            resp.getPipeMetaList(),
+            resp.getPipeCompletedList(),
+            resp.getPipeRemainingEventCountList(),
+            resp.getPipeRemainingTimeList());
+    return StatusUtils.OK;
   }
 
   @Override

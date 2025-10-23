@@ -154,7 +154,7 @@ public class IoTDBRemoveDataNodeITFramework {
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      // Insert data in tree model
+      // Insert data
       statement.execute(TREE_MODEL_INSERTION);
 
       Map<Integer, Set<Integer>> regionMap = getDataRegionMap(statement);

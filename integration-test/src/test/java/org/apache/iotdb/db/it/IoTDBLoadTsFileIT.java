@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -36,6 +37,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -79,11 +81,17 @@ public class IoTDBLoadTsFileIT {
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDatanodeMemoryProportion("100:1000:100:100:100:100");
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
         .setConnectionTimeoutInMS(connectionTimeoutInMS)
         .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(loadTsFileAnalyzeSchemaMemorySizeInBytes);
+
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -220,6 +228,9 @@ public class IoTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
+      for (int i = 0; i < 1000; i++) {
+        generator.generateData(SchemaConfig.DEVICE_4, 1, PARTITION_INTERVAL - 10, true);
+      }
       writtenPoint2 = generator.getTotalNumber();
     }
 
@@ -248,6 +259,86 @@ public class IoTDBLoadTsFileIT {
           String.format(
               "delete timeseries %s.%s",
               SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementId()));
+    }
+  }
+
+  @Test
+  public void testLoadAcrossMultipleTimePartitions() throws Exception {
+    registerSchema();
+
+    final long writtenPoint1;
+    // device 0, device 1, sg 0
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_1,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
+      for (int i = 0; i < 1000; i++) {
+        generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL - 10, false);
+      }
+      for (int i = 0; i < 1000; i++) {
+        generator.generateData(SchemaConfig.DEVICE_1, 1, PARTITION_INTERVAL - 10, true);
+      }
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    final long writtenPoint2;
+    // device 2, device 3, device4, sg 1
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
+      for (int i = 0; i < 1000; i++) {
+        generator.generateData(SchemaConfig.DEVICE_2, 1, PARTITION_INTERVAL - 10, false);
+      }
+      for (int i = 0; i < 1000; i++) {
+        generator.generateData(SchemaConfig.DEVICE_3, 1, PARTITION_INTERVAL - 10, false);
+      }
+      for (int i = 0; i < 1000; i++) {
+        generator.generateData(SchemaConfig.DEVICE_4, 1, PARTITION_INTERVAL - 10, true);
+      }
+      writtenPoint2 = generator.getTotalNumber();
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          Assert.assertEquals(writtenPoint2, sg2Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
     }
   }
 
@@ -780,9 +871,11 @@ public class IoTDBLoadTsFileIT {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4,
+          new ArrayList<>(Arrays.asList(SchemaConfig.MEASUREMENT_30, SchemaConfig.MEASUREMENT_40)));
       generator.generateData(SchemaConfig.DEVICE_2, 100, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 100, PARTITION_INTERVAL / 10_000, false);
+      generator.generateDeletion(SchemaConfig.DEVICE_3);
       generator.generateData(SchemaConfig.DEVICE_4, 100, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_2, 2);
       generator.generateDeletion(SchemaConfig.DEVICE_4, 2);
@@ -790,6 +883,7 @@ public class IoTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.DEVICE_4, 100, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_2, 2);
       generator.generateDeletion(SchemaConfig.DEVICE_4, 2);
+      generator.generateDeletion(SchemaConfig.DEVICE_4, SchemaConfig.MEASUREMENT_30);
       writtenPoint2 = generator.getTotalNumber();
     }
 
@@ -809,6 +903,10 @@ public class IoTDBLoadTsFileIT {
           Assert.fail("This ResultSet is empty.");
         }
       }
+
+      TestUtils.assertSingleResultSetEqual(
+          TestUtils.executeQueryWithRetry(statement, "count timeSeries"),
+          Collections.singletonMap("count(timeseries)", "18"));
     }
   }
 
@@ -901,6 +999,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatch() throws Exception {
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =

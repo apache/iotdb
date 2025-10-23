@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -90,6 +91,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.LongConsumer;
 import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
@@ -584,7 +586,7 @@ public class IoTDBDescriptor {
                 "degree_of_query_parallelism", Integer.toString(conf.getDegreeOfParallelism()))));
 
     if (conf.getDegreeOfParallelism() <= 0) {
-      conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+      conf.setDegreeOfParallelism(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
     conf.setMergeThresholdOfExplainAnalyze(
@@ -801,7 +803,7 @@ public class IoTDBDescriptor {
                 "dn_rpc_max_concurrent_client_num",
                 Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
     if (maxConcurrentClientNum <= 0) {
-      maxConcurrentClientNum = 65535;
+      maxConcurrentClientNum = 1000;
     }
 
     conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
@@ -955,6 +957,10 @@ public class IoTDBDescriptor {
     }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
+    conf.setPipeTaskThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
 
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
@@ -1076,11 +1082,11 @@ public class IoTDBDescriptor {
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // The buffer for sort operator to calculate
-    conf.setSortBufferSize(
-        Long.parseLong(
-            properties
-                .getProperty("sort_buffer_size_in_bytes", Long.toString(conf.getSortBufferSize()))
-                .trim()));
+
+    loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+
+    loadFixedSizeLimitForQuery(
+        properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
 
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
@@ -1091,6 +1097,11 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
+    conf.setSchemaThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_thread_count", Integer.toString(conf.getSchemaThreadCount()))));
+
     loadIoTConsensusProps(properties);
     loadPipeConsensusProps(properties);
 
@@ -1098,6 +1109,19 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+  }
+
+  private void loadFixedSizeLimitForQuery(
+      TrimProperties properties, String name, LongConsumer setFunction) {
+    long defaultValue =
+        Math.min(
+            32 * 1024 * 1024L,
+            conf.getAllocateMemoryForOperators() / conf.getQueryThreadCount() / 2);
+    long size = Long.parseLong(properties.getProperty(name, Long.toString(defaultValue)));
+    if (size <= 0) {
+      size = defaultValue;
+    }
+    setFunction.accept(size);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -1768,6 +1792,31 @@ public class IoTDBDescriptor {
                     "max_tsblock_line_number",
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "max_tsblock_line_number"))));
+
+    String booleanCompressor = properties.getProperty("boolean_compressor");
+    if (booleanCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setBooleanCompression(booleanCompressor);
+    }
+    String int32Compressor = properties.getProperty("int32_compressor");
+    if (int32Compressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setInt32Compression(int32Compressor);
+    }
+    String int64Compressor = properties.getProperty("int64_compressor");
+    if (int64Compressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setInt64Compression(int64Compressor);
+    }
+    String floatCompressor = properties.getProperty("float_compressor");
+    if (floatCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setFloatCompression(floatCompressor);
+    }
+    String doubleCompressor = properties.getProperty("double_compressor");
+    if (doubleCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setDoubleCompression(doubleCompressor);
+    }
+    String textCompressor = properties.getProperty("text_compressor");
+    if (textCompressor != null) {
+      TSFileDescriptor.getInstance().getConfig().setTextCompression(textCompressor);
+    }
   }
 
   // Mqtt related
@@ -2033,6 +2082,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "tvlist_sort_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
+
+      // sort_buffer_size_in_bytes
+      loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+
+      loadFixedSizeLimitForQuery(
+          properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2386,11 +2441,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileTabletConversionBatchMemorySizeInBytes()))));
-    conf.setLoadTsFileTabletConversionThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "load_tsfile_tablet_conversion_thread_count",
-                String.valueOf(conf.getLoadTsFileTabletConversionThreadCount()))));
     conf.setLoadChunkMetadataMemorySizeInBytes(
         Long.parseLong(
             Optional.ofNullable(
@@ -2448,6 +2498,12 @@ public class IoTDBDescriptor {
         loadActiveListeningCheckIntervalSeconds <= 0
             ? conf.getLoadActiveListeningCheckIntervalSeconds()
             : loadActiveListeningCheckIntervalSeconds);
+
+    conf.setLoadMeasurementIdCacheSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_measurement_id_cache_size_in_bytes",
+                Long.toString(conf.getLoadMeasurementIdCacheSizeInBytes()))));
 
     conf.setLoadActiveListeningMaxThreadNum(
         Integer.parseInt(
@@ -2513,6 +2569,7 @@ public class IoTDBDescriptor {
                 "load_active_listening_enable",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_active_listening_enable"))));
+
     conf.setLoadActiveListeningDirs(
         Arrays.stream(
                 properties
@@ -2530,10 +2587,17 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+
+    conf.setLoadTsFileSpiltPartitionMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_split_partition_max_size",
+                Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
+    PipePeriodicalLogReducer.update();
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -2672,7 +2736,7 @@ public class IoTDBDescriptor {
                 "continuous_query_thread_num",
                 Integer.toString(conf.getContinuousQueryThreadNum()))));
     if (conf.getContinuousQueryThreadNum() <= 0) {
-      conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
+      conf.setContinuousQueryThreadNum(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
     conf.setContinuousQueryMinimumEveryInterval(

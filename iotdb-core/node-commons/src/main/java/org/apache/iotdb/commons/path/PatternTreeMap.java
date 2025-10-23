@@ -20,6 +20,9 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.ArrayList;
@@ -30,7 +33,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 @NotThreadSafe
-public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>> {
+public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>>
+    implements Accountable {
+  private final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(PatternTreeMap.class);
   private final PathPatternNode<V, VSerializer> root;
   private final Supplier<? extends Set<V>> supplier;
   private final BiConsumer<V, Set<V>> appendFunction;
@@ -54,6 +59,10 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
     this.appendFunction = appendFunction;
     this.deleteFunction = deleteFunction;
     this.serializer = serializer;
+  }
+
+  public boolean isEmpty() {
+    return root.isLeaf() && root.getValues().isEmpty();
   }
 
   /**
@@ -245,5 +254,10 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
     for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(deviceNodes[pos + 1])) {
       searchDeviceOverlapped(child, deviceNodes, pos + 1, resultSet);
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE + RamUsageEstimator.sizeOfObject(root);
   }
 }

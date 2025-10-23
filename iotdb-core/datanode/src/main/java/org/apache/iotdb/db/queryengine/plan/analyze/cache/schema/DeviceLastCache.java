@@ -1,0 +1,227 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.TsPrimitiveType;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
+
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+@ThreadSafe
+public class DeviceLastCache {
+  static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(DeviceLastCache.class)
+          + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
+
+  public static final TsPrimitiveType EMPTY_PRIMITIVE_TYPE =
+      new TsPrimitiveType() {
+        @Override
+        public void setObject(Object o) {
+          // Do nothing
+        }
+
+        @Override
+        public void reset() {
+          // Do nothing
+        }
+
+        @Override
+        public int getSize() {
+          return 0;
+        }
+
+        @Override
+        public Object getValue() {
+          return null;
+        }
+
+        @Override
+        public String getStringValue() {
+          return null;
+        }
+
+        @Override
+        public TSDataType getDataType() {
+          return null;
+        }
+      };
+
+  /** This means that the tv pair has been put, and the value is null */
+  public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
+      new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
+
+  /** This means that the tv pair has been declared, and is ready for the next put. */
+  private static final TimeValuePair PLACEHOLDER_TIME_VALUE_PAIR =
+      new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
+
+  // Time is seen as "" as a measurement
+  private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
+
+  int initOrInvalidate(final String[] measurements, final boolean isInvalidate) {
+    final AtomicInteger diff = new AtomicInteger(0);
+
+    for (final String measurement : measurements) {
+      if (Objects.isNull(measurement)) {
+        continue;
+      }
+      final TimeValuePair newPair = isInvalidate ? null : PLACEHOLDER_TIME_VALUE_PAIR;
+
+      measurement2CachedLastMap.compute(
+          measurement,
+          (measurementKey, tvPair) -> {
+            if (Objects.isNull(newPair)) {
+              diff.addAndGet(
+                  -((int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(tvPair)));
+              return null;
+            }
+            if (Objects.isNull(tvPair)) {
+              diff.addAndGet(
+                  (int) RamUsageEstimator.sizeOf(measurement)
+                      + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+              return newPair;
+            }
+            return tvPair;
+          });
+    }
+    return diff.get();
+  }
+
+  int tryUpdate(
+      final @Nonnull String[] measurements, final @Nonnull TimeValuePair[] timeValuePairs) {
+    return tryUpdate(measurements, timeValuePairs, false);
+  }
+
+  int tryUpdate(
+      final @Nonnull String[] measurements,
+      final @Nonnull TimeValuePair[] timeValuePairs,
+      final boolean invalidateNull) {
+    final AtomicInteger diff = new AtomicInteger(0);
+    long lastTime = Long.MIN_VALUE;
+
+    for (int i = 0; i < measurements.length; ++i) {
+      if (Objects.isNull(timeValuePairs[i])) {
+        if (invalidateNull) {
+          measurement2CachedLastMap.remove(measurements[i]);
+        }
+        continue;
+      }
+
+      final int finalI = i;
+      if (lastTime < timeValuePairs[i].getTimestamp()) {
+        lastTime = timeValuePairs[i].getTimestamp();
+      }
+      measurement2CachedLastMap.computeIfPresent(
+          measurements[i],
+          (measurement, tvPair) -> {
+            if (tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
+              diff.addAndGet(getDiffSize(tvPair, timeValuePairs[finalI]));
+              return timeValuePairs[finalI];
+            }
+            return tvPair;
+          });
+    }
+    final long finalLastTime = lastTime;
+    measurement2CachedLastMap.computeIfPresent(
+        "",
+        (time, tvPair) ->
+            tvPair.getTimestamp() < finalLastTime
+                ? new TimeValuePair(finalLastTime, EMPTY_PRIMITIVE_TYPE)
+                : tvPair);
+    return diff.get();
+  }
+
+  @GuardedBy("DataRegionInsertLock#writeLock")
+  int invalidate(final String measurement) {
+    final AtomicInteger diff = new AtomicInteger();
+    final AtomicLong time = new AtomicLong();
+    measurement2CachedLastMap.computeIfPresent(
+        measurement,
+        (s, timeValuePair) -> {
+          diff.set((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
+          time.set(timeValuePair.getTimestamp());
+          return null;
+        });
+    if (diff.get() == 0) {
+      return 0;
+    }
+    measurement2CachedLastMap.computeIfPresent(
+        "",
+        (s, timeValuePair) -> {
+          if (timeValuePair.getTimestamp() <= time.get()) {
+            diff.addAndGet(getTVPairEntrySize(timeValuePair));
+            return null;
+          }
+          return timeValuePair;
+        });
+
+    return diff.get();
+  }
+
+  private int getTVPairEntrySize(final TimeValuePair tvPair) {
+    return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + ((Objects.isNull(tvPair)
+                || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
+                || tvPair == EMPTY_TIME_VALUE_PAIR)
+            ? 0
+            : tvPair.getSize());
+  }
+
+  @Nullable
+  TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
+    final TimeValuePair result = measurement2CachedLastMap.get(measurement);
+    return result != PLACEHOLDER_TIME_VALUE_PAIR ? result : null;
+  }
+
+  int estimateSize() {
+    return INSTANCE_SIZE
+        + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * measurement2CachedLastMap.size()
+        + measurement2CachedLastMap.values().stream()
+            .mapToInt(TimeValuePair::getSize)
+            .reduce(0, Integer::sum);
+  }
+
+  private static int getDiffSize(
+      final TimeValuePair oldTimeValuePair, final TimeValuePair newTimeValuePair) {
+    if (oldTimeValuePair == EMPTY_TIME_VALUE_PAIR
+        || oldTimeValuePair == PLACEHOLDER_TIME_VALUE_PAIR) {
+      return newTimeValuePair.getSize();
+    }
+    final TsPrimitiveType oldValue = oldTimeValuePair.getValue();
+    final TsPrimitiveType newValue = newTimeValuePair.getValue();
+    if (oldValue == null) {
+      return newValue == null ? 0 : newValue.getSize();
+    } else if (oldValue instanceof TsPrimitiveType.TsBinary) {
+      return (newValue == null ? 0 : newValue.getSize()) - oldValue.getSize();
+    } else {
+      return newValue == null ? -oldValue.getSize() : 0;
+    }
+  }
+}

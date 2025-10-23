@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.pipe.metric;
 
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSink;
 
 import java.util.List;
 import java.util.Map;
@@ -35,33 +35,32 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class PipeConsensusSyncLagManager {
   long userWriteProgress = 0;
   long minReplicateProgress = Long.MAX_VALUE;
-  List<ConsensusPipeConnector> consensusPipeConnectorList = new CopyOnWriteArrayList<>();
+  List<ConsensusPipeSink> consensusPipeSinkList = new CopyOnWriteArrayList<>();
 
   private void updateReplicateProgress() {
     minReplicateProgress = Long.MAX_VALUE;
     // if there isn't a consensus pipe task, replicate progress is Long.MAX_VALUE.
-    if (consensusPipeConnectorList.isEmpty()) {
+    if (consensusPipeSinkList.isEmpty()) {
       return;
     }
     // else we find the minimum progress in all consensus pipe task.
-    consensusPipeConnectorList.forEach(
-        consensusPipeConnector ->
+    consensusPipeSinkList.forEach(
+        consensusPipeSink ->
             minReplicateProgress =
                 Math.min(
-                    minReplicateProgress,
-                    consensusPipeConnector.getConsensusPipeReplicateProgress()));
+                    minReplicateProgress, consensusPipeSink.getConsensusPipeReplicateProgress()));
   }
 
   private void updateUserWriteProgress() {
     // if there isn't a consensus pipe task, user write progress is 0.
-    if (consensusPipeConnectorList.isEmpty()) {
+    if (consensusPipeSinkList.isEmpty()) {
       userWriteProgress = 0;
       return;
     }
     // since the user write progress of different consensus pipes on the same DataRegion is the
     // same, we only need to take out one Connector to calculate
     try {
-      ConsensusPipeConnector connector = consensusPipeConnectorList.get(0);
+      ConsensusPipeSink connector = consensusPipeSinkList.get(0);
       userWriteProgress = connector.getConsensusPipeCommitProgress();
     } catch (Exception e) {
       // if removing the last connector happens after empty check, we may encounter
@@ -70,12 +69,12 @@ public class PipeConsensusSyncLagManager {
     }
   }
 
-  public void addConsensusPipeConnector(ConsensusPipeConnector consensusPipeConnector) {
-    consensusPipeConnectorList.add(consensusPipeConnector);
+  public void addConsensusPipeConnector(ConsensusPipeSink consensusPipeSink) {
+    consensusPipeSinkList.add(consensusPipeSink);
   }
 
-  public void removeConsensusPipeConnector(ConsensusPipeConnector connector) {
-    consensusPipeConnectorList.remove(connector);
+  public void removeConsensusPipeConnector(ConsensusPipeSink connector) {
+    consensusPipeSinkList.remove(connector);
   }
 
   /**

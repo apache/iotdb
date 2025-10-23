@@ -255,6 +255,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     return this;
   }
@@ -309,6 +314,16 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     return this;
   }
@@ -357,7 +372,33 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    return this;
+  }
+
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     return this;
   }
 }

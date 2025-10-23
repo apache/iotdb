@@ -24,82 +24,165 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_KEY;
 
 public abstract class PipePattern {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePattern.class);
 
-  protected final String pattern;
-
-  protected PipePattern(final String pattern) {
-    this.pattern = pattern != null ? pattern : getDefaultPattern();
-  }
-
-  public String getPattern() {
-    return pattern;
-  }
-
-  public boolean isRoot() {
-    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
+  public static <T> List<T> applyIndexesOnList(
+      final int[] filteredIndexes, final List<T> originalList) {
+    return Objects.nonNull(originalList)
+        ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
+        : null;
   }
 
   /**
-   * Interpret from source parameters and get a pipe pattern.
+   * Interpret from source parameters and get a {@link PipePattern}.
    *
-   * @return The interpreted {@link PipePattern} which is not null.
+   * @return The interpreted {@link PipePattern} which is not {@code null}.
    */
   public static PipePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
     final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
-
-    // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path,
-    // ignoring the other 2 parameters.
-    if (path != null) {
-      return new IoTDBPipePattern(path);
-    }
-
     final String pattern =
         sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
 
-    // 2. Otherwise, If "source.pattern" is specified, it will be interpreted
-    // according to "source.pattern.format".
+    // 1. If both "source.path" and "source.pattern" are specified, their union will be used.
+    if (path != null && pattern != null) {
+      final List<PipePattern> result = new ArrayList<>();
+      // Parse "source.path" as IoTDB-style path.
+      result.addAll(parseMultiplePatterns(path, IoTDBPipePattern::new));
+      // Parse "source.pattern" using the helper method.
+      result.addAll(parsePatternsFromPatternParameter(pattern, sourceParameters));
+      return buildUnionPattern(result);
+    }
+
+    // 2. If only "source.path" is specified, it will be interpreted as an IoTDB-style path.
+    if (path != null) {
+      return buildUnionPattern(parseMultiplePatterns(path, IoTDBPipePattern::new));
+    }
+
+    // 3. If only "source.pattern" is specified, parse it using the helper method.
     if (pattern != null) {
-      final String patternFormat =
-          sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY);
+      return buildUnionPattern(parsePatternsFromPatternParameter(pattern, sourceParameters));
+    }
 
-      // If "source.pattern.format" is not specified, use prefix format by default.
-      if (patternFormat == null) {
-        return new PrefixPipePattern(pattern);
-      }
+    // 4. If neither "source.path" nor "source.pattern" is specified,
+    // this pipe source will match all data.
+    return buildUnionPattern(Collections.singletonList(new IoTDBPipePattern(null)));
+  }
 
-      switch (patternFormat.toLowerCase()) {
-        case EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE:
-          return new IoTDBPipePattern(pattern);
-        case EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE:
-          return new PrefixPipePattern(pattern);
-        default:
-          LOGGER.info(
-              "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
-          return new PrefixPipePattern(pattern);
+  /**
+   * A private helper method to parse a list of {@link PipePattern}s from the "pattern" parameter,
+   * considering its "format".
+   *
+   * @param pattern The pattern string to parse.
+   * @param sourceParameters The source parameters to read the format from.
+   * @return A list of parsed {@link PipePattern}s.
+   */
+  private static List<PipePattern> parsePatternsFromPatternParameter(
+      final String pattern, final PipeParameters sourceParameters) {
+    final String patternFormat =
+        sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY);
+
+    // If "source.pattern.format" is not specified, use prefix format by default.
+    if (patternFormat == null) {
+      return parseMultiplePatterns(pattern, PrefixPipePattern::new);
+    }
+
+    switch (patternFormat.toLowerCase()) {
+      case EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE:
+        return parseMultiplePatterns(pattern, IoTDBPipePattern::new);
+      case EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE:
+        return parseMultiplePatterns(pattern, PrefixPipePattern::new);
+      default:
+        LOGGER.info(
+            "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
+        return parseMultiplePatterns(pattern, PrefixPipePattern::new);
+    }
+  }
+
+  public static List<PipePattern> parseMultiplePatterns(
+      final String pattern, final Function<String, PipePattern> patternSupplier) {
+    if (pattern.isEmpty()) {
+      return Collections.singletonList(patternSupplier.apply(pattern));
+    }
+
+    final List<PipePattern> patterns = new ArrayList<>();
+    final StringBuilder currentPattern = new StringBuilder();
+    boolean inBackticks = false;
+
+    for (final char c : pattern.toCharArray()) {
+      if (c == '`') {
+        inBackticks = !inBackticks;
+        currentPattern.append(c);
+      } else if (c == ',' && !inBackticks) {
+        final String singlePattern = currentPattern.toString().trim();
+        if (!singlePattern.isEmpty()) {
+          patterns.add(patternSupplier.apply(singlePattern));
+        }
+        currentPattern.setLength(0);
+      } else {
+        currentPattern.append(c);
       }
     }
 
-    // 3. If neither "source.path" nor "source.pattern" is specified,
-    // this pipe source will match all data.
-    return new IoTDBPipePattern(null);
+    final String lastPattern = currentPattern.toString().trim();
+    if (!lastPattern.isEmpty()) {
+      patterns.add(patternSupplier.apply(lastPattern));
+    }
+
+    return patterns;
   }
 
-  public abstract String getDefaultPattern();
+  /**
+   * A private helper method to build the most specific UnionPipePattern possible. If all patterns
+   * are IoTDBPipePattern, it returns an IoTDBUnionPipePattern. Otherwise, it returns a general
+   * UnionPipePattern.
+   */
+  public static PipePattern buildUnionPattern(final List<PipePattern> patterns) {
+    // Check if all instances in the list are of type IoTDBPipePattern
+    boolean allIoTDB = true;
+    for (final PipePattern p : patterns) {
+      if (!(p instanceof IoTDBPipePattern)) {
+        allIoTDB = false;
+        break;
+      }
+    }
+
+    if (allIoTDB) {
+      final List<IoTDBPipePattern> iotdbPatterns = new ArrayList<>(patterns.size());
+      for (final PipePattern p : patterns) {
+        iotdbPatterns.add((IoTDBPipePattern) p);
+      }
+      return new UnionIoTDBPipePattern(iotdbPatterns);
+    } else {
+      // If there's a mix of pattern types, use the general UnionPipePattern
+      return new UnionPipePattern(patterns);
+    }
+  }
+
+  public abstract boolean isSingle();
+
+  public abstract String getPattern();
+
+  public abstract boolean isRoot();
 
   /** Check if this pattern is legal. Different pattern type may have different rules. */
   public abstract boolean isLegal();
@@ -133,9 +216,4 @@ public abstract class PipePattern {
    * <p>NOTE: this is only called when {@link PipePattern#mayOverlapWithDevice(String)} is true.
    */
   public abstract boolean matchesMeasurement(final String device, final String measurement);
-
-  @Override
-  public String toString() {
-    return "{pattern='" + pattern + "'}";
-  }
 }

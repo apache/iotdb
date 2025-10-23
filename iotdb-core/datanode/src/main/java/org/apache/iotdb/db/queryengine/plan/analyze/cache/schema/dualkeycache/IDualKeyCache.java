@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TestOnly;
-
 import javax.annotation.concurrent.GuardedBy;
 
-import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 /**
  * This interfaces defines the behaviour of a dual key cache. A dual key cache supports manage cache
@@ -37,31 +37,51 @@ import java.util.List;
 public interface IDualKeyCache<FK, SK, V> {
 
   /** Get the cache value with given first key and second key. */
-  V get(FK firstKey, SK secondKey);
+  V get(final FK firstKey, final SK secondKey);
+
+  <R> boolean batchApply(
+      final Map<FK, Map<SK, R>> inputMap, final BiFunction<V, R, Boolean> mappingFunction);
 
   /**
-   * Traverse target cache values via given first key and second keys provided in computation and
-   * execute the defined computation logic. The computation is read only.
-   */
-  void compute(IDualKeyCacheComputation<FK, SK, V> computation);
-
-  /**
-   * Traverse target cache values via given first key and second keys provided in computation and
-   * execute the defined computation logic. Value can be updated in this computation.
-   */
-  void update(IDualKeyCacheUpdating<FK, SK, V> updating);
-
-  /** put the cache value into cache */
-  void put(FK firstKey, SK secondKey, V value);
-
-  /**
-   * Invalidate last cache in datanode schema cache. Do not invalidate time series cache.
+   * Update the existing value. The updater shall return the difference caused by the update,
+   * because we do not want to call "valueSizeComputer" twice, which may include abundant useless
+   * calculations.
    *
-   * @param partialPathList
+   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
+   * the concurrency safety for the value update.
+   *
+   * @param createIfNotExists put the value to cache iff it does not exist,
    */
-  void invalidateLastCache(PartialPath partialPath);
+  void update(
+      final FK firstKey,
+      final SK secondKey,
+      final V value,
+      final ToIntFunction<V> updater,
+      final boolean createIfNotExists);
 
-  void invalidateDataRegionLastCache(String database);
+  /**
+   * Update all the existing value with {@link SK} and a the {@link SK}s matching the given
+   * predicate. The updater shall return the difference caused by the update, because we do not want
+   * to call "valueSizeComputer" twice, which may include abundant useless calculations.
+   *
+   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
+   * the concurrency safety for the value update.
+   */
+  void update(
+      final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater);
+
+  /**
+   * Update all the existing value with {@link SK} and a the {@link SK}s matching the given
+   * predicate. The updater shall return the difference caused by the update, because we do not want
+   * to call "valueSizeComputer" twice, which may include abundant useless calculations.
+   *
+   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
+   * the concurrency safety for the value update.
+   */
+  void update(
+      final Predicate<FK> firstKeyChecker,
+      final Predicate<SK> secondKeyChecker,
+      final ToIntFunction<V> updater);
 
   /**
    * Invalidate all cache values in the cache and clear related cache keys. The cache status and
@@ -70,29 +90,21 @@ public interface IDualKeyCache<FK, SK, V> {
   @GuardedBy("DataNodeSchemaCache#writeLock")
   void invalidateAll();
 
-  /**
-   * Invalidate cache values in the cache and clear related cache keys. The cache status and
-   * statistics won't be clear and they can still be accessed via cache.stats().
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(String database);
-
-  /**
-   * Invalidate cache values in the cache and clear related cache keys. The cache status and
-   * statistics won't be clear and they can still be accessed via cache.stats().
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(List<PartialPath> partialPathList);
-
-  /**
-   * Clean up all data and info of this cache, including cache keys, cache values and cache stats.
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void cleanUp();
-
   /** Return all the current cache status and statistics. */
   IDualKeyCacheStats stats();
 
-  @TestOnly
-  void evictOneEntry();
+  /** remove all entries for firstKey */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(final FK firstKey);
+
+  /** remove matched entry */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(final FK firstKey, final SK secondKey);
+
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(final FK firstKey, final Predicate<SK> secondKeyChecker);
+
+  /** remove all entries matching the firstKey and the secondKey */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(final Predicate<FK> firstKeyChecker, final Predicate<SK> secondKeyChecker);
 }

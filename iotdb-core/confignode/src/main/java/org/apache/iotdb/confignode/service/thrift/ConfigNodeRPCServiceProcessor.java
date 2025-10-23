@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
@@ -215,6 +216,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -911,12 +913,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus clearCache() {
-    return configManager.clearCache();
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
+    return configManager.clearCache(clearCacheOptions);
   }
 
   @Override
-  public TSStatus setConfiguration(TSetConfigurationReq req) throws TException {
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
     return configManager.setConfiguration(req);
   }
 
@@ -926,7 +928,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus stopRepairData() throws TException {
+  public TSStatus stopRepairData() {
     return configManager.stopRepairData();
   }
 
@@ -1297,5 +1299,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TThrottleQuotaResp getThrottleQuota() {
     return configManager.getThrottleQuota();
+  }
+
+  @Override
+  public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
+    return configManager.pushHeartbeat(dataNodeId, resp);
   }
 }

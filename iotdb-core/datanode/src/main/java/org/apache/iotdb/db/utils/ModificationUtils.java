@@ -19,16 +19,19 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -37,7 +40,6 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -158,16 +160,33 @@ public class ModificationUtils {
   // for the index of the deletionList
   public static boolean isPointDeleted(
       long timestamp, List<TimeRange> deletionList, int[] deleteCursor) {
+    return isPointDeleted(timestamp, deletionList, deleteCursor, Ordering.ASC);
+  }
+
+  public static boolean isPointDeleted(
+      long timestamp, List<TimeRange> deletionList, int[] deleteCursor, Ordering ordering) {
     if (deleteCursor.length != 1) {
       throw new IllegalArgumentException("deleteCursor should be an array whose size is 1");
     }
-    while (deletionList != null && deleteCursor[0] < deletionList.size()) {
-      if (deletionList.get(deleteCursor[0]).contains(timestamp)) {
-        return true;
-      } else if (deletionList.get(deleteCursor[0]).getMax() < timestamp) {
-        deleteCursor[0]++;
-      } else {
-        return false;
+    if (ordering.isAscending()) {
+      while (deletionList != null && deleteCursor[0] < deletionList.size()) {
+        if (deletionList.get(deleteCursor[0]).contains(timestamp)) {
+          return true;
+        } else if (deletionList.get(deleteCursor[0]).getMax() < timestamp) {
+          deleteCursor[0]++;
+        } else {
+          return false;
+        }
+      }
+    } else {
+      while (deletionList != null && !deletionList.isEmpty() && deleteCursor[0] >= 0) {
+        if (deletionList.get(deleteCursor[0]).contains(timestamp)) {
+          return true;
+        } else if (deletionList.get(deleteCursor[0]).getMin() >= timestamp) {
+          deleteCursor[0]--;
+        } else {
+          return false;
+        }
       }
     }
     return false;
@@ -195,33 +214,31 @@ public class ModificationUtils {
    * There are some slight differences from that in {@link SettleSelectorImpl}.
    */
   public static boolean isDeviceDeletedByMods(
-      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
+      final PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications,
+      final IDeviceID device,
+      final long startTime,
+      final long endTime)
       throws IllegalPathException {
-    for (Modification modification : modifications) {
-      PartialPath path = modification.getPath();
-      if (path.include(new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
-        return true;
-      }
-    }
-    return false;
+    final List<Modification> mods =
+        modifications.getOverlapped(
+            CompactionPathUtils.getPath(device, AlignedPath.VECTOR_PLACEHOLDER));
+    return mods.stream()
+        .anyMatch(
+            modification -> ((Deletion) modification).getTimeRange().contains(startTime, endTime));
   }
 
-  public static boolean isTimeseriesDeletedByMods(
-      Collection<Modification> modifications,
-      IDeviceID device,
-      String timeseriesId,
-      long startTime,
-      long endTime)
+  public static boolean isTimeSeriesDeletedByMods(
+      final PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications,
+      final IDeviceID device,
+      final String timeSeriesId,
+      final long startTime,
+      final long endTime)
       throws IllegalPathException {
-    for (Modification modification : modifications) {
-      PartialPath path = modification.getPath();
-      if (path.include(new PartialPath(device, timeseriesId))
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
-        return true;
-      }
-    }
-    return false;
+    final List<Modification> mods =
+        modifications.getOverlapped(CompactionPathUtils.getPath(device, timeSeriesId));
+    return mods.stream()
+        .anyMatch(
+            modification -> ((Deletion) modification).getTimeRange().contains(startTime, endTime));
   }
 
   private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {
@@ -298,7 +315,9 @@ public class ModificationUtils {
   }
 
   public static boolean isDeviceDeletedByMods(
-      Collection<Modification> currentModifications, ITimeIndex currentTimeIndex, IDeviceID device)
+      PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> currentModifications,
+      ITimeIndex currentTimeIndex,
+      IDeviceID device)
       throws IllegalPathException {
     return isDeviceDeletedByMods(
         currentModifications,

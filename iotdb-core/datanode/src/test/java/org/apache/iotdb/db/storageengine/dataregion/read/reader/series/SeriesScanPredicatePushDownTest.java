@@ -66,11 +66,11 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(null, null);
 
     // File 1
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 1 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 1 - Chunk 1 - Page 1
@@ -79,14 +79,14 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     TsBlock tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 2
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 2 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 2 - Chunk 1 - Page 1
@@ -97,7 +97,7 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
     // File 2 - Chunk 2
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 2 - Chunk 2 - Page 1
@@ -106,14 +106,14 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 3
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 3 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 3 - Chunk 1 - Page 1
@@ -130,7 +130,7 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
     // (File 3 - Chunk 2) merge (File 4 - Chunk 1)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // (File 3 - Chunk 2 - Page 1) merge (File 4 - Chunk 1 - Page 1)
@@ -145,8 +145,8 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
@@ -166,11 +166,11 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
 
   private void checkFile1Skipped(SeriesScanUtil seriesScanUtil) throws IOException {
     // File 1
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 1 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 1 - Chunk 1 - Page 1
@@ -199,12 +199,12 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
   private void checkFile2Chunk1Skipped(SeriesScanUtil seriesScanUtil) throws IOException {
     // File 1 skipped
     // File 2
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 2 - Chunk 1 skipped
     // File 2 - Chunk 2
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 2 - Chunk 2 - Page 1
@@ -255,11 +255,11 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     // File 1 skipped
     // File 2 skipped
     // File 3
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 3 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentChunkStatistics());
   }
 
@@ -284,12 +284,12 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     // File 1 skipped
     // File 2 skipped
     // File 3
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 3 - Chunk 1 skipped
     // File 3 - Chunk 2
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentChunkStatistics());
   }
 

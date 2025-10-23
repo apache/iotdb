@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -312,7 +313,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             "Failed to execute {} in config node, status is {}.",
             AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        future.setException(new IoTDBException(tsStatus));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
@@ -354,8 +355,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       LOGGER.error(CONNECTERROR);
       authorizerResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
-      future.setException(
-          new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
+      future.setException(new IoTDBException(authorizerResp.getStatus()));
     } catch (AuthException e) {
       future.setException(e);
     }
@@ -395,6 +395,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (user.isOpenIdUser()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (password != null
+          && AuthUtils.validatePassword(
+              password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
         return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");

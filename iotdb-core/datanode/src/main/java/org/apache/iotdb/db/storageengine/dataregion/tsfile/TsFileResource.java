@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -108,7 +107,9 @@ public class TsFileResource {
   protected TsFileResource next;
 
   /** time index */
-  private ITimeIndex timeIndex;
+  private volatile ITimeIndex timeIndex;
+
+  private final AtomicReference<Boolean> isEmpty = new AtomicReference<>();
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile modFile;
@@ -122,11 +123,11 @@ public class TsFileResource {
   /** used for check whether this file has internal unsorted data in compaction selection */
   private TsFileRepairStatus tsFileRepairStatus = TsFileRepairStatus.NORMAL;
 
-  private TsFileLock tsFileLock = new TsFileLock();
+  private final TsFileLock tsFileLock = new TsFileLock();
 
   private boolean isSeq;
 
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   private DataRegion.SettleTsFileCallBack settleTsFileCallBack;
 
@@ -166,13 +167,13 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
-  private ProgressIndex maxProgressIndex;
+  private final AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
   /** used to prevent circular replication in PipeConsensus */
-  private boolean isGeneratedByPipeConsensus = false;
+  private volatile boolean isGeneratedByPipeConsensus = false;
 
   /** used to prevent circular replication in Pipe */
-  private boolean isGeneratedByPipe = false;
+  private volatile boolean isGeneratedByPipe = false;
 
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
@@ -268,9 +269,9 @@ public class TsFileResource {
       ReadWriteIOUtils.write((String) null, outputStream);
     }
 
-    if (maxProgressIndex != null) {
+    if (maxProgressIndex.get() != null) {
       TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
-      maxProgressIndex.serialize(outputStream);
+      maxProgressIndex.get().serialize(outputStream);
     } else {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
@@ -302,7 +303,7 @@ public class TsFileResource {
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
         switch (blockType) {
           case PROGRESS_INDEX:
-            maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+            maxProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
             break;
           case PIPE_MARK:
             isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
@@ -648,6 +649,10 @@ public class TsFileResource {
    */
   public boolean remove() {
     forceMarkDeleted();
+    // To release the memory occupied by pipe if held by it
+    // Note that pipe can safely handle the case that the time index does not exist
+    isEmpty();
+    degradeTimeIndex();
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -874,7 +879,8 @@ public class TsFileResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) throws IOException {
+  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath, Filter globalTimeFilter)
+      throws IOException {
     try {
       return pathToTimeSeriesMetadataMap.computeIfAbsent(
           seriesPath,
@@ -884,7 +890,8 @@ public class TsFileResource {
                 return ResourceByPathUtils.getResourceInstance(seriesPath)
                     .generateTimeSeriesMetadata(
                         pathToReadOnlyMemChunkMap.get(seriesPath),
-                        pathToChunkMetadataListMap.get(seriesPath));
+                        pathToChunkMetadataListMap.get(seriesPath),
+                        globalTimeFilter);
               } catch (IOException e) {
                 throw new UncheckedIOException(e);
               }
@@ -934,13 +941,18 @@ public class TsFileResource {
    * @return resource map size
    */
   public long calculateRamSize() {
+    final ProgressIndex progressIndex = maxProgressIndex.get();
     if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-      return INSTANCE_SIZE + timeIndex.calculateRamSize();
+      return INSTANCE_SIZE
+          + timeIndex.calculateRamSize()
+          + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
     }
     if (deviceTimeIndexRamSize == 0) {
       deviceTimeIndexRamSize = timeIndex.calculateRamSize();
     }
-    return INSTANCE_SIZE + deviceTimeIndexRamSize;
+    return INSTANCE_SIZE
+        + deviceTimeIndexRamSize
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 
   // used for compaction
@@ -1198,13 +1210,10 @@ public class TsFileResource {
       return;
     }
 
-    maxProgressIndex =
-        (maxProgressIndex == null
-            ? progressIndex
-            : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
-
-    PipeTsFileEpochProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
+    if (!maxProgressIndex.compareAndSet(null, progressIndex)) {
+      maxProgressIndex.updateAndGet(
+          index -> index.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
+    }
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1212,26 +1221,18 @@ public class TsFileResource {
       return;
     }
 
-    maxProgressIndex = progressIndex;
-
-    PipeTsFileEpochProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
-  }
-
-  public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
-    if (getStatus().equals(TsFileResourceStatus.UNCLOSED)) {
-      throw new IllegalStateException(
-          "Should not get progress index from a unclosing TsFileResource.");
-    }
-    return getMaxProgressIndex();
+    maxProgressIndex.set(progressIndex);
   }
 
   public ProgressIndex getMaxProgressIndex() {
-    return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
+    final ProgressIndex index = maxProgressIndex.get();
+    return index == null ? MinimumProgressIndex.INSTANCE : index;
   }
 
   public boolean isEmpty() {
-    return getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
+    isEmpty.compareAndSet(
+        null, getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE);
+    return isEmpty.get();
   }
 
   public String getDatabaseName() {

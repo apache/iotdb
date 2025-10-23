@@ -21,16 +21,21 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
@@ -44,7 +49,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -287,8 +294,11 @@ public class CompactionUtils {
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources) {
     for (TsFileResource targetResource : targetResources) {
+      // Initial value
+      targetResource.setGeneratedByPipe(true);
+      targetResource.setGeneratedByPipeConsensus(true);
       for (TsFileResource unseqResource : unseqResources) {
-        targetResource.updateProgressIndex(unseqResource.getMaxProgressIndexAfterClose());
+        targetResource.updateProgressIndex(unseqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             unseqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
         targetResource.setGeneratedByPipeConsensus(
@@ -296,7 +306,7 @@ public class CompactionUtils {
                 && targetResource.isGeneratedByPipeConsensus());
       }
       for (TsFileResource seqResource : seqResources) {
-        targetResource.updateProgressIndex(seqResource.getMaxProgressIndexAfterClose());
+        targetResource.updateProgressIndex(seqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             seqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
         targetResource.setGeneratedByPipeConsensus(
@@ -352,6 +362,39 @@ public class CompactionUtils {
     } else {
       logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
     }
+  }
+
+  public static PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>
+      buildModEntryPatternTreeMap(TsFileResource resource) {
+    PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> patternTreeMap =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    Iterable<Modification> iterator = resource.getModFile().getModificationsIter();
+    for (Modification modification : iterator) {
+      patternTreeMap.append(modification.getPath(), modification);
+    }
+    return patternTreeMap;
+  }
+
+  public static List<Modification> getMatchedModifications(
+      PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> patternTreeMap,
+      IDeviceID deviceID,
+      String measurement,
+      Deletion ttlDeletion)
+      throws IllegalPathException {
+    if ((patternTreeMap == null) || patternTreeMap.isEmpty()) {
+      return ttlDeletion == null ? Collections.emptyList() : Collections.singletonList(ttlDeletion);
+    }
+    PartialPath path = CompactionPathUtils.getPath(deviceID, measurement);
+    List<Modification> modifications = patternTreeMap.getOverlapped(path);
+    if (ttlDeletion != null) {
+      if (!(modifications instanceof ArrayList)) {
+        List<Modification> newModEntries = new ArrayList<>(modifications.size() + 1);
+        newModEntries.addAll(modifications);
+        modifications = newModEntries;
+      }
+      modifications.add(ttlDeletion);
+    }
+    return ModificationFile.sortAndMerge(modifications);
   }
 
   public static boolean isDiskHasSpace() {

@@ -124,7 +124,7 @@ class AutoCreateSchemaExecutor {
             dataTypesOfMissingMeasurement.add(tsDataType);
             encodingsOfMissingMeasurement.add(getDefaultEncoding(tsDataType));
             compressionTypesOfMissingMeasurement.add(
-                TSFileDescriptor.getInstance().getConfig().getCompressor());
+                TSFileDescriptor.getInstance().getConfig().getCompressor(tsDataType));
           }
         });
 
@@ -181,7 +181,9 @@ class AutoCreateSchemaExecutor {
                   measurements[measurementIndex],
                   tsDataTypes[measurementIndex],
                   getDefaultEncoding(tsDataTypes[measurementIndex]),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor());
+                  TSFileDescriptor.getInstance()
+                      .getConfig()
+                      .getCompressor(tsDataTypes[measurementIndex]));
             }
             return v;
           });
@@ -348,7 +350,9 @@ class AutoCreateSchemaExecutor {
                         ? getDefaultEncoding(tsDataTypes[measurementIndex])
                         : encodings[measurementIndex],
                     compressionTypes == null
-                        ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                        ? TSFileDescriptor.getInstance()
+                            .getConfig()
+                            .getCompressor(tsDataTypes[measurementIndex])
                         : compressionTypes[measurementIndex]);
               }
               return v;
@@ -392,7 +396,8 @@ class AutoCreateSchemaExecutor {
                       && compressionTypesList.get(finalDeviceIndex1) != null) {
                     compressionType = compressionTypesList.get(finalDeviceIndex1)[index];
                   } else {
-                    compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+                    compressionType =
+                        TSFileDescriptor.getInstance().getConfig().getCompressor(dataType);
                   }
                   templateExtendInfo.addMeasurement(
                       measurement, dataType, encoding, compressionType);
@@ -553,7 +558,7 @@ class AutoCreateSchemaExecutor {
     status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 
@@ -585,7 +590,7 @@ class AutoCreateSchemaExecutor {
         throw new SemanticException(new MetadataException(String.join("; ", failedActivationSet)));
       }
     } else {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 
@@ -654,7 +659,7 @@ class AutoCreateSchemaExecutor {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode()
             != TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 }

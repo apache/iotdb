@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -88,6 +89,8 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.util.Set;
+
 public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setDatabase(DatabaseSchemaStatement databaseSchemaStatement);
@@ -128,7 +131,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster);
+  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster, Set<CacheClearOptions> options);
 
   SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq tSetConfigurationReq);
 
@@ -217,7 +220,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
 
-  TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode);
+  TSStatus alterLogicalViewByPipe(
+      AlterLogicalViewNode alterLogicalViewNode, boolean shouldMarkAsPipeRequest);
 
   SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
 

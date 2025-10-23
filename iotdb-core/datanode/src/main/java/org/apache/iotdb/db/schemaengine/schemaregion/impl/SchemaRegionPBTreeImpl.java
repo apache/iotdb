@@ -93,6 +93,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1425,6 +1426,13 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       result += mtree.countPathsUsingTemplate(pathPattern, templateId);
     }
     return result;
+  }
+
+  @Override
+  public int fillLastQueryMap(
+      final PartialPath pattern,
+      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> mapToFill) {
+    throw new UnsupportedOperationException("Not implemented");
   }
 
   @Override

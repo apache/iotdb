@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -168,5 +172,25 @@ public class CompactionScheduleContext {
 
   public int getPartiallyDirtyFileNum() {
     return partiallyDirtyFileNum;
+  }
+
+  public ISeqCompactionPerformer getSeqCompactionPerformer() {
+    return IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getInnerSeqCompactionPerformer()
+        .createInstance();
+  }
+
+  public IUnseqCompactionPerformer getUnseqCompactionPerformer() {
+    IUnseqCompactionPerformer unseqCompactionPerformer =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getInnerUnseqCompactionPerformer()
+            .createInstance();
+    return unseqCompactionPerformer;
+  }
+
+  public ICrossCompactionPerformer getCrossCompactionPerformer() {
+    return IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer().createInstance();
   }
 }

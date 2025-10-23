@@ -94,7 +94,7 @@ public class MQTTService implements IService {
         String.valueOf(iotDBConfig.getMqttHandlerPoolSize()));
     properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME, "true");
     properties.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "false");
-    properties.setProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "true");
+    properties.setProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "false");
     properties.setProperty(
         BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,
         String.valueOf(iotDBConfig.getMqttMaxMessageSize()));

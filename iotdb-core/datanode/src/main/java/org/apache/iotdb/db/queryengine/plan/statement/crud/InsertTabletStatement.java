@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -38,19 +40,23 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletStatement.class);
@@ -76,6 +82,38 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     statementType = StatementType.BATCH_INSERT;
     this.recordedBeginOfLogicalViewSchemaList = 0;
     this.recordedEndOfLogicalViewSchemaList = 0;
+  }
+
+  public InsertTabletStatement(final Tablet tablet, final boolean isAligned)
+      throws MetadataException {
+    this();
+    setMeasurements(
+        tablet.getSchemas().stream()
+            .map(MeasurementSchema::getMeasurementId)
+            .toArray(String[]::new));
+    setDataTypes(
+        tablet.getSchemas().stream().map(MeasurementSchema::getType).toArray(TSDataType[]::new));
+    setDevicePath(DataNodeDevicePathCache.getInstance().getPartialPath(tablet.deviceId));
+    setAligned(isAligned);
+    setTimes(tablet.timestamps);
+    setColumns(Arrays.stream(tablet.values).map(this::convertTableColumn).toArray());
+    setBitMaps(tablet.bitMaps);
+    setRowCount(tablet.rowSize);
+  }
+
+  private Object convertTableColumn(final Object input) {
+    if (input instanceof LocalDate[]) {
+      return Arrays.stream(((LocalDate[]) input))
+          .map(date -> Objects.nonNull(date) ? DateUtils.parseDateExpressionToInt(date) : 0)
+          .mapToInt(Integer::intValue)
+          .toArray();
+    } else if (input instanceof Binary[]) {
+      return Arrays.stream(((Binary[]) input))
+          .map(binary -> Objects.nonNull(binary) ? binary : Binary.EMPTY_VALUE)
+          .toArray(Binary[]::new);
+    }
+
+    return input;
   }
 
   public int getRowCount() {

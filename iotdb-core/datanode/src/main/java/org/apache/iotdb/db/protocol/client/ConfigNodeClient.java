@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
@@ -179,6 +180,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
@@ -726,9 +728,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus clearCache() throws TException {
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.clearCache(), status -> !updateConfigNodeLeader(status));
+        () -> client.clearCache(clearCacheOptions), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -1269,6 +1271,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TThrottleQuotaResp getThrottleQuota() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getThrottleQuota(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.pushHeartbeat(dataNodeId, resp), status -> !updateConfigNodeLeader(status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {

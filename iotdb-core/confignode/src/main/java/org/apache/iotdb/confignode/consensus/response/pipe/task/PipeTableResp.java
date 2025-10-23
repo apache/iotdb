@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -42,6 +42,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -50,6 +51,8 @@ public class PipeTableResp implements DataSet {
 
   private final TSStatus status;
   private final List<PipeMeta> allPipeMeta;
+
+  private static final String CONFIG_REGION_ID = "CONFIG_REGION";
 
   public PipeTableResp(final TSStatus status, final List<PipeMeta> allPipeMeta) {
     this.status = status;
@@ -160,7 +163,17 @@ public class PipeTableResp implements DataSet {
         final Set<Integer> regionIds = entry.getValue();
         exceptionMessageBuilder
             .append("regionIds: ")
-            .append(regionIds)
+            .append(
+                regionIds.stream()
+                    .map(
+                        id -> {
+                          if (Objects.equals(Integer.MIN_VALUE, id)) {
+                            // handle config region id for user experience
+                            return CONFIG_REGION_ID;
+                          }
+                          return id.toString();
+                        })
+                    .collect(Collectors.toSet()))
             .append(", ")
             .append(exceptionMessage);
         if (++count < size) {

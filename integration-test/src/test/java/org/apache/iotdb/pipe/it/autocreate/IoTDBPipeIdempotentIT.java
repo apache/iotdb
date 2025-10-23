@@ -53,7 +53,6 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     // All the schema operations must be under the same database to
     // be in the same region, therefore a non-idempotent operation can block the next one
     // and fail the IT
@@ -65,13 +64,17 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         // of the tested idempotent sql.
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);

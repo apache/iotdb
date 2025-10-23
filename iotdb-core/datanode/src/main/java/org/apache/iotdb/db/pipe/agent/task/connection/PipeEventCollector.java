@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.connection;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEve
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -129,12 +129,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (skipParsing) {
-      collectEvent(sourceEvent);
-      return;
-    }
-
-    if (!forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
+    if (skipParsing || !forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }
@@ -161,8 +156,9 @@ public class PipeEventCollector implements EventCollector {
   private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
-    IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
-        .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
+    IoTDBSchemaRegionSource.PATTERN_PARSE_VISITOR
+        .process(
+            deleteDataEvent.getPlanNode(), (UnionIoTDBPipePattern) deleteDataEvent.getPipePattern())
         .map(
             planNode ->
                 new PipeSchemaRegionWritePlanEvent(

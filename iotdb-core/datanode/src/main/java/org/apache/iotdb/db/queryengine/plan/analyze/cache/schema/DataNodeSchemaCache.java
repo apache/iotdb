@@ -22,29 +22,32 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.IntFunction;
-import java.util.function.IntPredicate;
-
-import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
@@ -52,32 +55,15 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
  */
 public class DataNodeSchemaCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
-  private final DeviceUsingTemplateSchemaCache deviceUsingTemplateSchemaCache;
-
-  private final TimeSeriesSchemaCache timeSeriesSchemaCache;
+  private final DeviceSchemaCache deviceSchemaCache = new DeviceSchemaCache();
 
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   private DataNodeSchemaCache() {
-    deviceUsingTemplateSchemaCache = new DeviceUsingTemplateSchemaCache(templateManager);
-    timeSeriesSchemaCache = new TimeSeriesSchemaCache();
-
-    MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
-  }
-
-  public long getHitCount() {
-    return deviceUsingTemplateSchemaCache.getHitCount() + timeSeriesSchemaCache.getHitCount();
-  }
-
-  public long getRequestCount() {
-    return deviceUsingTemplateSchemaCache.getRequestCount()
-        + timeSeriesSchemaCache.getRequestCount();
+    // private constructor
   }
 
   public static DataNodeSchemaCache getInstance() {
@@ -112,18 +98,27 @@ public class DataNodeSchemaCache {
    * @param measurements
    * @return timeseries partialPath and its SchemaEntity
    */
-  public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
-    return timeSeriesSchemaCache.get(devicePath, measurements);
-  }
-
-  public ClusterSchemaTree get(PartialPath fullPath) {
-    ClusterSchemaTree clusterSchemaTree =
-        deviceUsingTemplateSchemaCache.get(fullPath.getDevicePath());
-    if (clusterSchemaTree == null || clusterSchemaTree.isEmpty()) {
-      return timeSeriesSchemaCache.get(fullPath);
-    } else {
-      return clusterSchemaTree;
+  public ClusterSchemaTree get(final PartialPath devicePath, final String[] measurements) {
+    final ClusterSchemaTree tree = new ClusterSchemaTree();
+    final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath);
+    if (!(schema instanceof DeviceNormalSchema)) {
+      return tree;
     }
+    final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
+    for (final String measurement : measurements) {
+      final SchemaCacheEntry entry = treeSchema.getSchemaCacheEntry(measurement);
+      if (Objects.nonNull(entry)) {
+        tree.appendSingleMeasurement(
+            devicePath.concatNode(measurement),
+            entry.getSchema(),
+            entry.getTagMap(),
+            null,
+            null,
+            treeSchema.isAligned());
+      }
+    }
+    tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
+    return tree;
   }
 
   /**
@@ -132,8 +127,17 @@ public class DataNodeSchemaCache {
    * @param devicePath full path of the device
    * @return empty if cache miss or the device path is not a template activated path
    */
-  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath devicePath) {
-    return deviceUsingTemplateSchemaCache.getMatchedSchemaWithTemplate(devicePath);
+  public ClusterSchemaTree getMatchedTemplateSchema(final PartialPath devicePath) {
+    final ClusterSchemaTree tree = new ClusterSchemaTree();
+    final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(devicePath);
+    if (!(schema instanceof DeviceTemplateSchema)) {
+      return tree;
+    }
+    final DeviceTemplateSchema treeSchema = (DeviceTemplateSchema) schema;
+    Template template = templateManager.getTemplate(treeSchema.getTemplateId());
+    tree.appendTemplateDevice(devicePath, template.isDirectAligned(), template.getId(), template);
+    tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
+    return tree;
   }
 
   /**
@@ -142,14 +146,47 @@ public class DataNodeSchemaCache {
    * @param fullPath full path
    * @return empty if cache miss
    */
-  public ClusterSchemaTree getMatchedSchemaWithoutTemplate(PartialPath fullPath) {
-    return timeSeriesSchemaCache.get(fullPath);
+  public ClusterSchemaTree getMatchedNormalSchema(final PartialPath fullPath) {
+    final ClusterSchemaTree tree = new ClusterSchemaTree();
+    final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(fullPath.getDevicePath());
+    if (!(schema instanceof DeviceNormalSchema)) {
+      return tree;
+    }
+    final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
+    final SchemaCacheEntry entry = treeSchema.getSchemaCacheEntry(fullPath.getMeasurement());
+    if (Objects.isNull(entry)) {
+      return tree;
+    }
+    tree.appendSingleMeasurement(
+        fullPath, entry.getSchema(), entry.getTagMap(), null, null, treeSchema.isAligned());
+    tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
+    return tree;
   }
 
-  public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {
-    List<Integer> result = timeSeriesSchemaCache.computeAndRecordLogicalView(schemaComputation);
+  public List<Integer> computeWithoutTemplate(final ISchemaComputation schemaComputation) {
+    final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    final String[] measurements = schemaComputation.getMeasurements();
+
+    final IDeviceSchema schema =
+        deviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath());
+    if (!(schema instanceof DeviceNormalSchema)) {
+      return IntStream.range(0, schemaComputation.getMeasurements().length)
+          .boxed()
+          .collect(Collectors.toList());
+    }
+    final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
+
+    for (int i = 0; i < schemaComputation.getMeasurements().length; i++) {
+      final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[i]);
+      if (value == null) {
+        indexOfMissingMeasurements.add(i);
+      } else {
+        schemaComputation.computeMeasurement(i, value);
+      }
+    }
+    schemaComputation.computeDevice(treeSchema.isAligned());
     schemaComputation.recordRangeOfLogicalViewSchemaListNow();
-    return result;
+    return indexOfMissingMeasurements;
   }
 
   /**
@@ -162,173 +199,267 @@ public class DataNodeSchemaCache {
    * @return The indexes of missed views and full paths of their source paths will be returned.
    */
   public Pair<List<Integer>, List<String>> computeSourceOfLogicalView(
-      ISchemaComputation schemaComputation) {
+      final ISchemaComputation schemaComputation) {
     if (!schemaComputation.hasLogicalViewNeedProcess()) {
       return new Pair<>(new ArrayList<>(), new ArrayList<>());
     }
-    return timeSeriesSchemaCache.computeSourceOfLogicalView(schemaComputation);
+
+    final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    final Pair<Integer, Integer> beginToEnd =
+        schemaComputation.getRangeOfLogicalViewSchemaListRecorded();
+    final List<LogicalViewSchema> logicalViewSchemaList =
+        schemaComputation.getLogicalViewSchemaList();
+    final List<Integer> indexListOfLogicalViewPaths =
+        schemaComputation.getIndexListOfLogicalViewPaths();
+
+    for (int i = beginToEnd.left; i < beginToEnd.right; i++) {
+      final LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(i);
+      final int realIndex = indexListOfLogicalViewPaths.get(i);
+      if (!logicalViewSchema.isWritable()) {
+        throw new RuntimeException(
+            new InsertNonWritableViewException(
+                schemaComputation
+                    .getDevicePath()
+                    .concatAsMeasurementPath(schemaComputation.getMeasurements()[realIndex])
+                    .getFullPath()));
+      }
+
+      final PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
+      final IDeviceSchema schema = deviceSchemaCache.getDeviceSchema(fullPath.getDevicePath());
+      if (!(schema instanceof DeviceNormalSchema)) {
+        indexOfMissingMeasurements.add(i);
+        continue;
+      }
+
+      final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
+      final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(fullPath.getMeasurement());
+      if (Objects.isNull(value)) {
+        indexOfMissingMeasurements.add(i);
+        continue;
+      }
+
+      if (value.isLogicalView()) {
+        throw new RuntimeException(
+            new UnsupportedOperationException(
+                String.format(
+                    "The source of view [%s] is also a view! Nested view is unsupported! "
+                        + "Please check it.",
+                    logicalViewSchema.getSourcePathIfWritable())));
+      }
+
+      schemaComputation.computeMeasurementOfView(realIndex, value, treeSchema.isAligned());
+    }
+
+    return new Pair<>(
+        indexOfMissingMeasurements,
+        indexOfMissingMeasurements.stream()
+            .map(index -> logicalViewSchemaList.get(index).getSourcePathStringIfWritable())
+            .collect(Collectors.toList()));
   }
 
-  public List<Integer> computeWithTemplate(ISchemaComputation schemaComputation) {
-    return deviceUsingTemplateSchemaCache.compute(schemaComputation);
+  public List<Integer> computeWithTemplate(final ISchemaComputation computation) {
+    final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    final String[] measurements = computation.getMeasurements();
+    final IDeviceSchema deviceSchema =
+        deviceSchemaCache.getDeviceSchema(computation.getDevicePath());
+
+    if (!(deviceSchema instanceof DeviceTemplateSchema)) {
+      return IntStream.range(0, measurements.length).boxed().collect(Collectors.toList());
+    }
+
+    final DeviceTemplateSchema deviceTemplateSchema = (DeviceTemplateSchema) deviceSchema;
+
+    final Template template = templateManager.getTemplate(deviceTemplateSchema.getTemplateId());
+    computation.computeDevice(template.isDirectAligned());
+    final Map<String, IMeasurementSchema> templateSchema = template.getSchemaMap();
+    for (int i = 0; i < measurements.length; i++) {
+      if (!templateSchema.containsKey(measurements[i])) {
+        indexOfMissingMeasurements.add(i);
+        continue;
+      }
+      final IMeasurementSchema schema = templateSchema.get(measurements[i]);
+      computation.computeMeasurement(i, new WrappedSchemaInfo(schema));
+    }
+    return indexOfMissingMeasurements;
   }
 
   /**
-   * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
-   * associated device.
+   * Store the fetched schema in either the {@link DeviceNormalSchema} or {@link
+   * DeviceTemplateSchema}, depending on its associated device.
    */
-  public void put(ClusterSchemaTree tree) {
-    PartialPath devicePath;
-    for (DeviceSchemaInfo deviceSchemaInfo : tree.getAllDevices()) {
-      devicePath = deviceSchemaInfo.getDevicePath();
-      if (deviceSchemaInfo.getTemplateId() != NON_TEMPLATE) {
-        deviceUsingTemplateSchemaCache.put(
-            devicePath, tree.getBelongedDatabase(devicePath), deviceSchemaInfo.getTemplateId());
-      } else {
-        for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
-          timeSeriesSchemaCache.putSingleMeasurementPath(
-              tree.getBelongedDatabase(devicePath), measurementPath);
-        }
-      }
-    }
+  public void put(final ClusterSchemaTree tree) {
+    tree.getAllDevices()
+        .forEach(
+            deviceSchemaInfo ->
+                deviceSchemaCache.putDeviceSchema(
+                    tree.getBelongedDatabase(deviceSchemaInfo.getDevicePath()), deviceSchemaInfo));
   }
 
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    return timeSeriesSchemaCache.getLastCache(seriesPath);
+  public TimeValuePair getLastCache(final PartialPath seriesPath) {
+    return deviceSchemaCache.getLastEntry(seriesPath.getDevicePath(), seriesPath.getMeasurement());
   }
 
-  public void invalidateLastCache(PartialPath path) {
+  public void invalidateLastCache(final PartialPath path) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
-    takeReadLock();
-    try {
-      timeSeriesSchemaCache.invalidateLastCache(path);
-    } finally {
-      releaseReadLock();
-    }
+    deviceSchemaCache.invalidateLastCache(path.getDevicePath(), path.getMeasurement());
   }
 
-  public void invalidateLastCacheInDataRegion(String database) {
+  public void invalidateDatabaseLastCache(final String database) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
-    takeReadLock();
-    try {
-      timeSeriesSchemaCache.invalidateDataRegionLastCache(database);
-    } finally {
-      releaseReadLock();
-    }
+    deviceSchemaCache.invalidateLastCache(database);
   }
 
-  /** get SchemaCacheEntry and update last cache */
-  @TestOnly
-  public void updateLastCache(
-      PartialPath devicePath,
-      String measurement,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
-        devicePath, measurement, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  /**
+   * Update the {@link DeviceLastCache} in writing. If a measurement is with all {@code null}s, its
+   * {@link TimeValuePair}[] shall be {@code null}. For correctness, this will put the {@link
+   * DeviceCacheEntry} lazily and only update the existing {@link DeviceLastCache}s of measurements.
+   *
+   * @param database the device's database, WITH "root"
+   * @param deviceID {@link IDeviceID}
+   * @param measurements the fetched measurements
+   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
+   */
+  public void updateLastCacheIfExists(
+      final String database,
+      final PartialPath deviceID,
+      final String[] measurements,
+      final @Nonnull TimeValuePair[] timeValuePairs,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    deviceSchemaCache.updateLastCache(
+        database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
 
-  public void updateLastCache(
-      String database,
-      PartialPath devicePath,
-      String[] measurements,
-      MeasurementSchema[] measurementSchemas,
-      boolean isAligned,
-      IntFunction<TimeValuePair> timeValuePairProvider,
-      IntPredicate shouldUpdateProvider,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    takeReadLock();
-    try {
-      timeSeriesSchemaCache.updateLastCache(
-          database,
-          devicePath,
-          measurements,
-          measurementSchemas,
-          isAligned,
-          timeValuePairProvider,
-          shouldUpdateProvider,
-          highPriorityUpdate,
-          latestFlushedTime);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
-  public void updateLastCacheWithoutLock(
-      String database,
-      PartialPath devicePath,
-      String[] measurements,
-      MeasurementSchema[] measurementSchemas,
-      boolean isAligned,
-      IntFunction<TimeValuePair> timeValuePairProvider,
-      IntPredicate shouldUpdateProvider,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
+  /**
+   * Update the {@link DeviceLastCache} on query.
+   *
+   * <p>Note: The query shall put the {@link DeviceLastCache} twice:
+   *
+   * <p>- First time call this before the query accesses data. It is just to allow the writing to
+   * update the cache, then avoid that the query put a stale value to cache and break the
+   * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
+   * is written, but it won't affect the eventual consistency.
+   *
+   * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
+   * #updateLastCacheIfExists(String, PartialPath, String[], TimeValuePair[], boolean,
+   * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
+   * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
+   * DeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
+   *
+   * @param database the device's database, WITH "root"
+   * @param measurementPath the fetched {@link MeasurementPath}
+   */
+  public void declareLastCache(final String database, final MeasurementPath measurementPath) {
+    deviceSchemaCache.updateLastCache(
         database,
-        devicePath,
-        measurements,
-        measurementSchemas,
-        isAligned,
-        timeValuePairProvider,
-        shouldUpdateProvider,
-        highPriorityUpdate,
-        latestFlushedTime);
+        measurementPath.getDevicePath(),
+        new String[] {measurementPath.getMeasurement()},
+        null,
+        measurementPath.isUnderAlignedEntity(),
+        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        true);
   }
 
   /**
-   * get or create SchemaCacheEntry and update last cache, only support non-aligned sensor or
-   * aligned sensor without only one sub sensor
+   * Update the {@link DeviceLastCache} on query.
+   *
+   * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
+   * in the first time, to avoid the stale writing damaging the eventual consistency.
+   *
+   * @param database the device's database, WITH "root"
+   * @param measurementPath the fetched {@link MeasurementPath}
    */
-  public void updateLastCache(
-      String storageGroup,
-      MeasurementPath measurementPath,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    takeReadLock();
-    try {
-      timeSeriesSchemaCache.updateLastCache(
-          storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } finally {
-      releaseReadLock();
-    }
+  public void invalidateLastCache(final String database, final MeasurementPath measurementPath) {
+    deviceSchemaCache.updateLastCache(
+        database,
+        measurementPath.getDevicePath(),
+        new String[] {measurementPath.getMeasurement()},
+        new TimeValuePair[] {null},
+        measurementPath.isUnderAlignedEntity(),
+        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        true);
   }
 
-  public void invalidate(String database) {
-    deviceUsingTemplateSchemaCache.invalidateCache(database);
-    timeSeriesSchemaCache.invalidate(database);
+  public void invalidate(final List<PartialPath> partialPathList) {
+    // Currently invalidate by device
+    partialPathList.forEach(
+        measurementPath -> {
+          final boolean isMultiLevelWildcardMeasurement =
+              PathPatternUtil.isMultiLevelMatchWildcard(measurementPath.getMeasurement());
+          deviceSchemaCache.invalidateCache(
+              isMultiLevelWildcardMeasurement ? measurementPath : measurementPath.getDevicePath(),
+              isMultiLevelWildcardMeasurement);
+        });
   }
 
-  public void invalidate(List<PartialPath> partialPathList) {
-    boolean doPrecise = true;
-    for (PartialPath partialPath : partialPathList) {
-      if (partialPath.getDevicePath().hasWildcard()) {
-        doPrecise = false;
-        break;
-      }
-    }
-    if (doPrecise) {
-      deviceUsingTemplateSchemaCache.invalidateCache(partialPathList);
-      timeSeriesSchemaCache.invalidate(partialPathList);
-    } else {
-      invalidateAll();
-    }
-  }
-
-  public void invalidateAll() {
-    deviceUsingTemplateSchemaCache.invalidateCache();
-    timeSeriesSchemaCache.invalidateAll();
+  public DeviceSchemaCache getDeviceSchemaCache() {
+    return deviceSchemaCache;
   }
 
   public void cleanUp() {
-    deviceUsingTemplateSchemaCache.invalidateCache();
-    timeSeriesSchemaCache.invalidateAll();
+    deviceSchemaCache.invalidateAll();
+  }
+
+  private static class WrappedSchemaInfo implements IMeasurementSchemaInfo {
+    private final IMeasurementSchema schema;
+
+    public WrappedSchemaInfo(final IMeasurementSchema schema) {
+      this.schema = schema;
+    }
+
+    @Override
+    public String getName() {
+      return schema.getMeasurementId();
+    }
+
+    @Override
+    public IMeasurementSchema getSchema() {
+      if (isLogicalView()) {
+        return new LogicalViewSchema(
+            schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+      } else {
+        return this.getSchemaAsMeasurementSchema();
+      }
+    }
+
+    @Override
+    public MeasurementSchema getSchemaAsMeasurementSchema() {
+      return new MeasurementSchema(
+          schema.getMeasurementId(),
+          schema.getType(),
+          schema.getEncodingType(),
+          schema.getCompressor());
+    }
+
+    @Override
+    public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+      throw new RuntimeException(
+          new UnsupportedOperationException(
+              "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
+    }
+
+    @Override
+    public Map<String, String> getTagMap() {
+      return null;
+    }
+
+    @Override
+    public Map<String, String> getAttributeMap() {
+      return null;
+    }
+
+    @Override
+    public String getAlias() {
+      return null;
+    }
+
+    @Override
+    public boolean isLogicalView() {
+      return schema.isLogicalView();
+    }
   }
 }

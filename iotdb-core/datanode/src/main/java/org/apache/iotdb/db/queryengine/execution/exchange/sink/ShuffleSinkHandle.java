@@ -190,18 +190,19 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void abort() {
+  public boolean abort() {
     if (aborted || closed) {
-      return;
+      return false;
     }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartAbortShuffleSinkHandle]");
     }
     boolean meetError = false;
     Exception firstException = null;
+    boolean selfAborted = true;
     for (ISink channel : downStreamChannelList) {
       try {
-        channel.abort();
+        selfAborted = channel.abort();
       } catch (Exception e) {
         if (!meetError) {
           firstException = e;
@@ -212,10 +213,15 @@ public class ShuffleSinkHandle implements ISinkHandle {
     if (meetError) {
       LOGGER.warn("Error occurred when try to abort channel.", firstException);
     }
-    sinkListener.onAborted(this);
-    aborted = true;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndAbortShuffleSinkHandle]");
+    if (selfAborted) {
+      sinkListener.onAborted(this);
+      aborted = true;
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[EndAbortShuffleSinkHandle]");
+      }
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -224,18 +230,19 @@ public class ShuffleSinkHandle implements ISinkHandle {
   // ShuffleSinkHandle while synchronized methods of ShuffleSinkHandle
   // Lock ShuffleSinkHandle and wait to lock LocalSinkChannel
   @Override
-  public void close() {
+  public boolean close() {
     if (closed || aborted) {
-      return;
+      return false;
     }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartCloseShuffleSinkHandle]");
     }
     boolean meetError = false;
     Exception firstException = null;
+    boolean selfClosed = true;
     for (ISink channel : downStreamChannelList) {
       try {
-        channel.close();
+        selfClosed = channel.close();
       } catch (Exception e) {
         if (!meetError) {
           firstException = e;
@@ -246,10 +253,15 @@ public class ShuffleSinkHandle implements ISinkHandle {
     if (meetError) {
       LOGGER.warn("Error occurred when try to close channel.", firstException);
     }
-    sinkListener.onFinish(this);
-    closed = true;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndCloseShuffleSinkHandle]");
+    if (selfClosed) {
+      sinkListener.onFinish(this);
+      closed = true;
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[EndCloseShuffleSinkHandle]");
+      }
+      return true;
+    } else {
+      return false;
     }
   }
 
