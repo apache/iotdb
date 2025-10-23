@@ -173,7 +173,7 @@ public class IoTDBSetConfigurationIT {
       try {
         statement.execute("set configuration \"default_database_level\"=\"-1\"");
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("Illegal defaultStorageGroupLevel: -1, should >= 1"));
+        assertTrue(e.getMessage().contains("Illegal defaultDatabaseLevel: -1, should >= 1"));
       }
 
       // Failed updates will not change the files.
