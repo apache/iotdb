@@ -218,6 +218,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 while (iChunkMetadataIterator.hasNext()) {
                   IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
                   if (iChunkMetadata == null) {
+                    iChunkMetadataIterator.remove();
                     continue;
                   }
 
